@@ -33,7 +33,8 @@ The new C# Advent site (csadvent.christmas), replacing the legacy site Matt Grov
 ```bash
 aspire run                         # Run the AppHost (site, Postgres, migrations, pgweb, MailPit)
 dotnet build CSAdvent.slnx         # Build everything
-dotnet test                        # Integration tests (needs Docker)
+dotnet test                        # All tests (integration tests need Docker)
+dotnet test --project tests/CSAdvent.UnitTests   # Unit tests only
 dotnet tool restore                # Restores dotnet-ef from dotnet-tools.json
 dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Migrations
 ```
@@ -45,11 +46,23 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 | `src/CSAdvent.AppHost` | Aspire app model |
 | `src/CSAdvent.ServiceDefaults` | OpenTelemetry, health checks, resilience, service discovery |
 | `src/CSAdvent.Web` | Blazor Web App; `Data/AdventDbContext.cs` and `Data/Migrations` |
-| `tests/CSAdvent.IntegrationTests` | xUnit v3 on Microsoft.Testing.Platform; starts the AppHost via `Aspire.Hosting.Testing` |
+| `tests/CSAdvent.UnitTests` | xUnit v3 on Microsoft.Testing.Platform; no database or containers |
+| `tests/CSAdvent.IntegrationTests` | Starts the AppHost via `Aspire.Hosting.Testing`; web and database tests |
 
 - **Package versions** are central in `Directory.Packages.props`. Target framework, nullable, and warnings-as-errors are in `Directory.Build.props`.
 - **Render modes:** pages are static server-rendered by default. Add `@rendermode InteractiveServer` only to components that need it (forms, admin, countdown).
 - **Migrations** run through Aspire's EF Core migrations integration (`AddEFMigrations` with `RunDatabaseUpdateOnStart`), never at app startup. Publishing produces a migration bundle.
+
+## Data Model
+
+Entities and their EF configuration live together in `src/CSAdvent.Web/Data` (one file each).
+
+- **Seasons are keyed by year** and hold every season since 2017. `slots_per_day` is 1 for 2017 and 2 since. `Season.Create` adds an open slot for every day and part; creating a season never touches earlier ones.
+- **No stored status.** A slot is open or claimed depending on whether it has an author. Reveal times are computed by `Calendar/AdventSchedule` from the year, the day and `Advent:TimeZone` (midnight in that zone), never stored. Claims open at `seasons.claims_open_at`.
+- **Public vs private:** `slots` is public and never holds an email. Contact details live in `slot_contacts`, `contributors`, `claim_requests` and `substitutes`, so they can be purged after a season without touching the calendar.
+- **snake_case names** come from `SnakeCaseNamingConvention`, so raw SQL in check constraints and filters uses snake_case column names.
+- **Concurrency:** `slots` and `claim_requests` use PostgreSQL `xmin` as a row version.
+- **Unit tests fail if the model changes without a migration** (`HasPendingModelChanges`).
 
 ## Gotchas
 
@@ -57,6 +70,7 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 - **EF Core 11 with Aspire 13.6:** `Aspire.Npgsql.EntityFrameworkCore.PostgreSQL` has no `net11.0` build yet. We reference `Npgsql.EntityFrameworkCore.PostgreSQL` 11.x directly and pin the EF Core health-check package transitively, so everything resolves to EF Core 11.
 - **dotnet-ef version** is pinned twice: `dotnet-tools.json` and `WithToolVersion` in `AppHost.cs`. Update both together.
 - **EF Core 11 refuses to run `database update` with no migrations**, which is why there's an empty `InitialCreate` baseline.
+- **`dotnet ef migrations remove` needs a database connection**, which only exists inside Aspire. Use **Remove Migration** on the `migrations` resource in the dashboard, or delete the migration's two files and restore `AdventDbContextModelSnapshot.cs` from git.
 - **`Aspire.Hosting.EntityFrameworkCore` is preview-only**, and logs a harmless `Could not perform substitution for environment variable ASPNETCORE_URLS` error when its tool process starts.
 - **AspireUseCliBundle is false** on purpose, so the AppHost works with `dotnet run`, IDEs, CI, and `Aspire.Hosting.Testing` without the Aspire CLI. ASPIRE010 is suppressed for that reason.
 - **When .NET 11 reaches GA:** update `global.json`, the EF Core, Npgsql, and Aspire packages, `dotnet-ef` (both places), and container base images.

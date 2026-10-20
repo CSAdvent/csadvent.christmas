@@ -52,6 +52,7 @@ You can also run the AppHost without the Aspire CLI, with `dotnet run --project 
 | `src/CSAdvent.AppHost` | Aspire app model: the site, PostgreSQL, migrations, and MailPit |
 | `src/CSAdvent.ServiceDefaults` | Shared OpenTelemetry, health checks, resilience, and service discovery |
 | `src/CSAdvent.Web` | The Blazor Web App, including the `AdventDbContext` and its migrations |
+| `tests/CSAdvent.UnitTests` | Fast tests with no database or containers |
 | `tests/CSAdvent.IntegrationTests` | Starts the whole AppHost against a throwaway PostgreSQL container |
 
 ## 🗄️ Database Migrations
@@ -71,6 +72,7 @@ Or use **Add Migration...** on the `migrations` resource in the Aspire dashboard
 dotnet test
 ```
 
+- ⚡ The unit tests need nothing else: `dotnet test --project tests/CSAdvent.UnitTests`
 - 🐳 The integration tests need a running container runtime
 - 🧹 They run the AppHost in the `Testing` environment: a fresh database with no data volume, no pgweb, and plain HTTP, so they never touch your local data
 
