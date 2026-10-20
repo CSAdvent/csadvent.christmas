@@ -1,3 +1,5 @@
+using CSAdvent.Web.Data;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 [assembly: AssemblyFixture(typeof(CSAdvent.IntegrationTests.AppHostFixture))]
@@ -33,6 +35,14 @@ public sealed class AppHostFixture : IAsyncLifetime
     }
 
     public HttpClient CreateWebClient() => App.CreateHttpClient("web");
+
+    /// <summary>A context on the database the AppHost created and migrated.</summary>
+    public async Task<AdventDbContext> CreateDbContextAsync()
+    {
+        var connectionString = await App.GetConnectionStringAsync("csadvent");
+        var options = new DbContextOptionsBuilder<AdventDbContext>().UseNpgsql(connectionString).Options;
+        return new AdventDbContext(options);
+    }
 
     public async ValueTask DisposeAsync()
     {

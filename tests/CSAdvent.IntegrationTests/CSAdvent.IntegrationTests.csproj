@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\CSAdvent.AppHost\CSAdvent.AppHost.csproj" />
+    <ProjectReference Include="..\..\src\CSAdvent.Web\CSAdvent.Web.csproj" />
   </ItemGroup>
 
   <ItemGroup>
