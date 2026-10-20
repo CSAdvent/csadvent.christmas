@@ -55,6 +55,20 @@ public sealed class AdventScheduleTests
         Assert.False(schedule.IsRevealed(season.Slots.First(s => s.Day == 11)));
     }
 
+    [Fact]
+    public void ASeasonIsOverOnceItsLastDayIsRevealed()
+    {
+        var clock = new FakeTimeProvider(new DateTimeOffset(2026, 12, 24, 23, 59, 59, TimeSpan.FromHours(-5)));
+        var schedule = CreateSchedule(clock);
+
+        Assert.False(schedule.IsSeasonOver(2026));
+        Assert.True(schedule.IsSeasonOver(2025));
+
+        clock.Advance(TimeSpan.FromSeconds(1));
+
+        Assert.True(schedule.IsSeasonOver(2026));
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(26)]

@@ -1,0 +1,49 @@
+@* One card per day, with that day's entries in part order. Used by the archive, and later the home page. *@
+
+<ol class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    @foreach (var day in Calendar.Days)
+    {
+        <li id="december-@day.Day" class="flex flex-col rounded-xl bg-white p-4 shadow-sm ring-1 ring-advent-100">
+            <h2 class="flex items-center gap-3 font-semibold text-advent-800">
+                <span class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-advent-600 text-lg font-bold text-white" aria-hidden="true">@day.Day</span>
+                December @day.Day
+            </h2>
+
+            <ul class="mt-4 flex flex-1 flex-col gap-4">
+                @foreach (var entry in day.Entries)
+                {
+                    <li class="border-l-4 pl-3 @(entry.HasPost ? "border-advent-400" : "border-slate-200")">
+                        @if (entry.HasPost)
+                        {
+                            <a href="@entry.PostUrl" class="font-medium text-advent-700 hover:underline">@entry.PostTitle</a>
+                            <p class="mt-1 text-sm text-slate-600">
+                                by
+                                @if (entry.AuthorUrl is not null)
+                                {
+                                    <a href="@entry.AuthorUrl" class="hover:text-advent-700 hover:underline">@entry.AuthorName</a>
+                                }
+                                else
+                                {
+                                    @entry.AuthorName
+                                }
+                            </p>
+                        }
+                        else if (!entry.IsRevealed)
+                        {
+                            <p class="text-sm text-slate-500">Revealed on December @day.Day</p>
+                        }
+                        else
+                        {
+                            <p class="text-sm italic text-slate-400">No post</p>
+                        }
+                    </li>
+                }
+            </ul>
+        </li>
+    }
+</ol>
+
+@code {
+    [Parameter, EditorRequired]
+    public required SeasonCalendar Calendar { get; set; }
+}

@@ -33,4 +33,7 @@ public sealed class AdventSchedule
     public bool IsRevealed(int year, int day) => _timeProvider.GetUtcNow() >= GetRevealTime(year, day);
 
     public bool IsRevealed(Slot slot) => IsRevealed(slot.SeasonYear, slot.Day);
+
+    /// <summary>A season is over, and in the archive, once its last day is revealed.</summary>
+    public bool IsSeasonOver(int year) => IsRevealed(year, Season.DaysInAdvent);
 }

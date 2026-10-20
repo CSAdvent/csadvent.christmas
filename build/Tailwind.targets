@@ -1,0 +1,84 @@
+<Project>
+
+  <!--
+    Builds Tailwind CSS with the official standalone CLI, so no Node is needed. The CLI is downloaded once per version
+    into .tools/ (gitignored) and verified against the SHA-256 published in the release's sha256sums.txt.
+
+    To upgrade: change TailwindVersion and copy the new hashes from
+    https://github.com/tailwindlabs/tailwindcss/releases/download/v{version}/sha256sums.txt
+  -->
+
+  <PropertyGroup>
+    <TailwindVersion>4.3.3</TailwindVersion>
+    <TailwindInput Condition="'$(TailwindInput)' == ''">Styles\app.css</TailwindInput>
+    <TailwindOutput Condition="'$(TailwindOutput)' == ''">wwwroot\app.css</TailwindOutput>
+    <TailwindToolsDirectory>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '.tools', 'tailwindcss', '$(TailwindVersion)'))</TailwindToolsDirectory>
+    <_TailwindArchitecture>$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)</_TailwindArchitecture>
+  </PropertyGroup>
+
+  <!-- Tailwind has no Windows Arm64 build; the x64 one runs under emulation. -->
+  <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
+    <TailwindAsset>tailwindcss-windows-x64.exe</TailwindAsset>
+    <TailwindSha256>e0e260ce048014e9268f6237ff18f8ccf02cef521cbd0ae04e82c2cdf7aa3955</TailwindSha256>
+  </PropertyGroup>
+  <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Linux')) and '$(_TailwindArchitecture)' == 'X64'">
+    <TailwindAsset>tailwindcss-linux-x64</TailwindAsset>
+    <TailwindSha256>dc61b3ac6b8c9ca874c0cc4c57b2409791a64c5540404ca5f5367360babc313a</TailwindSha256>
+  </PropertyGroup>
+  <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Linux')) and '$(_TailwindArchitecture)' == 'Arm64'">
+    <TailwindAsset>tailwindcss-linux-arm64</TailwindAsset>
+    <TailwindSha256>55fd0b241214eff3de1e8ee4f22796662f2d2e7a49bcfca7477cfd0bac398195</TailwindSha256>
+  </PropertyGroup>
+  <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('OSX')) and '$(_TailwindArchitecture)' == 'Arm64'">
+    <TailwindAsset>tailwindcss-macos-arm64</TailwindAsset>
+    <TailwindSha256>cdf646702987a743464dff4d9c60fd4480d1c1e73dd819a9a67f1078815dce9d</TailwindSha256>
+  </PropertyGroup>
+  <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('OSX')) and '$(_TailwindArchitecture)' == 'X64'">
+    <TailwindAsset>tailwindcss-macos-x64</TailwindAsset>
+    <TailwindSha256>7922e0953f2110c05976e3bf58f14e643d90427575e766b7d433f5f80cbee7e1</TailwindSha256>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <TailwindExecutable>$(TailwindToolsDirectory)$(TailwindAsset)</TailwindExecutable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <TailwindSource Include="$(TailwindInput);**\*.razor;**\*.cs" Exclude="bin\**;obj\**" />
+  </ItemGroup>
+
+  <Target Name="DownloadTailwind" Condition="!Exists('$(TailwindExecutable)')">
+    <Error Condition="'$(TailwindAsset)' == ''" Text="Tailwind CSS has no standalone CLI for this platform ($(_TailwindArchitecture))." />
+
+    <DownloadFile
+      SourceUrl="https://github.com/tailwindlabs/tailwindcss/releases/download/v$(TailwindVersion)/$(TailwindAsset)"
+      DestinationFolder="$(TailwindToolsDirectory)"
+      DestinationFileName="$(TailwindAsset).download"
+      Retries="3" />
+    <VerifyFileHash File="$(TailwindToolsDirectory)$(TailwindAsset).download" Hash="$(TailwindSha256)" Algorithm="SHA256" />
+    <Exec Condition="!$([MSBuild]::IsOSPlatform('Windows'))" Command="chmod +x &quot;$(TailwindToolsDirectory)$(TailwindAsset).download&quot;" />
+    <Move SourceFiles="$(TailwindToolsDirectory)$(TailwindAsset).download" DestinationFiles="$(TailwindExecutable)" />
+  </Target>
+
+  <Target
+    Name="BuildTailwind"
+    BeforeTargets="ResolveProjectStaticWebAssets"
+    DependsOnTargets="DownloadTailwind"
+    Condition="'$(DesignTimeBuild)' != 'true'"
+    Inputs="@(TailwindSource);$(MSBuildThisFileFullPath)"
+    Outputs="$(TailwindOutput)">
+    <Exec
+      Command="&quot;$(TailwindExecutable)&quot; --input &quot;$(TailwindInput)&quot; --output &quot;$(TailwindOutput)&quot; --minify"
+      WorkingDirectory="$(MSBuildProjectDirectory)" />
+  </Target>
+
+  <!--
+    On a clean checkout the generated stylesheet didn't exist when Content items were collected, so add it here,
+    before static web assets are discovered. Otherwise it wouldn't be served or published.
+  -->
+  <Target Name="IncludeTailwindOutput" AfterTargets="BuildTailwind" BeforeTargets="ResolveProjectStaticWebAssets" Condition="Exists('$(TailwindOutput)')">
+    <ItemGroup>
+      <Content Include="$(TailwindOutput)" Exclude="@(Content)" />
+    </ItemGroup>
+  </Target>
+
+</Project>

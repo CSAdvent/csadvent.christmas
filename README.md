@@ -11,6 +11,7 @@
 - 🟣 **.NET 11** - Blazor Web App, static server rendering by default and interactivity only where a page needs it
 - 🐘 **PostgreSQL** - every season from 2017 onward, archives included, with EF Core 11 migrations
 - ✨ **Aspire** - local orchestration, telemetry, and deployment
+- 🎨 **Tailwind CSS 4** - built during `dotnet build` with Tailwind's official standalone CLI, so no Node is needed
 - 📬 **MailPit** - catches every email sent in development, so nothing reaches real people
 
 ## 🛠️ Prerequisites
@@ -49,6 +50,7 @@ You can also run the AppHost without the Aspire CLI, with `dotnet run --project 
 
 | Path | Role |
 |---|---|
+| `build/Tailwind.targets` | Downloads the Tailwind CLI (checked against its SHA-256) and builds the stylesheet |
 | `src/CSAdvent.AppHost` | Aspire app model: the site, PostgreSQL, migrations, and MailPit |
 | `src/CSAdvent.ServiceDefaults` | Shared OpenTelemetry, health checks, resilience, and service discovery |
 | `src/CSAdvent.Web` | The Blazor Web App, including the `AdventDbContext` and its migrations |
@@ -67,6 +69,13 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 Or use **Add Migration...** on the `migrations` resource in the Aspire dashboard. Migrations run automatically when the AppHost starts. Nothing runs them at web app startup.
 
 📚 After migrations, every new database is seeded with the 2017–2025 seasons from `src/CSAdvent.Web/Data/Archive`. Seeding only adds missing seasons, so use **Reset Database** in the dashboard to pick up changes to those files.
+
+## 🎨 Styling
+
+- ✏️ Style pages with Tailwind classes in the Razor components, and put theme settings (such as the `advent-*` brand colors) in `src/CSAdvent.Web/Styles/app.css`
+- ⚙️ `dotnet build` generates `wwwroot/app.css` from them. That file is gitignored, so don't edit it.
+- 📥 The first build downloads Tailwind's standalone CLI (about 110 MB) into `.tools/` and checks it against the release's SHA-256
+- ⬆️ To upgrade Tailwind, change `TailwindVersion` and the hashes in `build/Tailwind.targets`
 
 ## 🧪 Tests
 

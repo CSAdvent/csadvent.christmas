@@ -21,6 +21,7 @@ builder.Services.AddOptions<AdventOptions>()
         $"{AdventOptions.SectionName}:TimeZone must be a time zone ID, such as America/New_York.")
     .ValidateOnStart();
 builder.Services.AddSingleton<AdventSchedule>();
+builder.Services.AddScoped<ArchiveService>();
 
 // Pages render statically on the server by default. Components opt in to interactivity where they need it.
 builder.Services.AddRazorComponents()
