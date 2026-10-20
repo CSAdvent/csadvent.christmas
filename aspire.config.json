@@ -1,0 +1,5 @@
+{
+  "appHost": {
+    "path": "src/CSAdvent.AppHost/CSAdvent.AppHost.csproj"
+  }
+}

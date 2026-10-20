@@ -1,0 +1,22 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.6.2">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <UserSecretsId>43b2300f-3b7c-4d51-b855-653d2a60e951</UserSecretsId>
+    <!-- DCP and the dashboard come from NuGet, so the AppHost runs with `dotnet run`, an IDE, CI and
+         Aspire.Hosting.Testing without the Aspire CLI installed. -->
+    <AspireUseCliBundle>false</AspireUseCliBundle>
+    <NoWarn>$(NoWarn);ASPIRE010</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.EntityFrameworkCore" />
+    <PackageReference Include="Aspire.Hosting.PostgreSQL" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.MailPit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CSAdvent.Web\CSAdvent.Web.csproj" />
+  </ItemGroup>
+
+</Project>

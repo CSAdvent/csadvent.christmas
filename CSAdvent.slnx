@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CSAdvent.AppHost/CSAdvent.AppHost.csproj" />
+    <Project Path="src/CSAdvent.ServiceDefaults/CSAdvent.ServiceDefaults.csproj" />
+    <Project Path="src/CSAdvent.Web/CSAdvent.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CSAdvent.IntegrationTests/CSAdvent.IntegrationTests.csproj" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="global.json" />
+    <File Path="README.md" />
+  </Folder>
+</Solution>

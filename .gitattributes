@@ -1,0 +1,15 @@
+# Auto detect text files and normalize line endings
+* text=auto eol=crlf
+
+# Shell scripts must keep LF so they run on Linux runners and containers
+*.sh text eol=lf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
