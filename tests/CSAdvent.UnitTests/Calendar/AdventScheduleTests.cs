@@ -69,6 +69,31 @@ public sealed class AdventScheduleTests
         Assert.True(schedule.IsSeasonOver(2026));
     }
 
+    [Fact]
+    public void ClaimsOpenAtTheScheduledTimeAndNeverIfUnscheduled()
+    {
+        var opensAt = new DateTimeOffset(2026, 11, 1, 0, 0, 0, TimeSpan.FromHours(-4));
+        var clock = new FakeTimeProvider(opensAt.AddSeconds(-1));
+        var schedule = CreateSchedule(clock);
+
+        Assert.False(schedule.AreClaimsOpen(opensAt));
+        Assert.False(schedule.AreClaimsOpen(null));
+
+        clock.Advance(TimeSpan.FromSeconds(1));
+
+        Assert.True(schedule.AreClaimsOpen(opensAt));
+        Assert.False(schedule.AreClaimsOpen(null));
+    }
+
+    [Fact]
+    public void TodayIsTheDateInTheRevealTimeZone()
+    {
+        // 03:00 UTC on December 2 is still 10 PM on December 1 in New York.
+        var schedule = CreateSchedule(new FakeTimeProvider(new DateTimeOffset(2026, 12, 2, 3, 0, 0, TimeSpan.Zero)));
+
+        Assert.Equal(new DateOnly(2026, 12, 1), schedule.Today);
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(26)]

@@ -1,0 +1,30 @@
+@using System.Globalization
+
+<header class="mb-8">
+    <h1 class="text-3xl font-bold tracking-tight text-advent-800 sm:text-4xl">C# Advent @Calendar.Year</h1>
+    <p class="mt-2 max-w-2xl text-lg text-slate-600">Two new C# posts every day from December 1st to December 25th, written by the C# community.</p>
+
+    <p class="mt-5 rounded-xl bg-advent-50 p-4 font-medium text-advent-900 ring-1 ring-advent-100" role="status">
+        @if (!Calendar.AreClaimsOpen)
+        {
+            @(Calendar.ClaimsOpenOn is { } opensOn
+                ? $"Sign-ups open on {opensOn.ToString("MMMM d", CultureInfo.InvariantCulture)}."
+                : "Sign-ups open soon.")
+        }
+        else if (Calendar.OpenSpotCount > 0)
+        {
+            @($"Sign-ups are open: {Calendar.OpenSpotCount} of {Calendar.SpotCount} spots are still available. Pick a day below and claim it.")
+        }
+        else
+        {
+            @("Every spot is taken. Thank you!")
+        }
+    </p>
+</header>
+
+<CalendarGrid Calendar="Calendar" />
+
+@code {
+    [Parameter, EditorRequired]
+    public required SeasonCalendar Calendar { get; set; }
+}
