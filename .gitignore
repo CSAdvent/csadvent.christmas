@@ -485,3 +485,7 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Tailwind CSS: the downloaded standalone CLI and the generated stylesheet (see build/Tailwind.targets)
+.tools/
+src/CSAdvent.Web/wwwroot/app.css

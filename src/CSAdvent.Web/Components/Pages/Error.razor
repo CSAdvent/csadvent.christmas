@@ -3,12 +3,12 @@
 
 <PageTitle>Error</PageTitle>
 
-<h1>Something went wrong</h1>
-<p>An error occurred while processing your request.</p>
+<h1 class="text-3xl font-bold tracking-tight text-advent-800">Something went wrong</h1>
+<p class="mt-2 text-slate-600">An error occurred while processing your request.</p>
 
 @if (ShowRequestId)
 {
-    <p>
+    <p class="mt-4 text-sm text-slate-500">
         <strong>Request ID:</strong> <code>@RequestId</code>
     </p>
 }

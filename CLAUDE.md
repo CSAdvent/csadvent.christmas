@@ -53,6 +53,14 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 - **Render modes:** pages are static server-rendered by default. Add `@rendermode InteractiveServer` only to components that need it (forms, admin, countdown).
 - **Migrations** run through Aspire's EF Core migrations integration (`AddEFMigrations` with `RunDatabaseUpdateOnStart`), never at app startup. Publishing produces a migration bundle.
 
+## Styling
+
+- **Tailwind CSS 4**, built by `build/Tailwind.targets` during `dotnet build`. It downloads the official standalone CLI into `.tools/` (gitignored, checked against a pinned SHA-256) and turns `src/CSAdvent.Web/Styles/app.css` into `wwwroot/app.css` (gitignored and generated, so never edit it).
+- Tailwind only scans `src/CSAdvent.Web/Components` (`@source` in `Styles/app.css`). Write class names out in full in the Razor markup, because classes assembled from strings at runtime are never generated.
+- Brand colors are the `advent-*` scale in `@theme`: `advent-600` (`#1a509d`) is the logo blue and `advent-400` (`#4e88c5`) the snowflake. Don't put `advent-400` behind body text, because its contrast on white is too low.
+- Photos live in `wwwroot/images` as WebP with a JPEG fallback, through the `bg-advent-candles` and `bg-advent-snowflakes` utilities.
+- Pages render statically on the server. `CalendarGrid` renders a season's days for the archive (and later the home page). `CalendarEntry` never carries a post's title or link before its reveal.
+
 ## Data Model
 
 Entities and their EF configuration live together in `src/CSAdvent.Web/Data` (one file each).
@@ -67,6 +75,7 @@ Entities and their EF configuration live together in `src/CSAdvent.Web/Data` (on
 
 ## Gotchas
 
+- **User secrets are shared with the tests:** the AppHost's generated Postgres password is saved in its user secrets, and the local data volume is created with it. The test fixture passes a fixed `Parameters:postgres-password` so test runs never overwrite that secret. If local Postgres rejects the password, delete the `*-postgres-data` Docker volume and run again.
 - **Testing environment:** the integration tests start the AppHost with `--environment=Testing`. In that environment the AppHost drops the Postgres data volume and pgweb, and runs the web project's `http` launch profile so tests don't need a trusted dev certificate. Keep that branch in `AppHost.cs` when changing resources.
 - **EF Core 11 with Aspire 13.6:** `Aspire.Npgsql.EntityFrameworkCore.PostgreSQL` has no `net11.0` build yet. We reference `Npgsql.EntityFrameworkCore.PostgreSQL` 11.x directly and pin the EF Core health-check package transitively, so everything resolves to EF Core 11.
 - **dotnet-ef version** is pinned twice: `dotnet-tools.json` and `WithToolVersion` in `AppHost.cs`. Update both together.

@@ -1,6 +1,41 @@
 ﻿@inherits LayoutComponentBase
 
-@Body
+<div class="flex min-h-screen flex-col">
+    <header class="relative isolate overflow-hidden bg-advent-snowflakes bg-cover bg-center text-white">
+        <div class="absolute inset-0 -z-10 bg-linear-to-r from-advent-950/85 via-advent-900/70 to-advent-800/40" aria-hidden="true"></div>
+        <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-5">
+            <a href="" class="flex items-center gap-4">
+                <img src="@Assets["images/csadvent-logo.png"]" alt="" width="64" height="64" class="size-14 rounded-xl shadow-lg ring-1 ring-white/20 sm:size-16" />
+                <span>
+                    <span class="block text-2xl font-bold tracking-tight sm:text-3xl">C# Advent</span>
+                    <span class="block text-sm text-advent-100">Two C# posts a day, December 1–25</span>
+                </span>
+            </a>
+            <nav aria-label="Main">
+                <ul class="flex gap-1 text-sm font-medium">
+                    <li>
+                        <NavLink href="" Match="NavLinkMatch.All" class="rounded-lg px-3 py-2 hover:bg-white/15" ActiveClass="bg-white/20">Home</NavLink>
+                    </li>
+                    <li>
+                        <NavLink href="archive" class="rounded-lg px-3 py-2 hover:bg-white/15" ActiveClass="bg-white/20">Archive</NavLink>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="mx-auto w-full max-w-6xl flex-1 px-2 py-6 sm:px-4 sm:py-10">
+        <div class="rounded-2xl bg-white/95 p-5 shadow-xl ring-1 ring-black/5 backdrop-blur-sm sm:p-8">
+            @Body
+        </div>
+    </main>
+
+    <footer class="bg-advent-950/90 text-sm text-advent-200">
+        <div class="mx-auto max-w-6xl px-4 py-6">
+            C# Advent: a community calendar of C# content, every December since 2017.
+        </div>
+    </footer>
+</div>
 
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.

@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Markdig" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
       <PrivateAssets>all</PrivateAssets>
@@ -26,5 +27,7 @@
     <Content Remove="Data\Archive\*.json" />
     <EmbeddedResource Include="Data\Archive\*.json" LogicalName="archive/%(Filename)%(Extension)" />
   </ItemGroup>
+
+  <Import Project="..\..\build\Tailwind.targets" />
 
 </Project>

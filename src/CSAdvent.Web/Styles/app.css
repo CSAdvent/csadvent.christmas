@@ -1,0 +1,67 @@
+/*
+  Tailwind CSS source. The build turns this into wwwroot/app.css (see build/Tailwind.targets); don't edit that file.
+  Classes are picked up from the Razor components.
+*/
+@import "tailwindcss" source(none);
+@source "../Components";
+
+@theme {
+  /* Sampled from the C# Advent logo: the background square (600) and the snowflake (400). */
+  --color-advent-50: #eef4fb;
+  --color-advent-100: #d9e6f5;
+  --color-advent-200: #b9d1ec;
+  --color-advent-300: #8fb4df;
+  --color-advent-400: #4e88c5;
+  --color-advent-500: #2f6cb4;
+  --color-advent-600: #1a509d;
+  --color-advent-700: #164383;
+  --color-advent-800: #12366a;
+  --color-advent-900: #0e2a52;
+  --color-advent-950: #091b36;
+}
+
+/* Photos as WebP with a JPEG fallback. Only wide screens load the large background. */
+@utility bg-advent-candles {
+  background-image: image-set(url("/images/advent-bg-1280.webp") type("image/webp"), url("/images/advent-bg-1280.jpg") type("image/jpeg"));
+
+  @media (width >= 80rem) {
+    background-image: image-set(url("/images/advent-bg-2560.webp") type("image/webp"), url("/images/advent-bg-2560.jpg") type("image/jpeg"));
+  }
+}
+
+@utility bg-advent-snowflakes {
+  background-image: image-set(url("/images/advent-header.webp") type("image/webp"), url("/images/advent-header.jpg") type("image/jpeg"));
+}
+
+@layer base {
+  h1:focus {
+    outline: none;
+  }
+
+  a {
+    @apply underline-offset-2;
+  }
+}
+
+@layer components {
+  /* Blazor form validation */
+  .valid.modified:not([type="checkbox"]) {
+    @apply outline outline-1 outline-green-600;
+  }
+
+  .invalid {
+    @apply outline outline-1 outline-red-600;
+  }
+
+  .validation-message {
+    @apply text-sm text-red-700;
+  }
+
+  .blazor-error-boundary {
+    @apply rounded-md bg-red-700 p-4 text-white;
+  }
+
+  .blazor-error-boundary::after {
+    content: "An error has occurred.";
+  }
+}

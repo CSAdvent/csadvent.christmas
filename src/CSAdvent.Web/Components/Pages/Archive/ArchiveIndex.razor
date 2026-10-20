@@ -1,0 +1,28 @@
+@page "/archive"
+@inject ArchiveService Archive
+
+<PageTitle>Archive · C# Advent</PageTitle>
+
+<h1 class="text-3xl font-bold tracking-tight text-advent-800">The C# Advent archive</h1>
+<p class="mt-2 text-slate-600">Every season since the first one in 2017: @_seasons.Sum(s => s.Posts) posts from the C# community.</p>
+
+<ul class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    @foreach (var season in _seasons)
+    {
+        <li>
+            <a href="archive/@season.Year" class="group flex items-center gap-4 rounded-xl bg-white p-4 shadow-sm ring-1 ring-advent-100 hover:ring-advent-400">
+                <span class="flex size-14 shrink-0 items-center justify-center rounded-lg bg-advent-600 text-lg font-bold text-white group-hover:bg-advent-700">@season.Year</span>
+                <span>
+                    <span class="block font-semibold text-advent-800">C# Advent @season.Year</span>
+                    <span class="block text-sm text-slate-600">@season.Posts posts</span>
+                </span>
+            </a>
+        </li>
+    }
+</ul>
+
+@code {
+    private IReadOnlyList<ArchivedSeasonSummary> _seasons = [];
+
+    protected override async Task OnInitializedAsync() => _seasons = await Archive.GetSeasonsAsync();
+}

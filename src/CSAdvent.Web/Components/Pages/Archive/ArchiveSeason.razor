@@ -1,0 +1,57 @@
+@page "/archive/{Year:int}"
+@inject ArchiveService Archive
+@inject NavigationManager Navigation
+
+@if (_calendar is not null)
+{
+    <PageTitle>C# Advent @_calendar.Year · Archive</PageTitle>
+
+    <nav aria-label="Seasons" class="mb-6 flex flex-wrap items-center justify-between gap-3 text-sm font-medium">
+        <a href="archive" class="text-advent-700 hover:underline">All seasons</a>
+        <span class="flex gap-4">
+            @if (_previousYear is { } previous)
+            {
+                <a href="archive/@previous" class="text-advent-700 hover:underline">← @previous</a>
+            }
+            @if (_nextYear is { } next)
+            {
+                <a href="archive/@next" class="text-advent-700 hover:underline">@next →</a>
+            }
+        </span>
+    </nav>
+
+    <header class="mb-8">
+        <h1 class="text-3xl font-bold tracking-tight text-advent-800">C# Advent @_calendar.Year</h1>
+        <p class="mt-2 text-slate-600">@_calendar.PostCount posts from December 1 to December 25, @_calendar.Year.</p>
+        @if (_calendar.Notes is not null)
+        {
+            <div class="mt-2 text-slate-600 [&_a]:text-advent-700 [&_a]:underline">@Markdown.ToHtml(_calendar.Notes)</div>
+        }
+    </header>
+
+    <CalendarGrid Calendar="_calendar" />
+}
+
+@code {
+    private SeasonCalendar? _calendar;
+    private int? _previousYear;
+    private int? _nextYear;
+
+    [Parameter]
+    public int Year { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _calendar = await Archive.GetSeasonAsync(Year);
+
+        if (_calendar is null)
+        {
+            Navigation.NotFound();
+            return;
+        }
+
+        var years = (await Archive.GetSeasonsAsync()).Select(s => (int?)s.Year).ToList();
+        _previousYear = years.Where(y => y < Year).Max();
+        _nextYear = years.Where(y => y > Year).Min();
+    }
+}

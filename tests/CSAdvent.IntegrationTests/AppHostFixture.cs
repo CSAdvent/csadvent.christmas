@@ -24,7 +24,12 @@ public sealed class AppHostFixture : IAsyncLifetime
         using var timeout = new CancellationTokenSource(StartupTimeout);
 
         var appHost = await DistributedApplicationTestingBuilder.CreateAsync<Projects.CSAdvent_AppHost>(
-            ["--environment=Testing"],
+            [
+                "--environment=Testing",
+                // A fixed password, so Aspire doesn't generate one and save it to the AppHost's user secrets. Those
+                // are shared with local development, whose Postgres data volume was created with the saved password.
+                "--Parameters:postgres-password=integration-tests",
+            ],
             timeout.Token);
 
         appHost.Services.ConfigureHttpClientDefaults(http => http.AddStandardResilienceHandler());
