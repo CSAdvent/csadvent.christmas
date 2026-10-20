@@ -1,0 +1,396 @@
+{
+  "year": 2025,
+  "slotsPerDay": 2,
+  "slots": [
+    {
+      "day": 1,
+      "part": 1,
+      "authorName": "Christopher C. Johnson",
+      "authorUrl": "https://www.thatamazingprogrammer.com/",
+      "postTitle": "From Encrypted Messaging to Secure AI: Cryptography Patterns in .NET 10",
+      "postUrl": "https://thatamazingprogrammer.com/posts/from-encrypted-messaging-to-secure-ai-cryptography-patterns-in-net-10"
+    },
+    {
+      "day": 1,
+      "part": 2,
+      "authorName": "Cameron Presley",
+      "authorUrl": "https://www.linkedin.com/in/pcameronpresley",
+      "postTitle": "Reducing Bugs by Using the Model View Update Pattern",
+      "postUrl": "https://blog.thesoftwarementor.com/articles/2025/12/01/reducing-bugs-by-using-the-model-view-update-pattern/"
+    },
+    {
+      "day": 2,
+      "part": 1,
+      "authorName": "Roman Stoffel",
+      "authorUrl": "https://gamlor.info",
+      "postTitle": "Create Types on Demand and Cecilifier",
+      "postUrl": "https://gamlor.info/posts-output/2025-12-02-just-in-time-types-and-cecilifier/en/"
+    },
+    {
+      "day": 2,
+      "part": 2,
+      "authorName": "Gérald Barré",
+      "authorUrl": "https://www.meziantou.net/",
+      "postTitle": "Creating a custom MSBuild SDK to reduce boilerplate in .NET projects",
+      "postUrl": "https://www.meziantou.net/creating-a-custom-msbuild-sdk-to-reduce-boilerplate-in-dotnet-projects.htm"
+    },
+    {
+      "day": 3,
+      "part": 1,
+      "authorName": "Thomas Ardal",
+      "authorUrl": "https://blog.elmah.io/author/thomas/",
+      "postTitle": "Fetching GitHub content from C#",
+      "postUrl": "https://blog.elmah.io/fetching-github-content-from-c/"
+    },
+    {
+      "day": 3,
+      "part": 2,
+      "authorName": "Lee Englestone",
+      "authorUrl": "https://www.linkedin.com/in/leeenglestone/",
+      "postTitle": "Santa's Workshop with AI Elf Agents",
+      "postUrl": "https://www.linkedin.com/pulse/santas-workshop-ai-elf-agents-lee-englestone-o9vbe/"
+    },
+    {
+      "day": 4,
+      "part": 1,
+      "authorName": "Stephen Cleary",
+      "authorUrl": "https://stephencleary.com",
+      "postTitle": "Debug Dumps in Visual Studio",
+      "postUrl": "https://blog.stephencleary.com/2025/12/debug-dumps-in-visual-studio.html"
+    },
+    {
+      "day": 4,
+      "part": 2,
+      "authorName": "Ardalis",
+      "authorUrl": "https://ardalis.com/",
+      "postTitle": "Single File Test Suites in .NET C#",
+      "postUrl": "https://ardalis.com/single-file-tests-in-dotnet-csharp/"
+    },
+    {
+      "day": 5,
+      "part": 1,
+      "authorName": "Victor Frye",
+      "authorUrl": "https://victorfrye.com",
+      "postTitle": "Gifting SDKs with Kiota",
+      "postUrl": "https://victorfrye.com/blog/posts/gifting-sdks-with-kiota"
+    },
+    {
+      "day": 5,
+      "part": 2,
+      "authorName": "Mykyta Kovalenko",
+      "authorUrl": "https://linkedin.com/in/mykyta-kovalenko-645b93205",
+      "postTitle": ".NET Performance: Efficient Async Code",
+      "postUrl": "https://trailheadtechnology.com/net-performance-efficient-async-code/"
+    },
+    {
+      "day": 6,
+      "part": 1,
+      "authorName": "Sarah Dutkiewicz",
+      "authorUrl": "https://www.sadukie.com",
+      "postTitle": "St. Nicholas' Goodies - A TUI!",
+      "postUrl": "https://sadukie.com/2025/12/06/csadvent.html"
+    },
+    {
+      "day": 6,
+      "part": 2
+    },
+    {
+      "day": 7,
+      "part": 1,
+      "authorName": "Dave Brock",
+      "authorUrl": "https://daveabrock.com",
+      "postTitle": "Parsing Santa's workshop with strongly typed data (without the coal)",
+      "postUrl": "https://www.daveabrock.com/2025/12/07/parsing-santas-workshop-with-strongly-typed-data-without-the-coal/"
+    },
+    {
+      "day": 7,
+      "part": 2,
+      "authorName": "Chris Woody Woodruff",
+      "authorUrl": "https://woodruff.dev",
+      "postTitle": "Debugging Entity Framework Core: 8 Real-World Query Anti‑Patterns (and How to Fix Them)",
+      "postUrl": "https://woodruff.dev/debugging-entity-framework-core-8-real-world-query-anti%e2%80%91patterns-and-how-to-fix-them/"
+    },
+    {
+      "day": 8,
+      "part": 1,
+      "authorName": "Michael Eaton",
+      "authorUrl": "https://linkedin.com/in/mjeaton",
+      "postTitle": "A Christmas Trivia game using C# and Spectre.Console",
+      "postUrl": "https://samestuffdifferentday.net/2025/12/08/christmas-trivia/"
+    },
+    {
+      "day": 8,
+      "part": 2,
+      "authorName": "Al Nyveldt",
+      "authorUrl": "https://al.nyveldt.com",
+      "postTitle": "Make Copilot Work Your Way: Building MCP Servers in C#",
+      "postUrl": "https://blog.nyveldt.com/post/building-mcp-servers-in-csharp"
+    },
+    {
+      "day": 9,
+      "part": 1,
+      "authorName": "Jonathan \"J.\" Tower",
+      "authorUrl": "https://www.linkedin.com/in/jtower/",
+      "postTitle": "Reusing Your Existing .NET REST APIs for AI with MCP",
+      "postUrl": "https://trailheadtechnology.com/reusing-your-existing-net-rest-apis-for-ai-with-mcp/"
+    },
+    {
+      "day": 9,
+      "part": 2,
+      "authorName": "Kevin Griffin",
+      "authorUrl": "https://consultwithgriff.com",
+      "postTitle": "What's New in C# 14: Extension Members",
+      "postUrl": "https://consultwithgriff.com/csharp-14-extension-members/"
+    },
+    {
+      "day": 10,
+      "part": 1,
+      "authorName": "Luis Beltran",
+      "authorUrl": "https://about.me/luis-beltran",
+      "postTitle": "Meet Microsoft Agent Framework — Your .NET Agent Toolkit",
+      "postUrl": "https://dev.to/icebeam7/meet-microsoft-agent-framework-your-net-agent-toolkit-1o9b"
+    },
+    {
+      "day": 10,
+      "part": 2,
+      "authorName": "Jorge Levy",
+      "authorUrl": "https://www.jorgelevy.net",
+      "postTitle": "Create your MCP Server using Azure Functions",
+      "postUrl": "https://jels.me/csadvent-christmas-2025"
+    },
+    {
+      "day": 11,
+      "part": 1,
+      "authorName": "2code ^ !2code",
+      "authorUrl": "https://www.youtube.com/@FlashOWare",
+      "postTitle": "2 code a Roslyn Source Generator - C# Advent Calendar 2025",
+      "postUrl": "https://www.youtube.com/watch?v=sB37iAIl5SE"
+    },
+    {
+      "day": 11,
+      "part": 2,
+      "authorName": "Poornima Nayar",
+      "authorUrl": "https://github.com/poornimanayar",
+      "postTitle": "Sending sweet treats with Google Pub/Sub",
+      "postUrl": "https://poornimanayar.co.uk/blog/sending-sweet-treats-with-google-pub-sub/"
+    },
+    {
+      "day": 12,
+      "part": 1,
+      "authorName": "Sam Basu",
+      "authorUrl": "https://x.com/samidip",
+      "postTitle": "Modern .NET with Uno Platform & AI",
+      "postUrl": "https://platform.uno/blog/modern-net-with-uno-platform-ai/"
+    },
+    {
+      "day": 12,
+      "part": 2,
+      "authorName": "Chris Ayers",
+      "authorUrl": "Https://chris-ayers.com",
+      "postTitle": "Getting Started with the Aspire CLI",
+      "postUrl": "https://chris-ayers.com/2025/12/11/aspire-cli-getting-started/"
+    },
+    {
+      "day": 13,
+      "part": 1,
+      "authorName": "John Waters",
+      "postTitle": "Sending Holiday Cheer in .NET with Scriban and MailKit",
+      "postUrl": "https://trailheadtechnology.com/sending-holiday-cheer-in-net-with-scriban-and-mailkit/"
+    },
+    {
+      "day": 13,
+      "part": 2,
+      "authorName": "Barret Blake",
+      "authorUrl": "https://barretblake.dev",
+      "postTitle": "C# Advent 2025 - Extension Members",
+      "postUrl": "https://barretblake.dev/posts/development/2025/12/csadvent2025-extension-members/"
+    },
+    {
+      "day": 14,
+      "part": 1,
+      "authorName": "Matt Eland",
+      "authorUrl": "https://MattEland.dev",
+      "postTitle": "16 Tips for Writing AI-Ready C# Code",
+      "postUrl": "https://accessibleai.dev/post/writingaireadydotnetcode/"
+    },
+    {
+      "day": 14,
+      "part": 2,
+      "authorName": "Conrad Akunga",
+      "authorUrl": "https://www.conradakunga.com/",
+      "postTitle": "Dynamically Changing Decimal & Thousand Separators At Runtime",
+      "postUrl": "https://www.conradakunga.com/blog/dynamically-changing-decimal-thousand-separators-at-runtime/"
+    },
+    {
+      "day": 15,
+      "part": 1,
+      "authorName": "Rodrigo Juarez",
+      "authorUrl": "https://rodrigojuarez.com/",
+      "postTitle": "Sentiment Analysis in C#: Azure AI Language or LLMs",
+      "postUrl": "https://trailheadtechnology.com/sentiment-analysis-in-c-azure-ai-language-or-llms/"
+    },
+    {
+      "day": 15,
+      "part": 2,
+      "authorName": "Vladan Petrovic",
+      "authorUrl": "https://www.linkedin.com/in/vladan-petrovic-66b694167",
+      "postTitle": "TUnit: The New Sheriff in Town for .NET Testing",
+      "postUrl": "https://trailheadtechnology.com/tunit-the-new-sheriff-in-town-for-net-testing"
+    },
+    {
+      "day": 16,
+      "part": 1,
+      "authorName": "Andy Wilson",
+      "authorUrl": "https://www.linkedin.com/in/andy-wilson-5059a15a/",
+      "postTitle": "Manufacturing Certainty: Load Testing With Azure Load Testing",
+      "postUrl": "https://trailheadtechnology.com/manufacturing-certainty-load-testing-with-azure-load-testing/"
+    },
+    {
+      "day": 16,
+      "part": 2,
+      "authorName": "Stefan Mitic",
+      "postTitle": "EF Core 10 Turns PostgreSQL into a Hybrid Relational-Document DB",
+      "postUrl": "https://trailheadtechnology.com/ef-core-10-turns-postgresql-into-a-hybrid-relational-document-db/"
+    },
+    {
+      "day": 17,
+      "part": 1,
+      "authorName": "Alexey Fedorov",
+      "authorUrl": "https://www.linkedin.com/in/alexeyfv/",
+      "postTitle": "Your cache is not protected from cache stampede",
+      "postUrl": "https://www.alexeyfv.xyz/en/post/2025-12-17-cache-stampede-in-dotnet"
+    },
+    {
+      "day": 17,
+      "part": 2,
+      "authorName": "Matt Mattei",
+      "authorUrl": "https://x.com/matteiomattei",
+      "postTitle": "Building a Fibonacci Sphere Visualizer with AI in the Loop",
+      "postUrl": "https://platform.uno/blog/building-a-fibonacci-sphere-with-ai-assisted-development/?utm_source=csadvent&utm_medium=di"
+    },
+    {
+      "day": 18,
+      "part": 1,
+      "authorName": "Alexandre Nédélec",
+      "authorUrl": "https://techwatching.dev",
+      "postTitle": "From Spec to Santa: My C#‑Powered Christmas Story Generator Experiment",
+      "postUrl": "https://techwatching.dev/posts/christmas-story-generator"
+    },
+    {
+      "day": 18,
+      "part": 2,
+      "authorName": "Davide Bellone",
+      "authorUrl": "https://www.code4it.dev/",
+      "postTitle": "How to create and access custom C# Attributes by using Reflection | Code4IT",
+      "postUrl": "https://www.code4it.dev/csharptips/custom-csharp-attributes-reflection/"
+    },
+    {
+      "day": 19,
+      "part": 1,
+      "authorName": "Ed Charbeneau",
+      "authorUrl": "https://www.linkedin.com/in/edcharbeneau/",
+      "postTitle": "Building an AI-Powered Form Assistant with Blazor",
+      "postUrl": "https://www.telerik.com/blogs/building-ai-powered-form-assistant-blazor"
+    },
+    {
+      "day": 19,
+      "part": 2,
+      "authorName": "Sam Gomez",
+      "authorUrl": "https://www.linkedin.com/in/samueljgomez/",
+      "postTitle": "Agent orchestration with Microsoft Agent Framework.",
+      "postUrl": "https://www.thesoccerdev.com/agent-orchestration-with-microsoft-agent-framework/"
+    },
+    {
+      "day": 20,
+      "part": 1,
+      "authorName": "Jeffry Morris",
+      "authorUrl": "https://jeffrymorris.net",
+      "postTitle": "Getting Started with Couchbase Enterprise Analytics SDK",
+      "postUrl": "https://jeffrymorris.net/2025/12/20/getting-started-with-couchbase-enterprise-analytics-sdk/"
+    },
+    {
+      "day": 20,
+      "part": 2,
+      "authorName": "Martin Zikmund",
+      "authorUrl": "https://mzikmund.dev",
+      "postTitle": "Bringing the DOOM to Uno Platform",
+      "postUrl": "https://mzikmund.dev/blog/bringing-the-doom-to-uno-platform"
+    },
+    {
+      "day": 21,
+      "part": 1,
+      "authorName": "Simon Painter",
+      "authorUrl": "https://www.thecodepainter.co.uk/",
+      "postTitle": "The Monads Were Here the Whole Time!",
+      "postUrl": "https://www.thecodepainter.co.uk/blog/20251221/themonadswerealwayshere"
+    },
+    {
+      "day": 21,
+      "part": 2,
+      "authorName": "Tim Purdum",
+      "authorUrl": "https://timpurdum.dev",
+      "postTitle": "Over the River and Through the Woods",
+      "postUrl": "https://timpurdum.dev/post/2025/12/21/over-the-river.html"
+    },
+    {
+      "day": 22,
+      "part": 1
+    },
+    {
+      "day": 22,
+      "part": 2,
+      "authorName": "Irina Dominte(Scurtu)",
+      "authorUrl": "https://www.linkedin.com/in/irinascurtu/",
+      "postTitle": "Api Versioning",
+      "postUrl": "https://irina.codes/api-versioning-a-deep-dive/"
+    },
+    {
+      "day": 23,
+      "part": 1,
+      "authorName": "Aaron LaBeau",
+      "authorUrl": "https://costoda.tech",
+      "postTitle": "The .NET Cross-Platform Showdown: MAUI/WinUI vs Uno vs Avalonia (And Why Avalonia Won)",
+      "postUrl": "https://dev.to/biozal/the-net-cross-platform-showdown-maui-vs-uno-vs-avalonia-and-why-avalonia-won-ian"
+    },
+    {
+      "day": 23,
+      "part": 2,
+      "authorName": "Kyle McMaster",
+      "authorUrl": "https://kylemcmaster.com/",
+      "postTitle": "Santa's AI Chat App",
+      "postUrl": "https://blog.nimblepros.com/blogs/santas-ai-chat-app/"
+    },
+    {
+      "day": 24,
+      "part": 1,
+      "authorName": "Piotr Kolodziej",
+      "authorUrl": "https://trailheadtechnology.com/author/piotr-kolodziej/",
+      "postTitle": "Evolving Intelligence: Evolutionary Algorithms and Neural Networks in C#",
+      "postUrl": "https://trailheadtechnology.com/evolving-intelligence-evolutionary-algorithms-and-neural-networks-in-c/"
+    },
+    {
+      "day": 24,
+      "part": 2,
+      "authorName": "Santhosh Reddy Vootukuri",
+      "authorUrl": "https://dzone.com/authors/sunnynagavo",
+      "postTitle": "Mastering Deployment: An Easy Guide About Modern Docker Workflow for .NET 10",
+      "postUrl": "https://www.c-sharpcorner.com/article/mastering-deployment-an-easy-guide-about-modern-docker-workflow-fo/"
+    },
+    {
+      "day": 25,
+      "part": 1,
+      "authorName": "Calvin A. Allen",
+      "authorUrl": "https://bsky.app/profile/codingwithcalvin.net",
+      "postTitle": "Creating Your Own MSBuild SDK - It's Easier Than You Think",
+      "postUrl": "https://www.codingwithcalvin.net/creating-your-own-msbuild-sdk-it-s-easier-than-you-think/"
+    },
+    {
+      "day": 25,
+      "part": 2,
+      "authorName": "Stefan Pölz",
+      "authorUrl": "https://github.com/Flash0ver",
+      "postTitle": "String Interning",
+      "postUrl": "https://github.com/Flash0ver/dotnet-in-a-flash/blob/main/blog/String-Interning.md"
+    }
+  ]
+}

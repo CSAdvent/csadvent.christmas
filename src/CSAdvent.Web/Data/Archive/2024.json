@@ -1,0 +1,398 @@
+{
+  "year": 2024,
+  "slotsPerDay": 2,
+  "slots": [
+    {
+      "day": 1,
+      "part": 1,
+      "authorName": "Pablo Aguirre de Souza",
+      "authorUrl": "https://www.linkedin.com/in/pablo-aguirre-de-souza-56012019b/",
+      "postTitle": ".NET Naming Confusion: A Beginner-friendly Guide",
+      "postUrl": "https://www.thecsharpacademy.com/article/30007/difference-net-core-asp-net"
+    },
+    {
+      "day": 1,
+      "part": 2,
+      "authorName": "Transmit.ly",
+      "authorUrl": "https://github.com/transmitly/transmitly",
+      "postTitle": "A vendor agnostic approach to transactional communications",
+      "postUrl": "https://dev.to/jeremy_tly/transactional-emails-a-long-term-view-13l6"
+    },
+    {
+      "day": 2,
+      "part": 1,
+      "authorName": "Agnès ZITTE",
+      "authorUrl": "https://x.com/AgnesZitte",
+      "postTitle": "Bring Holiday Cheer to Friends & Family: Build a Cross-Platform Advent Calendar App for Every Device",
+      "postUrl": "https://medium.com/@agnes.zitte/bring-holiday-cheer-to-friends-family-build-a-cross-platform-advent-calendar-app-for-every-264268732e2f"
+    },
+    {
+      "day": 2,
+      "part": 2,
+      "authorName": "John Waters",
+      "authorUrl": "https://trailheadtechnology.com/",
+      "postTitle": "DI-Cluttering Your Code",
+      "postUrl": "https://trailheadtechnology.com/di-cluttering-your-code/"
+    },
+    {
+      "day": 3,
+      "part": 1,
+      "authorName": "Matt Eland",
+      "authorUrl": "https://MattEland.dev",
+      "postTitle": "Building a Digital Dungeon Master with Semantic Kernel, C#, and Azure",
+      "postUrl": "https://blog.leadingedje.com/post/semantickerneldnd.html"
+    },
+    {
+      "day": 3,
+      "part": 2,
+      "authorName": "Stephen Cleary",
+      "authorUrl": "https://stephencleary.com",
+      "postTitle": "No one loves the \".NET Core\" name anymore",
+      "postUrl": "https://blog.stephencleary.com/2024/12/netcore.html"
+    },
+    {
+      "day": 4,
+      "part": 1,
+      "authorName": "Martin Zikmund",
+      "authorUrl": "https://mzikmund.dev/",
+      "postTitle": "Building a Bluesky client in Uno Platform",
+      "postUrl": "https://mzikmund.dev/blog/building-a-bluesky-client-in-uno-platform"
+    },
+    {
+      "day": 4,
+      "part": 2,
+      "authorName": "Ali Hamza Ansari",
+      "authorUrl": "https://x.com/AliHamzaAnsar16",
+      "postTitle": "C# 13 Features: What's New and How to Use It",
+      "postUrl": "https://blog.elmah.io/c-13-features-whats-new-and-how-to-use-it/"
+    },
+    {
+      "day": 5,
+      "part": 1,
+      "authorName": "Lee Englestone",
+      "authorUrl": "https://www.linkedin.com/in/leeenglestone",
+      "postTitle": "A Simple Voice Controlled AI Assistant in C#",
+      "postUrl": "https://www.linkedin.com/pulse/simple-voice-controlled-ai-assistant-c-lee-englestone-qwvaf/"
+    },
+    {
+      "day": 5,
+      "part": 2,
+      "authorName": "James Curran",
+      "authorUrl": "https://honestillusion.com/",
+      "postTitle": "Inside a Where() - Understanding IEnumerables",
+      "postUrl": "https://honestillusion.com/blog/2024/12/05/inside-a-where-understanding-ienumerables/"
+    },
+    {
+      "day": 6,
+      "part": 1,
+      "authorName": "Sarah Dutkiewicz",
+      "authorUrl": "https://sadukie.com",
+      "postTitle": "\uD83C\uDF85 LINQing Up Christmas: .NET 9 Features in Action",
+      "postUrl": "https://www.sadukie.com/2024/12/06/%f0%9f%8e%85-linqing-up-christmas-net-9-features-in-action/"
+    },
+    {
+      "day": 6,
+      "part": 2,
+      "authorName": "Moaid Hathot",
+      "authorUrl": "https://twitter.com/MoaidHathot",
+      "postTitle": "A .NET coding puzzle: Can strings change?",
+      "postUrl": "https://moaid.codes/post/can-string-change/"
+    },
+    {
+      "day": 7,
+      "part": 1,
+      "authorName": "Jeffry Morris",
+      "postTitle": "Getting Started with EF Core Couchbase DB Provider",
+      "postUrl": "https://jeffrymorris.net/2024/12/07/getting-started-with-ef-core-couchbase-db-provider/"
+    },
+    {
+      "day": 7,
+      "part": 2,
+      "authorName": "Nicholas Sideras",
+      "authorUrl": "https://www.linkedin.com/in/nsideras/",
+      "postTitle": "Persisting a Strawberry Shake GraphQL Client for Optimizely's Content Graph",
+      "postUrl": "https://nicholas.sideras.net/blog/2024/12/persisting-a-strawberry-shake-graphql-client-for-optimizelys-content-graph/"
+    },
+    {
+      "day": 8,
+      "part": 1,
+      "authorName": "Michael Eaton",
+      "authorUrl": "https://samestuffdifferentday.net",
+      "postTitle": "Christmas MadLib using C# and Spectre.Console (2024 C# Advent)",
+      "postUrl": "https://samestuffdifferentday.net/2024/12/08/christmas-madlib/"
+    },
+    {
+      "day": 8,
+      "part": 2,
+      "authorName": "Roman Stoffel",
+      "authorUrl": "https://gamlor.info",
+      "postTitle": "More Testing Tips With C#",
+      "postUrl": "https://gamlor.info/posts-output/2024-12-11-csharp-testing-stuff/en/"
+    },
+    {
+      "day": 9,
+      "part": 1,
+      "authorName": "Alexey Fedorov",
+      "authorUrl": "https://yet_another_dev.t.me/",
+      "postTitle": "Object Pools in C#: Examples, Internals and Performance Benchmarks",
+      "postUrl": "https://www.alexeyfv.xyz/2024/12/09/object-pool.html"
+    },
+    {
+      "day": 9,
+      "part": 2,
+      "authorName": "Brant Burnett",
+      "authorUrl": "https://github.com/brantburnett",
+      "postTitle": "Using vectorization in C# to boost performance",
+      "postUrl": "https://btburnett.com/csharp/2024/12/09/using-vectorization-in-csharp-to-boost-performance"
+    },
+    {
+      "day": 10,
+      "part": 1,
+      "authorName": "Kevin Griffin",
+      "authorUrl": "https://consultwithgriff.com",
+      "postTitle": "My $8,000 Serverless Mistake",
+      "postUrl": "https://consultwithgriff.com/my-8000-serverless-mistake/"
+    },
+    {
+      "day": 10,
+      "part": 2,
+      "authorName": "Metalama Team",
+      "authorUrl": "https://github.com/postsharp/Metalama",
+      "postTitle": "The State of Aspect-Oriented Programming in C#",
+      "postUrl": "https://blog.postsharp.net/state-of-aop"
+    },
+    {
+      "day": 11,
+      "part": 1,
+      "authorName": "Ed Charbeneau",
+      "authorUrl": "https://www.telerik.com/blogs/local-genai-processing-implementing-webllm-blazor-webassembly",
+      "postTitle": "Local GenAI Processing: Implementing WebLLM with Blazor WebAssembly",
+      "postUrl": "https://www.telerik.com/blogs/local-genai-processing-implementing-webllm-blazor-webassembly"
+    },
+    {
+      "day": 11,
+      "part": 2,
+      "authorName": "Geo J Thachankary",
+      "authorUrl": "https://geothachankary.hashnode.dev/",
+      "postTitle": "Implementing Localization in ASP.NET Core Web API",
+      "postUrl": "https://geothachankary.hashnode.dev/implementing-localization-in-aspnet-core-web-api"
+    },
+    {
+      "day": 12,
+      "part": 1,
+      "authorName": "Sander ten Brinke",
+      "authorUrl": "https://stenbrinke.nl",
+      "postTitle": "Meet TUnit: The New, Fast, and Extensible .NET Testing Framework",
+      "postUrl": "https://stenbrinke.nl/blog/tunit-introduction"
+    },
+    {
+      "day": 12,
+      "part": 2,
+      "authorName": "Jonathan Danylko",
+      "authorUrl": "https://www.danylkoweb.com/",
+      "postTitle": "Harnessing .NET and C# for Better SEO: How It Can Boost Your Website Rankings",
+      "postUrl": "https://www.danylkoweb.com/Blog/harnessing-net-and-c-for-better-seo-how-it-can-boost-your-website-rankings-RX"
+    },
+    {
+      "day": 13,
+      "part": 1,
+      "authorName": "Barret Blake",
+      "authorUrl": "https://barretblake.dev",
+      "postTitle": "Making A List, Checking It Twice",
+      "postUrl": "https://barretblake.dev/posts/development/2024/csharp-advent-2024/"
+    },
+    {
+      "day": 13,
+      "part": 2,
+      "authorName": "Andy Wilson",
+      "authorUrl": "https://trailheadtechnology.com/",
+      "postTitle": "Securing The Nuget Supply Chain: A Case Study — Scheduled",
+      "postUrl": "https://trailheadtechnology.com/securing-the-nuget-supply-chain-a-case-study/"
+    },
+    {
+      "day": 14,
+      "part": 1,
+      "authorName": "Mark Oliver",
+      "authorUrl": "https://blog.markoliver.website/About-Me",
+      "postTitle": "How Do You Test An OAuth Process Without Having To Auth?",
+      "postUrl": "https://blog.markoliver.website/How-Do-You-Test-An-OAuth-Process-Without-Having-To-Auth"
+    },
+    {
+      "day": 14,
+      "part": 2,
+      "authorName": "Alexandre Nédélec",
+      "authorUrl": "https://techwatching.dev/",
+      "postTitle": "Five Effective Strategies for Managing .NET Versions",
+      "postUrl": "https://techwatching.dev/posts/manage-dotnet-versions"
+    },
+    {
+      "day": 15,
+      "part": 1,
+      "authorName": "Steve \"ardalis\" Smith",
+      "authorUrl": "https://youtube.com/ardalis",
+      "postTitle": "Avoid Using C# Events in ASP.NET Core Applications",
+      "postUrl": "https://ardalis.com/avoid-using-csharp-events-in-aspnetcore-apps"
+    },
+    {
+      "day": 15,
+      "part": 2,
+      "authorName": "Daniel Ward",
+      "authorUrl": "https://daninacan.com/",
+      "postTitle": "How and why to write mutation tests in C#",
+      "postUrl": "https://daninacan.com/how-and-why-to-write-mutation-tests-in-c"
+    },
+    {
+      "day": 16,
+      "part": 1,
+      "authorName": "Jonathan \"J.\" Tower",
+      "authorUrl": "https://trailheadtechnology.com",
+      "postTitle": "Introducing HybridCache in .NET 9",
+      "postUrl": "https://trailheadtechnology.com/introducing-hybridcache-in-net-9/"
+    },
+    {
+      "day": 16,
+      "part": 2,
+      "authorName": "Peter De Tender",
+      "authorUrl": "Https://www.007FFFLearning.com",
+      "postTitle": "✈️ A (travel-themed) journey of Semantic Kernel for .NET Developers",
+      "postUrl": "https://github.com/petender/geekready2024-semantickernel-demos"
+    },
+    {
+      "day": 17,
+      "part": 1
+    },
+    {
+      "day": 17,
+      "part": 2,
+      "authorName": "Christopher C. Johnson",
+      "authorUrl": "https://www.thatamazingprogrammer.com/",
+      "postTitle": "\uD83C\uDF85 Building a Real-Time Santa's Workshop Tracker with SignalR and .NET 9",
+      "postUrl": "https://www.thatamazingprogrammer.com/building-a-real-time-santas-workshop-tracker-with-signalr-and-net-9"
+    },
+    {
+      "day": 18,
+      "part": 1,
+      "authorName": "Cameron Young",
+      "authorUrl": "https://jrdev.io/",
+      "postTitle": "Building Local AI Powered Applications",
+      "postUrl": "https://jrdev.io/posts/Building-AI-Powered-Applications/"
+    },
+    {
+      "day": 18,
+      "part": 2,
+      "authorName": "Vladan Petrovic",
+      "authorUrl": "https://www.linkedin.com/in/vladan-petrovic-66b694167",
+      "postTitle": "EF Core 9 vs. Dapper: Performance Face-Off",
+      "postUrl": "https://trailheadtechnology.com/ef-core-9-vs-dapper-performance-face-off/"
+    },
+    {
+      "day": 19,
+      "part": 1,
+      "authorName": "Kyle McMaster",
+      "authorUrl": "https://bsky.app/profile/kylemcmaster.com",
+      "postTitle": "Automating Santa's Workshop with NServiceBus",
+      "postUrl": "https://blog.nimblepros.com/blogs/automating-santas-workshop-with-nservicebus/"
+    },
+    {
+      "day": 19,
+      "part": 2,
+      "authorName": "Conrad Akunga",
+      "authorUrl": "https://www.conradakunga.com/blog/",
+      "postTitle": "Customizing Object Equality In C# & .NET",
+      "postUrl": "https://www.conradakunga.com/blog/customizing-object-equality-in-c-net/"
+    },
+    {
+      "day": 20,
+      "part": 1,
+      "authorName": "Simon J. Painter",
+      "authorUrl": "https://www.thecodepainter.co.uk/",
+      "postTitle": "Functional Programming with C#: Making Dictionaries Functional",
+      "postUrl": "https://www.thecodepainter.co.uk/blog/20241219/makedictionarysfunctional"
+    },
+    {
+      "day": 20,
+      "part": 2,
+      "authorName": "Luis Beltran",
+      "authorUrl": "https://dev.to/icebeam7",
+      "postTitle": "Feature Flags in Blazor App",
+      "postUrl": "https://dev.to/icebeam7/azure-app-service-feature-flags-in-cblazor-app-1ei8"
+    },
+    {
+      "day": 21,
+      "part": 1,
+      "authorName": "Sam Gomez",
+      "authorUrl": "https://www.linkedin.com/in/samueljgomez/",
+      "postTitle": "Calendar event generation with Blazor and Azure OpenAI.",
+      "postUrl": "https://www.thesoccerdev.com/calendar-event-generation-with-blazor-and-azure-openai/"
+    },
+    {
+      "day": 21,
+      "part": 2,
+      "authorName": "Eric Potter",
+      "authorUrl": "https://humbletoolsmith.com/",
+      "postTitle": "Using C# and the Hungarian Algorithm to Optimize Your Christmas Party Planning",
+      "postUrl": "https://humbletoolsmith.com/2024/12/21/using-csharp-and-the-hungarian-algorithm-to-optimize-your-christmas-party-planning/"
+    },
+    {
+      "day": 22,
+      "part": 1,
+      "authorName": "Conrad Akunga",
+      "authorUrl": "https://www.conradakunga.com/blog/",
+      "postTitle": "Caching In .NET Applications & The Hybrid Cache",
+      "postUrl": "https://www.conradakunga.com/blog/caching-in-net-applications-the-hybrid-cache/"
+    },
+    {
+      "day": 22,
+      "part": 2,
+      "authorName": "Poornima Nayar",
+      "authorUrl": "https://www.linkedin.com/in/poornimanayar",
+      "postTitle": "Getting started with Amazon SQS in .NET",
+      "postUrl": "https://poornimanayar.co.uk/blog/getting-started-with-amazon-sqs-in-net/"
+    },
+    {
+      "day": 23,
+      "part": 1,
+      "authorName": "Vladimir Gusarov",
+      "authorUrl": "https://blog.almguru.com/using-dependency-injection-in-c-to-configure-secret-less-access-to-cosmos-db-5d336c71aae3",
+      "postTitle": "Using Dependency Injection in C# to Configure Secret-Less Access to Cosmos DB",
+      "postUrl": "https://blog.almguru.com/using-dependency-injection-in-c-to-configure-secret-less-access-to-cosmos-db-5d336c71aae3"
+    },
+    {
+      "day": 23,
+      "part": 2,
+      "authorName": "James Hickey",
+      "authorUrl": "https://www.jamesmichaelhickey.com/",
+      "postTitle": "Blazing-Fast Analytical Queries With .NET & PostgreSQL",
+      "postUrl": "https://www.jamesmichaelhickey.com/analytical-queries-dotnet-postgresql"
+    },
+    {
+      "day": 24,
+      "part": 1,
+      "authorName": "Aaron LaBeau",
+      "authorUrl": "https://costoda.tech/",
+      "postTitle": "Uno Platform on the Mac with JetBrains Rider",
+      "postUrl": "https://www.youtube.com/watch?v=L8duEVepuQs"
+    },
+    {
+      "day": 24,
+      "part": 2,
+      "authorName": "Deepti",
+      "postTitle": "A step-by-step guide to Integrate Kafka into .NET Core Application",
+      "postUrl": "https://deecoding.net/blog/kafka-part1"
+    },
+    {
+      "day": 25,
+      "part": 1,
+      "authorName": "Matthew D. Groves",
+      "authorUrl": "https://crosscuttingconcerns.com",
+      "postTitle": "Single Platform, Multi-Purpose Couchbase: Vector Search, Geospatial, SQL++, and More",
+      "postUrl": "https://www.couchbase.com/blog/single-platform-multi-purpose-couchbase-vector-search-geospatial-sql-more/"
+    },
+    {
+      "day": 25,
+      "part": 2,
+      "authorName": "Calvin A. Allen",
+      "authorUrl": "https://www.codingwithcalvin.net/"
+    }
+  ]
+}

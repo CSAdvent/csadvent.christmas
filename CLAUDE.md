@@ -63,6 +63,7 @@ Entities and their EF configuration live together in `src/CSAdvent.Web/Data` (on
 - **snake_case names** come from `SnakeCaseNamingConvention`, so raw SQL in check constraints and filters uses snake_case column names.
 - **Concurrency:** `slots` and `claim_requests` use PostgreSQL `xmin` as a row version.
 - **Unit tests fail if the model changes without a migration** (`HasPendingModelChanges`).
+- **History (2017-2025)** is in `Data/Archive/{year}.json`, embedded in the web assembly and seeded by `ArchiveSeeder` through EF Core's `UseSeeding`, which runs after every migration (`dotnet ef database update`, the Aspire migrations step, and the migration bundle). It only adds seasons that are missing, so **editing the JSON doesn't change a database that's already seeded**. Locally, use **Reset Database** on the `migrations` resource to reseed.
 
 ## Gotchas
 

@@ -1,0 +1,396 @@
+{
+  "year": 2018,
+  "slotsPerDay": 2,
+  "notes": "[Originally hosted on crosscuttingconcerns.com](https://crosscuttingconcerns.com/The-Second-Annual-C-Advent)",
+  "slots": [
+    {
+      "day": 1,
+      "part": 1,
+      "authorName": "Lukáš Lánský",
+      "authorUrl": "https://crosscuttingconcerns.com/C-Advent-2018-Early-Sign-Up#comment-4160214877",
+      "postTitle": "Namespacer: lightweight spin on architecture validation",
+      "postUrl": "https://programming.lansky.name/namespacer"
+    },
+    {
+      "day": 1,
+      "part": 2,
+      "authorName": "Steve Smith",
+      "authorUrl": "https://crosscuttingconcerns.com/The-Second-Annual-C-Advent#comment-4171676967",
+      "postTitle": "Double Dispatch in C# and DDD",
+      "postUrl": "https://ardalis.com/double-dispatch-in-c-and-ddd"
+    },
+    {
+      "day": 2,
+      "part": 1,
+      "authorName": "Hilary Weaver-Robb",
+      "authorUrl": "https://crosscuttingconcerns.com/C-Advent-2018-Early-Sign-Up#comment-4160440837",
+      "postTitle": "Can I Put All Of My Smoke Tests For A REST API In One Test? Yes!",
+      "postUrl": "https://g33klady.com/2018/12/02/c-advent-calendar-2018-can-i-put-all-of-my-smoke-tests-for-a-rest-api-in-one-test-yes/"
+    },
+    {
+      "day": 2,
+      "part": 2,
+      "authorName": "Shahed Chowdhuri",
+      "authorUrl": "https://twitter.com/shahedC/status/1062813225195053059",
+      "postTitle": "Your First Razor UI Library with ASP.NET Core",
+      "postUrl": "https://wakeupandcode.com/your-first-razor-ui-library-with-asp-net-core/"
+    },
+    {
+      "day": 3,
+      "part": 1,
+      "authorName": "Bill Sempf",
+      "authorUrl": "https://crosscuttingconcerns.com/C-Advent-2018-Early-Sign-Up#comment-4160210537",
+      "postTitle": "Insecure Binary Deserialization",
+      "postUrl": "https://sempf.net/post/insecure-binary-deserialization"
+    },
+    {
+      "day": 3,
+      "part": 2,
+      "authorName": "Luis Antonio Beltran",
+      "authorUrl": "https://crosscuttingconcerns.com/The-Second-Annual-C-Advent#comment-4199444510",
+      "postTitle": "Azure Blob Storage with Xamarin.Forms",
+      "postUrl": "https://luisbeltran.mx/2018/12/03/azure-blob-storage-with-xamarin-forms/"
+    },
+    {
+      "day": 4,
+      "part": 1,
+      "authorName": "Tim Corey",
+      "authorUrl": "https://twitter.com/IAmTimCorey/status/1057768732725075968",
+      "postTitle": "How to Be a Great C# Developer",
+      "postUrl": "https://www.iamtimcorey.com/blog/20776/become-a-great-csharp-developer"
+    },
+    {
+      "day": 4,
+      "part": 2,
+      "authorName": "Matthew Jones",
+      "authorUrl": "https://crosscuttingconcerns.com/The-Second-Annual-C-Advent#comment-4193175242",
+      "postTitle": "Using Stopwatch and ContinueWith to Measure Task Execution Time in C#",
+      "postUrl": "https://exceptionnotfound.net/using-stopwatch-and-continuewith-to-measure-task-execution-time-in-c/"
+    },
+    {
+      "day": 5,
+      "part": 1,
+      "authorName": "James Hickey",
+      "authorUrl": "https://crosscuttingconcerns.com/C-Advent-2018-Early-Sign-Up#comment-4160207608",
+      "postTitle": "Scalable Task Scheduling In .NET Core With Coravel",
+      "postUrl": "https://www.blog.jamesmichaelhickey.com/Scalable-Task-Scheduling-In-Net-Core-Coravel/"
+    },
+    {
+      "day": 5,
+      "part": 2,
+      "authorName": "Calvin Allen",
+      "postTitle": "Using .editorconfig in Visual Studio to create discoverable standards",
+      "postUrl": "https://www.calvinallen.net/using-editorconfig-in-visual-studio-to-create-discoverable-standards/"
+    },
+    {
+      "day": 6,
+      "part": 1,
+      "authorName": "Brant Burnett",
+      "authorUrl": "https://crosscuttingconcerns.com/C-Advent-2018-Early-Sign-Up#comment-4160461617",
+      "postTitle": "A Restful Job Pattern For A C# Microservice",
+      "postUrl": "https://btburnett.com/couchbase/microservices/rest/2018/12/06/a-restuful-job-pattern-for-a-csharp-microservice.html"
+    },
+    {
+      "day": 6,
+      "part": 2,
+      "authorName": "Isaac Levin",
+      "authorUrl": "https://twitter.com/isaac2004/status/1065303367679975425",
+      "postTitle": "Six Opinionated Tips to be a Better .NET Developer",
+      "postUrl": "https://www.isaaclevin.com/post/six-opinionated-tips/"
+    },
+    {
+      "day": 7,
+      "part": 1,
+      "authorName": "Ryan Overton",
+      "authorUrl": "https://twitter.com/ryano9791/status/1057836466322239489",
+      "postTitle": "Native API Access in Xamarin.Forms",
+      "postUrl": "https://onyxprime.github.io/2018/12/07/Native-API-Access-in-Xamarin-Forms.html"
+    },
+    {
+      "day": 7,
+      "part": 2,
+      "authorName": "James Hickey",
+      "authorUrl": "https://twitter.com/jamesmh_dev/status/1070699884003688448",
+      "postTitle": ".NET Core Dependency Injection: Everything You Ought To Know",
+      "postUrl": "https://www.blog.jamesmichaelhickey.com/NET-Core-Dependency-Injection/"
+    },
+    {
+      "day": 8,
+      "part": 1,
+      "authorName": "Carl Layton",
+      "authorUrl": "https://crosscuttingconcerns.com/C-Advent-2018-Early-Sign-Up#comment-4160529874",
+      "postTitle": "Create Formatted Text Files With csvhelper",
+      "postUrl": "https://www.carlserver.com/blog/post/create-formatted-text-files-with-csvhelper"
+    },
+    {
+      "day": 8,
+      "part": 2,
+      "authorName": "Shahed Chowdhuri",
+      "authorUrl": "https://twitter.com/shahedC/status/1062813225195053059",
+      "postTitle": "Exploring .NET Core 3.0 and the Future of C#",
+      "postUrl": "https://wakeupandcode.com/exploring-net-core-3-0-and-the-future-of-csharp/"
+    },
+    {
+      "day": 9,
+      "part": 1,
+      "authorName": "Jeremy Sinclair",
+      "authorUrl": "https://twitter.com/sinclairinator/status/1057772831986073600",
+      "postTitle": "Secure Data Access with IdentityServer4 and Xamarin Forms",
+      "postUrl": "https://sinclairinat0r.com/2018/12/09/secure-data-access-with-identityserver4-and-xamarin-forms"
+    },
+    {
+      "day": 9,
+      "part": 2,
+      "authorName": "Ian Russell",
+      "authorUrl": "https://twitter.com/ijrussell/status/1059543026488492038",
+      "postTitle": "Expressing intent with value objects",
+      "postUrl": "https://github.com/ijrussell/blog/blob/master/docs/expressing%20intent%20with%20value%20objects.md"
+    },
+    {
+      "day": 10,
+      "part": 1,
+      "authorName": "James Curran",
+      "authorUrl": "https://crosscuttingconcerns.com/C-Advent-2018-Early-Sign-Up#comment-4161076507",
+      "postTitle": "Here, There and Everywhere - A Simple Look at .NET Memory Model",
+      "postUrl": "https://honestillusion.com/2018/12/10/Understanding-dot-net-memory-model.html"
+    },
+    {
+      "day": 10,
+      "part": 2,
+      "authorName": "Caleb Jenkins",
+      "authorUrl": "https://crosscuttingconcerns.com/The-Second-Annual-C-Advent#comment-4180553458"
+    },
+    {
+      "day": 11,
+      "part": 1,
+      "authorName": "Andrew Lock",
+      "authorUrl": "https://crosscuttingconcerns.com/C-Advent-2018-Early-Sign-Up#comment-4160641567",
+      "postTitle": "Why is string.GetHashCode() different each time I run my program in .NET Core?",
+      "postUrl": "https://andrewlock.net/why-is-string-gethashcode-different-each-time-i-run-my-program-in-net-core/"
+    },
+    {
+      "day": 11,
+      "part": 2,
+      "authorName": "Simon Timms",
+      "authorUrl": "https://twitter.com/stimms/status/1059540058032635904",
+      "postTitle": "Linked lists in C#",
+      "postUrl": "https://blog.simontimms.com/2018/12/10/2018-12-11_linked_lists_in_csharp/"
+    },
+    {
+      "day": 12,
+      "part": 1,
+      "authorName": "Ed Charbeneau",
+      "authorUrl": "https://crosscuttingconcerns.com/C-Advent-2018-Early-Sign-Up#comment-4160534578",
+      "postTitle": "Razor Components for a JavaScript-Free FrontEnd in 2019",
+      "postUrl": "https://www.telerik.com/blogs/razor-components-for-a-javascript-free-frontend-in-2019"
+    },
+    {
+      "day": 12,
+      "part": 2,
+      "authorName": "Andres Paz",
+      "authorUrl": "https://crosscuttingconcerns.com/The-Second-Annual-C-Advent#comment-4181745615",
+      "postTitle": "Implementing a quantum simulator for Q# in C#",
+      "postUrl": "https://www.linkedin.com/pulse/implementing-quantum-simulator-q-c-andr%C3%A9s-paz/?published=t"
+    },
+    {
+      "day": 13,
+      "part": 1,
+      "authorName": "Amber Race",
+      "authorUrl": "https://twitter.com/ambertests/status/1057644618664181760",
+      "postTitle": "WireMock.Net",
+      "postUrl": "https://ambertests.com/2018/12/13/c-advent-wiremock-net/"
+    },
+    {
+      "day": 13,
+      "part": 2,
+      "authorName": "Brian Jackett",
+      "authorUrl": "https://twitter.com/BrianTJackett/status/1064904315071066112",
+      "postTitle": "Introduction to Calling Microsoft Graph from a C# .Net Core Application",
+      "postUrl": "https://briantjackett.com/2018/12/13/introduction-to-calling-microsoft-graph-from-a-c-net-core-application/"
+    },
+    {
+      "day": 14,
+      "part": 1,
+      "authorName": "Lee Englestone",
+      "authorUrl": "https://twitter.com/LeeEnglestone/status/1055142408177025025",
+      "postTitle": "English Language Word Analysis With .NET",
+      "postUrl": "http://www.manchesterdeveloper.com/blog/post/English-Language-Word-Analysis-With-Dot-Net"
+    },
+    {
+      "day": 14,
+      "part": 2,
+      "authorName": "Daniel Oliver",
+      "authorUrl": "https://twitter.com/a_software_dev/status/1060580494058967043",
+      "postTitle": "OpenTracing and C#",
+      "postUrl": "https://www.olivercoding.com/2018-12-14-jaeger-csharp"
+    },
+    {
+      "day": 15,
+      "part": 1,
+      "authorName": "Michael Eaton",
+      "authorUrl": "https://crosscuttingconcerns.com/C-Advent-2018-Early-Sign-Up#comment-4160442621",
+      "postTitle": "Exercises for Programmers – Weather Checker in C#",
+      "postUrl": "https://samestuffdifferentday.com/2018/12/15/exercises-for-programmers-weather-checker-in-c/"
+    },
+    {
+      "day": 15,
+      "part": 2,
+      "authorName": "Kevin Griffin",
+      "authorUrl": "https://crosscuttingconcerns.com/The-Second-Annual-C-Advent#comment-4172313829",
+      "postTitle": "Introduction to SignalR Streaming",
+      "postUrl": "https://kevgriffin.com/quick-introduction-to-signalr-streaming/"
+    },
+    {
+      "day": 16,
+      "part": 1,
+      "authorName": "Barret Blake",
+      "authorUrl": "https://crosscuttingconcerns.com/C-Advent-2018-Early-Sign-Up#comment-4160208175",
+      "postTitle": "Flow & Function Together",
+      "postUrl": "https://barretblake.com/cs-advent-2018-flow-and-function-together/"
+    },
+    {
+      "day": 16,
+      "part": 2,
+      "authorName": "Doug Mair",
+      "authorUrl": "https://crosscuttingconcerns.com/The-Second-Annual-C-Advent#comment-4191921802",
+      "postTitle": "Quick Introduction to C# Span",
+      "postUrl": "https://dougmair.blogspot.com/2018/12/quick-introduction-to-c-span.html"
+    },
+    {
+      "day": 17,
+      "part": 1,
+      "authorName": "Gérald Barré (aka Meziantou)",
+      "authorUrl": "https://crosscuttingconcerns.com/C-Advent-2018-Early-Sign-Up#comment-4160473631",
+      "postTitle": "Writing a Roslyn analyzer",
+      "postUrl": "https://www.meziantou.net/2018/12/17/writing-a-roslyn-analyzer"
+    },
+    {
+      "day": 17,
+      "part": 2,
+      "authorName": "David Pine",
+      "authorUrl": "https://crosscuttingconcerns.com/C-Advent-2018-Early-Sign-Up#comment-4160652063",
+      "postTitle": "C# all the thing: .NET Core global tools",
+      "postUrl": "https://davidpine.net/blog/csharp-all-the-things/"
+    },
+    {
+      "day": 18,
+      "part": 1,
+      "authorName": "Duane Newman",
+      "authorUrl": "https://crosscuttingconcerns.com/C-Advent-2018-Early-Sign-Up#comment-4160496450",
+      "postTitle": "Keeping Observable Collections Up To Date",
+      "postUrl": "http://duanenewman.net/blog/post/keeping-observable-collections-up-to-date/"
+    },
+    {
+      "day": 18,
+      "part": 2,
+      "authorName": "Caio Proiete",
+      "authorUrl": "https://twitter.com/caioproiete/status/1055572640889520129"
+    },
+    {
+      "day": 19,
+      "part": 1,
+      "authorName": "Jonathan Danylko",
+      "authorUrl": "https://crosscuttingconcerns.com/C-Advent-2018-Early-Sign-Up#comment-4160496549",
+      "postTitle": "10 More C# Extension Methods For The Holiday Season",
+      "postUrl": "https://www.danylkoweb.com/Blog/10-more-c-extension-methods-for-the-holiday-season-OY"
+    },
+    {
+      "day": 19,
+      "part": 2,
+      "authorName": "Huzaifa Asif",
+      "authorUrl": "https://twitter.com/Huzaifa_Asif/status/1057754011506524160",
+      "postTitle": "Create a custom middleware pipeline using .NET Core",
+      "postUrl": "https://medium.com/@huzaifa.asif/create-a-custom-middleware-pipeline-using-net-core-c60fde242ad9"
+    },
+    {
+      "day": 20,
+      "part": 1,
+      "authorName": "Baskar Rao",
+      "authorUrl": "https://crosscuttingconcerns.com/C-Advent-2018-Early-Sign-Up#comment-4160213626",
+      "postTitle": "Testing .Net Core API using Auth0 with VS Tests",
+      "postUrl": "https://baskarrao.wordpress.com/2018/12/20/testing-net-core-api-using-auth0-with-vs-tests/"
+    },
+    {
+      "day": 20,
+      "part": 2,
+      "authorName": "Eric Potter",
+      "authorUrl": "https://twitter.com/pottereric/status/1060575802465624065",
+      "postTitle": "The code changes in Roslyn between 7 and 8",
+      "postUrl": "http://humbletoolsmith.com/2018/12/18/the-code-changes-in-roslyn-between-7-and-8_/"
+    },
+    {
+      "day": 21,
+      "part": 1,
+      "authorName": "Takayoshi Tanaka",
+      "authorUrl": "https://crosscuttingconcerns.com/The-Second-Annual-C-Advent#comment-4171713580",
+      "postTitle": "Using Kubernetes readiness and liveness probes for health checks with ASP.NET Core 2.2 on OpenShift",
+      "postUrl": "https://developers.redhat.com/blog/2018/12/21/asp_dotnet_core_kubernetes_health_check_openshift/"
+    },
+    {
+      "day": 21,
+      "part": 2
+    },
+    {
+      "day": 22,
+      "part": 1,
+      "authorName": "Jim Wilcox",
+      "authorUrl": "https://crosscuttingconcerns.com/C-Advent-2018-Early-Sign-Up#comment-4160459629",
+      "postTitle": "C# and WebAssembly",
+      "postUrl": "https://granitestateusersgroups.org/2018/12/22/c-and-webassembly/"
+    },
+    {
+      "day": 22,
+      "part": 2,
+      "authorName": "Chris Bohatka",
+      "authorUrl": "https://twitter.com/cjb5790/status/1056635816670363648",
+      "postTitle": "Hit the Ground Running: Create a Starter Kit",
+      "postUrl": "https://chrisbohatka.com/hit-the-ground-running/"
+    },
+    {
+      "day": 23,
+      "part": 1,
+      "authorName": "Damian Łączak",
+      "authorUrl": "https://crosscuttingconcerns.com/The-Second-Annual-C-Advent#comment-4172004817",
+      "postTitle": "An extension that I cannot code without.",
+      "postUrl": "http://damian.laczak.net.pl/blog/2018/12/23/an-extension-that-i-cannot-code-without/"
+    },
+    {
+      "day": 23,
+      "part": 2,
+      "authorName": "Chris Sainty",
+      "authorUrl": "https://crosscuttingconcerns.com/The-Second-Annual-C-Advent#comment-4191975902",
+      "postTitle": "Blazor Toast Notifications using only C#, HTML and CSS",
+      "postUrl": "https://codedaze.io/blazor-toast-notifications-using-only-csharp-html-css/"
+    },
+    {
+      "day": 24,
+      "part": 1,
+      "authorName": "Chris Woodruff",
+      "postTitle": "Getting the Most Out of Entity Framework Core - Part 1",
+      "postUrl": "http://www.chriswoodruff.com/blog/getting-the-most-out-of-entity-framework-core-part-1/"
+    },
+    {
+      "day": 24,
+      "part": 2,
+      "authorName": "Gregor Suttie",
+      "authorUrl": "https://twitter.com/gregor_suttie/status/1059544434008834053",
+      "postTitle": "Azure Blobs from C# and Visual Studio",
+      "postUrl": "https://gregorsuttie.com/2018/12/23/azure-blobs-from-c-and-visual-studio-c-advent-calendar/"
+    },
+    {
+      "day": 25,
+      "part": 1,
+      "authorName": "Matthew Groves",
+      "postTitle": "Hangfire with ASP.NET Core",
+      "postUrl": "https://crosscuttingconcerns.com/Background-jobs-ASP-NET-Core-Hangfire"
+    },
+    {
+      "day": 25,
+      "part": 2,
+      "authorName": "Calvin Allen",
+      "authorUrl": "https://twitter.com/_CalvinAllen/status/1059932414431125506",
+      "postTitle": "C#, .NET, and Visual Studio - 2018 Year in Review",
+      "postUrl": "https://www.calvinallen.net/csharp-net-and-visual-studio-2018-year-in-review"
+    }
+  ]
+}

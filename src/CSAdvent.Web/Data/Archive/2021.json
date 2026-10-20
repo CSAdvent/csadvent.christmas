@@ -1,0 +1,397 @@
+{
+  "year": 2021,
+  "slotsPerDay": 2,
+  "slots": [
+    {
+      "day": 1,
+      "part": 1,
+      "authorName": "Matt Eland",
+      "authorUrl": "https://matteland.dev",
+      "postTitle": "Using C# and ML.NET AutoML to Predict ESRB Ratings",
+      "postUrl": "https://accessibleai.dev/post/ml_net-video-game-classification/"
+    },
+    {
+      "day": 1,
+      "part": 2,
+      "authorName": "Sarah Dutkiewicz",
+      "authorUrl": "https://data-adventurer.com",
+      "postTitle": "Merry Graphmas: Working with Cosmos DB Gremlin API",
+      "postUrl": "https://data-adventurer.com/2021/12/01/merry-graphmas-working-with-cosmos-db-gremlin-api/"
+    },
+    {
+      "day": 2,
+      "part": 1,
+      "authorName": "Martin Zikmund",
+      "authorUrl": "https://twitter.com/mzikmunddev",
+      "postTitle": "The shortest quine in C# 9 and 10",
+      "postUrl": "https://blog.mzikmund.com/2021/12/the-shortest-quine-in-csharp/"
+    },
+    {
+      "day": 2,
+      "part": 2,
+      "authorName": "Layla",
+      "postTitle": "The New Global Usings Directive in C# 10",
+      "postUrl": "https://tanzu.vmware.com/developer/blog/new-global-usings-in-csharp-10/"
+    },
+    {
+      "day": 3,
+      "part": 1,
+      "authorName": "Lee Englestone",
+      "authorUrl": "https://twitter.com/LeeEnglestone",
+      "postTitle": "Building IsChristmasTree with CustomVision.ai",
+      "postUrl": "https://dev.to/leeenglestone/building-ischristmastree-with-customvisionai-3447"
+    },
+    {
+      "day": 3,
+      "part": 2,
+      "authorName": "Sarah Dutkiewicz",
+      "authorUrl": "https://data-adventurer.com/",
+      "postTitle": "A Gift for Learning to Use C# with Azure",
+      "postUrl": "https://data-adventurer.com/2021/12/04/a-gift-for-learning-to-use-c-with-azure/"
+    },
+    {
+      "day": 4,
+      "part": 1,
+      "authorName": "Sam Nasr",
+      "authorUrl": "https://twitter.com/SamNasr",
+      "postTitle": "How (and Why) You Should Use Speech-to-text",
+      "postUrl": "https://samnasr.blogspot.com/2021/12/how-and-why-you-should-use-speech-to.html?m=1"
+    },
+    {
+      "day": 4,
+      "part": 2,
+      "authorName": "Ed Charbeneau",
+      "postTitle": "Accessibility Test Driven Blazor Components",
+      "postUrl": "https://www.telerik.com/blogs/accessibility-test-driven-blazor-components"
+    },
+    {
+      "day": 5,
+      "part": 1,
+      "authorName": "Luis Beltran",
+      "authorUrl": "https://twitter.com/darkicebeam",
+      "postTitle": "C# Azure Functions to access CosmosDB",
+      "postUrl": "https://dev.to/icebeam7/c-azure-functions-to-access-cosmosdb-5632"
+    },
+    {
+      "day": 5,
+      "part": 2,
+      "authorName": "Albert Bennett",
+      "authorUrl": "https://dev.to/albertbennett",
+      "postTitle": "C# 10.0 - Useful features to know",
+      "postUrl": "https://dev.to/albertbennett/c-100-useful-features-to-know-2f3f"
+    },
+    {
+      "day": 6,
+      "part": 1,
+      "authorName": "Gérald Barré",
+      "authorUrl": "https://www.meziantou.net/",
+      "postTitle": "Fastest way to enumerate a List<T>",
+      "postUrl": "https://www.meziantou.net/fastest-way-to-enumerate-a-list-t.htm"
+    },
+    {
+      "day": 6,
+      "part": 2,
+      "authorName": "John Kilmister",
+      "authorUrl": "https://www.blueboxes.co.uk",
+      "postTitle": "Templating HTML Emails in Azure Functions",
+      "postUrl": "https://www.blueboxes.co.uk/templating-html-emails-in-azure-functions"
+    },
+    {
+      "day": 7,
+      "part": 1,
+      "authorName": "Andrew DePersio",
+      "authorUrl": "https://andrew.depersio.net",
+      "postTitle": "Analyzing Memory Dumps Using Visual Studio",
+      "postUrl": "https://blog.depersio.net/post/669577183887523841/after-the-bug-analyzing-memory-dumps-using-visual"
+    },
+    {
+      "day": 7,
+      "part": 2,
+      "authorName": "Khalid Abuhakmeh",
+      "authorUrl": "https://khalidabuhakmeh.com",
+      "postTitle": "HTMX with ASP.NET Core",
+      "postUrl": "https://khalidabuhakmeh.com/htmx-with-aspnet-core"
+    },
+    {
+      "day": 8,
+      "part": 1,
+      "authorName": "Kevin Griffin",
+      "authorUrl": "https://consultwithgriff.com",
+      "postTitle": "Rapid Upgrades with the .NET Upgrade Assistant",
+      "postUrl": "https://consultwithgriff.com/rapid-project-upgrades-with-dotnet-upgrade-assistant/"
+    },
+    {
+      "day": 8,
+      "part": 2,
+      "authorName": "Dave Brock",
+      "authorUrl": "https://daveabrock.com",
+      "postTitle": "Don't Do That, Do This: The .NET 6 Edition",
+      "postUrl": "https://www.daveabrock.com/2021/12/08/do-this-not-that-the-net-6-edition/"
+    },
+    {
+      "day": 9,
+      "part": 1,
+      "authorName": "Carl Layton",
+      "postTitle": "Use Azure AD to Authorize Access to Blob Storage",
+      "postUrl": "https://www.carlserver.com/blog/post/use-azure-ad-to-authorize-access-to-azure-blob-storage"
+    },
+    {
+      "day": 9,
+      "part": 2,
+      "authorName": "Sam Basu",
+      "postTitle": "Angular on Desktop",
+      "postUrl": "https://www.telerik.com/blogs/angular-on-desktop"
+    },
+    {
+      "day": 10,
+      "part": 1,
+      "authorName": "Muhammad Azeez",
+      "authorUrl": "https://mazeez.dev",
+      "postTitle": "Testing Email Templates in ASP.NET Core",
+      "postUrl": "https://mazeez.dev/posts/email-snapshot-testing"
+    },
+    {
+      "day": 10,
+      "part": 2,
+      "authorName": "Simon Timms",
+      "authorUrl": "https://blog.simontimms.com/",
+      "postTitle": "Kafka and .NET - Part 1 - What is Kafka?",
+      "postUrl": "https://blog.simontimms.com/2021/12/09/2021-12-09-kafka-and-.net"
+    },
+    {
+      "day": 11,
+      "part": 1,
+      "authorName": "Kevin Dawkins",
+      "authorUrl": "https://kevincod.es/",
+      "postTitle": "Reducing Developer Cycle Time Using Dapr and AKS",
+      "postUrl": "https://kevincod.es/reducing-developer-cycle-time-dapr-aks/"
+    },
+    {
+      "day": 11,
+      "part": 2,
+      "authorName": "Dane Schilling",
+      "postTitle": "Writing Deterministic Tests in a Variable World",
+      "postUrl": "https://headspring.com/2021/12/11/writing-deterministic-tests-in-a-variable-world"
+    },
+    {
+      "day": 12,
+      "part": 1,
+      "authorName": "Greg Bair",
+      "authorUrl": "https://gregbair.dev",
+      "postTitle": "Parallel.ForEachAsync Deep Dive",
+      "postUrl": "https://gregbair.dev/posts/parallel-foreachasync/"
+    },
+    {
+      "day": 12,
+      "part": 2,
+      "authorName": "Jeremy Sinclair",
+      "postTitle": "The Magickal Way to Distort Images",
+      "postUrl": "https://sinclairinat0r.com/2021/12/12/the-magickal-way-to-distort-images"
+    },
+    {
+      "day": 13,
+      "part": 1,
+      "authorName": "Barret Blake",
+      "authorUrl": "https://barretblake.dev",
+      "postTitle": "Using C# Code in Power Automate",
+      "postUrl": "https://barretblake.dev/blog/2021/12/csadvent2021-using-csharp-in-flow/"
+    },
+    {
+      "day": 13,
+      "part": 2,
+      "authorName": "Roman Stoffel",
+      "authorUrl": "https://gamlor.info",
+      "postTitle": "Automated Tests Advice, C# Edition",
+      "postUrl": "https://gamlor.info/posts-output/2021-12-13-my-common-testing-advice/en/"
+    },
+    {
+      "day": 14,
+      "part": 1,
+      "authorName": "James Curran",
+      "authorUrl": "https://honestillusion.com/",
+      "postTitle": "TimeThis! - Simple timings for code blocks",
+      "postUrl": "https://honestillusion.com/2021/12/14/Simple-timings.html"
+    },
+    {
+      "day": 14,
+      "part": 2,
+      "authorName": "Mangesh Gaherwar",
+      "authorUrl": "https://dotnetgik.com/",
+      "postTitle": "Real-time Speech Translator using Azure",
+      "postUrl": "https://dotnetgik.com/2021/12/15/real-time-speech-translator-using-azure-signalr-service-azure-functions-azure-cognitive-services-and-blazor/"
+    },
+    {
+      "day": 15,
+      "part": 1,
+      "authorName": "Eric Potter",
+      "postTitle": "Examining Async Behavior in .NET Notebooks",
+      "postUrl": "http://humbletoolsmith.com/2021/12/14/examining-async-behavior-in-_net-notebooks/"
+    },
+    {
+      "day": 15,
+      "part": 2,
+      "authorName": "Simon Timms",
+      "authorUrl": "https://blog.simontimms.com/",
+      "postTitle": "Kafka and .NET - Part 3 - Finally at .NET",
+      "postUrl": "https://blog.simontimms.com/2021/12/15/2021-12-15-Kafka-on-.net/"
+    },
+    {
+      "day": 16,
+      "part": 1,
+      "authorName": "Stephen Lorello",
+      "authorUrl": "https://twitter.com/slorello",
+      "postTitle": "CRUD with Redis OM .NET",
+      "postUrl": "https://dev.to/slorello/crud-with-redis-om-net-c-advent-4gif"
+    },
+    {
+      "day": 16,
+      "part": 2,
+      "authorName": "Matthew D. Groves",
+      "authorUrl": "https://crosscuttingconcerns.com",
+      "postTitle": "We Three Things: Dynamitey, Humanizer, Sql.Types",
+      "postUrl": "https://crosscuttingconcerns.com/We-Three-Things-Dynamitey-Humanizer-SqlServerTypes"
+    },
+    {
+      "day": 17,
+      "part": 1,
+      "authorName": "Brant Burnett",
+      "postTitle": "String Interpolation Trickery and Magic with C# 10",
+      "postUrl": "https://btburnett.com/csharp/2021/12/17/string-interpolation-trickery-and-magic-with-csharp-10-and-net-6"
+    },
+    {
+      "day": 17,
+      "part": 2,
+      "authorName": "Timur Khadimullin",
+      "authorUrl": "https://twitter.com/TimurKh",
+      "postTitle": "Writing Prometheus exporters - the Lazy Dev way",
+      "postUrl": "https://blog.wiseowls.co.nz/index.php/2021/12/17/writing-prometheus-exporters-the-lazy-dev-way"
+    },
+    {
+      "day": 18,
+      "part": 1,
+      "authorName": "Dan Clarke",
+      "authorUrl": "https://www.danclarke.com/",
+      "postTitle": "Snapshot Testing with Verify",
+      "postUrl": "https://www.danclarke.com/snapshot-testing-with-verify"
+    },
+    {
+      "day": 18,
+      "part": 2,
+      "authorName": "Baskar Rao",
+      "postTitle": "Quick Peek of Accessibility Insights & Automation",
+      "postUrl": "https://baskarmib.netlify.app/content/posts/2021/12/18/a-quick-peek-of-accessibility-insights-and-automating-desktop-applications/"
+    },
+    {
+      "day": 19,
+      "part": 1,
+      "authorName": "Simon Painter",
+      "authorUrl": "https://www.thecodepainter.co.uk",
+      "postTitle": "Functional Programming in C#: Oregon Trail Part 1",
+      "postUrl": "https://www.thecodepainter.co.uk/blog/20211219/oregontrail_1"
+    },
+    {
+      "day": 19,
+      "part": 2,
+      "authorName": "Sean Killeen",
+      "authorUrl": "https://SeanKilleen.com",
+      "postTitle": "Ensuring Santa’s Success With Automated Tests",
+      "postUrl": "https://SeanKilleen.com/2021/12/santa-sleigh/"
+    },
+    {
+      "day": 20,
+      "part": 1,
+      "authorName": "Uroš Miletić",
+      "authorUrl": "https://www.uveta.io",
+      "postTitle": "Unclutter Startup.cs",
+      "postUrl": "https://www.uveta.io/categories/blog/unclutter-startup-cs/"
+    },
+    {
+      "day": 20,
+      "part": 2,
+      "authorName": "Matt Eland",
+      "authorUrl": "https://matteland.dev",
+      "postTitle": "What can you do in ML.NET with C#?",
+      "postUrl": "https://accessibleai.dev/post/ml_net_tasks/"
+    },
+    {
+      "day": 21,
+      "part": 1,
+      "authorName": "Matthew MacDonald",
+      "authorUrl": "https://prosetech.com/",
+      "postTitle": "Can You Teach C# as a First Language for Kids?",
+      "postUrl": "https://medium.com/young-coder/can-you-teach-c-as-a-first-language-for-kids-367f019c8584?source=friends_link&sk=c16dd3fec92a7f95f8b101f49fa3e44b"
+    },
+    {
+      "day": 21,
+      "part": 2,
+      "authorName": "Christopher C. Johnson",
+      "authorUrl": "https://www.thatamazingprogrammer.com",
+      "postTitle": "Using DateOnly and TimeOnly in .NET 6 to Simplify",
+      "postUrl": "https://www.thatamazingprogrammer.com/using-dateonly-and-timeonly-in-dotnet-6-to-simplify-your-code/"
+    },
+    {
+      "day": 22,
+      "part": 1,
+      "authorName": "Jonathan Danylko",
+      "authorUrl": "https://www.danylkoweb.com/",
+      "postTitle": "Refactor with C# 10",
+      "postUrl": "https://www.danylkoweb.com/Blog/refactoring-with-c-10-LM"
+    },
+    {
+      "day": 22,
+      "part": 2,
+      "authorName": "Andrea Angella",
+      "authorUrl": "https://www.productivecsharp.com/",
+      "postTitle": "Top C# Developer News of 2021",
+      "postUrl": "https://www.productivecsharp.com/csharp-developer-news-2021/"
+    },
+    {
+      "day": 23,
+      "part": 1,
+      "authorName": "Alvin Ashcraft",
+      "authorUrl": "https://www.alvinashcraft.com/",
+      "postTitle": "Calling the Microsoft Graph API from WinUI",
+      "postUrl": "https://www.alvinashcraft.com/2021/12/23/calling-the-microsoft-graph-api-from-winui/"
+    },
+    {
+      "day": 23,
+      "part": 2,
+      "authorName": "Rebin Qadir",
+      "authorUrl": "http://rebin.dev",
+      "postTitle": "gRPC client-side load balancing in .NET",
+      "postUrl": "https://rebin.dev/post/grpc-client-side-load-balancing-indotnet/"
+    },
+    {
+      "day": 24,
+      "part": 1,
+      "authorName": "Craigory Coppola",
+      "authorUrl": "https://twitter.com/enderagent",
+      "postTitle": "Build Monorepos, not Monoliths",
+      "postUrl": "https://dev.to/agentender/build-monorepos-not-monoliths-4gbc"
+    },
+    {
+      "day": 24,
+      "part": 2,
+      "authorName": "Kevin Miller",
+      "authorUrl": "https://structuredsight.com",
+      "postTitle": "Looking back at C#",
+      "postUrl": "https://kemiller2002.github.io/c-sharp/2021/12/24/reflection.html"
+    },
+    {
+      "day": 25,
+      "part": 1,
+      "authorName": "Michael Jolley",
+      "authorUrl": "https://baldbeardedbuilder.com",
+      "postTitle": "Building a Cross Platform NuGet Package",
+      "postUrl": "https://developers.deepgram.com/blog/2021/12/cross-platform-nuget-dotnet/"
+    },
+    {
+      "day": 25,
+      "part": 2,
+      "authorName": "Calvin A. Allen",
+      "authorUrl": "https://www.codingwithcalvin.net",
+      "postTitle": "What's the Difference Anyway? Class,Struct,Record",
+      "postUrl": "https://www.codingwithcalvin.net/whats-the-difference-anyway-class-struct-record-oh-my/"
+    }
+  ]
+}
