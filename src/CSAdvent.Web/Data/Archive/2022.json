@@ -1,0 +1,398 @@
+{
+  "year": 2022,
+  "slotsPerDay": 2,
+  "slots": [
+    {
+      "day": 1,
+      "part": 1,
+      "authorName": "David Pine",
+      "authorUrl": "https://davidpine.net/",
+      "postTitle": "Hello from the GitHub Actions: Core .NET SDK",
+      "postUrl": "https://davidpine.net/blog/github-actions-sdk"
+    },
+    {
+      "day": 1,
+      "part": 2,
+      "authorName": "Andrew DePersio",
+      "authorUrl": "https://andrew.depersio.net/",
+      "postTitle": "Publishing NuGet Packages With Nuke & Azure DevOps",
+      "postUrl": "https://blog.depersio.net/post/697738122173317120/publishing-nuget-packages-using-nuke-and-azure"
+    },
+    {
+      "day": 2,
+      "part": 1,
+      "authorName": "Christopher C. Johnson",
+      "authorUrl": "https://www.thatamazingprogrammer.com",
+      "postTitle": "Web Scraping and Generating PDFs Using C# and .NET",
+      "postUrl": "https://www.thatamazingprogrammer.com/web-scraping-and-generating-pdfs-using-csharp-and-net"
+    },
+    {
+      "day": 2,
+      "part": 2,
+      "authorName": "Aaron Stanley King",
+      "authorUrl": "https://www.twitter.com/trendoid",
+      "postTitle": "Special Characters are Truly Special",
+      "postUrl": "https://www.aaronstanleyking.com/2022/12/special-characters-are-truly-special.html"
+    },
+    {
+      "day": 3,
+      "part": 1,
+      "authorName": "Chris Ayers",
+      "authorUrl": "https://sessionize.com/ChrisAyers",
+      "postTitle": "Validating .NET Configuration",
+      "postUrl": "https://chris-ayers.com/2022/12/03/validating-dotnet-configuration"
+    },
+    {
+      "day": 3,
+      "part": 2,
+      "authorName": "Luis Beltran",
+      "authorUrl": "https://twitter.com/darkicebeam/",
+      "postTitle": "BindableObject + Behaviors to enhance MVVM in .NET",
+      "postUrl": "https://dev.to/icebeam7/bindableobject-behaviors-to-enhance-mvvm-in-net-maui-maps-3je9"
+    },
+    {
+      "day": 4,
+      "part": 1,
+      "authorName": "Ed Charbeneau",
+      "authorUrl": "https://edcharbeneau.com/",
+      "postTitle": "Managing CSS Scope with Razor Components",
+      "postUrl": "https://www.telerik.com/blogs/managing-css-scope-razor-components"
+    },
+    {
+      "day": 4,
+      "part": 2,
+      "authorName": "Jeffrey Barnes",
+      "postTitle": "Invoking Legacy Javascript from Blazor WebAssembly",
+      "postUrl": "https://dev.to/aztecconsulting/invoking-legacy-javascript-from-blazor-webassembly-using-the-jsruntime-1df3"
+    },
+    {
+      "day": 5,
+      "part": 1,
+      "authorName": "Gérald Barré",
+      "authorUrl": "https://www.meziantou.net",
+      "postTitle": "Prevent http requests to external services in unit",
+      "postUrl": "https://www.meziantou.net/prevent-http-requests-to-external-services-in-unit-tests.htm"
+    },
+    {
+      "day": 5,
+      "part": 2,
+      "authorName": "Michał Bryłka",
+      "postTitle": "Generic math extended example",
+      "postUrl": "https://michalbrylka.github.io/posts/generic-math-matrix/"
+    },
+    {
+      "day": 6,
+      "part": 1,
+      "authorName": "Sarah Dutkiewicz",
+      "authorUrl": "https://sadukie.github.io",
+      "postTitle": "Creating a Holiday Creatures Catalog in Azure",
+      "postUrl": "https://www.sadukie.com/2022/12/06/creating-a-holiday-creatures-catalog-in-azure-with-secure-credentials/"
+    },
+    {
+      "day": 6,
+      "part": 2,
+      "authorName": "Kevin Griffin",
+      "authorUrl": "https://twitter.com/1kevgriff",
+      "postTitle": "Building Windows Services in .NET 7",
+      "postUrl": "https://consultwithgriff.com/building-window-services-in-dotnet/"
+    },
+    {
+      "day": 7,
+      "part": 1,
+      "authorName": "Kevin Logan",
+      "authorUrl": "https://aligneddev.net",
+      "postTitle": "Azure App Configuration, Key Vault and Managed Ide",
+      "postUrl": "https://aligneddev.net/blog/2022/azure-appconfiguration-keyvault-managedidentity/"
+    },
+    {
+      "day": 7,
+      "part": 2,
+      "authorName": "Mark Oliver",
+      "authorUrl": "https://twitter.com/MicbOliver",
+      "postTitle": "Why Byte Arrays are a bad idea with large data",
+      "postUrl": "https://blog.markoliver.website/Why-Byte-Arrays-Are-A-Bad-Idea-When-Dealing-With-Large-Data"
+    },
+    {
+      "day": 8,
+      "part": 1,
+      "authorName": "Eric Potter",
+      "authorUrl": "https://humbletoolsmith.com/",
+      "postTitle": "What I wish I knew when I started with MS Graph",
+      "postUrl": "http://humbletoolsmith.com/2022/12/07/what-i-wish-i-knew-when-i-started-using-the-microsoft-graph-api/"
+    },
+    {
+      "day": 8,
+      "part": 2,
+      "authorName": "Brian Gorman",
+      "authorUrl": "https://twitter.com/blgorman",
+      "postTitle": "Utilize Secrets in your C# MVC projects",
+      "postUrl": "https://training.majorguidancesolutions.com/blog/c-advent-2022-utilize-secrets-in-your-c-mvc-projects"
+    },
+    {
+      "day": 9,
+      "part": 1,
+      "authorName": "Simon Painter",
+      "postTitle": "Machine Learning in C# Part 1: Naive Bayes",
+      "postUrl": "https://www.thecodepainter.co.uk/blog/20221215/machinelearning-01-naivebayes"
+    },
+    {
+      "day": 9,
+      "part": 2,
+      "authorName": "Brant Burnett",
+      "authorUrl": "https://btburnett.com/",
+      "postTitle": "Using Roslyn to Power OpenAPI SDK Generation",
+      "postUrl": "https://btburnett.com/csharp/2022/12/09/using-roslyn-to-power-csharp-sdk-generation-from-openapi-specifications"
+    },
+    {
+      "day": 10,
+      "part": 1,
+      "authorName": "Matt Eland",
+      "authorUrl": "https://AccessibleAI.dev",
+      "postTitle": "Text Classification in C# with ML.NET 2.0",
+      "postUrl": "https://accessibleai.dev/post/ml_net_2_0_text_classification/"
+    },
+    {
+      "day": 10,
+      "part": 2,
+      "authorName": "James Hickey",
+      "authorUrl": "https://www.jamesmichaelhickey.com/",
+      "postTitle": "How To Structure Your .NET Solutions",
+      "postUrl": "https://www.jamesmichaelhickey.com/how-to-structure-your-dot-net-solutions-design-and-trade-offs"
+    },
+    {
+      "day": 11,
+      "part": 1,
+      "authorName": "Brendan Enrick",
+      "authorUrl": "https://brendoneus.com/",
+      "postTitle": "11 Ways of Making Your C# Harder to Use",
+      "postUrl": "https://brendoneus.com/post/Ways-Of-Making-CSharp-Harder/"
+    },
+    {
+      "day": 11,
+      "part": 2,
+      "authorName": "Eric King",
+      "postTitle": "Fun with C# and Bingo",
+      "postUrl": "https://dev.to/mr_eking/fun-with-c-and-bingo-2m92"
+    },
+    {
+      "day": 12,
+      "part": 1,
+      "authorName": "Jonathan Danylko",
+      "authorUrl": "https://www.danylkoweb.com/",
+      "postTitle": "Creating Multi-Tier Subscriptions using C#",
+      "postUrl": "https://www.danylkoweb.com/Blog/creating-multi-tier-subscriptions-using-c-T3"
+    },
+    {
+      "day": 12,
+      "part": 2,
+      "authorName": "Davide Bellone",
+      "authorUrl": "https://www.code4it.dev/",
+      "postTitle": "PriorityQueues on .NET 7 and C# 11",
+      "postUrl": "https://www.code4it.dev/blog/intro-priority-queue"
+    },
+    {
+      "day": 13,
+      "part": 1,
+      "authorName": "Barret Blake",
+      "postTitle": "Turning Any JSON API Into An App",
+      "postUrl": "https://barretblake.dev/2022/12/turning-any-json-api-into-an-app/"
+    },
+    {
+      "day": 13,
+      "part": 2,
+      "authorName": "James Curran",
+      "authorUrl": "https://noveltheory.com",
+      "postTitle": "A Literary Clock in Blazor",
+      "postUrl": "https://honestillusion.com/2022/12/13/blazor-literary-clock.html"
+    },
+    {
+      "day": 14,
+      "part": 1,
+      "authorName": "Jonathan \"J.\" Tower",
+      "authorUrl": "https://trailheadtechnology.com/about-us/our-team/jonathan-j-tower/",
+      "postTitle": "Top-Level Statements in C#",
+      "postUrl": "https://trailheadtechnology.com/top-level-statements-in-c/"
+    },
+    {
+      "day": 14,
+      "part": 2,
+      "authorName": "Andrea Angella",
+      "authorUrl": "https://join.productivecsharp.com/modern-csharp/",
+      "postTitle": "Advent of Code 2022 via C#",
+      "postUrl": "https://www.linkedin.com/pulse/advent-code-2022-via-c-andrea-angella"
+    },
+    {
+      "day": 15,
+      "part": 1,
+      "authorName": "Matt Eland",
+      "authorUrl": "https://twitter.com/integerman",
+      "postTitle": "Interactive C# with Polyglot Notebooks",
+      "postUrl": "https://newdevsguide.com/2022/12/14/polyglot-notebooks-csharp/"
+    },
+    {
+      "day": 15,
+      "part": 2,
+      "authorName": "Sam Nasr",
+      "authorUrl": "https://www.linkedin.com/in/samsnasr/",
+      "postTitle": "Text-to-Speech Step-By-Step",
+      "postUrl": "https://samnasr.blogspot.com/2022/12/text-to-speech-step-by-step.html"
+    },
+    {
+      "day": 16,
+      "part": 1,
+      "authorName": "Michael Eaton",
+      "authorUrl": "https://twitter.com/mjeaton",
+      "postTitle": "The 12 Days of Christmas in C#",
+      "postUrl": "https://samestuffdifferentday.net/2022/12/16/12-days-of-christmas/"
+    },
+    {
+      "day": 16,
+      "part": 2,
+      "authorName": "Sam Basu",
+      "authorUrl": "https://twitter.com/samidip",
+      "postTitle": "Blazor Implementations Across Web & Native",
+      "postUrl": "https://www.telerik.com/blogs/blazor-implementations-across-web-native"
+    },
+    {
+      "day": 17,
+      "part": 1,
+      "authorName": "Ann Lewkowicz",
+      "authorUrl": "http://www.annlewkowicz.com",
+      "postTitle": "Method-Core Injection: a C# Pattern for Reducing Boilerplate Code",
+      "postUrl": "http://www.annlewkowicz.com/2022/12/method-core-injection-c-pattern-for.html"
+    },
+    {
+      "day": 17,
+      "part": 2,
+      "authorName": "Johan Smarius",
+      "authorUrl": "https://www.johansmarius.dev",
+      "postTitle": "Better assertions for your unit tests",
+      "postUrl": "https://www.johansmarius.dev/2022/12/better-assertions-for-your-unit-tests.html"
+    },
+    {
+      "day": 18,
+      "part": 1,
+      "authorName": "John Patrick Glattetre",
+      "authorUrl": "https://github.com/GOATS2K",
+      "postTitle": "Enhancing the Factory Pattern with C# Attributes",
+      "postUrl": "https://nectarine.sh/posts/enhancing-factory-with-csharp-attributes/"
+    },
+    {
+      "day": 18,
+      "part": 2,
+      "authorName": "Muhammad Azeez",
+      "postTitle": "C# bindings for native libraries by using ChatGPT",
+      "postUrl": "https://mazeez.dev/posts/chat-gpt-csharp-bindings"
+    },
+    {
+      "day": 19,
+      "part": 1,
+      "authorName": "James Turner",
+      "authorUrl": "https://turnerj.com",
+      "postTitle": "Ref-structs are technically obsolete",
+      "postUrl": "https://turnerj.com/blog/ref-structs-are-technically-obsolete"
+    },
+    {
+      "day": 19,
+      "part": 2,
+      "authorName": "Steve Lorello",
+      "authorUrl": "https://twitter.com/slorello",
+      "postTitle": "Indexing and Querying Embedded Objects with Redis",
+      "postUrl": "https://dev.to/slorello/indexing-and-querying-embedded-objects-with-redis-om-net-3g4d"
+    },
+    {
+      "day": 20,
+      "part": 1,
+      "authorName": "Uroš Miletić",
+      "postTitle": "Unity in 21 days",
+      "postUrl": "https://www.uveta.io/categories/blog/unity-in-21-days/"
+    },
+    {
+      "day": 20,
+      "part": 2,
+      "authorName": "Sam Gomez",
+      "authorUrl": "https://drkclw.github.io/",
+      "postTitle": "Document information extraction with Azure Form Recognizer",
+      "postUrl": "https://www.linkedin.com/pulse/document-information-extraction-azure-form-recognizer-samuel-gomez"
+    },
+    {
+      "day": 21,
+      "part": 1,
+      "authorName": "Matthias Jost",
+      "authorUrl": "https://matthiasjost.bio.link",
+      "postTitle": "How Do I Follow My Favourite .NET Blogs?",
+      "postUrl": "https://www.matthias-jost.ch/dotnet-feeds-via-opml/"
+    },
+    {
+      "day": 21,
+      "part": 2,
+      "authorName": "Mangesh Gaherwar",
+      "authorUrl": "Https://www.dotnetgik.com",
+      "postTitle": "Real time App with .NET MAUI Blazor and Azure SignalR service",
+      "postUrl": "https://dotnetgik.com/2022/12/21/real-time-app-with-net-maui-blazor-and-azure-signalr-service/"
+    },
+    {
+      "day": 22,
+      "part": 1,
+      "authorName": "Baskar Rao",
+      "postTitle": "Implementing Validations in .Net Core API",
+      "postUrl": "https://baskarmib.netlify.app/content/posts/2022/12/22/implementing-validations-in-net-core-api/"
+    },
+    {
+      "day": 22,
+      "part": 2,
+      "authorName": "Roman Stoffel",
+      "authorUrl": "https://gamlor.info",
+      "postTitle": "Test Containers for C#/.NET",
+      "postUrl": "https://www.gamlor.info/posts-output/2022-12-22-test-containers/en/"
+    },
+    {
+      "day": 23,
+      "part": 1,
+      "authorName": "Aaron LaBeau",
+      "authorUrl": "https://www.costoda.tech/",
+      "postTitle": "VS for Mac vs. VS Code vs. Rider for beginners",
+      "postUrl": "https://www.youtube.com/watch?v=IuZmzA67SLo"
+    },
+    {
+      "day": 23,
+      "part": 2,
+      "authorName": "Jeremy Sinclair",
+      "authorUrl": "https://twitter.com/sinclairinat0r",
+      "postTitle": "Add Arm64 Support To Your VS 2022 Extensions",
+      "postUrl": "https://sinclairinat0r.com/2022/12/23/add-arm64-support-to-your-visual-studio-2022-extensions"
+    },
+    {
+      "day": 24,
+      "part": 1,
+      "authorName": "Martin Zikmund",
+      "authorUrl": "https://twitter.com/mzikmunddev",
+      "postTitle": "Colorful ASCII Christmas Tree in C# by ChatGPT",
+      "postUrl": "https://blog.mzikmund.com/2022/12/colorful-christmas-tree-with-ascii-art-in-c-by-chatgpt/"
+    },
+    {
+      "day": 24,
+      "part": 2,
+      "authorName": "Xavier Morera",
+      "authorUrl": "https://www.xaviermorera.com",
+      "postTitle": "Let's Talk C# Best Practices and Technical Debt",
+      "postUrl": "https://www.xaviermorera.com/?p=1790"
+    },
+    {
+      "day": 25,
+      "part": 1,
+      "authorName": "Matthew D. Groves",
+      "authorUrl": "https://twitter.com/mgroves",
+      "postTitle": "NoSQL Migrations for Couchbase",
+      "postUrl": "https://crosscuttingconcerns.com/NoSQL-Migrations-Couchbase"
+    },
+    {
+      "day": 25,
+      "part": 2,
+      "authorName": "Zach Blocker",
+      "authorUrl": "https://zachoncode.dev/",
+      "postTitle": "Parsing a template language with C# and Pidgin",
+      "postUrl": "https://zachoncode.dev/blog/parsing-template-language-with-csharp-and-pidgin/"
+    }
+  ]
+}

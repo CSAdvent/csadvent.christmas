@@ -1,0 +1,404 @@
+{
+  "year": 2023,
+  "slotsPerDay": 2,
+  "slots": [
+    {
+      "day": 1,
+      "part": 1,
+      "authorName": "John Patrick Glattetre",
+      "authorUrl": "https://nectarine.sh",
+      "postTitle": "Using GitHub Releases to update my private tools",
+      "postUrl": "https://nectarine.sh/posts/updating-closed-source-tools/"
+    },
+    {
+      "day": 1,
+      "part": 2,
+      "authorName": "Steve Bilogan",
+      "authorUrl": "https://kazo0.dev/",
+      "postTitle": "The Rise of C# Markup for Cross Platform Development",
+      "postUrl": "https://platform.uno/csadvent/Csharp-markup"
+    },
+    {
+      "day": 2,
+      "part": 1,
+      "authorName": "Matt Eland",
+      "authorUrl": "https://matteland.dev?imBatman",
+      "postTitle": "Getting Started with Semantic Kernel and C#",
+      "postUrl": "https://accessibleai.dev/post/introtosemantickernel/"
+    },
+    {
+      "day": 2,
+      "part": 2,
+      "authorName": "Roman Stoffel",
+      "authorUrl": "https://gamlor.info/",
+      "postTitle": "Copy, Paste and Edit Java to C# after 20 years",
+      "postUrl": "https://www.gamlor.info/posts-output/2023-12-02-paste-and-edit-to-csharp/en/"
+    },
+    {
+      "day": 3,
+      "part": 1,
+      "authorName": "Chris Ayers",
+      "authorUrl": "https://chris-ayers.com",
+      "postTitle": "Containerizing .NET - Part 1",
+      "postUrl": "https://chris-ayers.com/2023/12/03/containerizing-dotnet-part-1"
+    },
+    {
+      "day": 3,
+      "part": 2,
+      "authorName": "Sadukie",
+      "authorUrl": "https://sadukie.github.io",
+      "postTitle": "Unlock the Gift of the C# Spread Operator",
+      "postUrl": "https://www.sadukie.com/2023/12/03/unlock-the-gift-of-the-c-spread-operator/"
+    },
+    {
+      "day": 4,
+      "part": 1,
+      "authorName": "Luis Beltran",
+      "authorUrl": "https://twitter.com/darkicebeam",
+      "postTitle": "Fine-tuning an Open AI model with Azure and C#",
+      "postUrl": "https://dev.to/icebeam7/fine-tuning-an-open-ai-model-with-azure-and-c-3igc"
+    },
+    {
+      "day": 4,
+      "part": 2,
+      "authorName": "Eric Potter",
+      "authorUrl": "https://humbletoolsmith.com/",
+      "postTitle": "Dissecting C# Ranges",
+      "postUrl": "http://humbletoolsmith.com/2023/12/03/dissecting-csharp-ranges/"
+    },
+    {
+      "day": 5,
+      "part": 1,
+      "authorName": "Piotr Karczmarz",
+      "authorUrl": "https://twitter.com/PiotrKarczmarz",
+      "postTitle": "Dopamine Detox for Programmers",
+      "postUrl": "https://contextkeeper.io/blog/dopamine-detox-for-programmers/"
+    },
+    {
+      "day": 5,
+      "part": 2,
+      "authorName": "Gérald Barré",
+      "authorUrl": "https://www.meziantou.net",
+      "postTitle": "Inline Snapshot testing in .NET",
+      "postUrl": "https://www.meziantou.net/inline-snapshot-testing-in-dotnet.htm"
+    },
+    {
+      "day": 6,
+      "part": 1,
+      "authorName": "Jonathan \"J.\" Tower",
+      "authorUrl": "https://trailheadtechnology.com/blog/",
+      "postTitle": "Migrate ASP.NET to ASP.NET Core with YARP",
+      "postUrl": "https://trailheadtechnology.com/migrating-legacy-asp-net-to-asp-net-core-incrementally-with-yarp/"
+    },
+    {
+      "day": 6,
+      "part": 2,
+      "authorName": "Jonathan Danylko",
+      "authorUrl": "https://www.danylkoweb.com/",
+      "postTitle": "Updating Cynk with .NET 8.0 and C#",
+      "postUrl": "https://www.danylkoweb.com/Blog/updating-cynk-with-net-80-and-c-TP"
+    },
+    {
+      "day": 7,
+      "part": 1,
+      "authorName": "Manuel Grundner",
+      "authorUrl": "https://twitter.com/biohaz999",
+      "postTitle": "Vertiq - Blazor Application Framework",
+      "postUrl": "https://blog.delegate.at/2023/12/07/vertiq-introduction.html"
+    },
+    {
+      "day": 7,
+      "part": 2,
+      "authorName": "Jeffrey A. Miller",
+      "authorUrl": "https://linkedin.com/in/jamiller",
+      "postTitle": "Seasons of Love - Ode to C#",
+      "postUrl": "https://knowledgeplaybook.com/i-still-code/csharp-advent-2023-seasons-of-love/"
+    },
+    {
+      "day": 8,
+      "part": 1,
+      "authorName": "Martin Zikmund",
+      "authorUrl": "https://mzikmund.dev",
+      "postTitle": "Cross-platform Christmas Countdown App in C#",
+      "postUrl": "https://mzikmund.dev/blog/cross-platform-christmas-countdown-app-in-csharp"
+    },
+    {
+      "day": 8,
+      "part": 2,
+      "authorName": "Sander ten Brinke",
+      "authorUrl": "https://twitter.com/sandertenbrinke",
+      "postTitle": "Improve your Application Insights API key security",
+      "postUrl": "https://stenbrinke.nl/blog/hide-app-insights-key-from-the-browser/"
+    },
+    {
+      "day": 9,
+      "part": 1,
+      "authorName": "Steve @ardalis Smith",
+      "authorUrl": "https://ardalis.com",
+      "postTitle": "When to Use C# Primary Constructors",
+      "postUrl": "https://blog.nimblepros.com/blogs/where-csharp-primary-constructors-make-sense/"
+    },
+    {
+      "day": 9,
+      "part": 2,
+      "authorName": "Ken Ross",
+      "authorUrl": "https://www.unravelled.dev",
+      "postTitle": "Azure Durable Entities Revisited",
+      "postUrl": "https://www.unravelled.dev/azure-durable-entities-revisited/?utm_campaign=csadvent"
+    },
+    {
+      "day": 10,
+      "part": 1,
+      "authorName": "David Hoerster",
+      "authorUrl": "https://dave.agileways.com",
+      "postTitle": "The Actor Model in a C# World",
+      "postUrl": "https://dave.agileways.com/posts/actor-model-dotnet/"
+    },
+    {
+      "day": 10,
+      "part": 2,
+      "authorName": "Carl Layton",
+      "postTitle": "Named Entity Recognition Using Azure AI",
+      "postUrl": "https://dev.to/cwl157/named-entity-recognition-using-azure-ai-2he8"
+    },
+    {
+      "day": 11,
+      "part": 1,
+      "authorName": "Michael Eaton",
+      "authorUrl": "Https://samestuffdifferentday.net",
+      "postTitle": "Calculating Credit Card Payoff in C#",
+      "postUrl": "https://samestuffdifferentday.net/2023/12/11/credit-card-payoff/"
+    },
+    {
+      "day": 11,
+      "part": 2,
+      "authorName": "James Hickey",
+      "authorUrl": "https://www.jamesmichaelhickey.com/",
+      "postTitle": "High-Performance .NET CRON Jobs",
+      "postUrl": "https://www.jamesmichaelhickey.com/high-performance-dotnet-cron-jobs"
+    },
+    {
+      "day": 12,
+      "part": 1,
+      "authorName": "Brant Burnett",
+      "authorUrl": "https://btburnett.com/",
+      "postTitle": "Generic Type Construction With Static Virtual...",
+      "postUrl": "https://btburnett.com/csharp/2023/12/12/generic-type-construction-with-static-virtual-interface-members"
+    },
+    {
+      "day": 12,
+      "part": 2,
+      "authorName": "Kevin Griffin",
+      "authorUrl": "https://consultwithgriff.com",
+      "postTitle": "HttpContext Issues with Azure SignalR Service",
+      "postUrl": "https://consultwithgriff.com/httpcontext-issues-azure-signalr-service/"
+    },
+    {
+      "day": 13,
+      "part": 1,
+      "authorName": "Barret Blake",
+      "authorUrl": "https://barretblake.dev",
+      "postTitle": "What's New in Entity Framework Core 8",
+      "postUrl": "https://barretblake.dev/2023/12/2023-c-advent-whats-new-in-entity-framework-core-8/"
+    },
+    {
+      "day": 13,
+      "part": 2,
+      "authorName": "Josh Eastburn",
+      "authorUrl": "https://trailheadtechnology.com/",
+      "postTitle": "Thumbnails with Azure Functions and CloudConvert",
+      "postUrl": "https://trailheadtechnology.com/thumbnail-images-azure-functions-cloudconvert/"
+    },
+    {
+      "day": 14,
+      "part": 1,
+      "authorName": "Lee Englestone",
+      "authorUrl": "https://twitter.com/leeenglestone",
+      "postTitle": "Data Visualisation in Mixed Reality using C#",
+      "postUrl": "https://www.linkedin.com/pulse/spatial-charts-poc-data-visualisation-mixed-reality-lee-englestone-sukse"
+    },
+    {
+      "day": 14,
+      "part": 2,
+      "authorName": "Steve Lorello",
+      "authorUrl": "https://github.com/slorello89",
+      "postTitle": "Querying Redis with GraphQL using Redis OM .NET",
+      "postUrl": "https://dev.to/slorello/querying-redis-with-graphql-using-redis-om-net-1mna"
+    },
+    {
+      "day": 15,
+      "part": 1,
+      "authorName": "Matt Eland",
+      "authorUrl": "https://matteland.dev?imBatman",
+      "postTitle": "Bulk Text Analytics with Azure AI Language",
+      "postUrl": "https://accessibleai.dev/post/azureaitextanalytics/"
+    },
+    {
+      "day": 15,
+      "part": 2,
+      "authorName": "James Curran",
+      "authorUrl": "https://noveltheory.com",
+      "postTitle": "An all-purpose Object updater",
+      "postUrl": "https://honestillusion.com/blog/2023/12/15/All-purpose-object-updater/"
+    },
+    {
+      "day": 16,
+      "part": 1,
+      "authorName": "Mark Oliver",
+      "authorUrl": "https://twitter.com/MicbOliver",
+      "postTitle": "Querying Console Output In Your Tests",
+      "postUrl": "https://blog.markoliver.website/Querying-Console-Output-In-Your-Tests"
+    },
+    {
+      "day": 16,
+      "part": 2,
+      "authorName": "Vladan Petrovic",
+      "authorUrl": "https://www.linkedin.com/in/vladan-petrovic-66b694167/",
+      "postTitle": "Scanning Uploaded Files for Malware in C#",
+      "postUrl": "https://trailheadtechnology.com/scanning-uploaded-files-for-malware-in-c"
+    },
+    {
+      "day": 17,
+      "part": 1,
+      "authorName": "Deepti Velusamy",
+      "authorUrl": "https://deecoding.net/about/",
+      "postTitle": "Exploring xUnit!",
+      "postUrl": "https://deecoding.net/post-6/"
+    },
+    {
+      "day": 17,
+      "part": 2,
+      "authorName": "Cameron Vetter",
+      "authorUrl": "https://www.cameronvetter.com/",
+      "postTitle": "GPT-4 using DALL-E 3 to generate images in C#",
+      "postUrl": "https://github.com/CameronVetter/Dalle3-CSharp-Advent-Day-17"
+    },
+    {
+      "day": 18,
+      "part": 1,
+      "authorName": "Ian Russell",
+      "authorUrl": "https://twitter.com/ijrussell",
+      "postTitle": "Discriminated Unions in C#",
+      "postUrl": "https://ijrussell.github.io/posts/csharp-discriminated-union/"
+    },
+    {
+      "day": 18,
+      "part": 2,
+      "authorName": "Simon J. Painter",
+      "authorUrl": "https://www.thecodepainter.co.uk/blog",
+      "postTitle": "Functional Programming with C# - Scan and IndexOf",
+      "postUrl": "https://www.thecodepainter.co.uk/blog/20231216/scanandindexof"
+    },
+    {
+      "day": 19,
+      "part": 1,
+      "authorName": "Alexandre Nédélec",
+      "authorUrl": "https://www.techwatching.dev/",
+      "postTitle": "Playing with .NET 8 Web API template",
+      "postUrl": "https://www.techwatching.dev/posts/playing-with-dotnet8"
+    },
+    {
+      "day": 19,
+      "part": 2,
+      "authorName": "Michael Jolley",
+      "authorUrl": "https://baldbeardedbuilder.com",
+      "postTitle": "Choosing Controllers or Minimal API for .NET APIs",
+      "postUrl": "https://baldbeardedbuilder.com/blog/choosing-between-dotnet-controllers-and-minimal-apis/"
+    },
+    {
+      "day": 20,
+      "part": 1,
+      "authorName": "Atif Aziz",
+      "authorUrl": "https://github.com/atifaziz",
+      "postTitle": "MoreLINQ in Action",
+      "postUrl": "https://gist.github.com/atifaziz/8368a14c4e7b14885c92a2f76cafd72a"
+    },
+    {
+      "day": 20,
+      "part": 2,
+      "authorName": "FlashOWare",
+      "authorUrl": "https://www.youtube.com/@FlashOWare",
+      "postTitle": "2 code a .NET tool",
+      "postUrl": "https://www.youtube.com/watch?v=4XYxrCUj6k0"
+    },
+    {
+      "day": 21,
+      "part": 1,
+      "authorName": "Giorgi Dalakishvili",
+      "authorUrl": "https://giorgi.dev",
+      "postTitle": "PostgreSQL range types and Entity Framework Core",
+      "postUrl": "https://www.giorgi.dev/database/postgresql-range-types-entity-framework/"
+    },
+    {
+      "day": 21,
+      "part": 2,
+      "authorName": "Davide Bellone",
+      "authorUrl": "https://www.code4it.dev/",
+      "postTitle": "6 string performance tips in C# 12",
+      "postUrl": "https://www.code4it.dev/blog/top-6-string-performance-tips/"
+    },
+    {
+      "day": 22,
+      "part": 1,
+      "authorName": "Ed Charbeneau",
+      "authorUrl": "Https://edcharbeneau.com",
+      "postTitle": "Is Blazor the Future of All Things Web?",
+      "postUrl": "https://www.telerik.com/blogs/is-blazor-future-everything-web"
+    },
+    {
+      "day": 22,
+      "part": 2,
+      "authorName": "Aaron LaBeau",
+      "authorUrl": "https://www.costoda.tech/",
+      "postTitle": "State of .NET on the Mac 2023 edition",
+      "postUrl": "https://www.youtube.com/watch?v=UBnQtzAwBJc"
+    },
+    {
+      "day": 23,
+      "part": 1,
+      "authorName": "Aaron LaBeau",
+      "authorUrl": "https://www.costoda.tech/",
+      "postTitle": "Stocking Stuffer - Mobile Platform Options",
+      "postUrl": "https://youtu.be/V8VLbNSNT8c"
+    },
+    {
+      "day": 23,
+      "part": 2,
+      "authorName": "Sam Gomez",
+      "postTitle": "Getting started with the Azure Content Safety API.",
+      "postUrl": "https://dev.to/drkclw/getting-started-with-the-azure-content-safety-api-59mo"
+    },
+    {
+      "day": 24,
+      "part": 1,
+      "authorName": "Stephen Cleary",
+      "authorUrl": "https://stephencleary.com",
+      "postTitle": "The Joy of Immutable Update Patterns",
+      "postUrl": "https://blog.stephencleary.com/2023/12/the-joy-of-immutable-update-patterns.html"
+    },
+    {
+      "day": 24,
+      "part": 2,
+      "authorName": "Jeffry Morris",
+      "authorUrl": "https://twitter.com/jeffrysmorris",
+      "postTitle": "Introduction to Couchbase Capella Cloud with C#",
+      "postUrl": "https://jeffryscottmorris.medium.com/introduction-to-couchbase-capella-cloud-with-c-8e49a8ed2355"
+    },
+    {
+      "day": 25,
+      "part": 1,
+      "authorName": "Maximilien Noal",
+      "authorUrl": "https://github.com/maximilien-noal",
+      "postTitle": ".NET On Dune",
+      "postUrl": "https://casualgeeker.blogspot.com/2023/12/dotnet-on-dune.html"
+    },
+    {
+      "day": 25,
+      "part": 2,
+      "authorName": "Matthew D. Groves",
+      "authorUrl": "https://crosscuttingconcerns.com",
+      "postTitle": "Do you really need a full CMS? Introducing the CMSprinkle micro-CMS",
+      "postUrl": "https://www.crosscuttingconcerns.com/introducting-cmsprinkle-micro-cms"
+    }
+  ]
+}

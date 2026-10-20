@@ -21,4 +21,10 @@
     <InternalsVisibleTo Include="CSAdvent.UnitTests" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The 2017-2025 history, seeded after migrations by ArchiveSeeder. Embedded, so the migration bundle carries it. -->
+    <Content Remove="Data\Archive\*.json" />
+    <EmbeddedResource Include="Data\Archive\*.json" LogicalName="archive/%(Filename)%(Extension)" />
+  </ItemGroup>
+
 </Project>

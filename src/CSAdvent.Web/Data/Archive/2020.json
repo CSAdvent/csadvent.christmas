@@ -1,0 +1,366 @@
+{
+  "year": 2020,
+  "slotsPerDay": 2,
+  "slots": [
+    {
+      "day": 1,
+      "part": 1,
+      "authorName": "Bill Sempf",
+      "authorUrl": "https://www.sempf.net",
+      "postTitle": "Insecure Binary Serialization: 2018 Redux",
+      "postUrl": "https://sempf.net/post/insecure-binary-serialization-2018-redux"
+    },
+    {
+      "day": 1,
+      "part": 2,
+      "authorName": "Carey Payette",
+      "postTitle": "Using a C# Azure IoT Edge Module to control an LED",
+      "postUrl": "https://codingbandit.com/blog/2020/12/01/controlling-an-led-from-the-cloud-using-a-c-azure-iot-edge-module-on-the-raspberry-pi/"
+    },
+    {
+      "day": 2,
+      "part": 1,
+      "authorName": "Luis Beltran",
+      "authorUrl": "https://twitter.com/darkicebeam",
+      "postTitle": "Machine learning with SQL Server, ML.NET and C#",
+      "postUrl": "https://dev.to/icebeam7/building-a-machine-learning-model-with-sql-server-ml-net-and-c-374a"
+    },
+    {
+      "day": 2,
+      "part": 2
+    },
+    {
+      "day": 3,
+      "part": 1,
+      "authorName": "Lukas Lansky",
+      "authorUrl": "https://programming.lansky.name/",
+      "postTitle": "C# 9 and Foreach Extensibility",
+      "postUrl": "https://programming.lansky.name/extensible-foreach"
+    },
+    {
+      "day": 3,
+      "part": 2
+    },
+    {
+      "day": 4,
+      "part": 1
+    },
+    {
+      "day": 4,
+      "part": 2,
+      "authorName": "Jeffry Morris",
+      "postTitle": "NoSQL Transactions with C#",
+      "postUrl": "https://jeffryscottmorris.medium.com/nosql-transactions-with-c-2ab7c7186705"
+    },
+    {
+      "day": 5,
+      "part": 1,
+      "authorName": "Roman Stoffel",
+      "authorUrl": "https://gamlor.info",
+      "postTitle": "C# Updates for the Absent C# Developer",
+      "postUrl": "https://gamlor.info/posts-output/2020-12-05-csharp-for-the-absent/en/"
+    },
+    {
+      "day": 5,
+      "part": 2,
+      "authorName": "Muhammad Azeez",
+      "authorUrl": "http://mazeez.dev/",
+      "postTitle": "Background Job Scheduling using Hangfire",
+      "postUrl": "https://mazeez.dev/posts/background-job-scheduling-using-hangfire"
+    },
+    {
+      "day": 6,
+      "part": 1,
+      "authorName": "Sivamuthu Kumar",
+      "authorUrl": "https://twitter.com/ksivamuthu",
+      "postTitle": "Open Telemetry - Observability in .NET Core Apps",
+      "postUrl": "https://ksivamuthu.hashnode.dev/open-telemetry-observability-in-net-core-apps"
+    },
+    {
+      "day": 6,
+      "part": 2,
+      "authorName": "Lee Englestone",
+      "authorUrl": "https://twitter.com/leeenglestone",
+      "postTitle": "Augmented Reality for .NET Developers on iOS",
+      "postUrl": "https://dev.to/leeenglestone/augmented-reality-for-net-developers-on-ios-8j3"
+    },
+    {
+      "day": 7,
+      "part": 1,
+      "authorName": "Gérald Barré",
+      "authorUrl": "https://www.meziantou.net/",
+      "postTitle": "Using .NET and PowerPoint to generate cover images",
+      "postUrl": "https://www.meziantou.net/using-dotnet-and-powerpoint-to-generate-cover-images.htm"
+    },
+    {
+      "day": 7,
+      "part": 2,
+      "authorName": "Sean Kearon",
+      "authorUrl": "https://kearon.blogspot.com",
+      "postTitle": "Long-running business processes in C# with Rebus",
+      "postUrl": "https://seankearon.me/posts/2020/12/rebus-sagas-csharp/"
+    },
+    {
+      "day": 8,
+      "part": 1,
+      "authorName": "Dave Brock",
+      "authorUrl": "https://daveabrock.com",
+      "postTitle": "Automate a Markdown link page with Pinboard and C#",
+      "postUrl": "https://daveabrock.com/2020/12/07/make-link-list-with-markdown-and-with-c-sharp"
+    },
+    {
+      "day": 8,
+      "part": 2,
+      "authorName": "Andrew Craven",
+      "authorUrl": "https://twitter.com/acraven_dev",
+      "postTitle": "A NuGet package workflow using GitHub Actions",
+      "postUrl": "https://acraven.medium.com/a-nuget-package-workflow-using-github-actions-7da8c6557863?source=friends_link&sk=741aabf8a8caaf7a91280d303692829d"
+    },
+    {
+      "day": 9,
+      "part": 1,
+      "authorName": "Raúl Piracés Alastuey",
+      "authorUrl": "https://piraces.dev/",
+      "postTitle": "Awesome console apps in C#",
+      "postUrl": "https://piraces.dev/posts/awesome-console-apps-csharp/"
+    },
+    {
+      "day": 9,
+      "part": 2,
+      "authorName": "Kevin Griffin",
+      "authorUrl": "https://consultwithgriff.com",
+      "postTitle": "Managing SignalR ConnectionIds",
+      "postUrl": "https://consultwithgriff.com/signalr-connection-ids/"
+    },
+    {
+      "day": 10,
+      "part": 1,
+      "authorName": "Jonathan Danylko",
+      "authorUrl": "https://www.danylkoweb.com/",
+      "postTitle": "8 Extension Methods to Simplify Coding in 2020",
+      "postUrl": "https://www.danylkoweb.com/Blog/8-extension-methods-to-simplify-coding-in-2020-RA"
+    },
+    {
+      "day": 10,
+      "part": 2,
+      "authorName": "Baskar Rao",
+      "postTitle": "Do you use var or you don't care",
+      "postUrl": "https://baskarmib.netlify.app/content/posts/2020/12/10/do-you-use-var-or-you-don-t-care/"
+    },
+    {
+      "day": 11,
+      "part": 1,
+      "authorName": "Brant Burnett",
+      "authorUrl": "https://twitter.com/btburnett3",
+      "postTitle": "C# 9 Records and Init Only Settings Without .NET 5",
+      "postUrl": "https://btburnett.com/csharp/2020/12/11/csharp-9-records-and-init-only-setters-without-dotnet5.html"
+    },
+    {
+      "day": 11,
+      "part": 2
+    },
+    {
+      "day": 12,
+      "part": 1,
+      "authorName": "Matt Eland",
+      "authorUrl": "https://twitter.com/integerman",
+      "postTitle": "Making C# More Welcoming",
+      "postUrl": "https://killalldefects.com/2020/12/11/making-csharp-more-welcoming/"
+    },
+    {
+      "day": 12,
+      "part": 2,
+      "authorName": "Cameron Presley",
+      "authorUrl": "https://blog.thesoftwarementor.com",
+      "postTitle": "Thinking With Properties: Examining Where",
+      "postUrl": "https://blog.thesoftwarementor.com/thinking-with-properties-examining-where/"
+    },
+    {
+      "day": 13,
+      "part": 1
+    },
+    {
+      "day": 13,
+      "part": 2,
+      "authorName": "Garo Yeriazarian",
+      "authorUrl": "https://www.garoyeri.dev/",
+      "postTitle": "ASP.NET Core running in your AWS Lambda",
+      "postUrl": "https://www.garoyeri.dev/2020-12/aspnetcore-lambda-introduction/"
+    },
+    {
+      "day": 14,
+      "part": 1,
+      "authorName": "Sam Basu",
+      "postTitle": "Exploring Blazor Mobile Bindings",
+      "postUrl": "https://www.telerik.com/blogs/exploring-blazor-mobile-bindings"
+    },
+    {
+      "day": 14,
+      "part": 2,
+      "authorName": "Martin Zikmund",
+      "authorUrl": "https://blog.mzikmund.com",
+      "postTitle": "Conway's Game of Life in Uno Platform",
+      "postUrl": "https://blog.mzikmund.com/2020/12/game-of-life-in-uno-platform/"
+    },
+    {
+      "day": 15,
+      "part": 1,
+      "authorName": "Khalid Abuhakmeh",
+      "authorUrl": "https://twitter.com/buhakmeh",
+      "postTitle": ".NET OSS Docs With MarkdownSnippets",
+      "postUrl": "https://khalidabuhakmeh.com/dotnet-oss-docs-with-markdownsnippets"
+    },
+    {
+      "day": 15,
+      "part": 2,
+      "authorName": "Ed Charbeneau",
+      "authorUrl": "https://twitch.tv/edcharbeneau",
+      "postTitle": "10 Blazor Features You Probably Didn't Know",
+      "postUrl": "https://www.telerik.com/blogs/10-blazor-features-you-probably-didnt-know"
+    },
+    {
+      "day": 16,
+      "part": 1,
+      "authorName": "Carl Layton",
+      "authorUrl": "https://www.carlserver.com/",
+      "postTitle": "My First WPF App: A Music Player Using MVVM Patter",
+      "postUrl": "https://www.carlserver.com/blog/post/my-first-wpf-app-a-music-player-using-mvvm-pattern"
+    },
+    {
+      "day": 16,
+      "part": 2,
+      "authorName": "Steve Gordon",
+      "authorUrl": "https://www.stevejgordon.co.uk",
+      "postTitle": "C#9 Top-level Programs, Records & Elasticsearch",
+      "postUrl": "https://www.stevejgordon.co.uk/playing-with-csharp-9-top-level-programs-records-and-elasticsearch-dotnet"
+    },
+    {
+      "day": 17,
+      "part": 1,
+      "authorName": "Eric Potter",
+      "postTitle": "Upgrading Old C# to C# 9: Init Only Setters",
+      "postUrl": "http://humbletoolsmith.com/2020/12/18/upgrading-old-csharp-to-csharp-9-init-only-setters/"
+    },
+    {
+      "day": 17,
+      "part": 2
+    },
+    {
+      "day": 18,
+      "part": 1,
+      "authorName": "Stephen Lorello",
+      "authorUrl": "https://twitter.com/slorello",
+      "postTitle": "Santa's Secret Blazor",
+      "postUrl": "https://learn.vonage.com/blog/2020/12/18/build-a-secret-santa-app-with-blazor"
+    },
+    {
+      "day": 18,
+      "part": 2,
+      "authorName": "Matt Millican",
+      "authorUrl": "https://mattmillican.com",
+      "postTitle": "Process Images with AWS Lambda and .NET Core",
+      "postUrl": "https://mattmillican.com/blog/lambda-image-processor"
+    },
+    {
+      "day": 19,
+      "part": 1,
+      "authorName": "Mangesh Gaherwar",
+      "authorUrl": "https://dotnetgik.com/",
+      "postTitle": "Integrating blazor Wasm with gRPC",
+      "postUrl": "https://dotnetgik.com/2020/06/28/todo-app-with-blazor-wasm-and-grpc/"
+    },
+    {
+      "day": 19,
+      "part": 2,
+      "authorName": "Barret Blake",
+      "postTitle": "ASP.NET Core API Endpoints",
+      "postUrl": "https://barretblake.dev/2020-12-CS-Advent-Core-API-Endpoints"
+    },
+    {
+      "day": 20,
+      "part": 1,
+      "authorName": "Ram Hemasri",
+      "authorUrl": "https://www.linkedin.com/in/ramhemasri",
+      "postTitle": "ApplicationInsights for WorkerService with Serilog",
+      "postUrl": "https://dev.to/ramhemasri/application-insights-for-worker-service-using-serilog-1476"
+    },
+    {
+      "day": 20,
+      "part": 2
+    },
+    {
+      "day": 21,
+      "part": 1,
+      "authorName": "Andrea Angella",
+      "authorUrl": "https://www.productivecsharp.com/",
+      "postTitle": "What’s new in .NET 5 and C# 9",
+      "postUrl": "https://www.productivecsharp.com/whats-new-net5-csharp9/"
+    },
+    {
+      "day": 21,
+      "part": 2,
+      "authorName": "Caleb Wells",
+      "authorUrl": "https://www.calebwellscodes.com",
+      "postTitle": "Blazor Advent Calendar",
+      "postUrl": "https://youtu.be/x85MKRmOQHw"
+    },
+    {
+      "day": 22,
+      "part": 1,
+      "authorName": "Uroš Miletić",
+      "authorUrl": "https://www.uveta.io/",
+      "postTitle": "Asynchronous Job Pattern: The ASP.NET Core MVC Way",
+      "postUrl": "https://www.uveta.io/categories/blog/asynchronous-job-pattern-the-asp-net-core-mvc-way?utm_medium=referral&utm_source=csharpadvent2020&utm_campaign=asynchronous-job-pattern"
+    },
+    {
+      "day": 22,
+      "part": 2,
+      "authorName": "Matt Seigel",
+      "authorUrl": "https://www.linkedin.com/in/m4tt1mus/",
+      "postTitle": "BlazorMirror: A guide to a Blazor MagicMirror",
+      "postUrl": "http://www.headspring.com/2020/12/22/behold-blazormirror-a-guide-to-building-a-magic-mirror-with-blazor-and-raspberrypi"
+    },
+    {
+      "day": 23,
+      "part": 1,
+      "authorName": "James Charlesworth",
+      "postTitle": "Why the C# Record type is important",
+      "postUrl": "https://codetrain.io/why-the-csharp-record-type-is-important"
+    },
+    {
+      "day": 23,
+      "part": 2,
+      "authorName": "Kevin Avignon",
+      "authorUrl": "https://www.kevinavignon.com",
+      "postTitle": "Guidelines to improve your software design skills",
+      "postUrl": "https://kevinavignon.com/2020/12/23/guidelines-to-improve-your-software-design-skills-with-net-part-i/"
+    },
+    {
+      "day": 24,
+      "part": 1,
+      "authorName": "Tale Learn Code",
+      "postTitle": "Building a Twitch Quote Generator",
+      "postUrl": "http://talelearncode.com/building-a-twitch-quote-generator/"
+    },
+    {
+      "day": 24,
+      "part": 2
+    },
+    {
+      "day": 25,
+      "part": 1,
+      "authorName": "Michael Jolley",
+      "authorUrl": "https://baldbeardedbuilder.com",
+      "postTitle": "Choosing Between Blazor Server or Web Assembly",
+      "postUrl": "https://baldbeardedbuilder.com/blog/choosing-between-blazor-server-or-web-assembly/"
+    },
+    {
+      "day": 25,
+      "part": 2,
+      "authorName": "Matthew D. Groves",
+      "authorUrl": "https://twitter.com/mgroves",
+      "postTitle": "Everybody's Free to Write Unit Tests",
+      "postUrl": "https://crosscuttingconcerns.com/Everybodys-Free-to-Write-Unit-Tests"
+    }
+  ]
+}
