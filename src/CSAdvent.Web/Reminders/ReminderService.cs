@@ -2,6 +2,7 @@ using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Content;
 using CSAdvent.Web.Data;
 using CSAdvent.Web.Email;
+using CSAdvent.Web.Entries;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Npgsql;
@@ -103,12 +104,20 @@ public sealed partial class ReminderService(
 
         // Today's posts, revealed at midnight. Until one has its title and link there's nothing to share, and a later run
         // tries again.
-        var posts = await db.Slots
+        var revealed = await db.Slots
             .AsNoTracking()
             .Where(s => s.SeasonYear == year && s.Day == today.Day && s.AuthorName != null && s.PostTitle != null && s.PostUrl != null)
             .OrderBy(s => s.Part)
-            .Select(s => new SharedPost(s.PostTitle!, s.PostUrl!, s.AuthorName!))
+            .Select(s => new { s.Part, s.PostTitle, s.AuthorName })
             .ToListAsync(cancellationToken);
+
+        // Links go through the tracked redirect, tagged as email.
+        var posts = revealed
+            .Select(s => new SharedPost(
+                s.PostTitle!,
+                EntryLinks.Absolute(site.Value.BaseUrl, EntryLinks.Go(year, today.Day, s.Part, "email")),
+                s.AuthorName!))
+            .ToList();
         if (posts.Count == 0)
         {
             return 0;

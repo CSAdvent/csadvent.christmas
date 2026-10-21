@@ -1,4 +1,5 @@
 @* One card per day, with that day's entries in part order. Used by the home page and the archive. *@
+@using CSAdvent.Web.Entries
 
 <ol class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
     @foreach (var day in Calendar.Days)
@@ -24,7 +25,7 @@
                         }
                         @if (entry.HasPost)
                         {
-                            <a href="@entry.PostUrl" class="font-medium text-advent-700 underline decoration-advent-200 decoration-1 underline-offset-2 hover:text-advent-800 hover:decoration-advent-700">@TitleStart(entry.PostTitle)<span class="whitespace-nowrap">@TitleEnd(entry.PostTitle)<svg class="ml-1 inline size-3" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 13 13 7M8 7h5v5" /></svg></span></a>
+                            <a href="@EntryLinks.Go(Calendar.Year, day.Day, entry.Part, "calendar")" class="font-medium text-advent-700 underline decoration-advent-200 decoration-1 underline-offset-2 hover:text-advent-800 hover:decoration-advent-700">@TitleStart(entry.PostTitle)<span class="whitespace-nowrap">@TitleEnd(entry.PostTitle)<svg class="ml-1 inline size-3" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 13 13 7M8 7h5v5" /></svg></span></a>
                             <p class="mt-1 text-sm text-slate-500">
                                 by <Author Entry="entry" />
                             </p>

@@ -25,7 +25,8 @@ public sealed partial class ArchivePageTests(AppHostFixture fixture)
 
         Assert.Contains(">C# Advent 2017</h1>", html);
         Assert.Equal(25, DayCard().Count(html));
-        Assert.Contains("href=\"https://g33klady.com/2017/12/01/c-advent-calendar-combining-integration-and-ui-automation-in-c/\"", html);
+        // Titles link through the tracked redirect to the post.
+        Assert.Contains("href=\"go/2017/1/1?via=calendar\"", html);
         Assert.Contains("Combining Integration and UI Automation in C#", Regex.Replace(html, "<[^>]+>", ""));
         Assert.Contains("href=\"https://crosscuttingconcerns.com/The-First-C-Advent-Calendar\"", html);
     }

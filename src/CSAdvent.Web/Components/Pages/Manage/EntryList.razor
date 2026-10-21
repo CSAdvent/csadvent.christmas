@@ -1,6 +1,7 @@
 @page "/manage/entries"
 @inject SeasonAdminService Seasons
 @inject EntryAdminService Entries
+@inject CSAdvent.Web.Entries.EntryService EntryStats
 
 <PageTitle>Entries · Manage · C# Advent</PageTitle>
 
@@ -23,6 +24,7 @@
                 <th class="py-2 pr-4 font-medium">Author</th>
                 <th class="py-2 pr-4 font-medium">Post</th>
                 <th class="py-2 pr-4 font-medium">Status</th>
+                <th class="py-2 pr-4 text-right font-medium">Clicks</th>
                 <th class="py-2 font-medium"><span class="sr-only">Actions</span></th>
             </tr>
         </thead>
@@ -49,6 +51,7 @@
                     <td class="py-2 pr-4 whitespace-nowrap">
                         <span class="rounded-full px-2 py-0.5 text-xs font-semibold @BadgeClass(entry.Status)">@Label(entry.Status)</span>
                     </td>
+                    <td class="py-2 pr-4 text-right tabular-nums">@(_clicks.GetValueOrDefault(entry.SlotId))</td>
                     <td class="py-2 text-right"><a href="manage/entries/@entry.SlotId" class="text-advent-700 underline">Edit</a></td>
                 </tr>
             }
@@ -63,6 +66,7 @@ else if (_loaded)
 @code {
     private int? _year;
     private List<EntryListItem> _entries = [];
+    private Dictionary<int, int> _clicks = [];
     private bool _loaded;
 
     [SupplyParameterFromQuery]
@@ -72,6 +76,7 @@ else if (_loaded)
     {
         _year = Year ?? await Seasons.GetCurrentYearAsync();
         _entries = _year is { } year ? await Entries.ListAsync(year) : [];
+        _clicks = _year is { } clicksYear ? await EntryStats.CountClicksAsync(clicksYear) : [];
         _loaded = true;
     }
 

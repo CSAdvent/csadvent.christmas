@@ -27,6 +27,8 @@ public sealed class AdventDbContext(DbContextOptions<AdventDbContext> options) :
 
     public DbSet<SentReminder> SentReminders => Set<SentReminder>();
 
+    public DbSet<EntryHit> EntryHits => Set<EntryHit>();
+
     /// <summary>
     /// ASP.NET Core's data protection keys, which protect sign-in cookies and antiforgery tokens. Kept in the database so
     /// they survive container restarts and are shared by every replica.

@@ -8,6 +8,7 @@ using CSAdvent.Web.Contributors;
 using CSAdvent.Web.Data;
 using CSAdvent.Web.Data.Archive;
 using CSAdvent.Web.Email;
+using CSAdvent.Web.Entries;
 using CSAdvent.Web.Manage;
 using CSAdvent.Web.Reminders;
 using CSAdvent.Web.Retention;
@@ -42,6 +43,7 @@ builder.Services.AddScoped<SeasonAdminService>();
 builder.Services.AddScoped<ClaimReviewService>();
 builder.Services.AddScoped<EntryAdminService>();
 builder.Services.AddScoped<MySpotsService>();
+builder.Services.AddScoped<EntryService>();
 builder.AddEmail();
 builder.Services.AddScoped<IClaimNotifier, EmailClaimNotifier>();
 
@@ -100,6 +102,7 @@ app.MapAccounts();
 app.MapEmailPreviews();
 app.MapReminders();
 app.MapBackups();
+app.MapEntries();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 

@@ -1,0 +1,115 @@
+@page "/{Year:int}/day/{Day:int}/{Part:int}"
+@using System.Globalization
+@using CSAdvent.Web.Data
+@using CSAdvent.Web.Entries
+@inject EntryService Entries
+@inject NavigationManager Navigation
+
+@if (_entry is { IsRevealed: true } entry)
+{
+    <PageTitle>@entry.PostTitle · C# Advent @entry.Year</PageTitle>
+    <SocialMeta Title="@(entry.PostTitle!)"
+                Description="@($"By {entry.AuthorName}, for C# Advent {entry.Year}: {entry.Spot.Replace(" · ", ", ")}.")"
+                Type="article" />
+
+    <nav class="mb-6 text-sm font-medium">
+        <a href="@CalendarLink(entry)" class="text-advent-700 hover:underline">← C# Advent @entry.Year</a>
+    </nav>
+
+    <article class="max-w-3xl">
+        <p class="text-sm font-semibold uppercase tracking-wide text-advent-700">@entry.Spot</p>
+        <h1 class="mt-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">@entry.PostTitle</h1>
+        <p class="mt-3 text-lg text-slate-700">
+            by @if (entry.AuthorUrl is { } authorUrl)
+            {
+                <a href="@authorUrl" class="font-medium text-advent-700 underline">@entry.AuthorName</a>
+            }
+            else
+            {
+                <span class="font-medium">@entry.AuthorName</span>
+            }
+        </p>
+
+        <a href="@EntryLinks.Go(entry.Year, entry.Day, entry.Part, ClickVia)"
+           class="mt-8 inline-flex items-center gap-2 rounded-xl bg-advent-600 px-6 py-3 text-lg font-semibold text-white shadow hover:bg-advent-700">
+            Read the post
+            <svg class="size-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 13 13 7M8 7h5v5" /></svg>
+        </a>
+
+        @if (entry.Siblings.Count > 0)
+        {
+            <section class="mt-12">
+                <h2 class="text-lg font-semibold text-slate-900">Also on December @entry.Day</h2>
+                <ul class="mt-3 flex flex-col gap-2">
+                    @foreach (var sibling in entry.Siblings)
+                    {
+                        <li>
+                            <a href="@EntryLinks.Page(entry.Year, entry.Day, sibling.Part)" class="font-medium text-advent-700 underline">@sibling.PostTitle</a>
+                            <span class="text-slate-600">by @sibling.AuthorName</span>
+                        </li>
+                    }
+                </ul>
+            </section>
+        }
+
+        <p class="mt-12 text-slate-600">
+            C# Advent: two C# posts a day, December 1 to 25, written by the community.
+            <a href="@CalendarLink(entry)" class="text-advent-700 underline">See the whole calendar</a>
+            or <a href="archive" class="text-advent-700 underline">every past season</a>.
+        </p>
+    </article>
+}
+else if (_entry is { } upcoming)
+{
+    @* Nothing about the post or its author before the reveal (#5). *@
+    <PageTitle>December @upcoming.Day · C# Advent @upcoming.Year</PageTitle>
+    <SocialMeta Title="@($"C# Advent {upcoming.Year}: December {upcoming.Day}")"
+                Description="@($"Revealed at midnight Eastern on December {upcoming.Day}, {upcoming.Year}. Two C# posts a day, December 1 to 25.")" />
+
+    <h1 class="text-3xl font-bold tracking-tight text-slate-900">Coming on December @upcoming.Day</h1>
+    <p class="mt-3 max-w-2xl text-slate-700">
+        This post is revealed at midnight Eastern on December @upcoming.Day, @upcoming.Year.
+        <a href="" class="text-advent-700 underline">See what's on the calendar so far.</a>
+    </p>
+}
+
+@code {
+    private EntryView? _entry;
+
+    [Parameter]
+    public int Year { get; set; }
+
+    [Parameter]
+    public int Day { get; set; }
+
+    [Parameter]
+    public int Part { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? Via { get; set; }
+
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    /// <summary>A click keeps the tag the visit arrived with, so it's credited to the same platform.</summary>
+    private string ClickVia => EntryVia.Normalize(Via) ?? "site";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _entry = await Entries.GetAsync(Year, Day, Part);
+        if (_entry is null)
+        {
+            Navigation.NotFound();
+            return;
+        }
+
+        if (_entry.IsRevealed && HttpContext is { } context && EntryTraffic.IsPerson(context.Request))
+        {
+            await Entries.RecordAsync(_entry.SlotId, EntryHitKind.View, Via);
+        }
+    }
+
+    // A season's calendar is on the home page until it's over, then in the archive.
+    private static string CalendarLink(EntryView entry) =>
+        string.Create(CultureInfo.InvariantCulture, $"{(entry.IsSeasonOver ? $"archive/{entry.Year}" : "")}#december-{entry.Day}");
+}

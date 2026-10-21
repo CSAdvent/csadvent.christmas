@@ -16,7 +16,7 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261021205708_AddBackupOffers";
+    public override string LastMigrationId => "20261021212140_AddEntryHits";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -331,6 +331,46 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                     .HasDatabaseName("ix_contributors_github_user_id");
 
                 b.ToTable("contributors");
+            });
+
+        modelBuilder.Entity("CSAdvent.Web.Data.EntryHit", b =>
+            {
+                var id = b.Property<long>("Id")
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("bigint")
+                    .HasColumnName("id");
+
+                NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(id);
+
+                b.Property<DateTimeOffset>("At")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("at");
+
+                b.Property<string>("Kind")
+                    .IsRequired()
+                    .HasMaxLength(10)
+                    .HasColumnType("character varying(10)")
+                    .HasColumnName("kind");
+
+                b.Property<int>("SlotId")
+                    .HasColumnType("integer")
+                    .HasColumnName("slot_id");
+
+                b.Property<string>("Via")
+                    .HasMaxLength(20)
+                    .HasColumnType("character varying(20)")
+                    .HasColumnName("via");
+
+                b.HasKey("Id")
+                    .HasName("pk_entry_hits");
+
+                b.HasIndex("At")
+                    .HasDatabaseName("ix_entry_hits_at");
+
+                b.HasIndex("SlotId", "Kind")
+                    .HasDatabaseName("ix_entry_hits_slot_id_kind");
+
+                b.ToTable("entry_hits");
             });
 
         modelBuilder.Entity("CSAdvent.Web.Data.OtherAdvent", b =>
@@ -717,6 +757,18 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                     .HasConstraintName("fk_content_block_revisions_contributors_created_by_id");
 
                 b.Navigation("CreatedBy");
+            });
+
+        modelBuilder.Entity("CSAdvent.Web.Data.EntryHit", b =>
+            {
+                b.HasOne("CSAdvent.Web.Data.Slot", "Slot")
+                    .WithMany()
+                    .HasForeignKey("SlotId")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired()
+                    .HasConstraintName("fk_entry_hits_slots_slot_id");
+
+                b.Navigation("Slot");
             });
 
         modelBuilder.Entity("CSAdvent.Web.Data.OtherAdvent", b =>
