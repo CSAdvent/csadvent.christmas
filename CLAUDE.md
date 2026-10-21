@@ -89,6 +89,16 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 - Static SSR renders a page at its first `await`, so create any `EditForm` model before awaiting.
 - Integration tests use `TestBrowser` (`fixture.SignInAsync`, and `browser.PostFormAsync(path, formName, fields)`, which also posts the page's hidden inputs unless the fields override them) and `TestSeasons.EnsureAsync` (each test class uses its own years, all after 2089).
 
+## Hosting
+
+- `AppHost.cs` models production: `AddAzureContainerAppEnvironment("aca")`, `AddAzurePostgresFlexibleServer("postgres")` with `RunAsContainer` (locally it's the same `postgres` container, password parameter and data volume as before), Application Insights, and the web app on Container Apps (1–3 replicas). MailPit and the dev tools only exist locally.
+- **Database authentication is a password, in publish mode only**, through `pg-admin-username` and `pg-admin-password`. Entra ID would break the migration bundle, and applying it locally would change the container's user and lock out the existing volume. The connection strings live in an Aspire-created Key Vault.
+- **PostgreSQL 18 in Azure** needs `ResourceVersion = "2025-08-01"`, because the provisioning default only allows up to 16.
+- **Migrations** run as a manually triggered Container Apps job (`migrations`) built from the EF bundle on `mcr.microsoft.com/dotnet/aspnet:11.0`. `aspire deploy` never starts it: run `az containerapp job start -n migrations -g <rg>` after every deploy. The bundle runs `UseSeeding` too, so a new database gets the history.
+- Data protection keys are in Postgres (`data_protection_keys`), so cookies and antiforgery tokens survive restarts and work across replicas.
+- `aspire publish --output-path <dir>` generates the Bicep offline. Check it (and test the bundle image against a throwaway Postgres) after changing the app model.
+- Not modeled yet: the custom domain and managed certificate (two passes with `ConfigureCustomDomain`, part of the DNS switch, #17), and deploying from CI.
+
 ## Data Model
 
 Entities and their EF configuration live together in `src/CSAdvent.Web/Data` (one file each).
