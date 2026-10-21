@@ -19,6 +19,8 @@ public sealed class ReminderEmailsTests
 
         Assert.Equal((subject, heading), (email.Subject, email.Heading));
         Assert.Contains("December 10, 2026 (post 2), and we don't have the link to your post yet.", Text(email));
+        Assert.Equal("https://csadvent.christmas/my-spots", Assert.Single(email.Body.OfType<ButtonBlock>()).Url);
+        Assert.DoesNotContain("reply", Text(email), StringComparison.OrdinalIgnoreCase);
         Assert.Null(email.UnsubscribeUrl);
     }
 
