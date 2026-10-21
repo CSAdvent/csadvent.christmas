@@ -1,0 +1,21 @@
+@* Text, links and line breaks inside a paragraph or list item. Styles are inline because email clients drop stylesheets. *@
+@foreach (var span in Spans)
+{
+    switch (span)
+    {
+        case TextSpan text:
+            @text.Text
+            break;
+        case LinkSpan link:
+            <a href="@link.Url" style="color:#164383;text-decoration:underline;">@link.Text</a>
+            break;
+        case BreakSpan:
+            <br />
+            break;
+    }
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyList<EmailSpan> Spans { get; set; } = [];
+}

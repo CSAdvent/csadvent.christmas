@@ -67,11 +67,15 @@ if (isPublish)
 {
     // Telemetry goes to Application Insights in production. Never added locally, where it would provision Azure resources.
     web.WithReference(builder.AddAzureApplicationInsights("appinsights"));
+
+    // Email goes through Azure Communication Services, set up by hand because its sending domain is verified in DNS (see
+    // the README). `aspire deploy` asks for the resource's connection string.
+    web.WithReference(builder.AddConnectionString("email"));
 }
 else
 {
-    // Catches every email sent in development, so nothing reaches real people.
-    web.WithReference(builder.AddMailPit("mailpit"));
+    // Catches every email sent in development and in the tests, so nothing reaches real people.
+    web.WithReference(builder.AddMailPit("email"));
 }
 
 // GitHub sign-in. Locally it's optional, because dev sign-in works without it; in production both values are required.

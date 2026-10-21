@@ -5,6 +5,7 @@ using CSAdvent.Web.Components;
 using CSAdvent.Web.Content;
 using CSAdvent.Web.Data;
 using CSAdvent.Web.Data.Archive;
+using CSAdvent.Web.Email;
 using CSAdvent.Web.Manage;
 using CSAdvent.Web.Retention;
 using Microsoft.AspNetCore.DataProtection;
@@ -37,7 +38,8 @@ builder.Services.AddScoped<ClaimService>();
 builder.Services.AddScoped<SeasonAdminService>();
 builder.Services.AddScoped<ClaimReviewService>();
 builder.Services.AddScoped<EntryAdminService>();
-builder.Services.AddSingleton<IClaimNotifier, LoggingClaimNotifier>();
+builder.AddEmail();
+builder.Services.AddScoped<IClaimNotifier, EmailClaimNotifier>();
 
 // Deletes each season's contact details on February 1 after it, as the privacy page promises.
 builder.Services.AddScoped<ContactRetention>();
@@ -76,6 +78,7 @@ app.UseAntiforgery();
 
 app.MapStaticAssets();
 app.MapAccounts();
+app.MapEmailPreviews();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
