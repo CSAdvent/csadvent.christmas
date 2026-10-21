@@ -1,5 +1,6 @@
 @page "/{Year:int}/day/{Day:int}/{Part:int}"
 @using System.Globalization
+@using CSAdvent.Web.Cards
 @using CSAdvent.Web.Data
 @using CSAdvent.Web.Entries
 @inject EntryService Entries
@@ -10,7 +11,9 @@
     <PageTitle>@entry.PostTitle · C# Advent @entry.Year</PageTitle>
     <SocialMeta Title="@(entry.PostTitle!)"
                 Description="@($"By {entry.AuthorName}, for C# Advent {entry.Year}: {entry.Spot.Replace(" · ", ", ")}.")"
-                Type="article" />
+                Type="article"
+                Image="@CardLinks.Entry(CardEndpoints.CardFor(entry))"
+                ImageAlt="@($"{entry.PostTitle} by {entry.AuthorName}, C# Advent {entry.Year}, December {entry.Day}")" />
 
     <nav class="mb-6 text-sm font-medium">
         <a href="@CalendarLink(entry)" class="text-advent-700 hover:underline">← C# Advent @entry.Year</a>

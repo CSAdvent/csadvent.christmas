@@ -5,7 +5,10 @@
 @if (_calendar is not null)
 {
     <PageTitle>C# Advent @_calendar.Year · Archive</PageTitle>
-    <SocialMeta Title="@($"C# Advent {_calendar.Year}")" Description="@($"{_calendar.PostCount} C# posts from December 1 to 25, {_calendar.Year}, written by the community.")" />
+    <SocialMeta Title="@($"C# Advent {_calendar.Year}")"
+                Description="@($"{_calendar.PostCount} C# posts from December 1 to 25, {_calendar.Year}, written by the community.")"
+                Image="@CSAdvent.Web.Cards.CardLinks.Season(_calendar.Year, _calendar.PostCount)"
+                ImageAlt="@($"C# Advent {_calendar.Year}: {_calendar.PostCount} C# posts")" />
 
     <nav aria-label="Seasons" class="mb-6 flex flex-wrap items-center justify-between gap-3 text-sm font-medium">
         <a href="archive" class="text-advent-700 hover:underline">All seasons</a>

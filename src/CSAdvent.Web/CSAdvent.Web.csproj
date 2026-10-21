@@ -13,6 +13,8 @@
     <PackageReference Include="Markdig" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -31,6 +33,12 @@
     <!-- The 2017-2025 history, seeded after migrations by ArchiveSeeder. Embedded, so the migration bundle carries it. -->
     <Content Remove="Data\Archive\*.json" />
     <EmbeddedResource Include="Data\Archive\*.json" LogicalName="archive/%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Fonts (Inter, SIL Open Font License; see Inter-LICENSE.txt), background and logo for the share cards (CardRenderer). -->
+    <Content Remove="Cards\Assets\**" />
+    <EmbeddedResource Include="Cards\Assets\*.ttf;Cards\Assets\*.jpg;Cards\Assets\*.png" LogicalName="cards/%(Filename)%(Extension)" />
   </ItemGroup>
 
   <Import Project="..\..\build\Tailwind.targets" />

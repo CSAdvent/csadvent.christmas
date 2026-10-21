@@ -32,7 +32,7 @@ public sealed class EntryPageTests(AppHostFixture fixture)
         Assert.Contains($"<meta property=\"og:url\" content=\"{url}\"", page);
         Assert.Contains($"<meta property=\"og:title\" content=\"{Encode(slot.PostTitle!)}\"", page);
         Assert.Contains("<meta property=\"og:type\" content=\"article\"", page);
-        Assert.Contains("<meta property=\"og:image\" content=\"https://localhost:7092/images/social-card.jpg\"", page);
+        Assert.Contains($"<meta property=\"og:image\" content=\"https://localhost:7092/cards/2020/{slot.Day}/{slot.Part}.jpg?v=", page);
         Assert.Contains("<meta property=\"og:image:width\" content=\"1200\"", page);
         Assert.Contains("<meta name=\"twitter:card\" content=\"summary_large_image\"", page);
     }
@@ -79,10 +79,12 @@ public sealed class EntryPageTests(AppHostFixture fixture)
         var page = await client.GetStringAsync("/2113/day/4/1", CancellationToken);
 
         Assert.Contains("Coming on December 4", page);
+        Assert.Contains("<meta property=\"og:image\" content=\"https://localhost:7092/images/social-card.jpg\"", page);
         Assert.DoesNotContain("Secret Sam", page);
         Assert.DoesNotContain("secret 2113", page);
         Assert.DoesNotContain("example.com/secret", page);
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/go/2113/4/1", CancellationToken)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/cards/2113/4/1.jpg", CancellationToken)).StatusCode);
     }
 
     [Fact]
@@ -114,7 +116,25 @@ public sealed class EntryPageTests(AppHostFixture fixture)
 
         var home = await client.GetStringAsync("/", CancellationToken);
         Assert.Contains("<meta property=\"og:url\" content=\"https://localhost:7092\"", home);
-        Assert.Contains("<meta property=\"og:image\" content=\"https://localhost:7092/images/social-card.jpg\"", home);
+        Assert.Contains("<meta property=\"og:image\" content=\"https://localhost:7092/cards/", home);
+    }
+
+    [Fact]
+    public async Task EntryAndSeasonCardsAreGeneratedAndCached()
+    {
+        var (slot, _) = await FindDayWithTwoPostsAsync(2023);
+        using var client = fixture.CreateWebClient();
+
+        foreach (var path in new[] { $"/cards/2023/{slot.Day}/{slot.Part}.jpg", "/cards/2023.jpg" })
+        {
+            var card = await client.GetAsync(path, CancellationToken);
+            Assert.Equal(HttpStatusCode.OK, card.StatusCode);
+            Assert.Equal("image/jpeg", card.Content.Headers.ContentType!.MediaType);
+            Assert.Equal("public, max-age=86400", card.Headers.CacheControl!.ToString());
+            Assert.True((await card.Content.ReadAsByteArrayAsync(CancellationToken)).Length < 1_000_000);
+        }
+
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/cards/1999.jpg", CancellationToken)).StatusCode);
     }
 
     private HttpClient CreateBrowser(string userAgent)
