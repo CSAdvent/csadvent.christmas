@@ -19,21 +19,47 @@ internal static partial class TestBrowser
         return browser;
     }
 
-    /// <summary>Loads the page for its antiforgery token, then posts the named form with the given fields.</summary>
+    /// <summary>
+    /// Loads the page, then posts the named form with the given fields, the antiforgery token, and the page's other hidden
+    /// inputs (such as a row version) unless the fields set them. Hidden inputs of other forms are posted too, which is
+    /// harmless: Blazor only binds the fields of the form being submitted.
+    /// </summary>
     public static async Task<HttpResponseMessage> PostFormAsync(this HttpClient browser, string path, string formName, Dictionary<string, string> fields)
     {
         var page = await browser.GetStringAsync(path, CancellationToken);
-        fields["__RequestVerificationToken"] = AntiforgeryToken().Match(page).Groups["value"].Value;
-        fields["_handler"] = formName;
 
+        foreach (Match input in HiddenInput().Matches(page))
+        {
+            var name = NameAttribute().Match(input.Value).Groups["name"].Value;
+            if (name.Length > 0 && !fields.ContainsKey(name))
+            {
+                fields[name] = System.Net.WebUtility.HtmlDecode(ValueAttribute().Match(input.Value).Groups["value"].Value);
+            }
+        }
+
+        fields["_handler"] = formName;
         return await browser.PostAsync(path, new FormUrlEncodedContent(fields), CancellationToken);
     }
+
+    /// <summary>The value of a hidden input on a page.</summary>
+    public static string HiddenValue(string page, string name) =>
+        HiddenInput().Matches(page)
+            .Select(input => input.Value)
+            .Where(input => NameAttribute().Match(input).Groups["name"].Value == name)
+            .Select(input => ValueAttribute().Match(input).Groups["value"].Value)
+            .Single();
 
     public static string PathOf(Uri location) =>
         location.IsAbsoluteUri ? location.PathAndQuery : "/" + location.OriginalString.TrimStart('/');
 
-    [GeneratedRegex("<input[^>]*name=\"__RequestVerificationToken\"[^>]*value=\"(?<value>[^\"]+)\"")]
-    private static partial Regex AntiforgeryToken();
+    [GeneratedRegex("<input[^>]*type=\"hidden\"[^>]*>")]
+    private static partial Regex HiddenInput();
+
+    [GeneratedRegex("name=\"(?<name>[^\"]*)\"")]
+    private static partial Regex NameAttribute();
+
+    [GeneratedRegex("value=\"(?<value>[^\"]*)\"")]
+    private static partial Regex ValueAttribute();
 }
 
 /// <summary>

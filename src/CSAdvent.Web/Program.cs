@@ -29,6 +29,7 @@ builder.Services.AddScoped<HomeService>();
 builder.Services.AddScoped<ClaimService>();
 builder.Services.AddScoped<SeasonAdminService>();
 builder.Services.AddScoped<ClaimReviewService>();
+builder.Services.AddScoped<EntryAdminService>();
 builder.Services.AddSingleton<IClaimNotifier, LoggingClaimNotifier>();
 
 builder.AddAccounts();

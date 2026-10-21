@@ -1,0 +1,95 @@
+@page "/manage/entries"
+@inject SeasonAdminService Seasons
+@inject EntryAdminService Entries
+
+<PageTitle>Entries · Manage · C# Advent</PageTitle>
+
+<ManageNav />
+
+<h1 class="text-3xl font-bold tracking-tight text-slate-900">Entries @(_year is { } year ? $"for {year}" : "")</h1>
+
+@if (_entries.Count > 0)
+{
+    <p class="mt-2 text-slate-600">
+        @Count(EntryStatus.Ready) ready ·
+        @(_entries.Count(e => e.Status is EntryStatus.ClaimedWithoutPost or EntryStatus.TitleOnly or EntryStatus.UrlOnly)) claimed without a complete post ·
+        @Count(EntryStatus.Open) open
+    </p>
+
+    <table class="mt-6 w-full text-left text-sm">
+        <thead class="border-b border-slate-200 text-slate-500">
+            <tr>
+                <th class="py-2 pr-4 font-medium">Spot</th>
+                <th class="py-2 pr-4 font-medium">Author</th>
+                <th class="py-2 pr-4 font-medium">Post</th>
+                <th class="py-2 pr-4 font-medium">Status</th>
+                <th class="py-2 font-medium"><span class="sr-only">Actions</span></th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+            @foreach (var entry in _entries)
+            {
+                <tr>
+                    <td class="py-2 pr-4 whitespace-nowrap">December @entry.Day · Post @entry.Part</td>
+                    <td class="py-2 pr-4">
+                        @if (entry.AuthorName is null)
+                        {
+                            <span class="text-slate-400">Open</span>
+                        }
+                        else
+                        {
+                            <span class="font-medium text-slate-900">@entry.AuthorName</span>
+                            @if (!entry.HasContact)
+                            {
+                                <span class="ml-1 text-xs text-amber-700">(no email)</span>
+                            }
+                        }
+                    </td>
+                    <td class="py-2 pr-4">@(entry.PostTitle ?? entry.PostUrl ?? "")</td>
+                    <td class="py-2 pr-4 whitespace-nowrap">
+                        <span class="rounded-full px-2 py-0.5 text-xs font-semibold @BadgeClass(entry.Status)">@Label(entry.Status)</span>
+                    </td>
+                    <td class="py-2 text-right"><a href="manage/entries/@entry.SlotId" class="text-advent-700 underline">Edit</a></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else if (_loaded)
+{
+    <p class="mt-4 text-slate-600">There's no season yet. <a href="manage/seasons" class="text-advent-700 underline">Create one</a> first.</p>
+}
+
+@code {
+    private int? _year;
+    private List<EntryListItem> _entries = [];
+    private bool _loaded;
+
+    [SupplyParameterFromQuery]
+    public int? Year { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _year = Year ?? await Seasons.GetCurrentYearAsync();
+        _entries = _year is { } year ? await Entries.ListAsync(year) : [];
+        _loaded = true;
+    }
+
+    private int Count(EntryStatus status) => _entries.Count(e => e.Status == status);
+
+    private static string Label(EntryStatus status) => status switch
+    {
+        EntryStatus.Open => "Open",
+        EntryStatus.ClaimedWithoutPost => "No post yet",
+        EntryStatus.TitleOnly => "Title only",
+        EntryStatus.UrlOnly => "URL only",
+        _ => "Ready",
+    };
+
+    private static string BadgeClass(EntryStatus status) => status switch
+    {
+        EntryStatus.Open => "bg-slate-100 text-slate-600",
+        EntryStatus.Ready => "bg-green-100 text-green-800",
+        _ => "bg-amber-100 text-amber-800",
+    };
+}

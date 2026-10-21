@@ -1,0 +1,146 @@
+@page "/manage/entries/{SlotId:int}"
+@inject EntryAdminService Entries
+@inject NavigationManager Navigation
+
+@if (_entry is { } entry)
+{
+    <PageTitle>December @entry.Day, post @entry.Part · Manage · C# Advent</PageTitle>
+
+    <ManageNav />
+
+    <nav class="mb-4 text-sm font-medium"><a href="manage/entries?year=@entry.Year" class="text-advent-700 hover:underline">← All entries</a></nav>
+
+    @if (Done is "saved" or "released")
+    {
+        <p class="mb-6 rounded-xl bg-green-50 p-4 font-medium text-green-800 ring-1 ring-green-200" role="status">Spot @Done.</p>
+    }
+
+    @if (_error is not null)
+    {
+        <p class="mb-6 rounded-xl bg-red-50 p-4 font-medium text-red-800 ring-1 ring-red-200" role="alert">@_error</p>
+    }
+
+    <h1 class="text-3xl font-bold tracking-tight text-slate-900">December @entry.Day, @entry.Year@(entry.SlotsPerDay > 1 ? $" · Post {entry.Part}" : "")</h1>
+    <p class="mt-2 text-slate-600">
+        @(entry.ContributorLogin is { } login ? $"Claimed through the site by GitHub user {login}." : "Not linked to a contributor's GitHub account.")
+        @(entry.IsRevealed ? "This day has been revealed, so changes show on the calendar right away." : "")
+    </p>
+
+    <EditForm Model="Form" FormName="entry" OnValidSubmit="SaveAsync" class="mt-8 flex max-w-2xl flex-col gap-5">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="rounded-xl bg-red-50 p-4 text-sm ring-1 ring-red-200" />
+        <input type="hidden" name="Form.Version" value="@Form!.Version" />
+
+        <fieldset class="flex flex-col gap-4">
+            <legend class="font-semibold text-slate-900">Author</legend>
+            <label class="flex flex-col text-sm font-medium text-slate-700">
+                Name <span class="font-normal text-slate-500">(shown on the calendar; leave empty for an open spot)</span>
+                <InputText @bind-Value="Form!.AuthorName" maxlength="100" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+            </label>
+            <label class="flex flex-col text-sm font-medium text-slate-700">
+                Link for their name
+                <InputText @bind-Value="Form!.AuthorUrl" maxlength="500" placeholder="https://" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+            </label>
+            <label class="flex flex-col text-sm font-medium text-slate-700">
+                Email <span class="font-normal text-slate-500">(private; for reminders)</span>
+                <InputText @bind-Value="Form!.ContactEmail" maxlength="254" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+            </label>
+        </fieldset>
+
+        <fieldset class="flex flex-col gap-4">
+            <legend class="font-semibold text-slate-900">Post</legend>
+            <label class="flex flex-col text-sm font-medium text-slate-700">
+                Title
+                <InputText @bind-Value="Form!.PostTitle" maxlength="300" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+            </label>
+            <label class="flex flex-col text-sm font-medium text-slate-700">
+                URL
+                <InputText @bind-Value="Form!.PostUrl" maxlength="500" placeholder="https://" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+            </label>
+        </fieldset>
+
+        <div>
+            <button type="submit" class="rounded-lg bg-advent-600 px-5 py-2.5 font-semibold text-white hover:bg-advent-700">Save</button>
+        </div>
+    </EditForm>
+
+    @* Shown for claimed spots, and rendered (hidden) after a release post so a repeat reaches its handler. *@
+    @if (_claimed || _releasePosted)
+    {
+        <section hidden="@(!_claimed)" class="mt-12 max-w-2xl rounded-xl bg-red-50 p-5 ring-1 ring-red-200">
+            <h2 class="font-semibold text-red-900">Release this spot</h2>
+            <p class="mt-1 text-sm text-red-800">
+                Clears the author, their link and email, and the post, so the spot is open again. Use it when an author drops out.
+            </p>
+            <EditForm Model="Release" FormName="release" OnValidSubmit="ReleaseAsync" class="mt-4 flex flex-wrap items-center gap-4">
+                <DataAnnotationsValidator />
+                <input type="hidden" name="Release.Version" value="@entry.Version" />
+                <label class="flex items-center gap-2 text-sm text-red-900">
+                    <InputCheckbox @bind-Value="Release!.Confirm" class="size-4" />
+                    Yes, release it
+                </label>
+                <button type="submit" class="rounded-lg bg-red-700 px-4 py-2 font-semibold text-white hover:bg-red-800">Release spot</button>
+                <ValidationMessage For="() => Release!.Confirm" class="w-full text-sm" />
+            </EditForm>
+        </section>
+    }
+}
+
+@code {
+    private EntryDetails? _entry;
+    private bool _claimed;
+    private bool _releasePosted;
+    private string? _error;
+
+    [Parameter]
+    public int SlotId { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? Done { get; set; }
+
+    [SupplyParameterFromForm(FormName = "entry")]
+    private EntryForm? Form { get; set; }
+
+    [SupplyParameterFromForm(FormName = "release")]
+    private ReleaseForm? Release { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _releasePosted = Release is not null;
+        Release ??= new ReleaseForm();
+
+        _entry = await Entries.GetAsync(SlotId);
+        if (_entry is null)
+        {
+            Navigation.NotFound();
+            return;
+        }
+
+        _claimed = _entry.Values.AuthorName is not null;
+        Form ??= _entry.Values;
+    }
+
+    private async Task SaveAsync() => await HandleAsync(await Entries.SaveAsync(SlotId, Form!));
+
+    private async Task ReleaseAsync() => await HandleAsync(await Entries.ReleaseAsync(SlotId, Release!.Version));
+
+    private async Task HandleAsync(EntrySaveOutcome outcome)
+    {
+        if (outcome is EntrySaveOutcome.Saved or EntrySaveOutcome.Released)
+        {
+            Navigation.NavigateTo($"manage/entries/{SlotId}?done={outcome.ToString().ToLowerInvariant()}");
+            return;
+        }
+
+        // Show the current version so the organizer can make their change again on top of it.
+        _error = outcome is EntrySaveOutcome.ChangedByOthers
+            ? "Someone changed this spot since you opened it. Here's the current version; make your change again."
+            : "This spot no longer exists.";
+        _entry = await Entries.GetAsync(SlotId);
+        if (_entry is not null)
+        {
+            _claimed = _entry.Values.AuthorName is not null;
+            Form = _entry.Values;
+        }
+    }
+}

@@ -84,9 +84,10 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 - Everything under `Components/Pages/Manage` requires the `Admin` policy through that folder's `_Imports.razor`, so new organizer pages are protected automatically.
 - **Seasons** (`/manage/seasons`, `SeasonAdminService`): create a season (every spot open) and schedule its sign-ups. Times are entered in the reveal time zone (`AdventSchedule.FromLocalTime`) and stored in UTC.
 - **Requests** (`/manage/requests`, `ClaimReviewService`): oldest first. Approving copies a request into a spot (author, link, contributor, contact email) and can target any open spot in the season. It's idempotent: an already-decided request or a claimed spot is reported, never applied twice (`xmin` guards concurrent approvals). Archive sets a request aside.
+- **Entries** (`/manage/entries`, `EntryAdminService`): every spot in a season with its status (Open, No post yet, Title only, URL only, Ready). An organizer can edit any spot's author, link, contact email and post, put a substitute into an open spot, or release a spot (cleared completely, with a confirmation checkbox). Edits post the spot's `xmin` version back, so a stale edit is refused instead of overwriting.
 - Forms that can disappear after a post (approve/archive) are still rendered, hidden, when their form was posted. Otherwise Blazor answers a repeated post with a 400 instead of reaching the handler.
 - Static SSR renders a page at its first `await`, so create any `EditForm` model before awaiting.
-- Integration tests use `TestBrowser` (`fixture.SignInAsync`, `browser.PostFormAsync(path, formName, fields)`) and `TestSeasons.EnsureAsync` (each test class uses its own years, all after 2089).
+- Integration tests use `TestBrowser` (`fixture.SignInAsync`, and `browser.PostFormAsync(path, formName, fields)`, which also posts the page's hidden inputs unless the fields override them) and `TestSeasons.EnsureAsync` (each test class uses its own years, all after 2089).
 
 ## Data Model
 
