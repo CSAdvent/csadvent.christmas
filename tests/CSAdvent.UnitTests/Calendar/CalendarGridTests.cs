@@ -57,6 +57,26 @@ public sealed class CalendarGridTests : BunitContext
     }
 
     [Fact]
+    public void LabelsEachSpotSoYouKnowWhichOneYouAreClaiming()
+    {
+        var day11 = Render<CalendarGrid>(p => p.Add(c => c.Calendar, CalendarFixtures.Calendar(ClaimsOpened))).Find("#december-11");
+
+        Assert.Equal(["Post 1", "Post 2"], day11.QuerySelectorAll("li li > p:first-child").Select(p => p.TextContent));
+        Assert.Equal("Claim December 11, post 2", day11.QuerySelector("a[href^='claim/']")!.GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void DoesNotLabelDaysWithASinglePost()
+    {
+        var season = Web.Data.Season.Create(2017, slotsPerDay: 1, CalendarFixtures.December10);
+        var calendar = Web.Calendar.SeasonCalendar.From(season, CalendarFixtures.Schedule(CalendarFixtures.December10));
+
+        var grid = Render<CalendarGrid>(p => p.Add(c => c.Calendar, calendar));
+
+        Assert.DoesNotContain("Post 1", grid.Markup);
+    }
+
+    [Fact]
     public void HighlightsToday()
     {
         var grid = Render<CalendarGrid>(p => p.Add(c => c.Calendar, CalendarFixtures.Calendar(ClaimsOpened)));
