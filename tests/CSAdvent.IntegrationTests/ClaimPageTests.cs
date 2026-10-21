@@ -120,6 +120,34 @@ public sealed partial class ClaimPageTests(AppHostFixture fixture)
     }
 
     [Fact]
+    public async Task SubmittingEmailsTheContributorAndTheOrganizers()
+    {
+        await EnsureSeasonsAsync();
+        using var browser = await SignInAsync("claim-grace", 6009);
+
+        await PostClaimAsync(browser, "/claim/2097/20/2", new()
+        {
+            ["Form.DisplayName"] = "Grace Hopper",
+            ["Form.AgreeToTiming"] = "true",
+            ["Form.AgreeToTerms"] = "true",
+        });
+
+        var received = await fixture.WaitForEmailAsync("claim-grace@example.com", "We received your C# Advent request for December 20");
+        Assert.Equal(("C# Advent", "donotreply@mail.csadvent.christmas"), (received.From.Name, received.From.Address));
+        Assert.Equal("hello@csadvent.christmas", Assert.Single(received.ReplyTo).Address);
+        Assert.Contains("Thanks, Grace Hopper!", received.Html);
+        Assert.Contains("/images/csadvent-logo.png", received.Html);
+        Assert.Contains("December 20, 2097 (post 2)", received.Text);
+
+        // Replying to the organizers' copy reaches the contributor.
+        var notice = await fixture.WaitForEmailAsync("hello@csadvent.christmas", "New C# Advent request: Grace Hopper for December 20");
+        Assert.Equal("claim-grace@example.com", Assert.Single(notice.ReplyTo).Address);
+        await using var db = await fixture.CreateDbContextAsync();
+        var requestId = await db.ClaimRequests.Where(r => r.Contributor.GithubUserId == 6009).Select(r => r.Id).SingleAsync(CancellationToken);
+        Assert.Contains($"/manage/requests/{requestId}", notice.Html);
+    }
+
+    [Fact]
     public async Task RequestingTheSameSpotTwiceIsRefused()
     {
         await EnsureSeasonsAsync();

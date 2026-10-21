@@ -20,6 +20,8 @@
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="11.0.0-rc.2.26504.105" />
   </ItemGroup>
   <ItemGroup Label="Web">
+    <PackageVersion Include="Azure.Communication.Email" Version="1.1.0" />
+    <PackageVersion Include="MailKit" Version="4.18.1" />
     <PackageVersion Include="Markdig" Version="1.4.2" />
   </ItemGroup>
   <ItemGroup Label="Service defaults">

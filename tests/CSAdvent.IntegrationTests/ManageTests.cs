@@ -91,6 +91,9 @@ public sealed class ManageTests(AppHostFixture fixture)
             Assert.NotNull(request.DecidedAt);
         }
 
+        var approval = await fixture.WaitForEmailAsync("approve-ada@example.com", "You're on the C# Advent calendar: December 3");
+        Assert.Contains("You&#x27;re in, Ada Lovelace!", approval.Html);
+
         // The approve form is gone once the request is decided; posting it again changes nothing.
         var again = await organizer.PostAsync(
             $"/manage/requests/{requestId}",

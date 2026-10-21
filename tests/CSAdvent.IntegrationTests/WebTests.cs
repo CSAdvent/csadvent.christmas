@@ -40,6 +40,26 @@ public sealed class WebTests(AppHostFixture fixture)
     }
 
     [Fact]
+    public async Task TheEmailPreviewsListAndRenderEveryEmail()
+    {
+        using var client = fixture.CreateWebClient();
+
+        var index = await client.GetStringAsync("/dev/emails", TestContext.Current.CancellationToken);
+        Assert.Contains("Request received", index);
+        Assert.Contains("Request approved", index);
+
+        var html = await client.GetStringAsync("/dev/emails/claim-approved", TestContext.Current.CancellationToken);
+        Assert.Contains("You&#x27;re in, Ada Lovelace!", html);
+
+        var text = await client.GetAsync("/dev/emails/claim-approved/text", TestContext.Current.CancellationToken);
+        Assert.Equal("text/plain", text.Content.Headers.ContentType!.MediaType);
+        Assert.StartsWith("You're in, Ada Lovelace!", await text.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+
+        var missing = await client.GetAsync("/dev/emails/no-such-email", TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+    }
+
+    [Fact]
     public async Task UnknownPageReturnsNotFound()
     {
         using var client = fixture.CreateWebClient();

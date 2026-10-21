@@ -76,7 +76,7 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 - `/claim/{year}/{day}/{part}` (`CalendarLinks.Claim`) requires sign-in. `ClaimService.CheckAvailability` decides whether a slot can be requested: claims are open, the day isn't revealed, and nobody has claimed it. It's checked again on submit.
 - A request is stored as `Pending` with the contributor's **verified GitHub email** (there's no typed-in email). Requests don't reserve the slot; the organizer approves one. A duplicate pending request from the same contributor hits the unique index and is reported as already requested.
 - **Social accounts** (Bluesky, Mastodon, LinkedIn, Facebook, Reddit) are optional fields on the claim form. They're saved on `contributors`, prefilled next time, and used to tag people in social posts (#59). `SocialAccounts.TryNormalize` accepts handles or profile URLs and stores one form per platform.
-- New requests go to `IClaimNotifier`. `LoggingClaimNotifier` only logs, without personal details, until email (#20) is in place.
+- New requests and approvals go to `IClaimNotifier` (`EmailClaimNotifier`). It emails the contributor, and for new requests the organizers too, with replies going to the contributor. A failed send is logged without personal details and never blocks the claim.
 - Blazor SSR forms: `[SupplyParameterFromForm(FormName = ...)]` on a nullable model, `Form ??= new()` to tell a GET from a POST, and `@bind-Value="Form!.Field"`. The posted field names are `Form.Field`.
 
 ## Organizer Area
@@ -89,16 +89,26 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 - Static SSR renders a page at its first `await`, so create any `EditForm` model before awaiting.
 - Integration tests use `TestBrowser` (`fixture.SignInAsync`, and `browser.PostFormAsync(path, formName, fields)`, which also posts the page's hidden inputs unless the fields override them) and `TestSeasons.EnsureAsync` (each test class uses its own years, all after 2089).
 
+## Email
+
+- **Branded HTML with a plain-text alternative.** Each email is an `EmailContent` (subject, preview line, heading, blocks: paragraphs, lists, a button, details). `Email/BrandedEmail.razor` renders the HTML and `EmailText` the text, and `EmailComposer` does both, so they never drift apart. Templates live next to their feature, such as `Claims/ClaimEmails.cs`.
+- **Email HTML isn't web HTML.** Use tables and inline styles only: no Tailwind classes, stylesheets, web fonts or flexbox. Images use stable, non-fingerprinted paths (`images/csadvent-logo.png`, `images/email-header.jpg`), because old emails keep loading them, so don't rename or remove those files.
+- **`/dev/emails`** (Development only) lists every email in `EmailCatalog` with when it's sent and who gets it, and previews each one with sample data. **Add every new email to `EmailCatalog`.**
+- **Transports:** `ConnectionStrings:email` is MailPit over SMTP (MailKit) locally and in the tests, and Azure Communication Services (`Azure.Communication.Email`, connection string) in production. `AddEmail` validates it when the app starts, not when it's built, because EF Core's tools and the migration bundle build the host without it.
+- `Site:BaseUrl` makes links and images absolute. Development points it at `https://localhost:7092`.
+- Integration tests read what was sent from MailPit with `fixture.WaitForEmailAsync(to, subject)`. Match on a subject only your test produces, because every test's organizer emails go to the same address.
+- `HtmlRenderer` resolves scoped services, so `EmailComposer` renders inside its own scope.
+
 ## Privacy
 
 - `/privacy` and `/terms` are Razor pages. The contact address is `Site:ContactEmail` (`SiteOptions`), set to `hello@csadvent.christmas` in `appsettings.json`. It's required and validated on start, so the app won't start without it.
 - **Retention:** `ContactRetention` deletes a season's contact details at `AdventSchedule.GetContactDeletionTime` (midnight in the reveal time zone on February 1 after the season): `slot_contacts`, `claim_requests` and `substitutes` for that season, plus every contributor email that hasn't been verified again since. Slots, contributors' GitHub logins and social accounts stay.
 - `ContactRetentionWorker` runs it on start and then hourly. The AppHost turns it off in the Testing environment (`Retention:DeleteInBackground`), because `RetentionTests` run it with a fake clock and the real-time run would race them.
-- **Keep the privacy page true.** Anything that collects or shares something new (the email provider in #20, analytics in #38, click tracking in #58, the mailing list in #49) updates `/privacy` and its "Last updated" date in the same PR. New personal data goes in the private tables and into `ContactRetention`.
+- **Keep the privacy page true.** Anything that collects or shares something new (analytics in #38, click tracking in #58, the mailing list in #49) updates `/privacy` and its "Last updated" date in the same PR. New personal data goes in the private tables and into `ContactRetention`.
 
 ## Hosting
 
-- `AppHost.cs` models production: `AddAzureContainerAppEnvironment("aca")`, `AddAzurePostgresFlexibleServer("postgres")` with `RunAsContainer` (locally it's the same `postgres` container, password parameter and data volume as before), Application Insights, and the web app on Container Apps (1–3 replicas). MailPit and the dev tools only exist locally.
+- `AppHost.cs` models production: `AddAzureContainerAppEnvironment("aca")`, `AddAzurePostgresFlexibleServer("postgres")` with `RunAsContainer` (locally it's the same `postgres` container, password parameter and data volume as before), Application Insights, and the web app on Container Apps (1–3 replicas). MailPit and the dev tools only exist locally. In production the `email` resource is a connection-string parameter for Azure Communication Services, which is set up by hand (README) because its domain is verified in DNS.
 - **Database authentication is a password, in publish mode only**, through `pg-admin-username` and `pg-admin-password`. Entra ID would break the migration bundle, and applying it locally would change the container's user and lock out the existing volume. The connection strings live in an Aspire-created Key Vault.
 - **PostgreSQL 18 in Azure** needs `ResourceVersion = "2025-08-01"`, because the provisioning default only allows up to 16.
 - **Migrations** run as a manually triggered Container Apps job (`migrations`) built from the EF bundle on `mcr.microsoft.com/dotnet/aspnet:11.0`. `aspire deploy` never starts it: run `az containerapp job start -n migrations -g <rg>` after every deploy. The bundle runs `UseSeeding` too, so a new database gets the history.
