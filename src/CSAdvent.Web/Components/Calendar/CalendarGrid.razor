@@ -24,7 +24,7 @@
                         }
                         @if (entry.HasPost)
                         {
-                            <a href="@entry.PostUrl" class="font-medium text-slate-900 hover:text-advent-700 hover:underline">@entry.PostTitle</a>
+                            <a href="@entry.PostUrl" class="font-medium text-advent-700 underline decoration-advent-200 decoration-1 underline-offset-2 hover:text-advent-800 hover:decoration-advent-700">@TitleStart(entry.PostTitle)<span class="whitespace-nowrap">@TitleEnd(entry.PostTitle)<svg class="ml-1 inline size-3" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 13 13 7M8 7h5v5" /></svg></span></a>
                             <p class="mt-1 text-sm text-slate-500">
                                 by <Author Entry="entry" />
                             </p>
@@ -62,4 +62,9 @@
 @code {
     [Parameter, EditorRequired]
     public required SeasonCalendar Calendar { get; set; }
+
+    // The title's last word is rendered with the external-link arrow in a no-wrap span, so the arrow never sits on a line alone.
+    private static string TitleStart(string? title) => title?[..(title.LastIndexOf(' ') + 1)] ?? "";
+
+    private static string TitleEnd(string? title) => title?[(title.LastIndexOf(' ') + 1)..] ?? "";
 }

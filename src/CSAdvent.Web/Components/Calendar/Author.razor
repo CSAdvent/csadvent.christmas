@@ -1,7 +1,7 @@
 @* An entry's author, linked to their own site when they gave one. *@
 @if (Entry.AuthorUrl is not null)
 {
-    <a href="@Entry.AuthorUrl" class="hover:text-advent-700 hover:underline">@Entry.AuthorName</a>
+    <a href="@Entry.AuthorUrl" class="text-slate-700 underline decoration-slate-300 decoration-1 underline-offset-2 hover:text-advent-700 hover:decoration-advent-700">@Entry.AuthorName</a>
 }
 else
 {
