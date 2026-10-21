@@ -36,4 +36,12 @@ public sealed class AdventSchedule
 
     /// <summary>A season is over, and in the archive, once its last day is revealed.</summary>
     public bool IsSeasonOver(int year) => IsRevealed(year, Season.DaysInAdvent);
+
+    /// <summary>Claims are open from the season's <see cref="Season.ClaimsOpenAt"/>; never if it isn't scheduled.</summary>
+    public bool AreClaimsOpen(DateTimeOffset? claimsOpenAt) => claimsOpenAt is { } opensAt && _timeProvider.GetUtcNow() >= opensAt;
+
+    /// <summary>Today's date in the reveal time zone.</summary>
+    public DateOnly Today => DateOnly.FromDateTime(ToLocalTime(_timeProvider.GetUtcNow()).DateTime);
+
+    public DateTimeOffset ToLocalTime(DateTimeOffset moment) => TimeZoneInfo.ConvertTime(moment, TimeZone);
 }

@@ -22,6 +22,7 @@ builder.Services.AddOptions<AdventOptions>()
     .ValidateOnStart();
 builder.Services.AddSingleton<AdventSchedule>();
 builder.Services.AddScoped<ArchiveService>();
+builder.Services.AddScoped<HomeService>();
 
 // Pages render statically on the server by default. Components opt in to interactivity where they need it.
 builder.Services.AddRazorComponents()

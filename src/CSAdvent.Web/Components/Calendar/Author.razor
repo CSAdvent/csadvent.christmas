@@ -1,0 +1,14 @@
+@* An entry's author, linked to their own site when they gave one. *@
+@if (Entry.AuthorUrl is not null)
+{
+    <a href="@Entry.AuthorUrl" class="hover:text-advent-700 hover:underline">@Entry.AuthorName</a>
+}
+else
+{
+    @Entry.AuthorName
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public required CalendarEntry Entry { get; set; }
+}

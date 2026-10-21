@@ -1,12 +1,16 @@
-@* One card per day, with that day's entries in part order. Used by the archive, and later the home page. *@
+@* One card per day, with that day's entries in part order. Used by the home page and the archive. *@
 
 <ol class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
     @foreach (var day in Calendar.Days)
     {
-        <li id="december-@day.Day" class="flex flex-col rounded-xl bg-white p-4 shadow-sm ring-1 ring-advent-100">
+        <li id="december-@day.Day" class="flex flex-col rounded-xl bg-white p-4 shadow-sm @(day.IsToday ? "ring-2 ring-advent-500" : "ring-1 ring-advent-100")">
             <h2 class="flex items-center gap-3 font-semibold text-advent-800">
                 <span class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-advent-600 text-lg font-bold text-white" aria-hidden="true">@day.Day</span>
                 December @day.Day
+                @if (day.IsToday)
+                {
+                    <span class="ml-auto rounded-full bg-advent-600 px-2.5 py-0.5 text-xs font-semibold text-white">Today</span>
+                }
             </h2>
 
             <ul class="mt-4 flex flex-1 flex-col gap-4">
@@ -17,24 +21,29 @@
                         {
                             <a href="@entry.PostUrl" class="font-medium text-advent-700 hover:underline">@entry.PostTitle</a>
                             <p class="mt-1 text-sm text-slate-600">
-                                by
-                                @if (entry.AuthorUrl is not null)
-                                {
-                                    <a href="@entry.AuthorUrl" class="hover:text-advent-700 hover:underline">@entry.AuthorName</a>
-                                }
-                                else
-                                {
-                                    @entry.AuthorName
-                                }
+                                by <Author Entry="entry" />
                             </p>
                         }
-                        else if (!entry.IsRevealed)
+                        else if (entry.IsRevealed)
                         {
-                            <p class="text-sm text-slate-500">Revealed on December @day.Day</p>
+                            @* Claiming a slot without publishing doesn't earn a credit, so the author isn't named. *@
+                            <p class="text-sm italic text-slate-400">No post</p>
+                        }
+                        else if (!entry.IsOpen)
+                        {
+                            <p class="text-sm text-slate-700">
+                                <span aria-hidden="true">🎁</span> Claimed by <Author Entry="entry" />
+                            </p>
+                        }
+                        else if (Calendar.AreClaimsOpen)
+                        {
+                            <a href="@CalendarLinks.Claim(Calendar.Year, day.Day, entry.Part)" class="inline-flex items-center gap-1 rounded-lg bg-advent-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-advent-700">
+                                Claim this spot
+                            </a>
                         }
                         else
                         {
-                            <p class="text-sm italic text-slate-400">No post</p>
+                            <p class="text-sm text-slate-500">Open</p>
                         }
                     </li>
                 }

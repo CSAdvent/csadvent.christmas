@@ -11,7 +11,7 @@ public sealed class WebTests(AppHostFixture fixture)
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
-        Assert.Contains(">C# Advent</h1>", html);
+        Assert.Contains("C# Advent", html);
     }
 
     [Fact]

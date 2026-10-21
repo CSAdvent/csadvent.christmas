@@ -59,7 +59,9 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 - Tailwind only scans `src/CSAdvent.Web/Components` (`@source` in `Styles/app.css`). Write class names out in full in the Razor markup, because classes assembled from strings at runtime are never generated.
 - Brand colors are the `advent-*` scale in `@theme`: `advent-600` (`#1a509d`) is the logo blue and `advent-400` (`#4e88c5`) the snowflake. Don't put `advent-400` behind body text, because its contrast on white is too low.
 - Photos live in `wwwroot/images` as WebP with a JPEG fallback, through the `bg-advent-candles` and `bg-advent-snowflakes` utilities.
-- Pages render statically on the server. `CalendarGrid` renders a season's days for the archive (and later the home page). `CalendarEntry` never carries a post's title or link before its reveal.
+- Pages render statically on the server. `CalendarGrid` renders a season's days for the home page and the archive. `CalendarEntry` never carries a post's title or link before its reveal.
+- **Home page** (`HomeService`): the current season is the **earliest season that isn't over**, so creating next year's season early never replaces this year's. With no current season it's off-season, and the latest season is shown with a thank-you.
+- Component tests use **bUnit** (`BunitContext`) in `tests/CSAdvent.UnitTests`. `CalendarFixtures` builds a season as seen on a given date with a fake clock.
 
 ## Data Model
 
