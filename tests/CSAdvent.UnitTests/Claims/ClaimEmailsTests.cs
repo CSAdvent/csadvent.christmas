@@ -50,7 +50,9 @@ public sealed class ClaimEmailsTests
         Assert.Contains("December 3, 2026 (post 2) is yours.", text);
         Assert.Contains("Link to csadvent.christmas (https://csadvent.christmas) in your post", text);
         Assert.Contains("Keep it to yourself until December 3", text);
-        Assert.Contains("reply to this email with them", text);
+        Assert.Contains("sign in and add them on your My spots (https://csadvent.christmas/my-spots) page", text);
+        Assert.Equal("https://csadvent.christmas/my-spots", Assert.Single(email.Body.OfType<ButtonBlock>()).Url);
+        Assert.DoesNotContain("reply", text, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("terms (https://csadvent.christmas/terms)", text);
     }
 

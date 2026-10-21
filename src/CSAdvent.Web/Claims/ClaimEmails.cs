@@ -74,10 +74,11 @@ public static class ClaimEmails
                 ["Prepare your post. It can be about anything related to C#, and it should be in English."],
                 ["Link to ", Link(Host(site), Site(site)), " in your post, so your readers can find the rest of the Advent."],
                 [$"Keep it to yourself until December {claim.Day}, then publish it and share it with #csharp and #csadvent."],
-                ["When you have your post's title and URL, reply to this email with them, and we'll add them to the calendar."]),
-            Button("See the calendar", Site(site)),
+                ["When you know your post's title and URL, sign in and add them on your ", Link("My spots", MySpots(site)), " page. That's how they get onto the calendar."]),
+            Button("Add your post details", MySpots(site)),
             Paragraph(
-                "Can't make it after all? Reply and let us know as soon as you can, so someone on the standby list can take your day."),
+                "Can't make it after all? Drop out from your ", Link("My spots", MySpots(site)),
+                " page as soon as you can, and we'll offer your day to our backup posters."),
             Paragraph("The full rules are in our ", Link("terms", $"{Site(site)}/terms"), "."),
             SignOff,
         ],
@@ -89,4 +90,7 @@ public static class ClaimEmails
     private static string Site(SiteOptions site) => site.BaseUrl.TrimEnd('/');
 
     private static string Host(SiteOptions site) => new Uri(site.BaseUrl).Host;
+
+    /// <summary>Where contributors add their post's title and URL, or drop out.</summary>
+    public static string MySpots(SiteOptions site) => $"{Site(site)}/my-spots";
 }
