@@ -37,6 +37,12 @@ public sealed class AdventSchedule
     /// <summary>A season is over, and in the archive, once its last day is revealed.</summary>
     public bool IsSeasonOver(int year) => IsRevealed(year, Season.DaysInAdvent);
 
+    /// <summary>
+    /// When a season's contact details are deleted: the start of February 1 after it, in the reveal time zone. The privacy
+    /// page promises this date, and <see cref="Retention.ContactRetention"/> keeps the promise.
+    /// </summary>
+    public DateTimeOffset GetContactDeletionTime(int year) => FromLocalTime(new DateTime(year + 1, 2, 1));
+
     /// <summary>Claims are open from the season's <see cref="Season.ClaimsOpenAt"/>; never if it isn't scheduled.</summary>
     public bool AreClaimsOpen(DateTimeOffset? claimsOpenAt) => claimsOpenAt is { } opensAt && _timeProvider.GetUtcNow() >= opensAt;
 

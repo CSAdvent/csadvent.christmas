@@ -119,6 +119,12 @@ Production runs on **Azure Container Apps** with **Azure Database for PostgreSQL
 
 To skip the prompts, set `Azure__SubscriptionId`, `Azure__Location`, `Azure__ResourceGroup` and the `Parameters__*` values as environment variables. `aspire publish` writes the Bicep without deploying, and needs no Azure account.
 
+## 🔏 Privacy
+
+- 📜 **[Privacy](https://csadvent.christmas/privacy) and [terms](https://csadvent.christmas/terms)** are pages in the site, with the organizers' address (`hello@csadvent.christmas`) from `Site:ContactEmail` in `appsettings.json`. The app won't start without it.
+- 🗑️ **Contact details are deleted automatically** on February 1 after each season: spot emails, claim requests, the standby list, and contributor emails that haven't been verified again since. The calendar itself stays.
+- ✏️ **Collecting something new?** Update the privacy page, and its date, in the same pull request.
+
 ## 🤝 Contributing
 
 1. Create a branch from an up-to-date `main`, named `type/scope/short-description`

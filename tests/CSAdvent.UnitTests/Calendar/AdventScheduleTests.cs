@@ -105,6 +105,11 @@ public sealed class AdventScheduleTests
         Assert.Equal(TimeSpan.Zero, utc.Offset);
     }
 
+    [Fact]
+    public void DeletesContactDetailsAtTheStartOfFebruaryAfterTheSeason() =>
+        // Midnight Eastern Standard Time on February 1.
+        Assert.Equal(new DateTimeOffset(2027, 2, 1, 5, 0, 0, TimeSpan.Zero), CreateSchedule().GetContactDeletionTime(2026));
+
     [Theory]
     [InlineData(0)]
     [InlineData(26)]

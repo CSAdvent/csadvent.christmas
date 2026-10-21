@@ -1,0 +1,83 @@
+@page "/terms"
+@using Microsoft.Extensions.Options
+@inject IOptions<SiteOptions> Site
+
+<PageTitle>Terms · C# Advent</PageTitle>
+
+<article class="max-w-3xl text-slate-700">
+    <h1 class="text-3xl font-bold tracking-tight text-slate-900">Terms</h1>
+    <p class="mt-2 text-sm text-slate-500">Last updated October 21, 2026</p>
+
+    <p class="mt-6 text-lg">
+        C# Advent is a community event: every December, people from the C# community each publish a post on their day. By
+        claiming a spot, you agree to these terms.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold text-slate-900">Who runs C# Advent</h2>
+    <p class="mt-3">
+        Matt Groves started C# Advent in 2017, inspired by the F# Advent Calendar. Today it's organized by Calvin Allen and Matt
+        Groves, as volunteers in their own time. It's an independent community project, not affiliated with Microsoft.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold text-slate-900">Taking part</h2>
+    <ol class="mt-3 list-decimal space-y-3 pl-6">
+        <li>
+            <strong class="text-slate-900">Request a spot.</strong> You don't need a topic yet. The organizers review every
+            request, and a spot is yours once it's approved.
+        </li>
+        <li>
+            <strong class="text-slate-900">Prepare your content</strong>, in English, and keep it to yourself until your day.
+            Host it anywhere: your own site, dev.to, Medium, YouTube, GitHub Pages, or somewhere else.
+        </li>
+        <li>
+            <strong class="text-slate-900">Make it about C#</strong> in some way. Beyond that, it's up to you. It has to be your
+            own work.
+        </li>
+        <li>
+            <strong class="text-slate-900">Link to <a href="https://csadvent.christmas" class="text-advent-700 underline">csadvent.christmas</a></strong>
+            in your content, so your readers can find the rest of the Advent.
+        </li>
+        <li>
+            <strong class="text-slate-900">Publish on your day</strong>, and share it with the hashtags #csharp and #csadvent.
+            Each day is revealed on the calendar at midnight Eastern time.
+        </li>
+    </ol>
+
+    <h2 class="mt-10 text-xl font-semibold text-slate-900">If you can't make it</h2>
+    <p class="mt-3">
+        Things happen. If you can't deliver your post, let us know as soon as you can, so someone on the standby list can take the
+        spot. If your post isn't ready in time, we may give your spot to someone else. Spots that are given up don't appear on
+        the calendar.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold text-slate-900">What we can decline</h2>
+    <p class="mt-3">
+        We can turn down a request, or remove an entry, if it isn't about C#, isn't the author's own work, is spam or a sales
+        pitch, or is hateful, harassing or otherwise inappropriate for a friendly community event.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold text-slate-900">Your content</h2>
+    <p class="mt-3">
+        Your post stays yours. We only show your name, your link, and your post's title and address, on the calendar and
+        permanently in the archive, and we share them on C# Advent's social media accounts and feed, tagging the social accounts
+        you gave us. Ask us if you'd like your entry taken down.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold text-slate-900">Your information</h2>
+    <p class="mt-3">
+        Our <a href="privacy" class="text-advent-700 underline">privacy page</a> explains what we collect, how we use it, and
+        when we delete it.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold text-slate-900">No guarantees</h2>
+    <p class="mt-3">
+        We do our best to keep the site running and to share every post, but the site is run by volunteers and provided as it
+        is, without any warranty. We aren't responsible for the content of the posts we link to; each author is.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold text-slate-900">Changes and questions</h2>
+    <p class="mt-3">
+        We may update these terms, and the date at the top shows when they last changed. Questions? Email
+        <a href="mailto:@Site.Value.ContactEmail" class="text-advent-700 underline">@Site.Value.ContactEmail</a>.
+    </p>
+</article>

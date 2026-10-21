@@ -1,0 +1,100 @@
+@page "/privacy"
+@using Microsoft.Extensions.Options
+@inject IOptions<SiteOptions> Site
+
+<PageTitle>Privacy · C# Advent</PageTitle>
+
+<article class="max-w-3xl text-slate-700">
+    <h1 class="text-3xl font-bold tracking-tight text-slate-900">Privacy</h1>
+    <p class="mt-2 text-sm text-slate-500">Last updated October 21, 2026</p>
+
+    <p class="mt-6 text-lg">
+        The short version: we collect only what we need to run C# Advent, we never sell it, and we delete contact details after
+        each season.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold text-slate-900">Who we are</h2>
+    <p class="mt-3">
+        C# Advent is a community event run by volunteers. The organizers, Calvin Allen and Matt Groves, are responsible for the
+        information on this site. <a href="mailto:@Site.Value.ContactEmail" class="text-advent-700 underline">@Site.Value.ContactEmail</a>
+        reaches both of them.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold text-slate-900">What we collect</h2>
+    <ul class="mt-3 list-disc space-y-3 pl-6">
+        <li>
+            <strong class="text-slate-900">When you sign in with GitHub:</strong> your GitHub user ID, username and profile name,
+            and your primary email address if you've verified it with GitHub. We only ask GitHub for permission to read your
+            email addresses, not for access to your repositories or anything else.
+        </li>
+        <li>
+            <strong class="text-slate-900">When you claim a spot:</strong> the name and link you want on the calendar, any
+            comments for the organizers, and the social media accounts you choose to give us.
+        </li>
+        <li>
+            <strong class="text-slate-900">When your entry is on the calendar:</strong> your name, your link, and your post's
+            title and address are public, on the calendar, in the archive, and in our posts about it.
+        </li>
+        <li>
+            <strong class="text-slate-900">When you visit:</strong> our hosting keeps diagnostic records of requests, such as the
+            page, how long it took, and any errors, with an approximate location (country and city). Your IP address is used to
+            find that location and then thrown away, not stored.
+        </li>
+    </ul>
+
+    <h2 class="mt-10 text-xl font-semibold text-slate-900">Cookies</h2>
+    <p class="mt-3">
+        We only use the cookies the site needs to work: one that keeps you signed in, one that protects our forms from forgery,
+        and a short-lived one while you sign in with GitHub. There are no analytics, advertising or third-party tracking cookies.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold text-slate-900">How we use it</h2>
+    <ul class="mt-3 list-disc space-y-3 pl-6">
+        <li>To review claims and put your entry on the calendar.</li>
+        <li>To email you about C# Advent: that we received or approved your claim, reminders before your day, and anything else about your spot.</li>
+        <li>To tag you when we share your post on C# Advent's social media accounts, using only the accounts you gave us.</li>
+        <li>To keep the site secure and working.</li>
+    </ul>
+    <p class="mt-3">
+        We use your information because you asked to take part, and to keep the site running safely. We never sell or rent it, we
+        never use it for advertising, and we only email you about C# Advent.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold text-slate-900">Who else sees it</h2>
+    <p class="mt-3">
+        The organizers see everything you send us. A few services run the site for us and handle information only to do that:
+        Microsoft Azure (hosting, the database and diagnostics), GitHub (sign-in), and our email delivery service.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold text-slate-900">How long we keep it</h2>
+    <ul class="mt-3 list-disc space-y-3 pl-6">
+        <li>
+            <strong class="text-slate-900">Contact details:</strong> on February 1 after each season, we automatically delete
+            that season's email addresses, claim requests and comments, and standby list, along with the email address saved
+            with your account. The next time you sign in, GitHub gives us your current address again.
+        </li>
+        <li>
+            <strong class="text-slate-900">Your account:</strong> your GitHub user ID and username, and any social media accounts
+            you gave us, so we can credit your entries and fill in your next claim for you. Ask us and we'll delete them.
+        </li>
+        <li>
+            <strong class="text-slate-900">Calendar entries:</strong> kept as part of the archive. Ask us if you'd like yours
+            taken down.
+        </li>
+        <li><strong class="text-slate-900">Diagnostic records:</strong> up to 90 days.</li>
+        <li><strong class="text-slate-900">Database backups:</strong> 14 days, so anything we delete is gone from backups after that.</li>
+    </ul>
+
+    <h2 class="mt-10 text-xl font-semibold text-slate-900">Your choices</h2>
+    <p class="mt-3">
+        Email <a href="mailto:@Site.Value.ContactEmail" class="text-advent-700 underline">@Site.Value.ContactEmail</a> to see,
+        correct or delete the information we have about you, or to take down an entry. We'll reply within 30 days. If you're
+        unhappy with how we've handled your information, you can also complain to your local data protection authority.
+    </p>
+
+    <h2 class="mt-10 text-xl font-semibold text-slate-900">Changes</h2>
+    <p class="mt-3">
+        If we change how we handle information, we'll update this page and the date at the top. See also our
+        <a href="terms" class="text-advent-700 underline">terms</a>.
+    </p>
+</article>
