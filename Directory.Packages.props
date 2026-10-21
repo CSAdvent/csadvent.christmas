@@ -10,6 +10,7 @@
   </ItemGroup>
   <ItemGroup Label="Data">
     <PackageVersion Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="13.6.2" />
+    <PackageVersion Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="11.0.0-rc.2.26504.105" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="11.0.0-rc.2.26504.105" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="11.0.0-rc.2" />
     <!-- Pinned (transitively, through Aspire.Npgsql.EntityFrameworkCore.PostgreSQL) so the EF Core health check matches EF Core 11 -->

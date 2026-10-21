@@ -5,6 +5,7 @@ using CSAdvent.Web.Components;
 using CSAdvent.Web.Data;
 using CSAdvent.Web.Data.Archive;
 using CSAdvent.Web.Manage;
+using Microsoft.AspNetCore.DataProtection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -33,6 +34,12 @@ builder.Services.AddScoped<EntryAdminService>();
 builder.Services.AddSingleton<IClaimNotifier, LoggingClaimNotifier>();
 
 builder.AddAccounts();
+
+// Keys for sign-in cookies and antiforgery tokens live in the database, so a restart or a second replica doesn't sign
+// everyone out or reject their forms.
+builder.Services.AddDataProtection()
+    .SetApplicationName("CSAdvent")
+    .PersistKeysToDbContext<AdventDbContext>();
 
 // Pages render statically on the server by default. Components opt in to interactivity where they need it.
 builder.Services.AddRazorComponents()
