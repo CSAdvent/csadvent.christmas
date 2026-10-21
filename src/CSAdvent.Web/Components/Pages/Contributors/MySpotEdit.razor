@@ -1,0 +1,171 @@
+@page "/my-spots/{SlotId:int}"
+@attribute [Authorize]
+@using CSAdvent.Web.Auth
+@using CSAdvent.Web.Contributors
+@inject MySpotsService MySpots
+@inject NavigationManager Navigation
+
+@if (Done == "saved")
+{
+    <p class="mb-6 rounded-xl bg-green-50 p-4 font-medium text-green-800 ring-1 ring-green-200" role="status">Saved.</p>
+}
+
+@if (_spot is { } spot)
+{
+    <PageTitle>@spot.Spot · My spots · C# Advent</PageTitle>
+
+    <nav class="mb-4 text-sm font-medium"><a href="my-spots" class="text-advent-700 hover:underline">← My spots</a></nav>
+
+    @if (_error is not null)
+    {
+        <p class="mb-6 rounded-xl bg-red-50 p-4 font-medium text-red-800 ring-1 ring-red-200" role="alert">@_error</p>
+    }
+
+    <h1 class="text-3xl font-bold tracking-tight text-slate-900">@spot.Spot</h1>
+    <p class="mt-2 max-w-2xl text-slate-600">
+        @(spot.IsRevealed
+            ? "Your day has been revealed, so changes show on the calendar right away."
+            : $"Your post is revealed on the calendar at midnight Eastern on December {spot.Day}. Don't publish it before then.")
+    </p>
+
+    <EditForm Model="Form" FormName="spot" OnValidSubmit="SaveAsync" class="mt-8 flex max-w-2xl flex-col gap-5">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="rounded-xl bg-red-50 p-4 text-sm ring-1 ring-red-200" />
+        <input type="hidden" name="Form.Version" value="@Form!.Version" />
+
+        <fieldset class="flex flex-col gap-4">
+            <legend class="font-semibold text-slate-900">Your post</legend>
+            <label class="flex flex-col text-sm font-medium text-slate-700">
+                Title
+                <InputText @bind-Value="Form!.PostTitle" maxlength="300" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+            </label>
+            <label class="flex flex-col text-sm font-medium text-slate-700">
+                URL
+                <InputText @bind-Value="Form!.PostUrl" type="url" maxlength="500" placeholder="https://" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+            </label>
+        </fieldset>
+
+        <fieldset class="flex flex-col gap-4">
+            <legend class="font-semibold text-slate-900">You</legend>
+            <label class="flex flex-col text-sm font-medium text-slate-700">
+                Name <span class="font-normal text-slate-500">(shown on the calendar)</span>
+                <InputText @bind-Value="Form!.AuthorName" maxlength="50" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+            </label>
+            <label class="flex flex-col text-sm font-medium text-slate-700">
+                Link for your name <span class="font-normal text-slate-500">(optional; your blog or profile, not the post)</span>
+                <InputText @bind-Value="Form!.AuthorUrl" type="url" maxlength="200" placeholder="https://" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+            </label>
+        </fieldset>
+
+        <div>
+            <button type="submit" class="rounded-lg bg-advent-600 px-5 py-2.5 font-semibold text-white hover:bg-advent-700">Save</button>
+        </div>
+    </EditForm>
+
+    @* Rendered (hidden) after a drop-out post too, so a repeat reaches its handler instead of a 400. *@
+    @if (!spot.IsDayOver || _dropOutPosted)
+    {
+        <section hidden="@spot.IsDayOver" class="mt-12 max-w-2xl rounded-xl bg-red-50 p-5 ring-1 ring-red-200">
+            <h2 class="font-semibold text-red-900">Can't make it?</h2>
+            <p class="mt-1 text-sm text-red-800">
+                Things happen. Dropping out gives your spot up straight away and you won't be named anywhere. We'll offer your day to
+                our backup posters, one at a time in the order they signed up.
+            </p>
+            <EditForm Model="DropOut" FormName="dropout" OnValidSubmit="DropOutAsync" class="mt-4 flex flex-wrap items-center gap-4">
+                <DataAnnotationsValidator />
+                <input type="hidden" name="DropOut.Version" value="@spot.Version" />
+                <label class="flex items-center gap-2 text-sm text-red-900">
+                    <InputCheckbox @bind-Value="DropOut!.Confirm" class="size-4" />
+                    Yes, give up my spot
+                </label>
+                <button type="submit" class="rounded-lg bg-red-700 px-4 py-2 font-semibold text-white hover:bg-red-800">Drop out</button>
+                <ValidationMessage For="() => DropOut!.Confirm" class="w-full text-sm" />
+            </EditForm>
+        </section>
+    }
+}
+else if (Done == "dropped")
+{
+    <PageTitle>You've dropped out · C# Advent</PageTitle>
+    <h1 class="text-3xl font-bold tracking-tight text-slate-900">You've dropped out</h1>
+    <p class="mt-2 max-w-2xl text-slate-600">
+        Thanks for letting us know. Your spot is open again, and we're offering it to our backup posters. We hope to see you next year!
+    </p>
+    <p class="mt-6"><a href="my-spots" class="font-medium text-advent-700 underline">Back to My spots</a></p>
+}
+
+@code {
+    private MySpotDetails? _spot;
+    private int _contributorId;
+    private bool _dropOutPosted;
+    private string? _error;
+
+    [Parameter]
+    public int SlotId { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? Done { get; set; }
+
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationState { get; set; } = null!;
+
+    [SupplyParameterFromForm(FormName = "spot")]
+    private MySpotForm? Form { get; set; }
+
+    [SupplyParameterFromForm(FormName = "dropout")]
+    private DropOutForm? DropOut { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _dropOutPosted = DropOut is not null;
+        DropOut ??= new DropOutForm();
+
+        _contributorId = (await AuthenticationState).User.GetContributorId() ?? 0;
+        _spot = await MySpots.GetAsync(_contributorId, SlotId);
+        if (_spot is null)
+        {
+            // After dropping out the spot isn't theirs any more, so the confirmation shows instead.
+            if (Done != "dropped")
+            {
+                Navigation.NotFound();
+            }
+
+            return;
+        }
+
+        // A posted form keeps what was typed; a fresh page starts from the spot.
+        Form ??= _spot.Values;
+    }
+
+    private async Task SaveAsync() => await HandleAsync(await MySpots.SaveAsync(_contributorId, SlotId, Form!));
+
+    private async Task DropOutAsync() => await HandleAsync(await MySpots.DropOutAsync(_contributorId, SlotId, DropOut!.Version));
+
+    private async Task HandleAsync(MySpotOutcome outcome)
+    {
+        switch (outcome)
+        {
+            case MySpotOutcome.Saved:
+                Navigation.NavigateTo($"my-spots/{SlotId}?done=saved");
+                return;
+            case MySpotOutcome.DroppedOut:
+                Navigation.NavigateTo($"my-spots/{SlotId}?done=dropped");
+                return;
+            case MySpotOutcome.TooLate:
+                _error = "It's too late to change this spot.";
+                break;
+            case MySpotOutcome.NotFound:
+                Navigation.NotFound();
+                return;
+            default:
+                _error = "An organizer changed this spot since you opened it. Here's the current version; make your change again.";
+                break;
+        }
+
+        _spot = await MySpots.GetAsync(_contributorId, SlotId);
+        if (_spot is not null)
+        {
+            Form = _spot.Values;
+        }
+    }
+}

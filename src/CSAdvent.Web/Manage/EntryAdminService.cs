@@ -41,7 +41,7 @@ public enum EntrySaveOutcome
 /// spot, or releasing a spot after a dropout. Edits carry the spot's row version, so two organizers can't overwrite each
 /// other without noticing.
 /// </summary>
-public sealed class EntryAdminService(AdventDbContext db, AdventSchedule schedule)
+public sealed class EntryAdminService(AdventDbContext db, AdventSchedule schedule, TimeProvider timeProvider)
 {
     public static EntryStatus StatusOf(string? authorName, string? postTitle, string? postUrl) =>
         (authorName, postTitle, postUrl) switch
@@ -119,7 +119,10 @@ public sealed class EntryAdminService(AdventDbContext db, AdventSchedule schedul
         return await SaveChangesAsync(EntrySaveOutcome.Saved, cancellationToken);
     }
 
-    /// <summary>Clears the spot completely (author, link, post, contributor and contact), so it's open again.</summary>
+    /// <summary>
+    /// Clears the spot completely (author, link, post, contributor and contact), so it's open again, and marks it dropped
+    /// out so the backup posters are asked to fill it.
+    /// </summary>
     public async Task<EntrySaveOutcome> ReleaseAsync(int slotId, uint version, CancellationToken cancellationToken = default)
     {
         var slot = await LoadForUpdateAsync(slotId, version, cancellationToken);
@@ -133,6 +136,7 @@ public sealed class EntryAdminService(AdventDbContext db, AdventSchedule schedul
         slot.PostTitle = null;
         slot.PostUrl = null;
         slot.ContributorId = null;
+        slot.DroppedOutAt = timeProvider.GetUtcNow();
         SetContact(slot, email: null);
 
         return await SaveChangesAsync(EntrySaveOutcome.Released, cancellationToken);

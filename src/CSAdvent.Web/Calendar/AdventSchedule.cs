@@ -34,6 +34,11 @@ public sealed class AdventSchedule
 
     public bool IsRevealed(Slot slot) => IsRevealed(slot.SeasonYear, slot.Day);
 
+    /// <summary>When a day ends: midnight at the start of the next day, in the reveal time zone.</summary>
+    public DateTimeOffset GetDayEndTime(int year, int day) => FromLocalTime(new DateTime(year, 12, day).AddDays(1));
+
+    public bool IsDayOver(int year, int day) => _timeProvider.GetUtcNow() >= GetDayEndTime(year, day);
+
     /// <summary>A season is over, and in the archive, once its last day is revealed.</summary>
     public bool IsSeasonOver(int year) => IsRevealed(year, Season.DaysInAdvent);
 

@@ -1,5 +1,6 @@
 using CSAdvent.Web.Claims;
 using CSAdvent.Web.Content;
+using CSAdvent.Web.Contributors;
 using CSAdvent.Web.Reminders;
 
 namespace CSAdvent.Web.Email;
@@ -45,6 +46,12 @@ public static class EmailCatalog
             "When an organizer approves a request into a spot.",
             "The contributor. Replies go to the organizers.",
             site => ClaimEmails.Approved(SampleClaim, site)),
+        new(
+            "dropped-out",
+            "An author dropped out",
+            "When an author gives up their spot from their My spots page.",
+            "The organizers (Site:ContactEmail).",
+            site => SpotEmails.DroppedOut(new DropoutDetails("Ada Lovelace", 2026, 3, 1, 2), site)),
         new(
             "post-link-reminder",
             "Post link reminder",
