@@ -1,0 +1,125 @@
+@page "/manage/seasons"
+@inject SeasonAdminService Seasons
+@inject AdventSchedule Schedule
+@inject NavigationManager Navigation
+
+<PageTitle>Seasons · Manage · C# Advent</PageTitle>
+
+<ManageNav />
+
+<h1 class="text-3xl font-bold tracking-tight text-slate-900">Seasons</h1>
+
+@if (Done == "created")
+{
+    <p class="mt-4 rounded-xl bg-green-50 p-4 font-medium text-green-800 ring-1 ring-green-200" role="status">Season created.</p>
+}
+else if (Done == "saved")
+{
+    <p class="mt-4 rounded-xl bg-green-50 p-4 font-medium text-green-800 ring-1 ring-green-200" role="status">Sign-ups updated.</p>
+}
+
+<section class="mt-6 rounded-xl bg-white p-5 ring-1 ring-slate-200">
+    <h2 class="text-lg font-semibold text-slate-900">Create a season</h2>
+    <p class="mt-1 text-sm text-slate-500">
+        Adds a calendar with every spot open. Earlier seasons aren't touched. Times are in @Schedule.TimeZone.Id;
+        leave sign-ups empty to schedule them later.
+    </p>
+
+    @if (_error is not null)
+    {
+        <p class="mt-4 rounded-xl bg-red-50 p-4 font-medium text-red-800 ring-1 ring-red-200" role="alert">@_error</p>
+    }
+
+    <EditForm Model="Form" FormName="create-season" OnValidSubmit="CreateAsync" class="mt-4 flex flex-wrap items-end gap-4">
+        <DataAnnotationsValidator />
+        <label class="flex flex-col text-sm font-medium text-slate-700">
+            Year
+            <InputNumber @bind-Value="Form!.Year" class="mt-1 w-28 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+        </label>
+        <label class="flex flex-col text-sm font-medium text-slate-700">
+            Posts per day
+            <InputSelect @bind-Value="Form!.SlotsPerDay" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal">
+                <option value="2">2</option>
+                <option value="1">1</option>
+            </InputSelect>
+        </label>
+        <label class="flex flex-col text-sm font-medium text-slate-700">
+            Sign-ups open
+            <InputDate Type="InputDateType.DateTimeLocal" @bind-Value="Form!.ClaimsOpen" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+        </label>
+        <button type="submit" class="rounded-lg bg-advent-600 px-4 py-2 font-semibold text-white hover:bg-advent-700">Create season</button>
+        <ValidationSummary class="w-full text-sm" />
+    </EditForm>
+</section>
+
+<table class="mt-8 w-full text-left text-sm">
+    <thead class="border-b border-slate-200 text-slate-500">
+        <tr>
+            <th class="py-2 pr-4 font-medium">Year</th>
+            <th class="py-2 pr-4 font-medium">Posts per day</th>
+            <th class="py-2 pr-4 font-medium">Sign-ups open</th>
+            <th class="py-2 pr-4 font-medium">Spots claimed</th>
+            <th class="py-2 pr-4 font-medium">Requests waiting</th>
+            <th class="py-2 font-medium"><span class="sr-only">Actions</span></th>
+        </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+        @foreach (var season in _seasons)
+        {
+            <tr>
+                <td class="py-2 pr-4 font-semibold text-slate-900">@season.Year</td>
+                <td class="py-2 pr-4">@season.SlotsPerDay</td>
+                <td class="py-2 pr-4">
+                    @if (season.ClaimsOpenAt is { } opensAt)
+                    {
+                        <LocalTime Value="opensAt" />
+                    }
+                    else
+                    {
+                        <span class="text-slate-400">Not scheduled</span>
+                    }
+                </td>
+                <td class="py-2 pr-4">@season.ClaimedSpots of @season.Spots</td>
+                <td class="py-2 pr-4">@season.PendingRequests</td>
+                <td class="py-2 text-right"><a href="manage/seasons/@season.Year" class="text-advent-700 underline">Edit sign-ups</a></td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private List<SeasonSummary> _seasons = [];
+    private string? _error;
+
+    [SupplyParameterFromQuery]
+    public string? Done { get; set; }
+
+    [SupplyParameterFromForm(FormName = "create-season")]
+    private SeasonForm? Form { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Create the model before awaiting anything: the page renders at the first await, and EditForm needs a model then.
+        if (Form is null)
+        {
+            Form = new SeasonForm();
+            Form.Year = await Seasons.GetNextYearAsync();
+            Form.ClaimsOpen = new DateTime(Form.Year, 11, 1);
+        }
+
+        _seasons = await Seasons.ListAsync();
+    }
+
+    private async Task CreateAsync()
+    {
+        var claimsOpenAt = Form!.ClaimsOpen is { } local ? Schedule.FromLocalTime(local) : (DateTimeOffset?)null;
+
+        if (await Seasons.CreateAsync(Form.Year, Form.SlotsPerDay, claimsOpenAt) == CreateSeasonOutcome.AlreadyExists)
+        {
+            _error = $"There's already a season for {Form.Year}.";
+            return;
+        }
+
+        Navigation.NavigateTo("manage/seasons?done=created");
+    }
+}

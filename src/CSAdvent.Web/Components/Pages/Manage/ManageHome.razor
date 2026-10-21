@@ -1,8 +1,61 @@
 @page "/manage"
-@using CSAdvent.Web.Auth
-@attribute [Authorize(Policy = AdventPolicies.Admin)]
+@inject SeasonAdminService Seasons
+@inject AdventSchedule Schedule
 
 <PageTitle>Manage · C# Advent</PageTitle>
 
-<h1 class="text-3xl font-bold tracking-tight text-slate-900">Manage</h1>
-<p class="mt-2 text-slate-600">Signed in as an organizer. Claim requests and calendar entries will be managed from here.</p>
+<ManageNav />
+
+<h1 class="text-3xl font-bold tracking-tight text-slate-900">Organizer overview</h1>
+
+@if (_loaded && _current is null)
+{
+    <p class="mt-4 text-slate-600">There's no season to run yet. <a href="manage/seasons" class="text-advent-700 underline">Create one</a> to open sign-ups.</p>
+}
+else if (_current is not null)
+{
+    <section class="mt-6 rounded-xl bg-white p-5 ring-1 ring-slate-200">
+        <h2 class="text-lg font-semibold text-slate-900">C# Advent @_current.Year</h2>
+        <dl class="mt-4 grid gap-4 sm:grid-cols-3">
+            <div>
+                <dt class="text-sm text-slate-500">Sign-ups</dt>
+                <dd class="mt-1 font-medium text-slate-900">
+                    @if (_current.ClaimsOpenAt is not { } opensAt)
+                    {
+                        <span>Not scheduled · <a href="manage/seasons/@_current.Year" class="text-advent-700 underline">schedule</a></span>
+                    }
+                    else if (Schedule.AreClaimsOpen(opensAt))
+                    {
+                        <span>Open since <LocalTime Value="opensAt" /></span>
+                    }
+                    else
+                    {
+                        <span>Open <LocalTime Value="opensAt" /></span>
+                    }
+                </dd>
+            </div>
+            <div>
+                <dt class="text-sm text-slate-500">Spots claimed</dt>
+                <dd class="mt-1 font-medium text-slate-900">@_current.ClaimedSpots of @_current.Spots</dd>
+            </div>
+            <div>
+                <dt class="text-sm text-slate-500">Requests waiting</dt>
+                <dd class="mt-1 font-medium text-slate-900">
+                    <a href="manage/requests" class="text-advent-700 underline">@_current.PendingRequests pending</a>
+                </dd>
+            </div>
+        </dl>
+    </section>
+}
+
+@code {
+    private SeasonSummary? _current;
+    private bool _loaded;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var year = await Seasons.GetCurrentYearAsync();
+        _current = year is null ? null : (await Seasons.ListAsync()).Single(s => s.Year == year);
+        _loaded = true;
+    }
+}

@@ -95,6 +95,17 @@ public sealed class AdventScheduleTests
     }
 
     [Theory]
+    [InlineData(2026, 12, 15, 9, 30, 14)] // Eastern Standard Time, UTC-5
+    [InlineData(2026, 7, 4, 12, 0, 16)] // Eastern Daylight Time, UTC-4
+    public void ConvertsLocalTimesInTheRevealTimeZoneToUtc(int year, int month, int day, int hour, int minute, int expectedUtcHour)
+    {
+        var utc = CreateSchedule().FromLocalTime(new DateTime(year, month, day, hour, minute, 0));
+
+        Assert.Equal(new DateTimeOffset(year, month, day, expectedUtcHour, minute, 0, TimeSpan.Zero), utc);
+        Assert.Equal(TimeSpan.Zero, utc.Offset);
+    }
+
+    [Theory]
     [InlineData(0)]
     [InlineData(26)]
     public void RejectsDaysOutsideAdvent(int day) =>

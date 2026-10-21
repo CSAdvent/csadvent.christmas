@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using CSAdvent.Web.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,9 +9,6 @@ namespace CSAdvent.IntegrationTests;
 /// </summary>
 public sealed partial class ClaimPageTests(AppHostFixture fixture)
 {
-    private static readonly SemaphoreSlim SeasonsCreated = new(1, 1);
-    private static bool s_seasonsExist;
-
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
     [Fact]
@@ -190,50 +186,15 @@ public sealed partial class ClaimPageTests(AppHostFixture fixture)
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    private async Task<HttpClient> SignInAsync(string login, long githubUserId, string? name = null)
-    {
-        var browser = fixture.CreateBrowser();
-        var nameQuery = name is null ? "" : $"&name={Uri.EscapeDataString(name)}";
-        var response = await browser.GetAsync($"/dev/signin?login={login}&id={githubUserId}{nameQuery}", CancellationToken);
-        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        return browser;
-    }
+    private Task<HttpClient> SignInAsync(string login, long githubUserId, string? name = null) =>
+        fixture.SignInAsync(login, githubUserId, name);
 
-    /// <summary>Loads the form for its antiforgery token and handler name, then posts it with the given fields.</summary>
-    private static async Task<HttpResponseMessage> PostClaimAsync(HttpClient browser, string path, Dictionary<string, string> fields)
-    {
-        var page = await browser.GetStringAsync(path, CancellationToken);
-        fields["__RequestVerificationToken"] = HiddenInput("__RequestVerificationToken").Match(page).Groups["value"].Value;
-        fields["_handler"] = HiddenInput("_handler").Match(page).Groups["value"].Value;
+    private static Task<HttpResponseMessage> PostClaimAsync(HttpClient browser, string path, Dictionary<string, string> fields) =>
+        browser.PostFormAsync(path, "claim", fields);
 
-        return await browser.PostAsync(path, new FormUrlEncodedContent(fields), CancellationToken);
-    }
+    private static string PathOf(Uri location) => TestBrowser.PathOf(location);
 
-    private static string PathOf(Uri location) => location.IsAbsoluteUri ? location.PathAndQuery : "/" + location.OriginalString.TrimStart('/');
-
-    private static Regex HiddenInput(string name) => new($"<input[^>]*name=\"{name}\"[^>]*value=\"(?<value>[^\"]+)\"");
-
-    private async Task EnsureSeasonsAsync()
-    {
-        await SeasonsCreated.WaitAsync(CancellationToken);
-        try
-        {
-            if (s_seasonsExist)
-            {
-                return;
-            }
-
-            await using var db = await fixture.CreateDbContextAsync();
-            var open = Season.Create(2097, slotsPerDay: 2, DateTimeOffset.UtcNow);
-            open.ClaimsOpenAt = DateTimeOffset.UtcNow.AddDays(-1);
-            open.Slots.Single(s => s is { Day: 3, Part: 1 }).AuthorName = "Already Taken";
-            db.Seasons.AddRange(open, Season.Create(2098, slotsPerDay: 2, DateTimeOffset.UtcNow));
-            await db.SaveChangesAsync(CancellationToken);
-            s_seasonsExist = true;
-        }
-        finally
-        {
-            SeasonsCreated.Release();
-        }
-    }
+    private Task EnsureSeasonsAsync() => Task.WhenAll(
+        TestSeasons.EnsureAsync(fixture, 2097, claimsOpen: true, season => season.Slots.Single(s => s is { Day: 3, Part: 1 }).AuthorName = "Already Taken"),
+        TestSeasons.EnsureAsync(fixture, 2098, claimsOpen: false));
 }

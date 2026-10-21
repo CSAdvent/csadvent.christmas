@@ -74,7 +74,7 @@ public sealed partial class AccountTests(AppHostFixture fixture)
         var response = await browser.GetAsync("/manage", CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains(">Manage</h1>", await response.Content.ReadAsStringAsync(CancellationToken));
+        Assert.Contains(">Organizer overview</h1>", await response.Content.ReadAsStringAsync(CancellationToken));
     }
 
     [Fact]

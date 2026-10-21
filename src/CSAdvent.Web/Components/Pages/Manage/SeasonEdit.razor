@@ -1,0 +1,58 @@
+@page "/manage/seasons/{Year:int}"
+@inject SeasonAdminService Seasons
+@inject AdventSchedule Schedule
+@inject NavigationManager Navigation
+
+@if (_season is not null)
+{
+    <PageTitle>Sign-ups for @Year · Manage · C# Advent</PageTitle>
+
+    <ManageNav />
+
+    <nav class="mb-4 text-sm font-medium"><a href="manage/seasons" class="text-advent-700 hover:underline">← All seasons</a></nav>
+    <h1 class="text-3xl font-bold tracking-tight text-slate-900">Sign-ups for C# Advent @Year</h1>
+    <p class="mt-2 max-w-2xl text-slate-600">
+        Contributors can request spots from this time on, in @Schedule.TimeZone.Id. A time in the past opens sign-ups right away;
+        an empty one means they aren't scheduled yet.
+    </p>
+
+    <EditForm Model="Form" FormName="sign-ups" OnValidSubmit="SaveAsync" class="mt-6 flex flex-wrap items-end gap-4">
+        <label class="flex flex-col text-sm font-medium text-slate-700">
+            Sign-ups open
+            <InputDate Type="InputDateType.DateTimeLocal" @bind-Value="Form!.ClaimsOpen" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+        </label>
+        <button type="submit" class="rounded-lg bg-advent-600 px-4 py-2 font-semibold text-white hover:bg-advent-700">Save</button>
+    </EditForm>
+}
+
+@code {
+    private SeasonSummary? _season;
+
+    [Parameter]
+    public int Year { get; set; }
+
+    [SupplyParameterFromForm(FormName = "sign-ups")]
+    private SignUpsForm? Form { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _season = (await Seasons.ListAsync()).SingleOrDefault(s => s.Year == Year);
+        if (_season is null)
+        {
+            Navigation.NotFound();
+            return;
+        }
+
+        Form ??= new SignUpsForm
+        {
+            ClaimsOpen = _season.ClaimsOpenAt is { } opensAt ? Schedule.ToLocalTime(opensAt).DateTime : null,
+        };
+    }
+
+    private async Task SaveAsync()
+    {
+        var claimsOpenAt = Form!.ClaimsOpen is { } local ? Schedule.FromLocalTime(local) : (DateTimeOffset?)null;
+        await Seasons.SetClaimsOpenAtAsync(Year, claimsOpenAt);
+        Navigation.NavigateTo("manage/seasons?done=saved");
+    }
+}
