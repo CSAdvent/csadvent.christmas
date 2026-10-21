@@ -1,0 +1,10 @@
+@* A moment shown in the reveal time zone, with the exact time in the datetime attribute. *@
+@using System.Globalization
+@inject AdventSchedule Schedule
+
+<time datetime="@Value.ToString("O", CultureInfo.InvariantCulture)">@Schedule.ToLocalTime(Value).ToString("MMM d, yyyy, h:mm tt", CultureInfo.InvariantCulture)</time>
+
+@code {
+    [Parameter, EditorRequired]
+    public DateTimeOffset Value { get; set; }
+}

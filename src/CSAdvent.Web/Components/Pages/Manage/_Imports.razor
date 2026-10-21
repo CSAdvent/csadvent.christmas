@@ -1,0 +1,6 @@
+@* Every page in the organizer area requires the organizer policy. *@
+@using CSAdvent.Web.Auth
+@using CSAdvent.Web.Components.Manage
+@using CSAdvent.Web.Data
+@using CSAdvent.Web.Manage
+@attribute [Authorize(Policy = AdventPolicies.Admin)]

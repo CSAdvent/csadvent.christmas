@@ -1,0 +1,78 @@
+@page "/manage/requests"
+@inject SeasonAdminService Seasons
+@inject ClaimReviewService Reviews
+
+<PageTitle>Requests · Manage · C# Advent</PageTitle>
+
+<ManageNav />
+
+<h1 class="text-3xl font-bold tracking-tight text-slate-900">Claim requests @(_year is { } year ? $"for {year}" : "")</h1>
+<p class="mt-2 text-slate-600">Oldest first: spots go to the first request, unless you decide otherwise.</p>
+
+<nav aria-label="Request status" class="mt-6 flex gap-2 text-sm font-medium">
+    @foreach (var status in Enum.GetValues<ClaimRequestStatus>())
+    {
+        <a href="@StatusLink(status)"
+           aria-current="@(status == _status ? "page" : null)"
+           class="rounded-lg px-3 py-1.5 @(status == _status ? "bg-slate-900 text-white" : "text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100")">@status</a>
+    }
+</nav>
+
+@if (_requests.Count == 0)
+{
+    <p class="mt-6 text-slate-500">No @_status.ToString().ToLowerInvariant() requests.</p>
+}
+else
+{
+    <table class="mt-6 w-full text-left text-sm">
+        <thead class="border-b border-slate-200 text-slate-500">
+            <tr>
+                <th class="py-2 pr-4 font-medium">Spot</th>
+                <th class="py-2 pr-4 font-medium">Name</th>
+                <th class="py-2 pr-4 font-medium">GitHub</th>
+                <th class="py-2 pr-4 font-medium">Submitted</th>
+                <th class="py-2 font-medium"><span class="sr-only">Actions</span></th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+            @foreach (var request in _requests)
+            {
+                <tr>
+                    <td class="py-2 pr-4 whitespace-nowrap">
+                        December @request.Day · Post @request.Part
+                        @if (request.OtherPendingForSpot > 0)
+                        {
+                            <span class="ml-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">+@request.OtherPendingForSpot competing</span>
+                        }
+                    </td>
+                    <td class="py-2 pr-4 font-medium text-slate-900">@request.DisplayName</td>
+                    <td class="py-2 pr-4">@request.GitHubLogin</td>
+                    <td class="py-2 pr-4 whitespace-nowrap"><LocalTime Value="request.SubmittedAt" /></td>
+                    <td class="py-2 text-right"><a href="manage/requests/@request.Id" class="text-advent-700 underline">Review</a></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private int? _year;
+    private ClaimRequestStatus _status;
+    private List<RequestListItem> _requests = [];
+
+    [SupplyParameterFromQuery]
+    public string? Status { get; set; }
+
+    [SupplyParameterFromQuery]
+    public int? Year { get; set; }
+
+    private string StatusLink(ClaimRequestStatus status) =>
+        $"manage/requests?status={status.ToString().ToLowerInvariant()}" + (Year is null ? "" : $"&year={Year}");
+
+    protected override async Task OnInitializedAsync()
+    {
+        _status = Enum.TryParse<ClaimRequestStatus>(Status, ignoreCase: true, out var status) ? status : ClaimRequestStatus.Pending;
+        _year = Year ?? await Seasons.GetCurrentYearAsync();
+        _requests = _year is { } year ? await Reviews.ListAsync(year, _status) : [];
+    }
+}

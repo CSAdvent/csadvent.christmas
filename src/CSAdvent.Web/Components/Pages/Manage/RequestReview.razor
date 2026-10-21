@@ -1,0 +1,194 @@
+@page "/manage/requests/{Id:int}"
+@inject ClaimReviewService Reviews
+@inject NavigationManager Navigation
+
+@if (_request is { } request)
+{
+    <PageTitle>Request from @request.DisplayName · Manage · C# Advent</PageTitle>
+
+    <ManageNav />
+
+    <nav class="mb-4 text-sm font-medium"><a href="manage/requests" class="text-advent-700 hover:underline">← All requests</a></nav>
+
+    @if (Done is "approved" or "archived")
+    {
+        <p class="mb-6 rounded-xl bg-green-50 p-4 font-medium text-green-800 ring-1 ring-green-200" role="status">Request @Done.</p>
+    }
+
+    @if (_error is not null)
+    {
+        <p class="mb-6 rounded-xl bg-red-50 p-4 font-medium text-red-800 ring-1 ring-red-200" role="alert">@_error</p>
+    }
+
+    <h1 class="text-3xl font-bold tracking-tight text-slate-900">Request from @request.DisplayName</h1>
+    <p class="mt-2 text-slate-600">
+        For December @request.RequestedSpot.Day@(request.SlotsPerDay > 1 ? $", post {request.RequestedSpot.Part}" : ""), @request.Year ·
+        submitted <LocalTime Value="request.SubmittedAt" /> ·
+        <span class="font-semibold text-slate-900">@request.Status</span>
+        @if (request.DecidedAt is { } decidedAt)
+        {
+            <span> on <LocalTime Value="decidedAt" /></span>
+        }
+    </p>
+
+    <div class="mt-8 grid gap-8 lg:grid-cols-2">
+        <section>
+            <h2 class="text-lg font-semibold text-slate-900">Details</h2>
+            <dl class="mt-3 grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
+                <dt class="text-slate-500">Name</dt>
+                <dd class="text-slate-900">@request.DisplayName</dd>
+                <dt class="text-slate-500">GitHub</dt>
+                <dd><a href="https://github.com/@request.GitHubLogin" class="text-advent-700 underline">@request.GitHubLogin</a></dd>
+                <dt class="text-slate-500">Email</dt>
+                <dd><a href="mailto:@request.Email" class="text-advent-700 underline">@request.Email</a></dd>
+                <dt class="text-slate-500">Link</dt>
+                <dd>@if (request.Link is not null) { <a href="@request.Link" class="text-advent-700 underline">@request.Link</a> } else { <span class="text-slate-400">None</span> }</dd>
+                <dt class="text-slate-500">Comments</dt>
+                <dd class="text-slate-900">@(request.Comments ?? "None")</dd>
+                @if (request.Socials.Any)
+                {
+                    <dt class="text-slate-500">Social</dt>
+                    <dd class="text-slate-900">
+                        @foreach (var (platform, account) in Socials(request.Socials))
+                        {
+                            <span class="block">@platform: @account</span>
+                        }
+                    </dd>
+                }
+            </dl>
+        </section>
+
+        <section>
+            <h2 class="text-lg font-semibold text-slate-900">December @request.RequestedSpot.Day</h2>
+            <ul class="mt-3 flex flex-col gap-2 text-sm">
+                @foreach (var spot in request.SameDay)
+                {
+                    <li class="rounded-lg bg-slate-50 px-3 py-2 ring-1 @(spot.SlotId == request.RequestedSpot.SlotId ? "ring-advent-400" : "ring-slate-100")">
+                        <span class="font-semibold text-slate-700">Post @spot.Part:</span>
+                        @(spot.AuthorName is null ? "Open" : $"Claimed by {spot.AuthorName}")
+                        @if (spot.SlotId == request.RequestedSpot.SlotId)
+                        {
+                            <span class="ml-1 text-slate-500">(requested)</span>
+                        }
+                    </li>
+                }
+            </ul>
+
+            @if (request.OtherRequestsForSpot.Count > 0)
+            {
+                <h3 class="mt-6 font-semibold text-slate-900">Other requests for this spot</h3>
+                <ul class="mt-2 flex flex-col gap-1 text-sm">
+                    @foreach (var other in request.OtherRequestsForSpot)
+                    {
+                        <li>
+                            <a href="manage/requests/@other.Id" class="text-advent-700 underline">@other.DisplayName</a>
+                            (@other.GitHubLogin) · <LocalTime Value="other.SubmittedAt" /> · @other.Status
+                        </li>
+                    }
+                </ul>
+            }
+        </section>
+    </div>
+
+    @* The actions show while the request is pending. They're also rendered (hidden) when one was just posted, so a
+       repeated post, like a double click, reaches its handler and gets "already decided" instead of an error page. *@
+    @if (request.Status is ClaimRequestStatus.Pending || _actionPosted)
+    {
+        <section hidden="@(request.Status is not ClaimRequestStatus.Pending)" class="mt-10 flex flex-wrap items-end gap-6 rounded-xl bg-white p-5 ring-1 ring-slate-200">
+            <EditForm Model="Approve" FormName="approve" OnSubmit="ApproveAsync" class="flex flex-wrap items-end gap-3">
+                @if (request.OpenSpots.Count > 0)
+                {
+                    <label class="flex flex-col text-sm font-medium text-slate-700">
+                        Approve into
+                        <InputSelect @bind-Value="Approve!.SlotId" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal">
+                            @foreach (var spot in request.OpenSpots)
+                            {
+                                <option value="@spot.SlotId">December @spot.Day · Post @spot.Part@(spot.SlotId == request.RequestedSpot.SlotId ? " (requested)" : "")</option>
+                            }
+                        </InputSelect>
+                    </label>
+                    <button type="submit" class="rounded-lg bg-advent-600 px-4 py-2 font-semibold text-white hover:bg-advent-700">Approve</button>
+                }
+                else
+                {
+                    <p class="text-sm text-slate-600">Every spot in this season is claimed, so this request can't be approved.</p>
+                }
+            </EditForm>
+
+            <EditForm Model="Archive" FormName="archive" OnSubmit="ArchiveAsync">
+                <button type="submit" class="rounded-lg px-4 py-2 font-semibold text-slate-700 ring-1 ring-slate-300 hover:bg-slate-100">Archive</button>
+            </EditForm>
+        </section>
+    }
+}
+
+@code {
+    private RequestDetails? _request;
+    private string? _error;
+
+    [Parameter]
+    public int Id { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? Done { get; set; }
+
+    [SupplyParameterFromForm(FormName = "approve")]
+    private ApproveForm? Approve { get; set; }
+
+    [SupplyParameterFromForm(FormName = "archive")]
+    private ArchiveForm? Archive { get; set; }
+
+    private bool _actionPosted;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // The form models are only supplied when their form was posted.
+        _actionPosted = Approve is not null || Archive is not null;
+        Archive ??= new ArchiveForm();
+
+        _request = await Reviews.GetAsync(Id);
+        if (_request is null)
+        {
+            Navigation.NotFound();
+            return;
+        }
+
+        // Offer the requested spot first when it's still open.
+        Approve ??= new ApproveForm
+        {
+            SlotId = _request.OpenSpots.Any(s => s.SlotId == _request.RequestedSpot.SlotId)
+                ? _request.RequestedSpot.SlotId
+                : _request.OpenSpots.FirstOrDefault()?.SlotId ?? 0,
+        };
+    }
+
+    private async Task ApproveAsync() => await HandleAsync(await Reviews.ApproveAsync(Id, Approve!.SlotId));
+
+    private async Task ArchiveAsync() => await HandleAsync(await Reviews.ArchiveAsync(Id));
+
+    private async Task HandleAsync(ReviewOutcome outcome)
+    {
+        if (outcome is ReviewOutcome.Approved or ReviewOutcome.Archived)
+        {
+            Navigation.NavigateTo($"manage/requests/{Id}?done={outcome.ToString().ToLowerInvariant()}");
+            return;
+        }
+
+        _error = outcome switch
+        {
+            ReviewOutcome.SpotTaken => "That spot has just been claimed. Choose another open spot.",
+            ReviewOutcome.AlreadyDecided => "This request has already been approved or archived.",
+            _ => "That spot doesn't exist in this season.",
+        };
+        _request = await Reviews.GetAsync(Id);
+    }
+
+    private static IEnumerable<(string Platform, string Account)> Socials(ClaimantSocials socials)
+    {
+        if (socials.Bluesky is { } bluesky) yield return ("Bluesky", bluesky);
+        if (socials.Mastodon is { } mastodon) yield return ("Mastodon", mastodon);
+        if (socials.LinkedIn is { } linkedIn) yield return ("LinkedIn", linkedIn);
+        if (socials.Facebook is { } facebook) yield return ("Facebook", facebook);
+        if (socials.Reddit is { } reddit) yield return ("Reddit", $"u/{reddit}");
+    }
+}

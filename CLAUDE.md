@@ -79,6 +79,15 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 - New requests go to `IClaimNotifier`. `LoggingClaimNotifier` only logs, without personal details, until email (#20) is in place.
 - Blazor SSR forms: `[SupplyParameterFromForm(FormName = ...)]` on a nullable model, `Form ??= new()` to tell a GET from a POST, and `@bind-Value="Form!.Field"`. The posted field names are `Form.Field`.
 
+## Organizer Area
+
+- Everything under `Components/Pages/Manage` requires the `Admin` policy through that folder's `_Imports.razor`, so new organizer pages are protected automatically.
+- **Seasons** (`/manage/seasons`, `SeasonAdminService`): create a season (every spot open) and schedule its sign-ups. Times are entered in the reveal time zone (`AdventSchedule.FromLocalTime`) and stored in UTC.
+- **Requests** (`/manage/requests`, `ClaimReviewService`): oldest first. Approving copies a request into a spot (author, link, contributor, contact email) and can target any open spot in the season. It's idempotent: an already-decided request or a claimed spot is reported, never applied twice (`xmin` guards concurrent approvals). Archive sets a request aside.
+- Forms that can disappear after a post (approve/archive) are still rendered, hidden, when their form was posted. Otherwise Blazor answers a repeated post with a 400 instead of reaching the handler.
+- Static SSR renders a page at its first `await`, so create any `EditForm` model before awaiting.
+- Integration tests use `TestBrowser` (`fixture.SignInAsync`, `browser.PostFormAsync(path, formName, fields)`) and `TestSeasons.EnsureAsync` (each test class uses its own years, all after 2089).
+
 ## Data Model
 
 Entities and their EF configuration live together in `src/CSAdvent.Web/Data` (one file each).

@@ -44,4 +44,11 @@ public sealed class AdventSchedule
     public DateOnly Today => DateOnly.FromDateTime(ToLocalTime(_timeProvider.GetUtcNow()).DateTime);
 
     public DateTimeOffset ToLocalTime(DateTimeOffset moment) => TimeZoneInfo.ConvertTime(moment, TimeZone);
+
+    /// <summary>A date and time in the reveal time zone (such as a <c>datetime-local</c> form value), as UTC.</summary>
+    public DateTimeOffset FromLocalTime(DateTime local)
+    {
+        var unspecified = DateTime.SpecifyKind(local, DateTimeKind.Unspecified);
+        return new DateTimeOffset(unspecified, TimeZone.GetUtcOffset(unspecified)).ToUniversalTime();
+    }
 }

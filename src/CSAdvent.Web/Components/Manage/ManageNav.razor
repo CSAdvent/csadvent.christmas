@@ -1,0 +1,25 @@
+@* The organizer area's navigation. *@
+@inject NavigationManager Navigation
+
+<nav aria-label="Organizer" class="mb-8 flex flex-wrap gap-2 border-b border-slate-200 pb-4 text-sm font-medium">
+    @foreach (var (href, label) in Links)
+    {
+        <a href="@href" aria-current="@(IsCurrent(href) ? "page" : null)"
+           class="rounded-lg px-3 py-1.5 @(IsCurrent(href) ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100")">@label</a>
+    }
+</nav>
+
+@code {
+    private static readonly (string Href, string Label)[] Links =
+    [
+        ("manage", "Overview"),
+        ("manage/requests", "Requests"),
+        ("manage/seasons", "Seasons"),
+    ];
+
+    private bool IsCurrent(string href)
+    {
+        var path = Navigation.ToBaseRelativePath(Navigation.Uri).Split('?', '#')[0].TrimEnd('/');
+        return href == "manage" ? path == "manage" : path == href || path.StartsWith(href + "/", StringComparison.Ordinal);
+    }
+}

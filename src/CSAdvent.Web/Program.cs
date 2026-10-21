@@ -4,6 +4,7 @@ using CSAdvent.Web.Claims;
 using CSAdvent.Web.Components;
 using CSAdvent.Web.Data;
 using CSAdvent.Web.Data.Archive;
+using CSAdvent.Web.Manage;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,6 +27,8 @@ builder.Services.AddSingleton<AdventSchedule>();
 builder.Services.AddScoped<ArchiveService>();
 builder.Services.AddScoped<HomeService>();
 builder.Services.AddScoped<ClaimService>();
+builder.Services.AddScoped<SeasonAdminService>();
+builder.Services.AddScoped<ClaimReviewService>();
 builder.Services.AddSingleton<IClaimNotifier, LoggingClaimNotifier>();
 
 builder.AddAccounts();
