@@ -11,22 +11,44 @@ internal static class TestMailbox
     /// </summary>
     public static async Task<MailPitMessage> WaitForEmailAsync(this AppHostFixture fixture, string to, string subject)
     {
-        using var mailPit = new HttpClient { BaseAddress = fixture.App.GetEndpoint("email", "http") };
-        var cancellationToken = TestContext.Current.CancellationToken;
-        var query = Uri.EscapeDataString($"to:\"{to}\"");
+        using var mailPit = CreateClient(fixture);
 
         for (var attempt = 0; attempt < 50; attempt++)
         {
-            var search = await mailPit.GetFromJsonAsync<MailPitSearch>($"/api/v1/search?query={query}", cancellationToken);
-            if (search!.Messages.FirstOrDefault(m => m.Subject.Contains(subject, StringComparison.Ordinal)) is { } found)
+            if ((await SearchAsync(mailPit, to, subject)).FirstOrDefault() is { } found)
             {
-                return (await mailPit.GetFromJsonAsync<MailPitMessage>($"/api/v1/message/{found.Id}", cancellationToken))!;
+                return (await mailPit.GetFromJsonAsync<MailPitMessage>($"/api/v1/message/{found.Id}", TestContext.Current.CancellationToken))!;
             }
 
-            await Task.Delay(100, cancellationToken);
+            await Task.Delay(100, TestContext.Current.CancellationToken);
         }
 
         throw new InvalidOperationException($"No email to {to} with \"{subject}\" in the subject arrived.");
+    }
+
+    /// <summary>
+    /// How many emails to <paramref name="to"/> have <paramref name="subject"/> in their subject. Only use it after whatever
+    /// sends them has finished, such as a completed reminder run.
+    /// </summary>
+    public static async Task<int> CountEmailsAsync(this AppHostFixture fixture, string to, string subject)
+    {
+        using var mailPit = CreateClient(fixture);
+        return (await SearchAsync(mailPit, to, subject)).Count;
+    }
+
+    public static async Task<Dictionary<string, string[]>> GetHeadersAsync(this AppHostFixture fixture, MailPitMessage message)
+    {
+        using var mailPit = CreateClient(fixture);
+        return (await mailPit.GetFromJsonAsync<Dictionary<string, string[]>>($"/api/v1/message/{message.Id}/headers", TestContext.Current.CancellationToken))!;
+    }
+
+    private static HttpClient CreateClient(AppHostFixture fixture) => new() { BaseAddress = fixture.App.GetEndpoint("email", "http") };
+
+    private static async Task<List<MailPitSummary>> SearchAsync(HttpClient mailPit, string to, string subject)
+    {
+        var query = Uri.EscapeDataString($"to:\"{to}\"");
+        var search = await mailPit.GetFromJsonAsync<MailPitSearch>($"/api/v1/search?query={query}", TestContext.Current.CancellationToken);
+        return [.. search!.Messages.Where(m => m.Subject.Contains(subject, StringComparison.Ordinal))];
     }
 }
 
@@ -36,4 +58,4 @@ internal sealed record MailPitSummary(string Id, string Subject);
 
 internal sealed record MailPitSearch(List<MailPitSummary> Messages);
 
-internal sealed record MailPitMessage(string Subject, MailPitAddress From, List<MailPitAddress> To, List<MailPitAddress> ReplyTo, string Html, string Text);
+internal sealed record MailPitMessage(string Id, string Subject, MailPitAddress From, List<MailPitAddress> To, List<MailPitAddress> ReplyTo, string Html, string Text);

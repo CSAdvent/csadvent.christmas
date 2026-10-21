@@ -1,0 +1,54 @@
+@page "/emails/daily/unsubscribe"
+@using CSAdvent.Web.Reminders
+@inject DailyEmailOptOut OptOut
+
+<PageTitle>Daily emails · C# Advent</PageTitle>
+
+<div class="max-w-2xl">
+    @if (Done == true)
+    {
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900">You won't get the daily emails anymore</h1>
+        <p class="mt-4 text-slate-700">
+            We'll still email you about your own spot, such as reminders before your day. Thanks for taking part in C# Advent!
+        </p>
+        <p class="mt-6"><a href="" class="font-medium text-advent-700 underline">Back to the calendar</a></p>
+    }
+    else if (_year is { } year)
+    {
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900">Stop the daily emails?</h1>
+        <p class="mt-4 text-slate-700">
+            During C# Advent @year we send everyone with a spot an email each day with the new posts, so they can help share them.
+            You can turn those off. We'll still email you about your own spot, such as reminders before your day.
+        </p>
+        @* A plain form (not an EditForm): it posts to the same endpoint mail providers use for one-click unsubscribe. *@
+        <form method="post" action="@($"{DailyEmailOptOut.Path.TrimStart('/')}?token={Uri.EscapeDataString(Token!)}")" class="mt-6">
+            <button type="submit" class="rounded-lg bg-advent-600 px-5 py-2.5 font-semibold text-white hover:bg-advent-700">Stop the daily emails</button>
+        </form>
+    }
+    else
+    {
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900">This link doesn't work anymore</h1>
+        <p class="mt-4 text-slate-700">
+            It may be from an earlier season, whose details we've since deleted. If you're still getting emails you don't want,
+            reply to one of them and we'll sort it out.
+        </p>
+    }
+</div>
+
+@code {
+    private int? _year;
+
+    [SupplyParameterFromQuery]
+    public string? Token { get; set; }
+
+    [SupplyParameterFromQuery]
+    public bool? Done { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (OptOut.TryReadToken(Token, out var slotId))
+        {
+            _year = await OptOut.FindSeasonAsync(slotId);
+        }
+    }
+}

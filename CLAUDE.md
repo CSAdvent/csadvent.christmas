@@ -99,6 +99,16 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 - Integration tests read what was sent from MailPit with `fixture.WaitForEmailAsync(to, subject)`. Match on a subject only your test produces, because every test's organizer emails go to the same address.
 - `HtmlRenderer` resolves scoped services, so `EmailComposer` renders inside its own scope.
 
+## Reminders
+
+- `ReminderService` sends the day's emails once the reveal time zone reaches `Reminders:SendAt` (9 AM). `ReminderWorker` calls it every 15 minutes, and runs with nothing left to do are cheap.
+- **Post link reminders** go to the author of a claimed spot with no `post_url` (and a contact email), `Reminders:DaysBefore` days before their day (7, 5, 3, 2 and 1). From 2 days out they warn that a backup poster may take the spot (#36).
+- **The daily email** goes to everyone with a spot in the season, once per email address however many spots they have, each day of Advent once at least one of the day's posts has a title and URL. It lists the day's posts and thanks that day's authors.
+- **Sent once:** each email is recorded in `sent_reminders` (kind, run date, slot) before it's sent. The unique index stops a second run or replica sending it again, and a failed send removes its record so a later run retries. The daily email is recorded against the recipient's first slot.
+- **Opting out:** daily emails carry a link to `/emails/daily/stop?token=…`, in the footer and as the one-click `List-Unsubscribe` header (RFC 8058). The token is the slot ID protected with data protection. A GET only shows a confirmation (`/emails/daily/unsubscribe`), and a POST sets `slot_contacts.daily_emails_opted_out_at` on every spot with that email in the season. Opting out never stops emails about the author's own spot.
+- `Reminders:PauseBetweenEmails` (2 seconds) keeps sends under Azure Communication Services' limit for a new custom domain (30 a minute). Development sets it to zero.
+- **Trying it:** in Development, `POST /dev/reminders/run?at=2026-12-03T15:00:00Z` runs the reminders as if it were that time, and everything lands in MailPit. `ReminderTests` drive runs that way against season 2106, because the AppHost turns the worker off in the Testing environment (`Reminders:SendInBackground`).
+
 ## Privacy
 
 - `/privacy` and `/terms` are Razor pages. The contact address is `Site:ContactEmail` (`SiteOptions`), set to `hello@csadvent.christmas` in `appsettings.json`. It's required and validated on start, so the app won't start without it.
