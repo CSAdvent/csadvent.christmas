@@ -10,7 +10,10 @@ public static class AdventClaims
 {
     public const string ContributorId = "csadvent:contributor_id";
 
-    public static IEnumerable<Claim> For(long githubUserId, string login, string? verifiedEmail, int contributorId)
+    /// <summary>The name on the contributor's GitHub profile, if they've set one.</summary>
+    public const string GitHubName = "csadvent:github_name";
+
+    public static IEnumerable<Claim> For(long githubUserId, string login, string? verifiedEmail, int contributorId, string? name = null)
     {
         yield return new Claim(ClaimTypes.NameIdentifier, githubUserId.ToString(System.Globalization.CultureInfo.InvariantCulture));
         yield return new Claim(ClaimTypes.Name, login);
@@ -20,7 +23,16 @@ public static class AdventClaims
         {
             yield return new Claim(ClaimTypes.Email, verifiedEmail);
         }
+
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            yield return new Claim(GitHubName, name.Trim());
+        }
     }
+
+    /// <summary>The GitHub profile name if there is one, otherwise the login.</summary>
+    public static string GetDisplayName(this ClaimsPrincipal user) =>
+        user.FindFirstValue(GitHubName) ?? user.Identity?.Name ?? "";
 
     public static long? GetGitHubUserId(this ClaimsPrincipal user) =>
         long.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;

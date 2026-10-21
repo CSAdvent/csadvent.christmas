@@ -1,0 +1,205 @@
+@page "/claim/{Year:int}/{Day:int}/{Part:int}"
+@attribute [Authorize]
+@using CSAdvent.Web.Auth
+@using CSAdvent.Web.Claims
+@inject ClaimService Claims
+@inject NavigationManager Navigation
+
+@if (_slot is not null)
+{
+    <PageTitle>Request December @Day · C# Advent</PageTitle>
+
+    <nav class="mb-6 text-sm font-medium"><a href="" class="text-advent-700 hover:underline">← Back to the calendar</a></nav>
+
+    @if (_slot.Availability is not ClaimAvailability.Open)
+    {
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900">December @Day, @Year isn't available</h1>
+        <p class="mt-2 text-slate-600">
+            @(_slot.Availability switch
+            {
+                ClaimAvailability.ClaimsNotOpen => "Sign-ups aren't open for this season.",
+                ClaimAvailability.AlreadyClaimed => "This spot has already been claimed. Pick another open spot on the calendar.",
+                _ => "This day has already been revealed, so it can't be claimed any more.",
+            })
+        </p>
+    }
+    else if (_email is null)
+    {
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900">We need a verified email</h1>
+        <p class="mt-2 max-w-2xl text-slate-600">
+            We contact contributors at the verified email address on their GitHub account, and yours doesn't have one yet.
+            Verify an email in your <a href="https://github.com/settings/emails" class="text-advent-700 underline">GitHub email settings</a>,
+            then sign out and sign in again.
+        </p>
+    }
+    else
+    {
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900">Request December @Day, @Year</h1>
+        <p class="mt-2 max-w-2xl text-slate-600">
+            You're asking for @(_slot.SlotsPerDay > 1 ? $"post {Part} of {_slot.SlotsPerDay}" : "the post") on December @Day.
+            You don't need a topic or a post yet; you can add those later. The organizers review requests in the order they arrive.
+        </p>
+
+        @if (_error is not null)
+        {
+            <p class="mt-6 rounded-xl bg-red-50 p-4 font-medium text-red-800 ring-1 ring-red-200" role="alert">@_error</p>
+        }
+
+        <EditForm Model="Form" FormName="claim" OnValidSubmit="SubmitAsync" class="mt-8 flex max-w-2xl flex-col gap-6">
+            <DataAnnotationsValidator />
+            <ValidationSummary class="rounded-xl bg-red-50 p-4 text-sm ring-1 ring-red-200" />
+
+            <div>
+                <label for="display-name" class="block font-medium text-slate-800">Name</label>
+                <InputText id="display-name" @bind-Value="Form!.DisplayName" maxlength="50" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" />
+                <p class="mt-1 text-sm text-slate-500">Shown publicly on the calendar.</p>
+            </div>
+
+            <div>
+                <span class="block font-medium text-slate-800">Email</span>
+                <p class="mt-1 text-slate-700">@_email</p>
+                <p class="mt-1 text-sm text-slate-500">The verified email on your GitHub account. Only the organizers see it.</p>
+            </div>
+
+            <div>
+                <label for="link" class="block font-medium text-slate-800">Link for your name <span class="font-normal text-slate-500">(optional)</span></label>
+                <InputText id="link" type="url" @bind-Value="Form!.Link" maxlength="200" placeholder="https://" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" />
+                <p class="mt-1 text-sm text-slate-500">
+                    On the calendar, your <strong>name</strong> links here: your blog, GitHub or a profile page, for example.
+                    This isn't your article. You'll add your article's link later, and the article title links to that.
+                </p>
+            </div>
+
+            <div>
+                <label for="comments" class="block font-medium text-slate-800">Comments <span class="font-normal text-slate-500">(optional)</span></label>
+                <InputText id="comments" @bind-Value="Form!.Comments" maxlength="200" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" />
+                <p class="mt-1 text-sm text-slate-500">Anything the organizers should know, such as a second-choice date.</p>
+            </div>
+
+            <fieldset class="rounded-xl p-4 ring-1 ring-slate-200">
+                <legend class="px-1 font-medium text-slate-800">Social accounts <span class="font-normal text-slate-500">(optional)</span></legend>
+                <p class="text-sm text-slate-600"><strong>If you add an account, we'll tag you there when we post about your article on that service.</strong> Leave any blank that you don't use. They're saved for next time.</p>
+                <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                    <label class="flex flex-col text-sm font-medium text-slate-700">
+                        Bluesky
+                        <InputText @bind-Value="Form!.Bluesky" maxlength="253" placeholder="you.bsky.social" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                    </label>
+                    <label class="flex flex-col text-sm font-medium text-slate-700">
+                        Mastodon
+                        <InputText @bind-Value="Form!.Mastodon" maxlength="100" placeholder="@("@you@mastodon.social")" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                    </label>
+                    <label class="flex flex-col text-sm font-medium text-slate-700">
+                        LinkedIn
+                        <InputText @bind-Value="Form!.LinkedIn" maxlength="200" placeholder="https://www.linkedin.com/in/you" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                    </label>
+                    <label class="flex flex-col text-sm font-medium text-slate-700">
+                        Facebook
+                        <InputText @bind-Value="Form!.Facebook" maxlength="200" placeholder="https://www.facebook.com/you" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                    </label>
+                    <label class="flex flex-col text-sm font-medium text-slate-700">
+                        Reddit
+                        <InputText @bind-Value="Form!.Reddit" maxlength="40" placeholder="u/you" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                    </label>
+                </div>
+            </fieldset>
+
+            <div class="flex flex-col gap-4 rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
+                <label class="flex items-start gap-3">
+                    <InputCheckbox @bind-Value="Form!.AgreeToTiming" class="mt-1 size-4" />
+                    <span>
+                        I'll publish my post on December @Day.
+                        <details class="mt-1 text-sm text-slate-600">
+                            <summary class="cursor-pointer text-advent-700">What this means</summary>
+                            Things happen, and sometimes people need to back out. If you can't deliver your post, let the organizers
+                            know as soon as you can. If your post isn't ready in time, your spot may go to someone on the standby list.
+                        </details>
+                    </span>
+                </label>
+                <label class="flex items-start gap-3">
+                    <InputCheckbox @bind-Value="Form!.AgreeToTerms" class="mt-1 size-4" />
+                    <span>
+                        I agree to the terms.
+                        <details class="mt-1 text-sm text-slate-600">
+                            <summary class="cursor-pointer text-advent-700">Read the terms</summary>
+                            C# Advent is run by volunteers in their own time. We use your email address only to contact you about
+                            C# Advent @Year, and we never sell or share it. The site uses cookies to keep you signed in. What you enter
+                            is stored in our database, so please don't include anything sensitive.
+                        </details>
+                    </span>
+                </label>
+            </div>
+
+            <div>
+                <button type="submit" class="rounded-lg bg-advent-600 px-5 py-3 font-semibold text-white shadow hover:bg-advent-700">Request this spot</button>
+            </div>
+        </EditForm>
+    }
+}
+
+@code {
+    private ClaimableSlot? _slot;
+    private string? _email;
+    private int _contributorId;
+    private string? _error;
+
+    [Parameter]
+    public int Year { get; set; }
+
+    [Parameter]
+    public int Day { get; set; }
+
+    [Parameter]
+    public int Part { get; set; }
+
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationState { get; set; } = null!;
+
+    [SupplyParameterFromForm(FormName = "claim")]
+    private ClaimForm? Form { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = (await AuthenticationState).User;
+        _contributorId = user.GetContributorId() ?? 0;
+        var claimant = await Claims.GetClaimantAsync(_contributorId);
+        _email = claimant?.VerifiedEmail;
+
+        // A new form starts with the GitHub profile name and the accounts given last time; a posted form keeps what was typed.
+        Form ??= new ClaimForm
+        {
+            DisplayName = Truncate(user.GetDisplayName(), 50),
+            Bluesky = claimant?.Bluesky,
+            Mastodon = claimant?.Mastodon,
+            LinkedIn = claimant?.LinkedIn,
+            Facebook = claimant?.Facebook,
+            Reddit = claimant?.Reddit,
+        };
+
+        _slot = await Claims.FindAsync(Year, Day, Part);
+        if (_slot is null)
+        {
+            Navigation.NotFound();
+        }
+    }
+
+    private static string Truncate(string text, int length) => text.Length <= length ? text : text[..length];
+
+    private async Task SubmitAsync()
+    {
+        switch (await Claims.SubmitAsync(_contributorId, Year, Day, Part, Form!))
+        {
+            case ClaimOutcome.Submitted:
+                Navigation.NavigateTo($"claim/requested/{Year}/{Day}/{Part}");
+                break;
+            case ClaimOutcome.AlreadyRequested:
+                _error = "You've already requested this spot. The organizers will be in touch.";
+                break;
+            case ClaimOutcome.NoVerifiedEmail:
+                _email = null;
+                break;
+            default:
+                _slot = await Claims.FindAsync(Year, Day, Part);
+                break;
+        }
+    }
+}

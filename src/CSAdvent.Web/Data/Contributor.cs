@@ -17,6 +17,23 @@ public sealed class Contributor
 
     public DateTimeOffset? EmailVerifiedAt { get; set; }
 
+    // Social accounts, so posts about their entries can tag them. Stored in the forms SocialAccounts produces.
+
+    /// <summary>A Bluesky handle, such as <c>alice.bsky.social</c>.</summary>
+    public string? BlueskyHandle { get; set; }
+
+    /// <summary>A Mastodon handle, such as <c>@alice@hachyderm.io</c>.</summary>
+    public string? MastodonHandle { get; set; }
+
+    /// <summary>A LinkedIn profile URL, such as <c>https://www.linkedin.com/in/alice</c>.</summary>
+    public string? LinkedInUrl { get; set; }
+
+    /// <summary>A Facebook profile or Page URL, such as <c>https://www.facebook.com/alice.dev</c>.</summary>
+    public string? FacebookUrl { get; set; }
+
+    /// <summary>A Reddit username, without <c>u/</c>.</summary>
+    public string? RedditUsername { get; set; }
+
     public DateTimeOffset CreatedAt { get; init; }
 }
 
@@ -27,6 +44,11 @@ internal sealed class ContributorConfiguration : IEntityTypeConfiguration<Contri
         // GitHub logins are at most 39 characters.
         builder.Property(c => c.GithubLogin).HasMaxLength(39);
         builder.Property(c => c.Email).HasMaxLength(254);
+        builder.Property(c => c.BlueskyHandle).HasMaxLength(253);
+        builder.Property(c => c.MastodonHandle).HasMaxLength(100);
+        builder.Property(c => c.LinkedInUrl).HasMaxLength(200).HasColumnName("linkedin_url");
+        builder.Property(c => c.FacebookUrl).HasMaxLength(200);
+        builder.Property(c => c.RedditUsername).HasMaxLength(20);
 
         builder.HasIndex(c => c.GithubUserId).IsUnique();
     }

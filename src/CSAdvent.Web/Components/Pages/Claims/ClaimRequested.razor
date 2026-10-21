@@ -1,0 +1,22 @@
+@page "/claim/requested/{Year:int}/{Day:int}/{Part:int}"
+@attribute [Authorize]
+
+<PageTitle>Request received · C# Advent</PageTitle>
+
+<h1 class="text-3xl font-bold tracking-tight text-slate-900">Thanks! We've got your request</h1>
+<p class="mt-2 max-w-2xl text-lg text-slate-600">
+    You asked for December @Day, @Year. The organizers review requests in the order they arrive, and we'll email you once
+    yours is approved. You don't need a topic yet.
+</p>
+<a href="" class="mt-6 inline-block rounded-lg bg-advent-600 px-5 py-3 font-semibold text-white shadow hover:bg-advent-700">Back to the calendar</a>
+
+@code {
+    [Parameter]
+    public int Year { get; set; }
+
+    [Parameter]
+    public int Day { get; set; }
+
+    [Parameter]
+    public int Part { get; set; }
+}

@@ -1,5 +1,6 @@
 using CSAdvent.Web.Auth;
 using CSAdvent.Web.Calendar;
+using CSAdvent.Web.Claims;
 using CSAdvent.Web.Components;
 using CSAdvent.Web.Data;
 using CSAdvent.Web.Data.Archive;
@@ -24,6 +25,8 @@ builder.Services.AddOptions<AdventOptions>()
 builder.Services.AddSingleton<AdventSchedule>();
 builder.Services.AddScoped<ArchiveService>();
 builder.Services.AddScoped<HomeService>();
+builder.Services.AddScoped<ClaimService>();
+builder.Services.AddSingleton<IClaimNotifier, LoggingClaimNotifier>();
 
 builder.AddAccounts();
 

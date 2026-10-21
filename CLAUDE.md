@@ -66,10 +66,18 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 ## Sign-in
 
 - **Cookie sessions, with GitHub OAuth** through ASP.NET Core's built-in `AddOAuth` (`Auth/AccountEndpoints.cs`), not a third-party provider. Signing in calls `/user/emails` and keeps only a **primary, verified** address, then upserts the contributor by GitHub user ID (`ContributorSignIn`).
-- **Claims:** GitHub user ID (`NameIdentifier`), login (`Name`), verified email, and `csadvent:contributor_id`. Use `User.GetContributorId()` to scope a contributor to their own data.
-- **Organizers** are GitHub user IDs in `Accounts:Admins`. Use the `AdventPolicies.Admin` policy (for example `@attribute [Authorize(Policy = AdventPolicies.Admin)]`), which is checked on every request.
+- **Claims:** GitHub user ID (`NameIdentifier`), login (`Name`), verified email, the GitHub profile name (`csadvent:github_name`, if set) and `csadvent:contributor_id`. Use `User.GetContributorId()` to scope a contributor to their own data, and `User.GetDisplayName()` for the profile name with the login as a fallback.
+- **Organizers** are GitHub user IDs in `Accounts:Admins`: CalvinAllen (`41448698`) and mgroves (`103484`). Use the `AdventPolicies.Admin` policy (for example `@attribute [Authorize(Policy = AdventPolicies.Admin)]`), which is checked on every request.
 - **Dev sign-in** (`/dev/signin?login=...&id=...`) is mapped only when the environment is Development **and** `Accounts:DevSignIn` is true, which the AppHost sets in run mode. The integration tests use it, with organizer `9001` set by the AppHost in the Testing environment.
 - **GitHub settings** come from the AppHost parameters `github-client-id` and `github-client-secret`. They're optional locally and required in production; the app fails to start without them outside Development.
+
+## Claims
+
+- `/claim/{year}/{day}/{part}` (`CalendarLinks.Claim`) requires sign-in. `ClaimService.CheckAvailability` decides whether a slot can be requested: claims are open, the day isn't revealed, and nobody has claimed it. It's checked again on submit.
+- A request is stored as `Pending` with the contributor's **verified GitHub email** (there's no typed-in email). Requests don't reserve the slot; the organizer approves one. A duplicate pending request from the same contributor hits the unique index and is reported as already requested.
+- **Social accounts** (Bluesky, Mastodon, LinkedIn, Facebook, Reddit) are optional fields on the claim form. They're saved on `contributors`, prefilled next time, and used to tag people in social posts (#59). `SocialAccounts.TryNormalize` accepts handles or profile URLs and stores one form per platform.
+- New requests go to `IClaimNotifier`. `LoggingClaimNotifier` only logs, without personal details, until email (#20) is in place.
+- Blazor SSR forms: `[SupplyParameterFromForm(FormName = ...)]` on a nullable model, `Form ??= new()` to tell a GET from a POST, and `@bind-Value="Form!.Field"`. The posted field names are `Form.Field`.
 
 ## Data Model
 
