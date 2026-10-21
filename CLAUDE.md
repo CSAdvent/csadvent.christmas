@@ -97,7 +97,13 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
   - The entry page's button passes on the tag the visit arrived with (`site` if none).
   - Tags are normalized by `EntryVia` (unknown becomes `other`).
 - **Counting:** `entry_hits` records a `View` or `Click` with the slot, time and tag. There's no IP, cookie or user agent, so nothing personal, and the hits are kept for the stats (#62). `EntryTraffic.IsPerson` skips link-preview fetchers (Facebook, LinkedIn, Mastodon, Bluesky, Discord...), crawlers, scripts, prefetches and non-GET requests. The organizers' entries list shows clicks per spot.
-- **Preview tags:** `SocialMeta` puts Open Graph tags, `twitter:card` (large image), a canonical URL without the query string, and `fediverse:creator` (when `Site:MastodonCreator` is set) on every public page. The image is `images/social-card.jpg` (1200×630) until entry cards are generated.
+- **Preview tags:** `SocialMeta` puts Open Graph tags, `twitter:card` (large image), a canonical URL without the query string, and `fediverse:creator` (when `Site:MastodonCreator` is set) on every public page.
+- **Cards** (`CardRenderer`, SkiaSharp):
+  - What they show: a revealed entry's page uses `/cards/{year}/{day}/{part}.jpg` (title, author, day). Season pages and the home page use `/cards/{year}.jpg`. Anything else, including entries before their reveal, uses the static `images/social-card.jpg`.
+  - Size: 1200×630 JPEGs of about 110 KB, under Bluesky's 1 MB limit.
+  - Caching: `CardLinks` adds `?v=` (a hash of the text, or the post count), so an edited title gets a new URL. Responses are cached for a day, and rendered cards are kept in memory.
+  - Before an entry's reveal there's no card for it (404).
+  - Fonts and images: Inter Bold and Regular (SIL Open Font License, `Cards/Assets/Inter-LICENSE.txt`), the card background and the logo are embedded resources. Linux uses `SkiaSharp.NativeAssets.Linux.NoDependencies`, so containers need no fontconfig or system fonts. `CardRenderer.Printable` drops characters Inter can't draw (emoji, for example) rather than draw boxes.
 
 ## Backup Posters
 

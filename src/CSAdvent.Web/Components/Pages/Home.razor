@@ -2,7 +2,9 @@
 @inject HomeService HomeService
 
 <PageTitle>C# Advent</PageTitle>
-<SocialMeta Title="C# Advent" Description="Two new C# posts every day from December 1st to December 25th, written by the C# community." />
+<SocialMeta Title="C# Advent"
+            Description="Two new C# posts every day from December 1st to December 25th, written by the C# community."
+            Image="@(_home?.Calendar is { } season ? CSAdvent.Web.Cards.CardLinks.Season(season.Year, _home.IsOffSeason ? season.PostCount : null) : "images/social-card.jpg")" />
 
 @if (_home?.Calendar is { } calendar)
 {
