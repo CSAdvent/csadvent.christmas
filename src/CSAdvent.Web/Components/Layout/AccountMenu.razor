@@ -1,0 +1,18 @@
+@inject NavigationManager Navigation
+
+<AuthorizeView>
+    <Authorized>
+        <li class="flex items-center gap-2 pl-2">
+            <span class="hidden text-advent-100 sm:inline">@context.User.Identity?.Name</span>
+            <form method="post" action="signout">
+                <AntiforgeryToken />
+                <button type="submit" class="rounded-lg px-3 py-2 hover:bg-white/15">Sign out</button>
+            </form>
+        </li>
+    </Authorized>
+    <NotAuthorized>
+        <li>
+            <a href="signin?returnUrl=@Uri.EscapeDataString("/" + Navigation.ToBaseRelativePath(Navigation.Uri))" class="rounded-lg bg-white/15 px-3 py-2 hover:bg-white/25">Sign in</a>
+        </li>
+    </NotAuthorized>
+</AuthorizeView>

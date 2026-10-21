@@ -27,6 +27,30 @@ var web = builder.AddProject<Projects.CSAdvent_Web>("web", launchProfileName: is
     .WithReference(mailpit)
     .WaitFor(database);
 
+// GitHub sign-in. Locally it's optional, because dev sign-in works without it; in production both values are required.
+if (builder.ExecutionContext.IsPublishMode || builder.Configuration["Parameters:github-client-id"] is not null)
+{
+    web.WithEnvironment("Accounts__GitHub__ClientId", builder.AddParameter("github-client-id"))
+        .WithEnvironment("Accounts__GitHub__ClientSecret", builder.AddParameter("github-client-secret", secret: true));
+}
+
+if (builder.ExecutionContext.IsRunMode)
+{
+    // Lets developers and the integration tests sign in as anyone without GitHub. The web app only honors it in Development.
+    web.WithEnvironment("Accounts__DevSignIn", "true");
+}
+
+if (isTesting)
+{
+    // The organizer the integration tests sign in as (AppHostFixture.OrganizerGitHubId).
+    web.WithEnvironment("Accounts__Admins__0", "9001");
+}
+else
+{
+    // Container Apps terminates TLS, so trust its X-Forwarded-* headers to keep sign-in redirects on https.
+    web.WithEnvironment("ASPNETCORE_FORWARDEDHEADERS_ENABLED", "true");
+}
+
 // Applies EF Core migrations with `dotnet ef` before the web app starts. Publishing produces a migration bundle instead.
 // Keep the tool version in step with dotnet-tools.json.
 var migrations = web.AddEFMigrations(

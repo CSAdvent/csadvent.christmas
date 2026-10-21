@@ -57,6 +57,18 @@ You can also run the AppHost without the Aspire CLI, with `dotnet run --project 
 | `tests/CSAdvent.UnitTests` | Fast tests with no database or containers |
 | `tests/CSAdvent.IntegrationTests` | Starts the whole AppHost against a throwaway PostgreSQL container |
 
+## 🔐 Sign-in
+
+- 🐙 Contributors and organizers sign in with **GitHub**. Locally that's optional: without a GitHub OAuth app, **Sign in** goes to a dev sign-in page where you can sign in as anyone (it only exists in development).
+- ⚙️ To use real GitHub sign-in locally, create a GitHub OAuth app with the callback `https://localhost:7092/signin-github` and store its credentials in the AppHost's user secrets:
+
+  ```bash
+  dotnet user-secrets set "Parameters:github-client-id" "<client id>" --project src/CSAdvent.AppHost
+  dotnet user-secrets set "Parameters:github-client-secret" "<client secret>" --project src/CSAdvent.AppHost
+  ```
+
+- 🛡️ Organizers are listed by GitHub user ID in `Accounts:Admins` (`src/CSAdvent.Web/appsettings.json`)
+
 ## 🗄️ Database Migrations
 
 Migrations live in `src/CSAdvent.Web/Data/Migrations`. To add one:

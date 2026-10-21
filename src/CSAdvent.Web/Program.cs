@@ -1,3 +1,4 @@
+using CSAdvent.Web.Auth;
 using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Components;
 using CSAdvent.Web.Data;
@@ -24,6 +25,8 @@ builder.Services.AddSingleton<AdventSchedule>();
 builder.Services.AddScoped<ArchiveService>();
 builder.Services.AddScoped<HomeService>();
 
+builder.AddAccounts();
+
 // Pages render statically on the server by default. Components opt in to interactivity where they need it.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
@@ -40,7 +43,12 @@ if (!app.Environment.IsDevelopment())
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
+app.UseAuthorization();
+app.UseAntiforgery();
+
 app.MapStaticAssets();
+app.MapAccounts();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
