@@ -3,24 +3,24 @@
 <ol class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
     @foreach (var day in Calendar.Days)
     {
-        <li id="december-@day.Day" class="flex flex-col rounded-xl bg-white p-4 shadow-sm @(day.IsToday ? "ring-2 ring-advent-500" : "ring-1 ring-advent-100")">
-            <h2 class="flex items-center gap-3 font-semibold text-advent-800">
-                <span class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-advent-600 text-lg font-bold text-white" aria-hidden="true">@day.Day</span>
-                December @day.Day
+        <li id="december-@day.Day" class="flex flex-col rounded-xl bg-white p-4 shadow-sm @(day.IsToday ? "ring-2 ring-advent-500" : "ring-1 ring-slate-200")">
+            <h2 class="flex items-baseline gap-2">
+                <span class="text-2xl font-bold tabular-nums text-slate-900">@day.Day</span>
+                <span class="text-sm font-medium uppercase tracking-wide text-slate-500">December</span>
                 @if (day.IsToday)
                 {
                     <span class="ml-auto rounded-full bg-advent-600 px-2.5 py-0.5 text-xs font-semibold text-white">Today</span>
                 }
             </h2>
 
-            <ul class="mt-4 flex flex-1 flex-col gap-4">
+            <ul class="mt-3 flex flex-1 flex-col divide-y divide-slate-100">
                 @foreach (var entry in day.Entries)
                 {
-                    <li class="border-l-4 pl-3 @(entry.HasPost ? "border-advent-400" : "border-slate-200")">
+                    <li class="py-3 first:pt-0 last:pb-0">
                         @if (entry.HasPost)
                         {
-                            <a href="@entry.PostUrl" class="font-medium text-advent-700 hover:underline">@entry.PostTitle</a>
-                            <p class="mt-1 text-sm text-slate-600">
+                            <a href="@entry.PostUrl" class="font-medium text-slate-900 hover:text-advent-700 hover:underline">@entry.PostTitle</a>
+                            <p class="mt-1 text-sm text-slate-500">
                                 by <Author Entry="entry" />
                             </p>
                         }
@@ -31,19 +31,19 @@
                         }
                         else if (!entry.IsOpen)
                         {
-                            <p class="text-sm text-slate-700">
+                            <p class="text-sm text-slate-600">
                                 <span aria-hidden="true">🎁</span> Claimed by <Author Entry="entry" />
                             </p>
                         }
                         else if (Calendar.AreClaimsOpen)
                         {
-                            <a href="@CalendarLinks.Claim(Calendar.Year, day.Day, entry.Part)" class="inline-flex items-center gap-1 rounded-lg bg-advent-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-advent-700">
-                                Claim this spot
+                            <a href="@CalendarLinks.Claim(Calendar.Year, day.Day, entry.Part)" class="inline-flex items-center gap-1 rounded-md border border-slate-300 px-2.5 py-1 text-sm font-medium text-slate-700 hover:border-advent-500 hover:text-advent-700">
+                                <span aria-hidden="true">+</span> Claim this spot
                             </a>
                         }
                         else
                         {
-                            <p class="text-sm text-slate-500">Open</p>
+                            <p class="text-sm text-slate-400">Open</p>
                         }
                     </li>
                 }

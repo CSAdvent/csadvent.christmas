@@ -13,7 +13,7 @@
 
     @if (_slot.Availability is not ClaimAvailability.Open)
     {
-        <h1 class="text-3xl font-bold tracking-tight text-advent-800">December @Day, @Year isn't available</h1>
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900">December @Day, @Year isn't available</h1>
         <p class="mt-2 text-slate-600">
             @(_slot.Availability switch
             {
@@ -25,7 +25,7 @@
     }
     else if (_email is null)
     {
-        <h1 class="text-3xl font-bold tracking-tight text-advent-800">We need a verified email</h1>
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900">We need a verified email</h1>
         <p class="mt-2 max-w-2xl text-slate-600">
             We contact contributors at the verified email address on their GitHub account, and yours doesn't have one yet.
             Verify an email in your <a href="https://github.com/settings/emails" class="text-advent-700 underline">GitHub email settings</a>,
@@ -34,7 +34,7 @@
     }
     else
     {
-        <h1 class="text-3xl font-bold tracking-tight text-advent-800">Request December @Day, @Year</h1>
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900">Request December @Day, @Year</h1>
         <p class="mt-2 max-w-2xl text-slate-600">
             You're asking for @(_slot.SlotsPerDay > 1 ? $"post {Part} of {_slot.SlotsPerDay}" : "the post") on December @Day.
             You don't need a topic or a post yet; you can add those later. The organizers review requests in the order they arrive.
@@ -73,7 +73,7 @@
                 <p class="mt-1 text-sm text-slate-500">Anything the organizers should know, such as a second-choice date.</p>
             </div>
 
-            <div class="flex flex-col gap-4 rounded-xl bg-advent-50 p-4 ring-1 ring-advent-100">
+            <div class="flex flex-col gap-4 rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
                 <label class="flex items-start gap-3">
                     <InputCheckbox @bind-Value="Form!.AgreeToTiming" class="mt-1 size-4" />
                     <span>
