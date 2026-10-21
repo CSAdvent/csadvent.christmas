@@ -17,6 +17,11 @@ public sealed class AzureEmailSender(EmailClient client, IOptions<EmailOptions> 
             new EmailRecipients([new AzureEmailAddress(email.To.Address, email.To.Name)]),
             new AzureEmailContent(email.Subject) { Html = email.Html, PlainText = email.Text });
         message.ReplyTo.Add(new AzureEmailAddress(email.ReplyTo));
+        if (email.UnsubscribeUrl is { } unsubscribe)
+        {
+            message.Headers.Add("List-Unsubscribe", $"<{unsubscribe}>");
+            message.Headers.Add("List-Unsubscribe-Post", "List-Unsubscribe=One-Click");
+        }
 
         // Returns once the service accepts the message; delivery happens in the background.
         await client.SendAsync(WaitUntil.Started, message, cancellationToken);

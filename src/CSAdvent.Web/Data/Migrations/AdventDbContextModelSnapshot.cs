@@ -16,7 +16,7 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261021154108_AddDataProtectionKeys";
+    public override string LastMigrationId => "20261021194143_AddDailyEmailOptOut";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -450,6 +450,10 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                 b.Property<int>("SlotId")
                     .HasColumnType("integer")
                     .HasColumnName("slot_id");
+
+                b.Property<DateTimeOffset?>("DailyEmailsOptedOutAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("daily_emails_opted_out_at");
 
                 b.Property<string>("Email")
                     .IsRequired()

@@ -19,6 +19,9 @@ public sealed record EmailContent
 
     /// <summary>Why the recipient got this email, shown in the footer.</summary>
     public string? Reason { get; init; }
+
+    /// <summary>For emails people can turn off: the one-click link that does it, in the footer and the headers.</summary>
+    public string? UnsubscribeUrl { get; init; }
 }
 
 /// <summary>Part of a paragraph or list item: text, a link, or a line break. Strings convert to text.</summary>
@@ -112,6 +115,11 @@ public static class EmailText
         if (content.Reason is { } reason)
         {
             text.Append('\n').Append(reason).Append('\n');
+        }
+
+        if (content.UnsubscribeUrl is { } unsubscribe)
+        {
+            text.Append("Stop these emails: ").Append(unsubscribe).Append('\n');
         }
 
         return text.ToString();

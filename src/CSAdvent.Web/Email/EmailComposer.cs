@@ -10,7 +10,13 @@ public sealed class EmailComposer(IServiceScopeFactory scopeFactory, ILoggerFact
 {
     /// <summary>Composes an email. Replies go to the organizers unless <paramref name="replyTo"/> says otherwise.</summary>
     public async Task<OutgoingEmail> ComposeAsync(EmailContent content, EmailRecipient to, string? replyTo = null) =>
-        new(to, replyTo ?? site.Value.ContactEmail, EmailBlocks.SingleLine(content.Subject), await RenderHtmlAsync(content), RenderText(content));
+        new(
+            to,
+            replyTo ?? site.Value.ContactEmail,
+            EmailBlocks.SingleLine(content.Subject),
+            await RenderHtmlAsync(content),
+            RenderText(content),
+            content.UnsubscribeUrl);
 
     public async Task<string> RenderHtmlAsync(EmailContent content)
     {
