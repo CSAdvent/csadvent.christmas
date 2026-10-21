@@ -99,6 +99,26 @@ dotnet test
 - 🐳 The integration tests need a running container runtime
 - 🧹 They run the AppHost in the `Testing` environment: a fresh database with no data volume, no pgweb, and plain HTTP, so they never touch your local data
 
+## ☁️ Deploying to Azure
+
+Production runs on **Azure Container Apps** with **Azure Database for PostgreSQL** (Flexible Server, PostgreSQL 18, Burstable B1ms, 14-day backups) and **Application Insights**, all modeled in the AppHost.
+
+1. 🔑 Sign in with an account that's an **Owner** of the subscription (`az login`), and make sure Docker is running
+2. 🚀 Run `aspire deploy` from the repository root. It asks for the subscription, region and resource group, and for these parameters:
+   - `pg-admin-username` and `pg-admin-password`: the database administrator. **The username can't be changed after the server is created**, and names like `admin`, `root` and `azure_superuser` aren't allowed. Keep the password in a password manager.
+   - `github-client-id` and `github-client-secret`: the **production** GitHub OAuth app
+3. 🗄️ Run the migrations job. `aspire deploy` doesn't start it, so do this after **every** deploy:
+
+   ```bash
+   az containerapp job start -n migrations -g <resource group>
+   az containerapp job execution list -n migrations -g <resource group> -o table
+   ```
+
+   On a new database it creates the schema and seeds the 2017–2025 history. After that it only applies new migrations.
+4. 🌐 Find the site's address: `az containerapp show -n web -g <resource group> --query properties.configuration.ingress.fqdn -o tsv`
+
+To skip the prompts, set `Azure__SubscriptionId`, `Azure__Location`, `Azure__ResourceGroup` and the `Parameters__*` values as environment variables. `aspire publish` writes the Bicep without deploying, and needs no Azure account.
+
 ## 🤝 Contributing
 
 1. Create a branch from an up-to-date `main`, named `type/scope/short-description`

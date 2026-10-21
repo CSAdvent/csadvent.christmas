@@ -16,7 +16,7 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261021131439_AddContributorSocialAccounts";
+    public override string LastMigrationId => "20261021154108_AddDataProtectionKeys";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -523,6 +523,29 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                     .HasDatabaseName("ix_substitutes_season_year_signed_up_at");
 
                 b.ToTable("substitutes");
+            });
+
+        modelBuilder.Entity("Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey", b =>
+            {
+                var id = b.Property<int>("Id")
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("integer")
+                    .HasColumnName("id");
+
+                NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(id);
+
+                b.Property<string>("FriendlyName")
+                    .HasColumnType("text")
+                    .HasColumnName("friendly_name");
+
+                b.Property<string>("Xml")
+                    .HasColumnType("text")
+                    .HasColumnName("xml");
+
+                b.HasKey("Id")
+                    .HasName("pk_data_protection_keys");
+
+                b.ToTable("data_protection_keys");
             });
 
         modelBuilder.Entity("CSAdvent.Web.Data.ClaimRequest", b =>

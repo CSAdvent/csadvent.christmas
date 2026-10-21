@@ -107,6 +107,17 @@ public sealed partial class AccountTests(AppHostFixture fixture)
     }
 
     [Fact]
+    public async Task CookieKeysAreKeptInTheDatabase()
+    {
+        using var browser = fixture.CreateBrowser();
+        await browser.GetAsync("/dev/signin?login=keys-dev&id=5006", CancellationToken);
+
+        // Issuing the sign-in cookie needs a data protection key, which must survive restarts and be shared by replicas.
+        await using var db = await fixture.CreateDbContextAsync();
+        Assert.True(await db.DataProtectionKeys.AnyAsync(CancellationToken));
+    }
+
+    [Fact]
     public async Task SignInNeverRedirectsOffSite()
     {
         using var browser = fixture.CreateBrowser();
