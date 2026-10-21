@@ -23,6 +23,9 @@ public enum ClaimOutcome
 
 public sealed record ClaimableSlot(int SlotId, int Year, int Day, int Part, int SlotsPerDay, ClaimAvailability Availability);
 
+/// <summary>What the claim form shows and prefills for the signed-in contributor.</summary>
+public sealed record ClaimantDetails(string? VerifiedEmail, string? Bluesky, string? Mastodon, string? LinkedIn, string? Facebook, string? Reddit);
+
 /// <summary>
 /// Claim requests: a signed-in contributor asks for an open slot and the organizer approves one request per slot. Requests
 /// don't reserve the slot, so several people can ask for the same one; first come, first served.
@@ -47,17 +50,26 @@ public sealed class ClaimService(AdventDbContext db, AdventSchedule schedule, Ti
             : new ClaimableSlot(slot.Id, year, day, part, slot.Season.SlotsPerDay, CheckAvailability(slot.Season, slot, schedule));
     }
 
-    /// <summary>The contributor's verified email, which is where claim emails go. Null if GitHub hasn't verified one.</summary>
-    public Task<string?> GetVerifiedEmailAsync(int contributorId, CancellationToken cancellationToken = default) =>
+    /// <summary>
+    /// The contributor's verified email, where claim emails go (null if GitHub hasn't verified one), and the social accounts
+    /// they gave before.
+    /// </summary>
+    public Task<ClaimantDetails?> GetClaimantAsync(int contributorId, CancellationToken cancellationToken = default) =>
         db.Contributors
-            .Where(c => c.Id == contributorId && c.EmailVerifiedAt != null)
-            .Select(c => c.Email)
+            .Where(c => c.Id == contributorId)
+            .Select(c => new ClaimantDetails(
+                c.EmailVerifiedAt != null ? c.Email : null,
+                c.BlueskyHandle,
+                c.MastodonHandle,
+                c.LinkedInUrl,
+                c.FacebookUrl,
+                c.RedditUsername))
             .SingleOrDefaultAsync(cancellationToken);
 
     public async Task<ClaimOutcome> SubmitAsync(int contributorId, int year, int day, int part, ClaimForm form, CancellationToken cancellationToken = default)
     {
-        var email = await GetVerifiedEmailAsync(contributorId, cancellationToken);
-        if (email is null)
+        var contributor = await db.Contributors.SingleOrDefaultAsync(c => c.Id == contributorId, cancellationToken);
+        if (contributor is not { Email: { } email, EmailVerifiedAt: not null })
         {
             return ClaimOutcome.NoVerifiedEmail;
         }
@@ -86,6 +98,13 @@ public sealed class ClaimService(AdventDbContext db, AdventSchedule schedule, Ti
 
         db.ClaimRequests.Add(request);
 
+        // Saved on the contributor, so they're prefilled next time. The form has already validated them.
+        contributor.BlueskyHandle = Normalize(SocialPlatform.Bluesky, form.Bluesky);
+        contributor.MastodonHandle = Normalize(SocialPlatform.Mastodon, form.Mastodon);
+        contributor.LinkedInUrl = Normalize(SocialPlatform.LinkedIn, form.LinkedIn);
+        contributor.FacebookUrl = Normalize(SocialPlatform.Facebook, form.Facebook);
+        contributor.RedditUsername = Normalize(SocialPlatform.Reddit, form.Reddit);
+
         try
         {
             await db.SaveChangesAsync(cancellationToken);
@@ -99,4 +118,9 @@ public sealed class ClaimService(AdventDbContext db, AdventSchedule schedule, Ti
         await notifier.ClaimRequestedAsync(request.Id, year, day, part, cancellationToken);
         return ClaimOutcome.Submitted;
     }
+
+    private static string? Normalize(SocialPlatform platform, string? input) =>
+        SocialAccounts.TryNormalize(platform, input, out var normalized)
+            ? normalized
+            : throw new ArgumentException($"'{input}' isn't a valid {platform} account.", nameof(input));
 }

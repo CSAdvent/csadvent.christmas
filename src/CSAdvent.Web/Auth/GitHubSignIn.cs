@@ -25,7 +25,7 @@ public static class GitHubSignIn
         var contributors = context.HttpContext.RequestServices.GetRequiredService<ContributorSignIn>();
         var contributorId = await contributors.RecordAsync(user.Id, user.Login, verifiedEmail, cancellationToken);
 
-        context.Identity!.AddClaims(AdventClaims.For(user.Id, user.Login, verifiedEmail, contributorId));
+        context.Identity!.AddClaims(AdventClaims.For(user.Id, user.Login, verifiedEmail, contributorId, user.Name));
     }
 
     /// <summary>The primary address if GitHub has verified it, otherwise any verified address, otherwise none.</summary>
@@ -51,6 +51,6 @@ public static class GitHubSignIn
     }
 }
 
-public sealed record GitHubUser(long Id, string Login);
+public sealed record GitHubUser(long Id, string Login, string? Name);
 
 public sealed record GitHubEmail(string Email, bool Primary, bool Verified);

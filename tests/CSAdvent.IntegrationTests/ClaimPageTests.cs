@@ -28,16 +28,66 @@ public sealed partial class ClaimPageTests(AppHostFixture fixture)
     }
 
     [Fact]
-    public async Task TheFormShowsTheSpotAndTheVerifiedEmail()
+    public async Task TheFormShowsTheSpotTheVerifiedEmailAndTheGitHubName()
     {
         await EnsureSeasonsAsync();
-        using var browser = await SignInAsync("claim-viewer", 6001);
+        using var browser = await SignInAsync("claim-viewer", 6001, name: "Vera Viewer");
 
         var html = await browser.GetStringAsync("/claim/2097/2/1", CancellationToken);
 
         Assert.Contains(">Request December 2, 2097</h1>", html);
         Assert.Contains("claim-viewer@example.com", html);
-        Assert.Contains("value=\"claim-viewer\"", html);
+        Assert.Contains("value=\"Vera Viewer\"", html);
+    }
+
+    [Fact]
+    public async Task SocialAccountsAreSavedOnTheContributorAndPrefilledNextTime()
+    {
+        await EnsureSeasonsAsync();
+        using var browser = await SignInAsync("claim-social", 6007);
+
+        var response = await PostClaimAsync(browser, "/claim/2097/7/1", new()
+        {
+            ["Form.DisplayName"] = "Sol Social",
+            ["Form.Bluesky"] = "@Sol.bsky.social",
+            ["Form.Mastodon"] = "https://hachyderm.io/@sol",
+            ["Form.LinkedIn"] = "linkedin.com/in/sol-social",
+            ["Form.Facebook"] = "fb.com/sol.social",
+            ["Form.Reddit"] = "u/sol_social",
+            ["Form.AgreeToTiming"] = "true",
+            ["Form.AgreeToTerms"] = "true",
+        });
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        await using var db = await fixture.CreateDbContextAsync();
+        var contributor = await db.Contributors.SingleAsync(c => c.GithubUserId == 6007, CancellationToken);
+        Assert.Equal(
+            ("sol.bsky.social", "@sol@hachyderm.io", "https://www.linkedin.com/in/sol-social", "https://www.facebook.com/sol.social", "sol_social"),
+            (contributor.BlueskyHandle, contributor.MastodonHandle, contributor.LinkedInUrl, contributor.FacebookUrl, contributor.RedditUsername));
+
+        var nextForm = await browser.GetStringAsync("/claim/2097/8/1", CancellationToken);
+        Assert.Contains("value=\"sol.bsky.social\"", nextForm);
+        Assert.Contains("value=\"@sol@hachyderm.io\"", nextForm);
+    }
+
+    [Fact]
+    public async Task InvalidSocialAccountsAreReportedAndNothingIsStored()
+    {
+        await EnsureSeasonsAsync();
+        using var browser = await SignInAsync("claim-typo", 6008);
+
+        var response = await PostClaimAsync(browser, "/claim/2097/9/1", new()
+        {
+            ["Form.DisplayName"] = "Typo",
+            ["Form.Mastodon"] = "@typo",
+            ["Form.AgreeToTiming"] = "true",
+            ["Form.AgreeToTerms"] = "true",
+        });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Enter a Mastodon handle", await response.Content.ReadAsStringAsync(CancellationToken));
+        await using var db = await fixture.CreateDbContextAsync();
+        Assert.False(await db.ClaimRequests.AnyAsync(r => r.Contributor.GithubUserId == 6008, CancellationToken));
     }
 
     [Fact]
@@ -140,10 +190,11 @@ public sealed partial class ClaimPageTests(AppHostFixture fixture)
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    private async Task<HttpClient> SignInAsync(string login, long githubUserId)
+    private async Task<HttpClient> SignInAsync(string login, long githubUserId, string? name = null)
     {
         var browser = fixture.CreateBrowser();
-        var response = await browser.GetAsync($"/dev/signin?login={login}&id={githubUserId}", CancellationToken);
+        var nameQuery = name is null ? "" : $"&name={Uri.EscapeDataString(name)}";
+        var response = await browser.GetAsync($"/dev/signin?login={login}&id={githubUserId}{nameQuery}", CancellationToken);
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         return browser;
     }

@@ -16,6 +16,21 @@ public sealed class ClaimForm
     [StringLength(200, ErrorMessage = "Keep comments to 200 characters or fewer.")]
     public string? Comments { get; set; }
 
+    [SocialAccount(SocialPlatform.Bluesky, ErrorMessage = "Enter a Bluesky handle, such as you.bsky.social.")]
+    public string? Bluesky { get; set; }
+
+    [SocialAccount(SocialPlatform.Mastodon, ErrorMessage = "Enter a Mastodon handle, such as @you@mastodon.social.")]
+    public string? Mastodon { get; set; }
+
+    [SocialAccount(SocialPlatform.LinkedIn, ErrorMessage = "Enter your LinkedIn profile URL, such as https://www.linkedin.com/in/you.")]
+    public string? LinkedIn { get; set; }
+
+    [SocialAccount(SocialPlatform.Facebook, ErrorMessage = "Enter your Facebook profile or Page URL, such as https://www.facebook.com/you.")]
+    public string? Facebook { get; set; }
+
+    [SocialAccount(SocialPlatform.Reddit, ErrorMessage = "Enter a Reddit username, such as u/you.")]
+    public string? Reddit { get; set; }
+
     [Range(typeof(bool), "true", "true", ErrorMessage = "Agree to publish your post on your day to continue.")]
     public bool AgreeToTiming { get; set; }
 

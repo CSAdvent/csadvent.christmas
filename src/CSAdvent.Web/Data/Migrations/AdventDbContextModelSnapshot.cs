@@ -16,7 +16,7 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261020213351_CreateCoreSchema";
+    public override string LastMigrationId => "20261021131439_AddContributorSocialAccounts";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -191,6 +191,11 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
 
                 NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(id);
 
+                b.Property<string>("BlueskyHandle")
+                    .HasMaxLength(253)
+                    .HasColumnType("character varying(253)")
+                    .HasColumnName("bluesky_handle");
+
                 b.Property<DateTimeOffset>("CreatedAt")
                     .HasColumnType("timestamp with time zone")
                     .HasColumnName("created_at");
@@ -204,6 +209,11 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                     .HasColumnType("timestamp with time zone")
                     .HasColumnName("email_verified_at");
 
+                b.Property<string>("FacebookUrl")
+                    .HasMaxLength(200)
+                    .HasColumnType("character varying(200)")
+                    .HasColumnName("facebook_url");
+
                 b.Property<string>("GithubLogin")
                     .IsRequired()
                     .HasMaxLength(39)
@@ -213,6 +223,21 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                 b.Property<long>("GithubUserId")
                     .HasColumnType("bigint")
                     .HasColumnName("github_user_id");
+
+                b.Property<string>("LinkedInUrl")
+                    .HasMaxLength(200)
+                    .HasColumnType("character varying(200)")
+                    .HasColumnName("linkedin_url");
+
+                b.Property<string>("MastodonHandle")
+                    .HasMaxLength(100)
+                    .HasColumnType("character varying(100)")
+                    .HasColumnName("mastodon_handle");
+
+                b.Property<string>("RedditUsername")
+                    .HasMaxLength(20)
+                    .HasColumnType("character varying(20)")
+                    .HasColumnName("reddit_username");
 
                 b.HasKey("Id")
                     .HasName("pk_contributors");

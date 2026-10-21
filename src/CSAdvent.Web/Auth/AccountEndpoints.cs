@@ -94,7 +94,7 @@ public static class AccountEndpoints
         if (devSignIn)
         {
             // Signs in as any GitHub user, with a made-up verified email. Never mapped outside development.
-            app.MapGet("/dev/signin", async (string login, long id, string? returnUrl, HttpContext http, ContributorSignIn contributors) =>
+            app.MapGet("/dev/signin", async (string login, long id, string? name, string? returnUrl, HttpContext http, ContributorSignIn contributors) =>
             {
                 if (string.IsNullOrWhiteSpace(login) || id <= 0)
                 {
@@ -103,7 +103,7 @@ public static class AccountEndpoints
 
                 var email = $"{login}@example.com";
                 var contributorId = await contributors.RecordAsync(id, login, email, http.RequestAborted);
-                var identity = new ClaimsIdentity(AdventClaims.For(id, login, email, contributorId), CookieAuthenticationDefaults.AuthenticationScheme);
+                var identity = new ClaimsIdentity(AdventClaims.For(id, login, email, contributorId, name), CookieAuthenticationDefaults.AuthenticationScheme);
 
                 await http.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
                 return Results.LocalRedirect(ReturnUrl.Sanitize(returnUrl));

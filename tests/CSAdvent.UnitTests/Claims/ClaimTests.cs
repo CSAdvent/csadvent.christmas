@@ -55,6 +55,15 @@ public sealed class ClaimFormTests
     }
 
     [Fact]
+    public void RejectsSocialAccountsThatArentValid()
+    {
+        var form = Valid();
+        form.Mastodon = "@alice";
+
+        Assert.Equal(["Enter a Mastodon handle, such as @you@mastodon.social."], Errors(form));
+    }
+
+    [Fact]
     public void RequiresBothAgreements()
     {
         var form = Valid();
