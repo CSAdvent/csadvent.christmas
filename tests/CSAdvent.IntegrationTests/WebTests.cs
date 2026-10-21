@@ -15,6 +15,31 @@ public sealed class WebTests(AppHostFixture fixture)
     }
 
     [Fact]
+    public async Task EveryPageLinksToThePrivacyAndTermsPages()
+    {
+        using var client = fixture.CreateWebClient();
+
+        var html = await client.GetStringAsync("/archive", TestContext.Current.CancellationToken);
+
+        Assert.Contains("<a href=\"privacy\"", html);
+        Assert.Contains("<a href=\"terms\"", html);
+    }
+
+    [Theory]
+    [InlineData("/privacy", "on February 1 after each season")]
+    [InlineData("/terms", "Make it about C#")]
+    public async Task PrivacyAndTermsPagesShowHowToReachTheOrganizers(string path, string expected)
+    {
+        using var client = fixture.CreateWebClient();
+
+        var html = await client.GetStringAsync(path, TestContext.Current.CancellationToken);
+
+        // Site:ContactEmail, from appsettings.json.
+        Assert.Contains("href=\"mailto:hello@csadvent.christmas\"", html);
+        Assert.Contains(expected, html);
+    }
+
+    [Fact]
     public async Task UnknownPageReturnsNotFound()
     {
         using var client = fixture.CreateWebClient();

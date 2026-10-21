@@ -89,6 +89,13 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 - Static SSR renders a page at its first `await`, so create any `EditForm` model before awaiting.
 - Integration tests use `TestBrowser` (`fixture.SignInAsync`, and `browser.PostFormAsync(path, formName, fields)`, which also posts the page's hidden inputs unless the fields override them) and `TestSeasons.EnsureAsync` (each test class uses its own years, all after 2089).
 
+## Privacy
+
+- `/privacy` and `/terms` are Razor pages. The contact address is `Site:ContactEmail` (`SiteOptions`), set to `hello@csadvent.christmas` in `appsettings.json`. It's required and validated on start, so the app won't start without it.
+- **Retention:** `ContactRetention` deletes a season's contact details at `AdventSchedule.GetContactDeletionTime` (midnight in the reveal time zone on February 1 after the season): `slot_contacts`, `claim_requests` and `substitutes` for that season, plus every contributor email that hasn't been verified again since. Slots, contributors' GitHub logins and social accounts stay.
+- `ContactRetentionWorker` runs it on start and then hourly. The AppHost turns it off in the Testing environment (`Retention:DeleteInBackground`), because `RetentionTests` run it with a fake clock and the real-time run would race them.
+- **Keep the privacy page true.** Anything that collects or shares something new (the email provider in #20, analytics in #38, click tracking in #58, the mailing list in #49) updates `/privacy` and its "Last updated" date in the same PR. New personal data goes in the private tables and into `ContactRetention`.
+
 ## Hosting
 
 - `AppHost.cs` models production: `AddAzureContainerAppEnvironment("aca")`, `AddAzurePostgresFlexibleServer("postgres")` with `RunAsContainer` (locally it's the same `postgres` container, password parameter and data volume as before), Application Insights, and the web app on Container Apps (1–3 replicas). MailPit and the dev tools only exist locally.

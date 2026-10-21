@@ -91,6 +91,9 @@ if (isTesting)
 {
     // The organizer the integration tests sign in as (AppHostFixture.OrganizerGitHubId).
     web.WithEnvironment("Accounts__Admins__0", "9001");
+
+    // RetentionTests run the deletion with a fake clock. The real-time background run would race them.
+    web.WithEnvironment("Retention__DeleteInBackground", "false");
 }
 else
 {

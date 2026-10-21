@@ -2,9 +2,11 @@ using CSAdvent.Web.Auth;
 using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Claims;
 using CSAdvent.Web.Components;
+using CSAdvent.Web.Content;
 using CSAdvent.Web.Data;
 using CSAdvent.Web.Data.Archive;
 using CSAdvent.Web.Manage;
+using CSAdvent.Web.Retention;
 using Microsoft.AspNetCore.DataProtection;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -24,6 +26,10 @@ builder.Services.AddOptions<AdventOptions>()
         options => TimeZoneInfo.TryFindSystemTimeZoneById(options.TimeZone, out _),
         $"{AdventOptions.SectionName}:TimeZone must be a time zone ID, such as America/New_York.")
     .ValidateOnStart();
+builder.Services.AddOptions<SiteOptions>()
+    .BindConfiguration(SiteOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
 builder.Services.AddSingleton<AdventSchedule>();
 builder.Services.AddScoped<ArchiveService>();
 builder.Services.AddScoped<HomeService>();
@@ -32,6 +38,13 @@ builder.Services.AddScoped<SeasonAdminService>();
 builder.Services.AddScoped<ClaimReviewService>();
 builder.Services.AddScoped<EntryAdminService>();
 builder.Services.AddSingleton<IClaimNotifier, LoggingClaimNotifier>();
+
+// Deletes each season's contact details on February 1 after it, as the privacy page promises.
+builder.Services.AddScoped<ContactRetention>();
+if (builder.Configuration.GetValue("Retention:DeleteInBackground", defaultValue: true))
+{
+    builder.Services.AddHostedService<ContactRetentionWorker>();
+}
 
 builder.AddAccounts();
 

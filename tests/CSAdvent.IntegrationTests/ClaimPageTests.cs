@@ -34,6 +34,8 @@ public sealed partial class ClaimPageTests(AppHostFixture fixture)
         Assert.Contains(">Request December 2, 2097</h1>", html);
         Assert.Contains("claim-viewer@example.com", html);
         Assert.Contains("value=\"Vera Viewer\"", html);
+        Assert.Contains("<a href=\"terms\" target=\"_blank\"", html);
+        Assert.Contains("<a href=\"privacy\" target=\"_blank\"", html);
     }
 
     [Fact]
