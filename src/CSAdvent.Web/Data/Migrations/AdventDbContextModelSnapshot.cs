@@ -16,7 +16,7 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261021201727_AddDroppedOutAt";
+    public override string LastMigrationId => "20261021205708_AddBackupOffers";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -26,6 +26,90 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
             .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
         NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+        modelBuilder.Entity("CSAdvent.Web.Data.BackupOffer", b =>
+            {
+                var id = b.Property<int>("Id")
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("integer")
+                    .HasColumnName("id");
+
+                NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(id);
+
+                b.Property<DateTimeOffset>("AskedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("asked_at");
+
+                b.Property<string>("AuthorName")
+                    .HasMaxLength(100)
+                    .HasColumnType("character varying(100)")
+                    .HasColumnName("author_name");
+
+                b.Property<string>("AuthorUrl")
+                    .HasMaxLength(500)
+                    .HasColumnType("character varying(500)")
+                    .HasColumnName("author_url");
+
+                b.Property<DateTimeOffset>("ExpiresAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("expires_at");
+
+                b.Property<string>("PostTitle")
+                    .HasMaxLength(300)
+                    .HasColumnType("character varying(300)")
+                    .HasColumnName("post_title");
+
+                b.Property<string>("PostUrl")
+                    .HasMaxLength(500)
+                    .HasColumnType("character varying(500)")
+                    .HasColumnName("post_url");
+
+                b.Property<DateTimeOffset?>("RespondedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("responded_at");
+
+                b.Property<int>("SlotId")
+                    .HasColumnType("integer")
+                    .HasColumnName("slot_id");
+
+                b.Property<string>("Status")
+                    .IsRequired()
+                    .HasMaxLength(20)
+                    .HasColumnType("character varying(20)")
+                    .HasColumnName("status");
+
+                b.Property<int>("SubstituteId")
+                    .HasColumnType("integer")
+                    .HasColumnName("substitute_id");
+
+                b.Property<uint>("Version")
+                    .IsConcurrencyToken()
+                    .ValueGeneratedOnAddOrUpdate()
+                    .HasColumnType("xid")
+                    .HasColumnName("xmin");
+
+                b.HasKey("Id")
+                    .HasName("pk_backup_offers");
+
+                b.HasIndex("SlotId")
+                    .IsUnique()
+                    .HasDatabaseName("ix_backup_offers_one_taker")
+                    .HasFilter("status = 'Accepted'");
+
+                b.HasIndex("SubstituteId")
+                    .HasDatabaseName("ix_backup_offers_substitute_id");
+
+                b.HasIndex("SlotId", "SubstituteId")
+                    .IsUnique()
+                    .HasDatabaseName("ix_backup_offers_slot_id_substitute_id");
+
+                b.ToTable("backup_offers", t =>
+                    {
+                        t.HasCheckConstraint("ck_backup_offers_author_url", "author_url ~* '^https?://'");
+
+                        t.HasCheckConstraint("ck_backup_offers_post_url", "post_url ~* '^https?://'");
+                    });
+            });
 
         modelBuilder.Entity("CSAdvent.Web.Data.ClaimRequest", b =>
             {
@@ -494,6 +578,11 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                     .HasColumnType("character varying(254)")
                     .HasColumnName("email");
 
+                b.Property<string>("Link")
+                    .HasMaxLength(500)
+                    .HasColumnType("character varying(500)")
+                    .HasColumnName("link");
+
                 b.Property<string>("Name")
                     .IsRequired()
                     .HasMaxLength(100)
@@ -530,7 +619,10 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                 b.HasIndex("SeasonYear", "SignedUpAt")
                     .HasDatabaseName("ix_substitutes_season_year_signed_up_at");
 
-                b.ToTable("substitutes");
+                b.ToTable("substitutes", t =>
+                    {
+                        t.HasCheckConstraint("ck_substitutes_link", "link ~* '^https?://'");
+                    });
             });
 
         modelBuilder.Entity("Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey", b =>
@@ -554,6 +646,27 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                     .HasName("pk_data_protection_keys");
 
                 b.ToTable("data_protection_keys");
+            });
+
+        modelBuilder.Entity("CSAdvent.Web.Data.BackupOffer", b =>
+            {
+                b.HasOne("CSAdvent.Web.Data.Slot", "Slot")
+                    .WithMany()
+                    .HasForeignKey("SlotId")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired()
+                    .HasConstraintName("fk_backup_offers_slots_slot_id");
+
+                b.HasOne("CSAdvent.Web.Data.Substitute", "Substitute")
+                    .WithMany()
+                    .HasForeignKey("SubstituteId")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired()
+                    .HasConstraintName("fk_backup_offers_substitutes_substitute_id");
+
+                b.Navigation("Slot");
+
+                b.Navigation("Substitute");
             });
 
         modelBuilder.Entity("CSAdvent.Web.Data.ClaimRequest", b =>

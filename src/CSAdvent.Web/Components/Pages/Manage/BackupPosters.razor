@@ -1,0 +1,63 @@
+@page "/manage/backups"
+@using CSAdvent.Web.Backups
+@inject SeasonAdminService Seasons
+@inject BackupListService List
+
+<PageTitle>Backup posters · Manage · C# Advent</PageTitle>
+
+<ManageNav />
+
+<h1 class="text-3xl font-bold tracking-tight text-slate-900">Backup posters @(_year is { } year ? $"for {year}" : "")</h1>
+<p class="mt-2 max-w-2xl text-slate-600">
+    In sign-up order, which is the order they're asked. Spots are offered automatically when an author drops out, or still has no
+    post link at 6 PM Eastern the evening before their day; each backup gets 4 hours before the next is asked too.
+</p>
+
+@if (_entries.Count == 0)
+{
+    <p class="mt-6 text-slate-500">Nobody has signed up as a backup yet.</p>
+}
+else
+{
+    <table class="mt-6 w-full text-left text-sm">
+        <thead class="border-b border-slate-200 text-slate-500">
+            <tr>
+                <th class="py-2 pr-4 font-medium">#</th>
+                <th class="py-2 pr-4 font-medium">Name</th>
+                <th class="py-2 pr-4 font-medium">GitHub</th>
+                <th class="py-2 pr-4 font-medium">Email</th>
+                <th class="py-2 pr-4 font-medium">Notes</th>
+                <th class="py-2 pr-4 font-medium">Signed up</th>
+                <th class="py-2 font-medium">Status</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+            @foreach (var entry in _entries)
+            {
+                <tr class="align-top">
+                    <td class="py-2 pr-4">@(entry.Position?.ToString() ?? "–")</td>
+                    <td class="py-2 pr-4 font-medium text-slate-900">@entry.Name</td>
+                    <td class="py-2 pr-4">@entry.GithubLogin</td>
+                    <td class="py-2 pr-4">@entry.Email</td>
+                    <td class="py-2 pr-4 text-slate-600">@entry.Notes</td>
+                    <td class="py-2 pr-4 whitespace-nowrap"><LocalTime Value="entry.SignedUpAt" /></td>
+                    <td class="py-2 whitespace-nowrap">@entry.Status</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private int? _year;
+    private List<BackupListEntry> _entries = [];
+
+    [SupplyParameterFromQuery]
+    public int? Year { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _year = Year ?? await Seasons.GetCurrentYearAsync();
+        _entries = _year is { } year ? await List.ListAsync(year) : [];
+    }
+}

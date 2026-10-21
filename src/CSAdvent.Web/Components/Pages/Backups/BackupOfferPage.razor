@@ -1,0 +1,173 @@
+@page "/backups/offers/{OfferId:int}"
+@attribute [Authorize]
+@using CSAdvent.Web.Auth
+@using CSAdvent.Web.Backups
+@using CSAdvent.Web.Data
+@inject BackupService Backups
+@inject TimeProvider Clock
+@inject NavigationManager Navigation
+
+@if (_offer is { } offer)
+{
+    <PageTitle>December @offer.Spot.Day · Backup posters · C# Advent</PageTitle>
+
+    @if (offer.Status is BackupOfferStatus.Used)
+    {
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900">Your post is on the calendar</h1>
+        <p class="mt-2 max-w-2xl text-slate-700">
+            It's @offer.Spot.Name. Thank you for stepping in! You can still fix its title or URL on
+            <a href="my-spots" class="text-advent-700 underline">My spots</a>.
+        </p>
+    }
+    else if (offer.Status is BackupOfferStatus.Accepted)
+    {
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900">You're on deck for December @offer.Spot.Day</h1>
+        <p class="mt-2 max-w-2xl text-slate-700">
+            Thanks! If the original author's link still hasn't arrived when their day starts at midnight Eastern, your post goes on
+            the calendar, and we'll email you either way.
+        </p>
+    }
+    else if (offer.TakenByOthers)
+    {
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900">Someone else stepped in</h1>
+        <p class="mt-2 max-w-2xl text-slate-700">Another backup took @offer.Spot.Name. Thanks for being ready: you're still on the list for the next one.</p>
+    }
+    else if (offer.Reason is null)
+    {
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900">@(offer.IsDayOver ? "This day is over" : "This spot doesn't need a backup any more")</h1>
+        <p class="mt-2 max-w-2xl text-slate-700">
+            @(offer.IsDayOver
+                ? $"{offer.Spot.Name} has passed."
+                : $"{offer.Spot.Name} has its post now.") Thanks for being ready: you're still on the list for the next one.
+        </p>
+    }
+    else
+    {
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900">Can you fill in on December @offer.Spot.Day?</h1>
+        <p class="mt-2 max-w-2xl text-slate-700">
+            @if (offer.Reason is BackupReason.DroppedOut)
+            {
+                @($"The author of {offer.Spot.Name} had to drop out, so the spot is open. Send your post below and it goes straight onto the calendar.")
+            }
+            else
+            {
+                @($"We still don't have the post for {offer.Spot.Name}.")
+            }
+        </p>
+        @if (offer.Reason is BackupReason.LinkMissing)
+        {
+            <p class="mt-4 max-w-2xl rounded-xl bg-amber-50 p-4 text-amber-900 ring-1 ring-amber-200">
+                <strong>No guarantee yet.</strong> The original author can still send their link until their day starts at midnight
+                Eastern. If they do, we'll let you know and you stay on the list. If they don't, your post goes on the calendar.
+            </p>
+        }
+        @if (offer.Status is BackupOfferStatus.Declined)
+        {
+            <p class="mt-4 max-w-2xl text-slate-600">You said not this time, but the spot still needs a post if you've changed your mind.</p>
+        }
+    }
+
+    @* Both forms are rendered (hidden) after they're posted, so a repeated post reaches its handler instead of a 400. *@
+    @if (CanAnswer(offer) || _acceptPosted)
+    {
+        <EditForm Model="Form" FormName="accept" OnValidSubmit="AcceptAsync" hidden="@(!CanAnswer(offer))" class="mt-8 flex max-w-2xl flex-col gap-5">
+            <DataAnnotationsValidator />
+            <ValidationSummary class="rounded-xl bg-red-50 p-4 text-sm ring-1 ring-red-200" />
+
+            <fieldset class="flex flex-col gap-4">
+                <legend class="font-semibold text-slate-900">Your post</legend>
+                <label class="flex flex-col text-sm font-medium text-slate-700">
+                    Title
+                    <InputText @bind-Value="Form!.PostTitle" maxlength="300" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                </label>
+                <label class="flex flex-col text-sm font-medium text-slate-700">
+                    URL
+                    <InputText @bind-Value="Form!.PostUrl" type="url" maxlength="500" placeholder="https://" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                </label>
+            </fieldset>
+
+            <fieldset class="flex flex-col gap-4">
+                <legend class="font-semibold text-slate-900">You</legend>
+                <label class="flex flex-col text-sm font-medium text-slate-700">
+                    Name <span class="font-normal text-slate-500">(shown on the calendar)</span>
+                    <InputText @bind-Value="Form!.AuthorName" maxlength="50" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                </label>
+                <label class="flex flex-col text-sm font-medium text-slate-700">
+                    Link for your name <span class="font-normal text-slate-500">(optional)</span>
+                    <InputText @bind-Value="Form!.AuthorUrl" type="url" maxlength="200" placeholder="https://" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                </label>
+            </fieldset>
+
+            <div>
+                <button type="submit" class="rounded-lg bg-advent-600 px-5 py-3 font-semibold text-white shadow hover:bg-advent-700">Use my post</button>
+            </div>
+        </EditForm>
+    }
+
+    @if ((CanAnswer(offer) && offer.Status is BackupOfferStatus.Asked) || _declinePosted)
+    {
+        <EditForm Model="Decline" FormName="decline" OnSubmit="DeclineAsync" hidden="@(!(CanAnswer(offer) && offer.Status is BackupOfferStatus.Asked))" class="mt-6">
+            <button type="submit" class="rounded-lg px-4 py-2 font-medium text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50">Not this time</button>
+        </EditForm>
+    }
+}
+
+@code {
+    private BackupOfferView? _offer;
+    private int _contributorId;
+    private bool _acceptPosted;
+    private bool _declinePosted;
+
+    [Parameter]
+    public int OfferId { get; set; }
+
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationState { get; set; } = null!;
+
+    [SupplyParameterFromForm(FormName = "accept")]
+    private BackupAcceptForm? Form { get; set; }
+
+    [SupplyParameterFromForm(FormName = "decline")]
+    private DeclineForm? Decline { get; set; }
+
+    private static bool CanAnswer(BackupOfferView offer) =>
+        offer.Reason is not null && !offer.TakenByOthers && offer.Status is not (BackupOfferStatus.Used or BackupOfferStatus.Accepted);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _acceptPosted = Form is not null;
+        _declinePosted = Decline is not null;
+        Decline ??= new DeclineForm();
+
+        _contributorId = (await AuthenticationState).User.GetContributorId() ?? 0;
+        _offer = await Backups.GetOfferAsync(_contributorId, OfferId, Clock.GetUtcNow());
+        if (_offer is null)
+        {
+            Navigation.NotFound();
+            return;
+        }
+
+        Form ??= _offer.Values;
+    }
+
+    private async Task AcceptAsync()
+    {
+        var outcome = await Backups.AcceptAsync(_contributorId, OfferId, Form!, Clock.GetUtcNow());
+        if (outcome is BackupOfferOutcome.NotFound)
+        {
+            Navigation.NotFound();
+            return;
+        }
+
+        Navigation.NavigateTo($"backups/offers/{OfferId}");
+    }
+
+    private async Task DeclineAsync()
+    {
+        await Backups.DeclineAsync(_contributorId, OfferId, Clock.GetUtcNow());
+        Navigation.NavigateTo($"backups/offers/{OfferId}");
+    }
+
+    /// <summary>The decline form has no fields; it only needs a model.</summary>
+    private sealed class DeclineForm;
+}

@@ -3,7 +3,10 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace CSAdvent.Web.Data;
 
-/// <summary>Someone on standby to fill a slot when an author drops out, contacted in sign-up order. Everything here is private.</summary>
+/// <summary>
+/// A backup poster: someone on standby to fill a spot whose author hasn't sent their post's link, asked one at a time in
+/// sign-up order (see <c>BackupService</c>). Everything here is private.
+/// </summary>
 public sealed class Substitute
 {
     public int Id { get; private set; }
@@ -17,7 +20,11 @@ public sealed class Substitute
 
     public Contributor? Contributor { get; private set; }
 
+    /// <summary>The name to show on the calendar if they fill a spot.</summary>
     public required string Name { get; set; }
+
+    /// <summary>Where their name links on the calendar, like a claim's link. Not their post.</summary>
+    public string? Link { get; set; }
 
     public required string Email { get; set; }
 
@@ -36,6 +43,7 @@ internal sealed class SubstituteConfiguration : IEntityTypeConfiguration<Substit
     public void Configure(EntityTypeBuilder<Substitute> builder)
     {
         builder.Property(s => s.Name).HasMaxLength(100);
+        builder.Property(s => s.Link).HasMaxLength(500);
         builder.Property(s => s.Email).HasMaxLength(254);
         builder.Property(s => s.Notes).HasMaxLength(1000);
 
@@ -58,5 +66,7 @@ internal sealed class SubstituteConfiguration : IEntityTypeConfiguration<Substit
             .WithMany()
             .HasForeignKey(s => s.AssignedSlotId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        builder.ToTable(t => t.HasCheckConstraint("ck_substitutes_link", "link ~* '^https?://'"));
     }
 }

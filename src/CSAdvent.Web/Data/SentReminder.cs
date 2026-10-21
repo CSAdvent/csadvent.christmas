@@ -22,6 +22,9 @@ public enum ReminderKind
     /// with two spots gets it once.
     /// </summary>
     ContributorDailyShare,
+
+    /// <summary>Tells the organizers every backup poster has been asked about a spot and nobody took it.</summary>
+    AdminBackupsExhausted,
 }
 
 /// <summary>

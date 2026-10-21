@@ -1,4 +1,5 @@
 using CSAdvent.Web.Auth;
+using CSAdvent.Web.Backups;
 using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Claims;
 using CSAdvent.Web.Components;
@@ -50,6 +51,9 @@ builder.Services.AddOptions<ReminderOptions>()
     .ValidateDataAnnotations()
     .ValidateOnStart();
 builder.Services.AddScoped<DailyEmailOptOut>();
+builder.Services.AddOptions<BackupOptions>().BindConfiguration(BackupOptions.SectionName);
+builder.Services.AddScoped<BackupService>();
+builder.Services.AddScoped<BackupListService>();
 builder.Services.AddScoped<ReminderService>();
 if (builder.Configuration.GetValue("Reminders:SendInBackground", defaultValue: true))
 {
@@ -95,6 +99,7 @@ app.MapStaticAssets();
 app.MapAccounts();
 app.MapEmailPreviews();
 app.MapReminders();
+app.MapBackups();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 

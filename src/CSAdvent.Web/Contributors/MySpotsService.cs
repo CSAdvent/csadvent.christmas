@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using CSAdvent.Web.Backups;
 using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Claims;
 using CSAdvent.Web.Content;
@@ -50,6 +51,7 @@ public sealed partial class MySpotsService(
     TimeProvider timeProvider,
     EmailComposer composer,
     IEmailSender sender,
+    BackupService backups,
     IOptions<SiteOptions> site,
     ILogger<MySpotsService> logger)
 {
@@ -171,6 +173,7 @@ public sealed partial class MySpotsService(
         if (outcome is MySpotOutcome.DroppedOut)
         {
             await TellOrganizersAsync(dropout, cancellationToken);
+            await backups.OfferNowAsync(slotId, timeProvider.GetUtcNow(), cancellationToken);
         }
 
         return outcome;

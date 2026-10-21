@@ -20,6 +20,13 @@
             @("Every spot is taken. Thank you!")
         }
     </p>
+    @if (Calendar.AreClaimsOpen)
+    {
+        <p class="mt-3 text-slate-600">
+            Can't commit to a day? <a href="backups/@Calendar.Year" class="font-medium text-advent-700 underline">Join the backup list</a>
+            and fill in if an author drops out.
+        </p>
+    }
 </header>
 
 <CalendarGrid Calendar="Calendar" />

@@ -1,0 +1,180 @@
+@page "/backups/{Year:int}"
+@attribute [Authorize]
+@using CSAdvent.Web.Auth
+@using CSAdvent.Web.Backups
+@using CSAdvent.Web.Claims
+@inject BackupListService List
+@inject ClaimService Claims
+@inject NavigationManager Navigation
+
+<PageTitle>Backup posters · C# Advent @Year</PageTitle>
+
+<nav class="mb-6 text-sm font-medium"><a href="" class="text-advent-700 hover:underline">← Back to the calendar</a></nav>
+
+<h1 class="text-3xl font-bold tracking-tight text-slate-900">Backup posters for C# Advent @Year</h1>
+<div class="mt-3 max-w-2xl space-y-3 text-slate-700">
+    <p>
+        Backups step in when an author drops out, or hasn't sent their post's link by the evening before their day. We ask one
+        backup at a time, in the order they signed up, and each has 4 hours to answer before we ask the next.
+    </p>
+    <p>
+        Notice can be short, so it helps to have a post ready to go. If you can't step in when we ask, just say so: you stay on
+        the list for the next one. You can join even if you already have a spot.
+    </p>
+</div>
+
+@if (Done is "joined" or "left")
+{
+    <p class="mt-6 max-w-2xl rounded-xl bg-green-50 p-4 font-medium text-green-800 ring-1 ring-green-200" role="status">
+        @(Done == "joined" ? "You're on the list. We've emailed you the details." : "You've left the backup list.")
+    </p>
+}
+
+@if (_availability is BackupSignupAvailability.NotOpen)
+{
+    <p class="mt-6 rounded-xl bg-slate-50 p-4 font-medium text-slate-800 ring-1 ring-slate-200">Backup sign-ups open when spot sign-ups do.</p>
+}
+else if (_availability is BackupSignupAvailability.SeasonOver)
+{
+    <p class="mt-6 rounded-xl bg-slate-50 p-4 font-medium text-slate-800 ring-1 ring-slate-200">This season is over. Thanks to everyone who stood by!</p>
+}
+else if (_membership is { } membership)
+{
+    <div class="mt-8 max-w-2xl rounded-xl bg-advent-50 p-5 ring-1 ring-advent-200">
+        <p class="text-lg font-semibold text-slate-900">
+            @(membership.FilledSpot is { } filled ? $"You filled {filled}. Thank you!" : $"You're number {membership.Position} on the backup list.")
+        </p>
+        <p class="mt-1 text-slate-700">We'll email you if a spot needs you.</p>
+    </div>
+
+    <section class="mt-10 max-w-2xl rounded-xl bg-red-50 p-5 ring-1 ring-red-200">
+        <h2 class="font-semibold text-red-900">Leave the backup list</h2>
+        <EditForm Model="Leave" FormName="leave" OnValidSubmit="LeaveAsync" class="mt-3 flex flex-wrap items-center gap-4">
+            <DataAnnotationsValidator />
+            <label class="flex items-center gap-2 text-sm text-red-900">
+                <InputCheckbox @bind-Value="Leave!.Confirm" class="size-4" />
+                Yes, take me off the list
+            </label>
+            <button type="submit" class="rounded-lg bg-red-700 px-4 py-2 font-semibold text-white hover:bg-red-800">Leave the list</button>
+            <ValidationMessage For="() => Leave!.Confirm" class="w-full text-sm" />
+        </EditForm>
+    </section>
+}
+else if (_email is null)
+{
+    <h2 class="mt-8 text-xl font-semibold text-slate-900">We need a verified email</h2>
+    <p class="mt-2 max-w-2xl text-slate-600">
+        We contact backups at the verified email address on their GitHub account, and yours doesn't have one yet. Verify an email in
+        your <a href="https://github.com/settings/emails" class="text-advent-700 underline">GitHub email settings</a>, then sign out
+        and sign in again.
+    </p>
+}
+
+@* Rendered (hidden) after a sign-up post too, so a repeated post reaches its handler instead of a 400. *@
+@if ((_availability is BackupSignupAvailability.Open && _membership is null && _email is not null) || _signupPosted)
+{
+    <EditForm Model="Form" FormName="backup" OnValidSubmit="SignUpAsync" hidden="@(_membership is not null)" class="mt-8 flex max-w-2xl flex-col gap-6">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="rounded-xl bg-red-50 p-4 text-sm ring-1 ring-red-200" />
+
+        <div>
+            <label for="name" class="block font-medium text-slate-800">Name</label>
+            <InputText id="name" @bind-Value="Form!.Name" maxlength="50" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" />
+            <p class="mt-1 text-sm text-slate-500">Shown on the calendar if you fill a spot.</p>
+        </div>
+
+        <div>
+            <span class="block font-medium text-slate-800">Email</span>
+            <p class="mt-1 text-slate-700">@_email</p>
+            <p class="mt-1 text-sm text-slate-500">The verified email on your GitHub account. We'll use it to ask you to fill in.</p>
+        </div>
+
+        <div>
+            <label for="link" class="block font-medium text-slate-800">Link for your name <span class="font-normal text-slate-500">(optional)</span></label>
+            <InputText id="link" type="url" @bind-Value="Form!.Link" maxlength="200" placeholder="https://" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" />
+            <p class="mt-1 text-sm text-slate-500">Your blog, GitHub or a profile page. Not a post.</p>
+        </div>
+
+        <div>
+            <label for="notes" class="block font-medium text-slate-800">Notes <span class="font-normal text-slate-500">(optional)</span></label>
+            <InputTextArea id="notes" @bind-Value="Form!.Notes" maxlength="500" rows="3" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" />
+            <p class="mt-1 text-sm text-slate-500">For the organizers: what you'd write about, or whether you already have a post ready.</p>
+        </div>
+
+        <label class="flex items-start gap-3 rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
+            <InputCheckbox @bind-Value="Form!.AgreeToTerms" class="mt-1 size-4" />
+            <span>
+                I agree to the <a href="terms" target="_blank" class="text-advent-700 underline">terms</a> and have read the
+                <a href="privacy" target="_blank" class="text-advent-700 underline">privacy page</a> (they open in a new tab).
+            </span>
+        </label>
+
+        <div>
+            <button type="submit" class="rounded-lg bg-advent-600 px-5 py-3 font-semibold text-white shadow hover:bg-advent-700">Join the backup list</button>
+        </div>
+    </EditForm>
+}
+
+@code {
+    private BackupSignupAvailability? _availability;
+    private BackupMembership? _membership;
+    private string? _email;
+    private int _contributorId;
+    private bool _signupPosted;
+
+    [Parameter]
+    public int Year { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? Done { get; set; }
+
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationState { get; set; } = null!;
+
+    [SupplyParameterFromForm(FormName = "backup")]
+    private BackupSignupForm? Form { get; set; }
+
+    [SupplyParameterFromForm(FormName = "leave")]
+    private LeaveBackupListForm? Leave { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _signupPosted = Form is not null;
+        var user = (await AuthenticationState).User;
+        Form ??= new BackupSignupForm { Name = user.GetDisplayName() is { Length: > 50 } name ? name[..50] : user.GetDisplayName() };
+        Leave ??= new LeaveBackupListForm();
+
+        _availability = await List.GetAvailabilityAsync(Year);
+        if (_availability is null)
+        {
+            Navigation.NotFound();
+            return;
+        }
+
+        _contributorId = user.GetContributorId() ?? 0;
+        _email = (await Claims.GetClaimantAsync(_contributorId))?.VerifiedEmail;
+        _membership = await List.GetMembershipAsync(_contributorId, Year);
+    }
+
+    private async Task SignUpAsync()
+    {
+        switch (await List.SignUpAsync(_contributorId, Year, Form!))
+        {
+            case BackupSignupOutcome.SignedUp or BackupSignupOutcome.AlreadyOnList:
+                Navigation.NavigateTo($"backups/{Year}?done=joined");
+                break;
+            case BackupSignupOutcome.NoVerifiedEmail:
+                _email = null;
+                break;
+            default:
+                _availability = await List.GetAvailabilityAsync(Year);
+                break;
+        }
+    }
+
+    private async Task LeaveAsync()
+    {
+        await List.LeaveAsync(_contributorId, Year);
+        Navigation.NavigateTo($"backups/{Year}?done=left");
+    }
+}
