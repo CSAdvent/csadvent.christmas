@@ -99,12 +99,19 @@ dotnet test
 - 🐳 The integration tests need a running container runtime
 - 🧹 They run the AppHost in the `Testing` environment: a fresh database with no data volume, no pgweb, and plain HTTP, so they never touch your local data
 
+## 🙋 My Spots
+
+- 📝 **Contributors add their own post's title and URL** at `/my-spots` after signing in. That's how posts get onto the calendar.
+- 🚪 **Dropping out** there frees the spot straight away, without naming the author, emails the organizers, and offers the day to the backup posters
+
 ## ✉️ Email
 
 - 🎨 **Branded HTML emails** with a plain-text alternative, both rendered from one description of each email (`EmailContent`)
 - 👀 **Preview every email** at <https://localhost:7092/dev/emails> while the AppHost runs (Development only). It lists when each one is sent and who gets it.
 - 📬 **Nothing leaves your machine locally**: MailPit catches every email, and its inbox is linked from the dashboard
 - ☁️ **In production** email goes through Azure Communication Services, from `donotreply@mail.csadvent.christmas`, with replies going to `hello@csadvent.christmas`
+- ⏰ **Reminders** go out at 9 AM Eastern: post link reminders 7, 5, 3, 2 and 1 days before an author's day, and a daily "today's posts" email to every author during Advent, which has a one-click unsubscribe link
+- 🧪 **Try a reminder run** without waiting for December: `POST https://localhost:7092/dev/reminders/run?at=2026-12-03T15:00:00Z` (Development only). The emails land in MailPit.
 
 ## ☁️ Deploying to Azure
 

@@ -79,6 +79,20 @@ public sealed class EmailComposerTests
     }
 
     [Fact]
+    public async Task EmailsPeopleCanTurnOffCarryTheLinkInTheFooterAndHeaders()
+    {
+        var composer = CreateComposer();
+        var content = Content with { UnsubscribeUrl = "https://csadvent.christmas/emails/daily/stop?token=abc" };
+
+        var email = await composer.ComposeAsync(content, new EmailRecipient("ada@example.com"));
+
+        Assert.Equal("https://csadvent.christmas/emails/daily/stop?token=abc", email.UnsubscribeUrl);
+        Assert.Contains("<a href=\"https://csadvent.christmas/emails/daily/stop?token=abc\"", email.Html);
+        Assert.Contains("Stop these emails</a>", email.Html);
+        Assert.Null((await composer.ComposeAsync(Content, new EmailRecipient("ada@example.com"))).UnsubscribeUrl);
+    }
+
+    [Fact]
     public async Task SubjectsAreASingleLine()
     {
         var email = await CreateComposer().ComposeAsync(Content, new EmailRecipient("ada@example.com"));

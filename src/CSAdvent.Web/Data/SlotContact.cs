@@ -14,6 +14,12 @@ public sealed class SlotContact
     public Slot Slot { get; private set; } = null!;
 
     public required string Email { get; set; }
+
+    /// <summary>
+    /// When the author turned off the daily "today's posts" emails for the season, through the link in one of them. Emails
+    /// about their own spot still go out.
+    /// </summary>
+    public DateTimeOffset? DailyEmailsOptedOutAt { get; set; }
 }
 
 internal sealed class SlotContactConfiguration : IEntityTypeConfiguration<SlotContact>

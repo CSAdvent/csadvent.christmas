@@ -1,5 +1,7 @@
 using CSAdvent.Web.Claims;
 using CSAdvent.Web.Content;
+using CSAdvent.Web.Contributors;
+using CSAdvent.Web.Reminders;
 
 namespace CSAdvent.Web.Email;
 
@@ -44,6 +46,41 @@ public static class EmailCatalog
             "When an organizer approves a request into a spot.",
             "The contributor. Replies go to the organizers.",
             site => ClaimEmails.Approved(SampleClaim, site)),
+        new(
+            "dropped-out",
+            "An author dropped out",
+            "When an author gives up their spot from their My spots page.",
+            "The organizers (Site:ContactEmail).",
+            site => SpotEmails.DroppedOut(new DropoutDetails("Ada Lovelace", 2026, 3, 1, 2), site)),
+        new(
+            "post-link-reminder",
+            "Post link reminder",
+            "At 9 AM Eastern 7, 5 and 3 days before an author's day, if their spot has no post link yet.",
+            "The author. Replies go to the organizers.",
+            site => ReminderEmails.PostLinkMissing(new PostLinkReminder("Ada Lovelace", 2026, 10, 1, 2, DaysBefore: 5), site)),
+        new(
+            "post-link-reminder-final",
+            "Post link reminder, with the backup warning",
+            "At 9 AM Eastern 2 days and 1 day before an author's day, if their spot still has no post link.",
+            "The author. Replies go to the organizers.",
+            site => ReminderEmails.PostLinkMissing(new PostLinkReminder("Ada Lovelace", 2026, 10, 1, 2, DaysBefore: 1), site)),
+        new(
+            "daily-share",
+            "Today's posts",
+            "At 9 AM Eastern each day from December 1 to 25, once at least one of the day's posts has its title and link.",
+            "Everyone with a spot that season, once each, unless they turned it off with the link in the email.",
+            site => ReminderEmails.Daily(
+                new DailyShare(
+                    2026,
+                    3,
+                    [
+                        new SharedPost("Ten things I wish I knew about Span<T>", "https://example.com/span", "Ada Lovelace"),
+                        new SharedPost("Source generators from scratch", "https://example.com/generators", "Grace Hopper"),
+                    ],
+                    "Ada Lovelace",
+                    RecipientIsAuthorToday: true),
+                site,
+                $"{site.BaseUrl.TrimEnd('/')}/emails/daily/stop?token=sample")),
     ];
 
     public static EmailCatalogEntry? Find(string key) => Entries.FirstOrDefault(e => e.Key == key);

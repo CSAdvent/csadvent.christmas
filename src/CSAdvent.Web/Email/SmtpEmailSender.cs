@@ -16,6 +16,11 @@ public sealed class SmtpEmailSender(EmailEndpoint endpoint, IOptions<EmailOption
         message.ReplyTo.Add(MailboxAddress.Parse(email.ReplyTo));
         message.Subject = email.Subject;
         message.Body = new BodyBuilder { HtmlBody = email.Html, TextBody = email.Text }.ToMessageBody();
+        if (email.UnsubscribeUrl is { } unsubscribe)
+        {
+            message.Headers.Add("List-Unsubscribe", $"<{unsubscribe}>");
+            message.Headers.Add("List-Unsubscribe-Post", "List-Unsubscribe=One-Click");
+        }
 
         using var client = new SmtpClient();
         var security = endpoint.Uri.Scheme == "smtps" ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTlsWhenAvailable;

@@ -8,7 +8,7 @@ public enum ReminderKind
     /// <summary>The slot has a title and URL: "your day is coming up".</summary>
     ContributorOnTrack,
 
-    /// <summary>The slot is missing its title or URL: "action needed".</summary>
+    /// <summary>The slot has no post URL yet: "we need your link", 7, 5, 3, 2 and 1 days before its day.</summary>
     ContributorActionNeeded,
 
     /// <summary>Tells the organizer a claimed slot has no contact email.</summary>
@@ -16,6 +16,12 @@ public enum ReminderKind
 
     /// <summary>The organizer's summary of each reminder run.</summary>
     AdminDailySummary,
+
+    /// <summary>
+    /// The daily "today's posts" email to an author in the season. Recorded against the author's first slot, so someone
+    /// with two spots gets it once.
+    /// </summary>
+    ContributorDailyShare,
 }
 
 /// <summary>
