@@ -1,0 +1,84 @@
+@page "/my-spots"
+@attribute [Authorize]
+@using CSAdvent.Web.Auth
+@using CSAdvent.Web.Components.Manage
+@using CSAdvent.Web.Contributors
+@using CSAdvent.Web.Manage
+@inject MySpotsService MySpots
+
+<PageTitle>My spots · C# Advent</PageTitle>
+
+<h1 class="text-3xl font-bold tracking-tight text-slate-900">My spots</h1>
+<p class="mt-2 max-w-2xl text-slate-600">
+    Add your post's title and URL here; that's how it gets onto the calendar. You can add them before the post is public, as long
+    as you don't publish it until your day.
+</p>
+
+@if (_overview is { } overview)
+{
+    @if (overview.Spots.Count == 0)
+    {
+        <div class="mt-8 max-w-2xl rounded-xl bg-slate-50 p-5 ring-1 ring-slate-200">
+            <p class="font-medium text-slate-900">You don't have a spot yet.</p>
+            <p class="mt-2 text-slate-600">
+                @(overview.PendingRequests.Count > 0
+                    ? "Your request is waiting for the organizers. We'll email you as soon as it's approved."
+                    : "Pick an open day on the calendar to request one. If an organizer added you by hand, make sure the verified email on your GitHub account is the one you gave them.")
+            </p>
+        </div>
+    }
+    else
+    {
+        <ul class="mt-8 flex max-w-3xl flex-col gap-4">
+            @foreach (var spot in overview.Spots)
+            {
+                <li class="flex flex-wrap items-center justify-between gap-4 rounded-xl p-5 ring-1 ring-slate-200">
+                    <div>
+                        <p class="font-semibold text-slate-900">@spot.Spot</p>
+                        <p class="mt-1 text-sm text-slate-600">
+                            @if (spot.Status is EntryStatus.Ready)
+                            {
+                                <span class="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">Ready</span>
+                                <a href="@spot.PostUrl" class="ml-2 text-advent-700 underline">@spot.PostTitle</a>
+                            }
+                            else
+                            {
+                                <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">Needs your post's title and URL</span>
+                            }
+                        </p>
+                    </div>
+                    @if (!spot.IsDayOver || spot.Status is EntryStatus.Ready)
+                    {
+                        <a href="my-spots/@spot.SlotId" class="rounded-lg bg-advent-600 px-4 py-2 font-semibold text-white hover:bg-advent-700">
+                            @(spot.Status is EntryStatus.Ready ? "Edit" : "Add your post")
+                        </a>
+                    }
+                </li>
+            }
+        </ul>
+    }
+
+    @if (overview.PendingRequests.Count > 0)
+    {
+        <h2 class="mt-12 text-xl font-semibold text-slate-900">Waiting for approval</h2>
+        <ul class="mt-4 flex max-w-3xl flex-col gap-2 text-slate-700">
+            @foreach (var request in overview.PendingRequests)
+            {
+                <li>@request.Spot <span class="text-sm text-slate-500">(requested <LocalTime Value="request.SubmittedAt" />)</span></li>
+            }
+        </ul>
+    }
+}
+
+@code {
+    private MySpotsOverview? _overview;
+
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationState { get; set; } = null!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = (await AuthenticationState).User;
+        _overview = await MySpots.GetOverviewAsync(user.GetContributorId() ?? 0);
+    }
+}

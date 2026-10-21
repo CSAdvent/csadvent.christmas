@@ -106,6 +106,18 @@ public sealed class AdventScheduleTests
     }
 
     [Fact]
+    public void ADayEndsAtTheNextMidnightInTheRevealTimeZone()
+    {
+        var clock = new FakeTimeProvider(new DateTimeOffset(2026, 12, 25, 23, 59, 59, TimeSpan.FromHours(-5)));
+        var schedule = CreateSchedule(clock);
+
+        Assert.Equal(new DateTimeOffset(2026, 12, 26, 5, 0, 0, TimeSpan.Zero), schedule.GetDayEndTime(2026, 25));
+        Assert.False(schedule.IsDayOver(2026, 25));
+        clock.Advance(TimeSpan.FromSeconds(1));
+        Assert.True(schedule.IsDayOver(2026, 25));
+    }
+
+    [Fact]
     public void DeletesContactDetailsAtTheStartOfFebruaryAfterTheSeason() =>
         // Midnight Eastern Standard Time on February 1.
         Assert.Equal(new DateTimeOffset(2027, 2, 1, 5, 0, 0, TimeSpan.Zero), CreateSchedule().GetContactDeletionTime(2026));

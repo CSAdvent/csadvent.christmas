@@ -3,6 +3,7 @@ using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Claims;
 using CSAdvent.Web.Components;
 using CSAdvent.Web.Content;
+using CSAdvent.Web.Contributors;
 using CSAdvent.Web.Data;
 using CSAdvent.Web.Data.Archive;
 using CSAdvent.Web.Email;
@@ -39,6 +40,7 @@ builder.Services.AddScoped<ClaimService>();
 builder.Services.AddScoped<SeasonAdminService>();
 builder.Services.AddScoped<ClaimReviewService>();
 builder.Services.AddScoped<EntryAdminService>();
+builder.Services.AddScoped<MySpotsService>();
 builder.AddEmail();
 builder.Services.AddScoped<IClaimNotifier, EmailClaimNotifier>();
 

@@ -42,6 +42,12 @@ public sealed class Slot
 
     public SlotContact? Contact { get; set; }
 
+    /// <summary>
+    /// When the spot's author dropped out (or an organizer released it). While the spot stays open, the backup posters are
+    /// asked to fill it. Says nothing about who dropped out: they're never named.
+    /// </summary>
+    public DateTimeOffset? DroppedOutAt { get; set; }
+
     /// <summary>Concurrency token (PostgreSQL <c>xmin</c>), so an approval and an edit can't silently overwrite each other.</summary>
     public uint Version { get; private set; }
 

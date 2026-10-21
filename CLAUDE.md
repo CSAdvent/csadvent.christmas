@@ -79,6 +79,14 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 - New requests and approvals go to `IClaimNotifier` (`EmailClaimNotifier`). It emails the contributor, and for new requests the organizers too, with replies going to the contributor. A failed send is logged without personal details and never blocks the claim.
 - Blazor SSR forms: `[SupplyParameterFromForm(FormName = ...)]` on a nullable model, `Form ??= new()` to tell a GET from a POST, and `@bind-Value="Form!.Field"`. The posted field names are `Form.Field`.
 
+## My Spots
+
+- `/my-spots` (`MySpotsService`) is where contributors manage their own spots in seasons that aren't over: add their post's title and URL (**the only way posts get onto the calendar**; nobody sends details by replying to an email), fix their name and link, and see pending requests.
+- A spot is theirs if `slots.contributor_id` is them, or if it isn't linked to anyone and its contact email is their verified GitHub email (spots an organizer added by hand). Saving links it. Anyone else's spot is a 404.
+- The title and URL go together, because the calendar links the title to the post. Edits post the spot's `xmin` version back, so an organizer's edit in between isn't overwritten.
+- **Dropping out** (until the day is over) clears the author, link, post, contributor and contact, so they're never named, sets `slots.dropped_out_at`, and emails the organizers. An organizer releasing a spot in the entry editor sets `dropped_out_at` too. A dropped-out spot that's still open is what the backup posters get asked about (#36).
+- Emails link to `ClaimEmails.MySpots(site)`.
+
 ## Organizer Area
 
 - Everything under `Components/Pages/Manage` requires the `Admin` policy through that folder's `_Imports.razor`, so new organizer pages are protected automatically.
