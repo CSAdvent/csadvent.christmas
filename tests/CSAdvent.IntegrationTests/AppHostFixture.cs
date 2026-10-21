@@ -15,6 +15,12 @@ public sealed class AppHostFixture : IAsyncLifetime
     // The first run pulls container images and downloads the EF Core tools, so allow plenty of time.
     private static readonly TimeSpan StartupTimeout = TimeSpan.FromMinutes(5);
 
+    /// <summary>
+    /// The GitHub user ID the AppHost makes an organizer in the Testing environment (see AppHost.cs). Don't configure it here
+    /// with CreateResourceBuilder(...).WithEnvironment: that makes Aspire drop the web project's launch profile environment.
+    /// </summary>
+    public const long OrganizerGitHubId = 9001;
+
     private DistributedApplication? _app;
 
     public DistributedApplication App => _app ?? throw new InvalidOperationException("The AppHost hasn't started.");
@@ -32,6 +38,7 @@ public sealed class AppHostFixture : IAsyncLifetime
             ],
             timeout.Token);
 
+
         appHost.Services.ConfigureHttpClientDefaults(http => http.AddStandardResilienceHandler());
 
         _app = await appHost.BuildAsync(timeout.Token);
@@ -40,6 +47,10 @@ public sealed class AppHostFixture : IAsyncLifetime
     }
 
     public HttpClient CreateWebClient() => App.CreateHttpClient("web");
+
+    /// <summary>A client with its own cookies that doesn't follow redirects, like a fresh browser session.</summary>
+    public HttpClient CreateBrowser() =>
+        new(new HttpClientHandler { CookieContainer = new(), AllowAutoRedirect = false }) { BaseAddress = App.GetEndpoint("web", "http") };
 
     /// <summary>A context on the database the AppHost created and migrated.</summary>
     public async Task<AdventDbContext> CreateDbContextAsync()

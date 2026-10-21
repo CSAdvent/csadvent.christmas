@@ -63,6 +63,14 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 - **Home page** (`HomeService`): the current season is the **earliest season that isn't over**, so creating next year's season early never replaces this year's. With no current season it's off-season, and the latest season is shown with a thank-you.
 - Component tests use **bUnit** (`BunitContext`) in `tests/CSAdvent.UnitTests`. `CalendarFixtures` builds a season as seen on a given date with a fake clock.
 
+## Sign-in
+
+- **Cookie sessions, with GitHub OAuth** through ASP.NET Core's built-in `AddOAuth` (`Auth/AccountEndpoints.cs`), not a third-party provider. Signing in calls `/user/emails` and keeps only a **primary, verified** address, then upserts the contributor by GitHub user ID (`ContributorSignIn`).
+- **Claims:** GitHub user ID (`NameIdentifier`), login (`Name`), verified email, and `csadvent:contributor_id`. Use `User.GetContributorId()` to scope a contributor to their own data.
+- **Organizers** are GitHub user IDs in `Accounts:Admins`. Use the `AdventPolicies.Admin` policy (for example `@attribute [Authorize(Policy = AdventPolicies.Admin)]`), which is checked on every request.
+- **Dev sign-in** (`/dev/signin?login=...&id=...`) is mapped only when the environment is Development **and** `Accounts:DevSignIn` is true, which the AppHost sets in run mode. The integration tests use it, with organizer `9001` set by the AppHost in the Testing environment.
+- **GitHub settings** come from the AppHost parameters `github-client-id` and `github-client-secret`. They're optional locally and required in production; the app fails to start without them outside Development.
+
 ## Data Model
 
 Entities and their EF configuration live together in `src/CSAdvent.Web/Data` (one file each).
@@ -78,6 +86,8 @@ Entities and their EF configuration live together in `src/CSAdvent.Web/Data` (on
 ## Gotchas
 
 - **User secrets are shared with the tests:** the AppHost's generated Postgres password is saved in its user secrets, and the local data volume is created with it. The test fixture passes a fixed `Parameters:postgres-password` so test runs never overwrite that secret. If local Postgres rejects the password, delete the `*-postgres-data` Docker volume and run again.
+- **Don't call `CreateResourceBuilder(web).WithEnvironment(...)` in the test fixture.** It makes Aspire drop the web project's launch profile environment, so the app runs as Production. Put test-only settings in the AppHost's `isTesting` branch instead.
+- **Minimal API POST endpoints don't enforce antiforgery unless they bind form data.** Call `IAntiforgery.IsRequestValidAsync` explicitly, as `/signout` does.
 - **Testing environment:** the integration tests start the AppHost with `--environment=Testing`. In that environment the AppHost drops the Postgres data volume and pgweb, and runs the web project's `http` launch profile so tests don't need a trusted dev certificate. Keep that branch in `AppHost.cs` when changing resources.
 - **EF Core 11 with Aspire 13.6:** `Aspire.Npgsql.EntityFrameworkCore.PostgreSQL` has no `net11.0` build yet. We reference `Npgsql.EntityFrameworkCore.PostgreSQL` 11.x directly and pin the EF Core health-check package transitively, so everything resolves to EF Core 11.
 - **dotnet-ef version** is pinned twice: `dotnet-tools.json` and `WithToolVersion` in `AppHost.cs`. Update both together.
