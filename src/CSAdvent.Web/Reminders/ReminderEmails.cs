@@ -1,3 +1,4 @@
+using CSAdvent.Web.Claims;
 using CSAdvent.Web.Content;
 using CSAdvent.Web.Email;
 using static CSAdvent.Web.Email.EmailBlocks;
@@ -29,8 +30,9 @@ public static class ReminderEmails
         [
             Paragraph($"Hi {reminder.AuthorName}, your C# Advent day is {reminder.Spot}, and we don't have the link to your post yet."),
             Paragraph(
-                "When it's ready, reply to this email with your post's title and URL, and we'll add them to the calendar. It's " +
-                "fine to send the link before the post is public, as long as you don't publish it until your day."),
+                "Sign in and add your post's title and URL on your ", Link("My spots", ClaimEmails.MySpots(site)), " page. You can " +
+                "add them before the post is public, as long as you don't publish it until your day."),
+            Button("Add your post link", ClaimEmails.MySpots(site)),
         ];
         if (reminder.DaysBefore <= BackupWarningDays)
         {
@@ -39,13 +41,15 @@ public static class ReminderEmails
                 "link doesn't arrive before your day starts at midnight Eastern, the backup takes your spot."));
         }
 
-        body.Add(Paragraph("Can't make it after all? Reply and let us know as soon as you can, so a backup poster can take your day."));
+        body.Add(Paragraph(
+            "Can't make it after all? Drop out from your ", Link("My spots", ClaimEmails.MySpots(site)),
+            " page as soon as you can, so a backup poster can take your day."));
         body.Add(SignOff);
 
         return new EmailContent
         {
             Subject = $"Your C# Advent post is due {when} (December {reminder.Day})",
-            Preview = "We don't have the link to your post yet. Reply with it when it's ready.",
+            Preview = "We don't have the link to your post yet. Sign in and add it when it's ready.",
             Heading = reminder.DaysBefore == 1 ? "Your day is tomorrow!" : $"Your day is {reminder.DaysBefore} days away!",
             Body = body,
             Reason = $"You're getting this email because you have a spot in C# Advent {reminder.Year} and we don't have your post's link yet.",

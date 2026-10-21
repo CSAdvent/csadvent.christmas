@@ -32,6 +32,7 @@ public sealed partial class ReminderTests(AppHostFixture fixture)
         Assert.Equal(new RunResult(1, 0), await RunAsync("2106-12-01T15:00:00Z"));
         var reminder = await fixture.WaitForEmailAsync("lucy-2106@example.com", "Your C# Advent post is due in 7 days (December 8)");
         Assert.Contains("Your day is 7 days away!", reminder.Html);
+        Assert.Contains("/my-spots", reminder.Html);
         Assert.Equal("hello@csadvent.christmas", Assert.Single(reminder.ReplyTo).Address);
 
         // Later runs that day send nothing new, and December 2 (6 days before) isn't a reminder day.
