@@ -1,3 +1,4 @@
+using CSAdvent.Web.Backups;
 using CSAdvent.Web.Claims;
 using CSAdvent.Web.Content;
 using CSAdvent.Web.Contributors;
@@ -26,6 +27,8 @@ public static class EmailCatalog
         Part: 1,
         SlotsPerDay: 2);
 
+    private static readonly BackupSpot SampleSpot = new(2026, 12, 2, 2);
+
     public static IReadOnlyList<EmailCatalogEntry> Entries { get; } =
     [
         new(
@@ -52,6 +55,54 @@ public static class EmailCatalog
             "When an author gives up their spot from their My spots page.",
             "The organizers (Site:ContactEmail).",
             site => SpotEmails.DroppedOut(new DropoutDetails("Ada Lovelace", 2026, 3, 1, 2), site)),
+        new(
+            "backup-signed-up",
+            "Joined the backup list",
+            "Right after someone joins a season's backup list.",
+            "The new backup. Replies go to the organizers.",
+            site => BackupEmails.SignedUp("Grace Hopper", 2026, 3, site)),
+        new(
+            "backup-ask-dropped",
+            "Backup ask: an author dropped out",
+            "As soon as an author drops out (or an organizer releases a spot), to the first backup in sign-up order. Each backup gets 4 hours before the next is asked too.",
+            "One backup at a time.",
+            site => BackupEmails.Ask("Grace Hopper", SampleSpot, BackupReason.DroppedOut, "1:30 PM Eastern on November 20", SampleOffer(site), site)),
+        new(
+            "backup-ask-missing",
+            "Backup ask: no post link yet",
+            "At 6 PM Eastern the evening before a spot's day if it still has no post link, to the first backup in sign-up order; then the next every 4 hours.",
+            "One backup at a time.",
+            site => BackupEmails.Ask("Grace Hopper", SampleSpot, BackupReason.LinkMissing, "10:00 PM Eastern on December 11", SampleOffer(site), site)),
+        new(
+            "backup-used",
+            "Backup's post is on the calendar",
+            "When a backup's post replaces a spot's: straight away for a dropped spot, or at the reveal for a missing link.",
+            "The backup.",
+            site => BackupEmails.YoureOn("Grace Hopper", SampleSpot, "Collection expressions everywhere", site)),
+        new(
+            "backup-not-needed",
+            "Backup not needed after all",
+            "When the original author's link arrives after a backup accepted.",
+            "The backup who accepted.",
+            site => BackupEmails.NotNeeded("Grace Hopper", SampleSpot, site)),
+        new(
+            "backup-spot-filled",
+            "A backup filled a spot",
+            "When a backup's post goes on the calendar.",
+            "The organizers.",
+            site => BackupEmails.SpotFilled("Grace Hopper", SampleSpot, BackupReason.LinkMissing, site)),
+        new(
+            "backup-none-left",
+            "No backups left",
+            "When every backup has been asked about a spot and nobody took it. Once per spot.",
+            "The organizers.",
+            site => BackupEmails.NoBackups(SampleSpot, site)),
+        new(
+            "backup-replaced",
+            "Spot went to a backup",
+            "When a backup's post replaces an author whose link didn't arrive before the reveal.",
+            "The original author.",
+            site => BackupEmails.Replaced("Ada Lovelace", SampleSpot, site)),
         new(
             "post-link-reminder",
             "Post link reminder",
@@ -82,6 +133,8 @@ public static class EmailCatalog
                 site,
                 $"{site.BaseUrl.TrimEnd('/')}/emails/daily/stop?token=sample")),
     ];
+
+    private static string SampleOffer(SiteOptions site) => $"{site.BaseUrl.TrimEnd('/')}/backups/offers/7";
 
     public static EmailCatalogEntry? Find(string key) => Entries.FirstOrDefault(e => e.Key == key);
 }

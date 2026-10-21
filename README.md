@@ -104,6 +104,13 @@ dotnet test
 - 📝 **Contributors add their own post's title and URL** at `/my-spots` after signing in. That's how posts get onto the calendar.
 - 🚪 **Dropping out** there frees the spot straight away, without naming the author, emails the organizers, and offers the day to the backup posters
 
+## 🛟 Backup Posters
+
+- 🙋 **Anyone signed in can join a season's backup list** at `/backups/{year}`, kept in sign-up order
+- 📨 **Spots are offered one backup at a time**, 4 hours each: straight away when an author drops out, or from 6 PM Eastern the evening before a day whose post link is still missing
+- ✅ **A backup who accepts takes the spot**: immediately for a dropped spot, or at the reveal if the original author's link hasn't arrived by then
+- 🧪 **Try it** without waiting for December: `POST https://localhost:7092/dev/backups/run?at=2026-12-04T23:00:00Z` (Development only)
+
 ## ✉️ Email
 
 - 🎨 **Branded HTML emails** with a plain-text alternative, both rendered from one description of each email (`EmailContent`)

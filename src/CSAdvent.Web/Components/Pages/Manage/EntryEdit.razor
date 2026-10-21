@@ -70,7 +70,8 @@
         <section hidden="@(!_claimed)" class="mt-12 max-w-2xl rounded-xl bg-red-50 p-5 ring-1 ring-red-200">
             <h2 class="font-semibold text-red-900">Release this spot</h2>
             <p class="mt-1 text-sm text-red-800">
-                Clears the author, their link and email, and the post, so the spot is open again. Use it when an author drops out.
+                Clears the author, their link and email, and the post, so the spot is open again, and offers it to the backup
+                posters. Use it when an author drops out.
             </p>
             <EditForm Model="Release" FormName="release" OnValidSubmit="ReleaseAsync" class="mt-4 flex flex-wrap items-center gap-4">
                 <DataAnnotationsValidator />

@@ -87,6 +87,22 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 - **Dropping out** (until the day is over) clears the author, link, post, contributor and contact, so they're never named, sets `slots.dropped_out_at`, and emails the organizers. An organizer releasing a spot in the entry editor sets `dropped_out_at` too. A dropped-out spot that's still open is what the backup posters get asked about (#36).
 - Emails link to `ClaimEmails.MySpots(site)`.
 
+## Backup Posters
+
+- **Joining:** anyone signed in with a verified GitHub email can join a season's backup list at `/backups/{year}` while sign-ups are open (`BackupListService`), including people with a spot. The list (`substitutes`) is in sign-up order, and organizers see it at `/manage/backups`.
+- **When a spot needs a backup** (`BackupService`):
+  - `CouldUseBackup`: the spot was dropped (`dropped_out_at`, no author), or it has an author but no post link, and its day isn't over.
+  - `NeedsBackup` adds the timing: dropped spots right away, missing links from `Backups:AskFrom` (6 PM) on the evening before.
+- **Asking:** one backup at a time in sign-up order, each with `Backups:AnswerWithin` (4 hours) before the next is asked too. `ReminderWorker` runs `BackupService.RunAsync` every 15 minutes. Dropping out (My spots) and releasing a spot (entry editor) call `OfferNowAsync`, so the first ask goes out immediately. A decline is picked up by the next run.
+- **Accepting:** only the signed-in backup who was asked can accept, on `/backups/offers/{id}`, and anyone asked can accept while `CouldUseBackup` holds. A dropped spot is taken straight away. A missing link waits for the reveal (midnight): if the author's link arrives first, the offer is withdrawn and the backup is thanked.
+- **Taking a spot** replaces the author, link, post, contributor and contact, clears `dropped_out_at`, and sets the substitute's `assigned_slot_id`. It emails the backup, the organizers and (for a missing link) the original author.
+- **Guards:**
+  - Each backup is asked about a spot once (unique `slot_id, substitute_id`).
+  - Only one acceptance can be pending per spot (`ix_backup_offers_one_taker`, on `Accepted`).
+  - The slot's `xmin` stops a spot from being used twice.
+  - The organizers' "nobody's left" email is recorded once per spot in `sent_reminders` (`AdminBackupsExhausted`).
+- **Trying it:** `POST /dev/backups/run?at=…&year=…` (Development only) runs a pass at any time. `BackupTests` pass `year` so seasons don't affect each other, and keep in mind that pages run on the real clock (long before the test seasons).
+
 ## Organizer Area
 
 - Everything under `Components/Pages/Manage` requires the `Admin` policy through that folder's `_Imports.razor`, so new organizer pages are protected automatically.
@@ -158,4 +174,5 @@ Entities and their EF configuration live together in `src/CSAdvent.Web/Data` (on
 - **`dotnet ef migrations remove` needs a database connection**, which only exists inside Aspire. Use **Remove Migration** on the `migrations` resource in the dashboard, or delete the migration's two files and restore `AdventDbContextModelSnapshot.cs` from git.
 - **`Aspire.Hosting.EntityFrameworkCore` is preview-only**, and logs a harmless `Could not perform substitution for environment variable ASPNETCORE_URLS` error when its tool process starts.
 - **AspireUseCliBundle is false** on purpose, so the AppHost works with `dotnet run`, IDEs, CI, and `Aspire.Hosting.Testing` without the Aspire CLI. ASPIRE010 is suppressed for that reason.
+- **`.gitignore` used to ignore every `Backup*/` folder** (a Visual Studio template rule), which hid the app's `Backups` folders from git. It's now root-only (`/Backup*/`). If new files seem to vanish from `git status`, check `git check-ignore -v <path>`.
 - **When .NET 11 reaches GA:** update `global.json`, the EF Core, Npgsql, and Aspire packages, `dotnet-ef` (both places), and container base images.

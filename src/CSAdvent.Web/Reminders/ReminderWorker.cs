@@ -1,8 +1,8 @@
 namespace CSAdvent.Web.Reminders;
 
 /// <summary>
-/// Runs <see cref="ReminderService"/> every 15 minutes. Runs before the send time, or after everything for the day has
-/// gone out, do nothing.
+/// Runs <see cref="ReminderService"/> and <see cref="Backups.BackupService"/> every 15 minutes. Runs with nothing to do
+/// (before the send time, or with no spot needing a backup) are cheap.
 /// </summary>
 public sealed class ReminderWorker(IServiceScopeFactory scopeFactory, TimeProvider timeProvider, ILogger<ReminderWorker> logger)
     : BackgroundService
@@ -18,6 +18,7 @@ public sealed class ReminderWorker(IServiceScopeFactory scopeFactory, TimeProvid
             {
                 await using var scope = scopeFactory.CreateAsyncScope();
                 await scope.ServiceProvider.GetRequiredService<ReminderService>().RunAsync(timeProvider.GetUtcNow(), stoppingToken);
+                await scope.ServiceProvider.GetRequiredService<Backups.BackupService>().RunAsync(timeProvider.GetUtcNow(), cancellationToken: stoppingToken);
             }
             catch (Exception exception) when (!stoppingToken.IsCancellationRequested)
             {

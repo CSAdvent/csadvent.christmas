@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using CSAdvent.Web.Backups;
 using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Claims;
 using CSAdvent.Web.Data;
@@ -41,7 +42,7 @@ public enum EntrySaveOutcome
 /// spot, or releasing a spot after a dropout. Edits carry the spot's row version, so two organizers can't overwrite each
 /// other without noticing.
 /// </summary>
-public sealed class EntryAdminService(AdventDbContext db, AdventSchedule schedule, TimeProvider timeProvider)
+public sealed class EntryAdminService(AdventDbContext db, AdventSchedule schedule, TimeProvider timeProvider, BackupService backups)
 {
     public static EntryStatus StatusOf(string? authorName, string? postTitle, string? postUrl) =>
         (authorName, postTitle, postUrl) switch
@@ -139,7 +140,13 @@ public sealed class EntryAdminService(AdventDbContext db, AdventSchedule schedul
         slot.DroppedOutAt = timeProvider.GetUtcNow();
         SetContact(slot, email: null);
 
-        return await SaveChangesAsync(EntrySaveOutcome.Released, cancellationToken);
+        var outcome = await SaveChangesAsync(EntrySaveOutcome.Released, cancellationToken);
+        if (outcome is EntrySaveOutcome.Released)
+        {
+            await backups.OfferNowAsync(slotId, timeProvider.GetUtcNow(), cancellationToken);
+        }
+
+        return outcome;
     }
 
     private async Task<Slot?> LoadForUpdateAsync(int slotId, uint version, CancellationToken cancellationToken)
