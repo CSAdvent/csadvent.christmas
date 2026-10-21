@@ -1,0 +1,52 @@
+@*
+    The tags link previews read: Open Graph (Facebook, LinkedIn, Mastodon, Bluesky, Reddit, Slack, Teams), the large-image
+    card that Discord and others take from the Twitter tags, and Mastodon's author credit. URLs are absolute, and the
+    canonical URL drops the query string, so ?via= tags don't split a page into many.
+*@
+@using Microsoft.Extensions.Options
+@inject IOptions<SiteOptions> Site
+@inject NavigationManager Navigation
+
+<HeadContent>
+    <meta name="description" content="@Description" />
+    <link rel="canonical" href="@Url" />
+    <meta property="og:site_name" content="C# Advent" />
+    <meta property="og:type" content="@Type" />
+    <meta property="og:title" content="@Title" />
+    <meta property="og:description" content="@Description" />
+    <meta property="og:url" content="@Url" />
+    <meta property="og:image" content="@ImageUrl" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="@ImageAlt" />
+    <meta name="twitter:card" content="summary_large_image" />
+    @if (Site.Value.MastodonCreator is { Length: > 0 } creator)
+    {
+        <meta name="fediverse:creator" content="@creator" />
+    }
+</HeadContent>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = "";
+
+    [Parameter, EditorRequired]
+    public string Description { get; set; } = "";
+
+    /// <summary><c>website</c> for most pages, <c>article</c> for an entry.</summary>
+    [Parameter]
+    public string Type { get; set; } = "website";
+
+    /// <summary>The card image, relative to the site. Defaults to the branded C# Advent card.</summary>
+    [Parameter]
+    public string Image { get; set; } = "images/social-card.jpg";
+
+    [Parameter]
+    public string ImageAlt { get; set; } = "C# Advent: two C# posts a day, December 1 to 25";
+
+    private string Root => Site.Value.BaseUrl.TrimEnd('/');
+
+    private string Url => $"{Root}/{Navigation.ToBaseRelativePath(Navigation.Uri).Split('?', '#')[0]}".TrimEnd('/');
+
+    private string ImageUrl => $"{Root}/{Image.TrimStart('/')}";
+}

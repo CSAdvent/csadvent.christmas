@@ -14,6 +14,10 @@ public sealed class CalendarGridTests : BunitContext
 
         Assert.Contains("Pattern matching all the things", day10.TextContent);
         Assert.Contains("by Ada", day10.TextContent);
+
+        // Through the tracked redirect, so the click is counted, never straight to the post.
+        Assert.Equal("go/2026/10/1?via=calendar", day10.QuerySelector("a")!.GetAttribute("href"));
+        Assert.DoesNotContain("https://example.com/ada\"", day10.InnerHtml);
     }
 
     [Fact]

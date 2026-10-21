@@ -18,4 +18,10 @@ public sealed class SiteOptions
     [Required(ErrorMessage = "Site:BaseUrl is required. Emails use it for their links.")]
     [Url(ErrorMessage = "Site:BaseUrl must be an absolute URL, such as https://csadvent.christmas.")]
     public string BaseUrl { get; set; } = "";
+
+    /// <summary>
+    /// C# Advent's Mastodon account, such as <c>@csadvent@hachyderm.io</c>, for the <c>fediverse:creator</c> tag that credits
+    /// it on shared links. Left out while empty.
+    /// </summary>
+    public string? MastodonCreator { get; set; }
 }

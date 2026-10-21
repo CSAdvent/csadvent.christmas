@@ -87,6 +87,18 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 - **Dropping out** (until the day is over) clears the author, link, post, contributor and contact, so they're never named, sets `slots.dropped_out_at`, and emails the organizers. An organizer releasing a spot in the entry editor sets `dropped_out_at` too. A dropped-out spot that's still open is what the backup posters get asked about (#36).
 - Emails link to `ClaimEmails.MySpots(site)`.
 
+## Entry Pages and Traffic
+
+- **Every revealed entry with a post has a page** at `/{year}/day/{day}/{part}` (`EntryService`, `EntryLinks.Page`). It shows the title, author, a **Read the post** button and the day's other post. Before the reveal it says only when the post is coming (#5), and a revealed spot without a post (or with no title) is a 404.
+- **"Read the post" goes through `/go/{year}/{day}/{part}`**, which counts the click and redirects (302) to the entry's own post URL. Nothing else can be a destination, so it isn't an open redirect.
+- **Every link we publish goes through us, tagged with `?via=`:**
+  - Social posts and RSS link to the entry page (for the preview card).
+  - The calendar (`via=calendar`) and the daily email (`via=email`) link straight to `/go`.
+  - The entry page's button passes on the tag the visit arrived with (`site` if none).
+  - Tags are normalized by `EntryVia` (unknown becomes `other`).
+- **Counting:** `entry_hits` records a `View` or `Click` with the slot, time and tag. There's no IP, cookie or user agent, so nothing personal, and the hits are kept for the stats (#62). `EntryTraffic.IsPerson` skips link-preview fetchers (Facebook, LinkedIn, Mastodon, Bluesky, Discord...), crawlers, scripts, prefetches and non-GET requests. The organizers' entries list shows clicks per spot.
+- **Preview tags:** `SocialMeta` puts Open Graph tags, `twitter:card` (large image), a canonical URL without the query string, and `fediverse:creator` (when `Site:MastodonCreator` is set) on every public page. The image is `images/social-card.jpg` (1200×630) until entry cards are generated.
+
 ## Backup Posters
 
 - **Joining:** anyone signed in with a verified GitHub email can join a season's backup list at `/backups/{year}` while sign-ups are open (`BackupListService`), including people with a spot. The list (`substitutes`) is in sign-up order, and organizers see it at `/manage/backups`.

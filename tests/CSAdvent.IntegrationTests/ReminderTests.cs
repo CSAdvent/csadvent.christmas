@@ -51,7 +51,7 @@ public sealed partial class ReminderTests(AppHostFixture fixture)
         const string subject = "Day 3 of C# Advent: 2 new posts to share";
         var rita = await fixture.WaitForEmailAsync("rita-2106@example.com", subject);
         Assert.Contains("One of today&#x27;s posts is yours", rita.Html);
-        Assert.Contains("href=\"https://example.com/sam\"", rita.Html);
+        Assert.Contains("href=\"https://localhost:7092/go/2106/3/2?via=email\"", rita.Html);
         var lucy = await fixture.WaitForEmailAsync("lucy-2106@example.com", subject);
         Assert.DoesNotContain("is yours", lucy.Html);
         Assert.Equal(1, await fixture.CountEmailsAsync("tom-2106@example.com", subject));
