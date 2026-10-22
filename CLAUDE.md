@@ -105,6 +105,17 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
   - Before an entry's reveal there's no card for it (404).
   - Fonts and images: Inter Bold and Regular (SIL Open Font License, `Cards/Assets/Inter-LICENSE.txt`), the card background and the logo are embedded resources. Linux uses `SkiaSharp.NativeAssets.Linux.NoDependencies`, so containers need no fontconfig or system fonts. `CardRenderer.Printable` drops characters Inter can't draw (emoji, for example) rather than draw boxes.
 
+## Content Pages
+
+- **Content blocks** (`ContentService`, `content_blocks` plus `content_block_revisions`): copy organizers edit at `/manage/content` without a redeploy, in Markdown rendered by `Markdown.ToHtml` (raw HTML escaped, unsafe links dropped) inside `MarkdownBlock`.
+  - Each block is defined in `ContentCatalog` with **default copy in code**, shown until the first save, so nothing needs seeding.
+  - Every save adds a revision, and any revision can be loaded back into the editor.
+  - To add a block, add it to `ContentCatalog` and read it with `ContentService.GetAsync(key)`.
+- **`/about`** shows the `about` block (history and rules, from the copy recovered in #2), the organizers from `Site:Organizers` (name and GitHub login, which gives the photo), and "Built with".
+- **`/others`** shows the `other-advents` block and a list kept **per season** in `other_advents` (`OtherAdventsService`): the current season's, else the latest season's, else `OtherAdventsService.Suggestions`.
+  - The legacy list was pruned of dead links and one-off calendars.
+  - Organizers edit it at `/manage/other-advents`: add, remove, or start the season from last year's list. Remove is a plain form to a minimal API, because there's one per item.
+
 ## Social Announcements
 
 - **C# Advent's own accounts** are in `Social` (`SocialAccountsOptions`):

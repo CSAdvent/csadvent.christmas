@@ -104,6 +104,11 @@ dotnet test
 - 📝 **Contributors add their own post's title and URL** at `/my-spots` after signing in. That's how posts get onto the calendar.
 - 🚪 **Dropping out** there frees the spot straight away, without naming the author, emails the organizers, and offers the day to the backup posters
 
+## 📝 Content
+
+- ✍️ **Editable copy:** the About page and the Other Advents introduction are edited by organizers at `/manage/content`, in Markdown, with every version kept
+- 🎄 **Other Advents:** each season has its own list of other developer advent calendars, which can be started from last year's
+
 ## 📣 Social Announcements
 
 - 📋 **Organizers get every day's announcements at `/manage/social`**: one per post for Bluesky, Mastodon, LinkedIn, Facebook and Reddit, with the same content, each platform's formatting and limits, Copy buttons and composer links

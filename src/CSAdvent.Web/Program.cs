@@ -50,6 +50,8 @@ builder.Services.AddScoped<EntryService>();
 builder.Services.AddSingleton<CardRenderer>();
 builder.Services.AddScoped<RssFeed>();
 builder.Services.AddScoped<SocialService>();
+builder.Services.AddScoped<ContentService>();
+builder.Services.AddScoped<OtherAdventsService>();
 builder.Services.AddOptions<SocialAccountsOptions>().BindConfiguration(SocialAccountsOptions.SectionName);
 builder.AddEmail();
 builder.Services.AddScoped<IClaimNotifier, EmailClaimNotifier>();
@@ -117,6 +119,7 @@ app.MapCards();
 app.MapFeeds();
 app.MapSocial();
 app.MapLegacyRedirects();
+app.MapContentAdmin();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
