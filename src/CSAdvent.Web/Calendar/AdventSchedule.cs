@@ -43,6 +43,26 @@ public sealed class AdventSchedule
     public bool IsSeasonOver(int year) => IsRevealed(year, Season.DaysInAdvent);
 
     /// <summary>
+    /// When the home page starts showing a season's calendar: when its sign-ups open, or at the first reveal if that's
+    /// sooner or sign-ups aren't scheduled.
+    /// </summary>
+    public DateTimeOffset GetCalendarStart(int year, DateTimeOffset? claimsOpenAt)
+    {
+        var firstReveal = GetRevealTime(year, 1);
+        return claimsOpenAt is { } opensAt && opensAt < firstReveal ? opensAt : firstReveal;
+    }
+
+    /// <summary>When the home page stops showing a season's calendar: the end of December, so people can catch up over the holidays.</summary>
+    public DateTimeOffset GetCalendarEnd(int year) => FromLocalTime(new DateTime(year + 1, 1, 1));
+
+    /// <summary>Whether the home page shows this season's calendar now, rather than the page between seasons.</summary>
+    public bool IsCalendarShown(int year, DateTimeOffset? claimsOpenAt)
+    {
+        var now = _timeProvider.GetUtcNow();
+        return now >= GetCalendarStart(year, claimsOpenAt) && now < GetCalendarEnd(year);
+    }
+
+    /// <summary>
     /// When a season's contact details are deleted: the start of February 1 after it, in the reveal time zone. The privacy
     /// page promises this date, and <see cref="Retention.ContactRetention"/> keeps the promise.
     /// </summary>

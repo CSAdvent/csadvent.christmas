@@ -20,6 +20,12 @@ public sealed partial class ContentTests(AppHostFixture fixture)
         Assert.Contains("#csharp and #csadvent", page);
         Assert.Contains("https://github.com/CalvinAllen.png", page);
         Assert.Contains("https://github.com/mgroves", page);
+
+        // Matt started C# Advent and still hosts it, so he's featured first.
+        Assert.Contains("Founder and host</p>", page);
+        Assert.Contains("C# Advent is Matt&#x27;s brainchild.", page);
+        Assert.True(page.IndexOf("Matt Groves", StringComparison.Ordinal) < page.IndexOf("Calvin Allen", StringComparison.Ordinal));
+        Assert.Contains("Co-host</h2>", page);
         Assert.Contains("<meta property=\"og:title\" content=\"About C# Advent\"", page);
     }
 

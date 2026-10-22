@@ -9,21 +9,41 @@
 <article class="max-w-3xl">
     <h1 class="text-3xl font-bold tracking-tight text-slate-900">About C# Advent</h1>
 
-    @if (_about is { } about)
+    @foreach (var founder in Site.Value.Organizers.Where(o => o.Founder))
     {
-        <div class="mt-6 text-lg"><MarkdownBlock Text="@about" /></div>
+        <section class="mt-8 flex flex-col gap-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:flex-row sm:items-center">
+            <img src="@($"https://github.com/{founder.GitHub}.png?size=256")" alt="" width="128" height="128" class="size-32 shrink-0 rounded-full ring-4 ring-advent-100" />
+            <div>
+                <p class="text-sm font-semibold uppercase tracking-wide text-advent-700">Founder and host</p>
+                <h2 class="mt-1 text-2xl font-bold text-slate-900">@founder.Name</h2>
+                @if (!string.IsNullOrWhiteSpace(founder.Role))
+                {
+                    <p class="mt-2 text-lg text-slate-700">@founder.Role</p>
+                }
+                <a href="@($"https://github.com/{founder.GitHub}")" class="mt-2 inline-block text-advent-700 underline">@@@founder.GitHub</a>
+            </div>
+        </section>
     }
 
-    @if (Site.Value.Organizers.Count > 0)
+    @if (_about is { } about)
     {
-        <h2 class="mt-12 text-xl font-semibold text-slate-900">Who runs it</h2>
+        <div class="mt-8 text-lg"><MarkdownBlock Text="@about" /></div>
+    }
+
+    @if (Site.Value.Organizers.Where(o => !o.Founder).ToList() is { Count: > 0 } organizers)
+    {
+        <h2 class="mt-12 text-xl font-semibold text-slate-900">@(organizers.Count == 1 ? "Co-host" : "Co-hosts")</h2>
         <ul class="mt-4 flex flex-wrap gap-6">
-            @foreach (var organizer in Site.Value.Organizers)
+            @foreach (var organizer in organizers)
             {
                 <li class="flex items-center gap-3">
                     <img src="@($"https://github.com/{organizer.GitHub}.png?size=128")" alt="" width="64" height="64" class="size-16 rounded-full ring-1 ring-slate-200" loading="lazy" />
                     <span>
                         <span class="block font-semibold text-slate-900">@organizer.Name</span>
+                        @if (!string.IsNullOrWhiteSpace(organizer.Role))
+                        {
+                            <span class="block text-sm text-slate-600">@organizer.Role</span>
+                        }
                         <a href="@($"https://github.com/{organizer.GitHub}")" class="text-sm text-advent-700 underline">@@@organizer.GitHub</a>
                     </span>
                 </li>

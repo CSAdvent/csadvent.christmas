@@ -60,7 +60,9 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 - Brand colors are the `advent-*` scale in `@theme`: `advent-600` (`#1a509d`) is the logo blue and `advent-400` (`#4e88c5`) the snowflake. Don't put `advent-400` behind body text, because its contrast on white is too low.
 - Photos live in `wwwroot/images` as WebP with a JPEG fallback, through the `bg-advent-candles` and `bg-advent-snowflakes` utilities.
 - Pages render statically on the server. `CalendarGrid` renders a season's days for the home page and the archive. `CalendarEntry` never carries a post's title or link before its reveal.
-- **Home page** (`HomeService`): the current season is the **earliest season that isn't over**, so creating next year's season early never replaces this year's. With no current season it's off-season, and the latest season is shown with a thank-you.
+- **Home page** (`HomeService.Plan`): a season's calendar is shown from when its sign-ups open (or December 1, if that's sooner or sign-ups aren't scheduled) **until the end of December** (`AdventSchedule.IsCalendarShown`), earliest season first, so creating next year's season early never replaces this year's. Once every day is revealed, `CurrentSeason` says "That's a wrap" instead of counting spots.
+- **Between seasons** the home page is `OffSeason`: thanks for the latest finished season (posts and authors), the organizers' `between-seasons` content block, when the next season's registration opens (if the season exists and is scheduled), and the archive. From **September 1** (`HomeService.CountdownFrom`) it counts down the days ("33 days until registration opens!"). It's server-rendered, so there's no script.
+- Organizer pages work on the **current season**: the earliest season that isn't over, or the latest (`HomeService.SelectSeason`).
 - Component tests use **bUnit** (`BunitContext`) in `tests/CSAdvent.UnitTests`. `CalendarFixtures` builds a season as seen on a given date with a fake clock.
 
 ## Sign-in
@@ -111,7 +113,7 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
   - Each block is defined in `ContentCatalog` with **default copy in code**, shown until the first save, so nothing needs seeding.
   - Every save adds a revision, and any revision can be loaded back into the editor.
   - To add a block, add it to `ContentCatalog` and read it with `ContentService.GetAsync(key)`.
-- **`/about`** shows the `about` block (history and rules, from the copy recovered in #2), the organizers from `Site:Organizers` (name and GitHub login, which gives the photo), and "Built with".
+- **`/about`** shows the `about` block (history and rules, from the copy recovered in #2), the organizers from `Site:Organizers` (name, GitHub login for the photo, and a `Role` line), and "Built with". **Matt Groves is the founder and always a host** (`Founder: true`; Calvin co-founded it, but it's Matt's brainchild): he's featured first, above the history, and everyone else is listed as a co-host below it.
 - **`/others`** shows the `other-advents` block and a list kept **per season** in `other_advents` (`OtherAdventsService`): the current season's, else the latest season's, else `OtherAdventsService.Suggestions`.
   - The legacy list was pruned of dead links and one-off calendars.
   - Organizers edit it at `/manage/other-advents`: add, remove, or start the season from last year's list. Remove is a plain form to a minimal API, because there's one per item.

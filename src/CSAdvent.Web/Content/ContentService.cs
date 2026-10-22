@@ -11,6 +11,7 @@ public static class ContentCatalog
 {
     public const string About = "about";
     public const string OtherAdvents = "other-advents";
+    public const string BetweenSeasons = "between-seasons";
 
     public static IReadOnlyList<ContentDefinition> All { get; } =
     [
@@ -20,8 +21,9 @@ public static class ContentCatalog
 
             ## History
 
-            C# Advent started in 2017, inspired by the [F# Advent Calendar](https://sergeytihon.com/fsadvent/), which Sergey
-            Tihon has run since 2010 (in English since 2014). It began with his permission, and it's run every December since.
+            C# Advent is the brainchild of [Matt Groves](https://github.com/mgroves). It started in 2017, inspired by the
+            [F# Advent Calendar](https://sergeytihon.com/fsadvent/), which Sergey Tihon has run since 2010 (in English since
+            2014). It began with Sergey's permission, and it's run every December since.
 
             ## How it works
 
@@ -39,6 +41,13 @@ public static class ContentCatalog
         new(OtherAdvents, "Other Advents introduction", "The Other Advents page, above the list", """
             C# Advent isn't the only developer advent calendar. Here are some others to enjoy this December. Know one we're
             missing? Email [hello@csadvent.christmas](mailto:hello@csadvent.christmas).
+            """),
+        new(BetweenSeasons, "Between seasons", "The home page from January until registration opens, below the thank-you", """
+            Thank you to every author who wrote a post, and to everyone who read and shared them. C# Advent only happens because
+            of you.
+
+            See you next December! Until then, catch up on anything you missed in the archive, and follow C# Advent to hear when
+            registration opens.
             """),
     ];
 
