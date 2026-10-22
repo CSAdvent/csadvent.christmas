@@ -1,4 +1,5 @@
 using Azure.Communication.Email;
+using Azure.Identity;
 using Microsoft.Extensions.Options;
 
 namespace CSAdvent.Web.Email;
@@ -20,7 +21,7 @@ public static class EmailRegistration
             .ValidateDataAnnotations()
             .Validate(
                 options => EmailEndpoint.TryParse(options.ConnectionString, out _),
-                $"ConnectionStrings:{ConnectionName} must be an SMTP endpoint (such as MailPit's) or an Azure Communication Services connection string.")
+                $"ConnectionStrings:{ConnectionName} must be an SMTP endpoint (such as MailPit's) or an Azure Communication Services endpoint.")
             .ValidateOnStart();
 
         builder.Services.AddSingleton<EmailComposer>();
@@ -31,10 +32,19 @@ public static class EmailRegistration
             return endpoint.Transport switch
             {
                 EmailTransport.Smtp => new SmtpEmailSender(endpoint, options),
-                _ => new AzureEmailSender(new EmailClient(endpoint.ConnectionString), options),
+                _ => new AzureEmailSender(CreateEmailClient(endpoint), options),
             };
         });
 
         return builder;
     }
+
+    /// <summary>
+    /// In production there's no key: the app's managed identity, which the AppHost lets send, signs in. Aspire sets
+    /// AZURE_CLIENT_ID and AZURE_TOKEN_CREDENTIALS so <see cref="DefaultAzureCredential"/> picks that identity.
+    /// </summary>
+    private static EmailClient CreateEmailClient(EmailEndpoint endpoint) =>
+        endpoint.HasAccessKey
+            ? new EmailClient(endpoint.ConnectionString)
+            : new EmailClient(endpoint.Uri, new DefaultAzureCredential());
 }

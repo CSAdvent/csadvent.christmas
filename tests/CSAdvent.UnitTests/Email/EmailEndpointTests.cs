@@ -31,6 +31,17 @@ public sealed class EmailEndpointTests
 
         Assert.Equal(EmailTransport.AzureCommunicationServices, endpoint.Transport);
         Assert.Equal(connectionString, endpoint.ConnectionString);
+        Assert.True(endpoint.HasAccessKey);
+    }
+
+    [Fact]
+    public void AzureCommunicationServicesEndpointsWithoutAKeyUseTheManagedIdentity()
+    {
+        var endpoint = EmailEndpoint.Parse("Endpoint=https://csadvent-acs.unitedstates.communication.azure.com");
+
+        Assert.Equal(EmailTransport.AzureCommunicationServices, endpoint.Transport);
+        Assert.Equal(new Uri("https://csadvent-acs.unitedstates.communication.azure.com"), endpoint.Uri);
+        Assert.False(endpoint.HasAccessKey);
     }
 
     [Theory]
@@ -38,7 +49,7 @@ public sealed class EmailEndpointTests
     [InlineData("")]
     [InlineData("not a connection string")]
     [InlineData("Endpoint=ftp://localhost:21")]
-    [InlineData("Endpoint=https://csadvent.communication.azure.com/")]
+    [InlineData("Endpoint=http://csadvent.communication.azure.com/")]
     [InlineData("Host=localhost;Port=1025")]
     public void AnythingElseIsRejected(string? connectionString) =>
         Assert.False(EmailEndpoint.TryParse(connectionString, out _));
