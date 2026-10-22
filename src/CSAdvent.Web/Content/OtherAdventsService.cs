@@ -5,7 +5,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CSAdvent.Web.Content;
 
-public sealed record OtherAdventItem(int? Id, string Name, string Url, string? Description);
+/// <summary>A calendar on the list, with its logo's link once one has been fetched or uploaded.</summary>
+public sealed record OtherAdventItem(int? Id, string Name, string Url, string? Description, string? Logo = null)
+{
+    /// <summary>The site's address without the scheme, "www." or a trailing slash, such as adventofcode.com.</summary>
+    public string Host => Uri.TryCreate(Url, UriKind.Absolute, out var uri)
+        ? (uri.Host.StartsWith("www.", StringComparison.OrdinalIgnoreCase) ? uri.Host[4..] : uri.Host) + uri.AbsolutePath.TrimEnd('/')
+        : Url;
+}
 
 /// <summary>The list to show: whose season it's from, if it's a season's own list.</summary>
 public sealed record OtherAdventsList(int? Year, IReadOnlyList<OtherAdventItem> Items);
@@ -46,15 +53,34 @@ public sealed class OtherAdventsService(AdventDbContext db)
             .ToListAsync(cancellationToken);
         if (lists.Count == 0)
         {
-            return new OtherAdventsList(null, Suggestions);
+            return new OtherAdventsList(null, await WithLogosAsync(Suggestions, cancellationToken));
         }
 
         var latest = lists[0].SeasonYear;
-        return new OtherAdventsList(latest, [.. lists.Where(a => a.SeasonYear == latest).Select(ToItem)]);
+        return new OtherAdventsList(latest, await WithLogosAsync([.. lists.Where(a => a.SeasonYear == latest).Select(ToItem)], cancellationToken));
     }
 
-    public async Task<List<OtherAdventItem>> ListAsync(int year, CancellationToken cancellationToken = default) =>
-        [.. (await db.OtherAdvents.AsNoTracking().Where(a => a.SeasonYear == year).OrderBy(a => a.SortOrder).ToListAsync(cancellationToken)).Select(ToItem)];
+    public async Task<List<OtherAdventItem>> ListAsync(int year, CancellationToken cancellationToken = default)
+    {
+        var items = (await db.OtherAdvents.AsNoTracking().Where(a => a.SeasonYear == year).OrderBy(a => a.SortOrder).ToListAsync(cancellationToken)).Select(ToItem);
+        return [.. await WithLogosAsync([.. items], cancellationToken)];
+    }
+
+    /// <summary>The calendar's address, for the logo buttons on the admin page.</summary>
+    public Task<string?> FindUrlAsync(int year, int id, CancellationToken cancellationToken = default) =>
+        db.OtherAdvents.Where(a => a.SeasonYear == year && a.Id == id).Select(a => a.Url).SingleOrDefaultAsync(cancellationToken);
+
+    private async Task<IReadOnlyList<OtherAdventItem>> WithLogosAsync(IReadOnlyList<OtherAdventItem> items, CancellationToken cancellationToken)
+    {
+        var urls = items.Select(i => i.Url).ToList();
+        var logos = await db.OtherAdventLogos
+            .AsNoTracking()
+            .Where(l => urls.Contains(l.Url) && l.Png != null)
+            .Select(l => new { l.Url, l.Id, l.UpdatedAt })
+            .ToDictionaryAsync(l => l.Url, l => OtherAdventLogoService.Link(l.Id, l.UpdatedAt), cancellationToken);
+
+        return [.. items.Select(i => logos.TryGetValue(i.Url, out var logo) ? i with { Logo = logo } : i)];
+    }
 
     public async Task AddAsync(int year, OtherAdventForm form, CancellationToken cancellationToken = default)
     {

@@ -117,6 +117,11 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 - **`/others`** shows the `other-advents` block and a list kept **per season** in `other_advents` (`OtherAdventsService`): the current season's, else the latest season's, else `OtherAdventsService.Suggestions`.
   - The legacy list was pruned of dead links and one-off calendars.
   - Organizers edit it at `/manage/other-advents`: add, remove, or start the season from last year's list. Remove is a plain form to a minimal API, because there's one per item.
+- **Other Advents logos** (`OtherAdventLogoService`, `other_advent_logos`) are kept **by calendar address**, so every season's list and the suggestions share them. `OtherAdventLogoWorker` fetches missing ones every minute, and asks a site without a usable icon again after a day. Organizers can **Refresh** or **Upload** a logo on `/manage/other-advents` (plain forms to minimal APIs, one per calendar).
+  - `LogoFetcher` reads the site's home page for `apple-touch-icon` and `icon` links (`LogoFinder`), then tries `/apple-touch-icon.png` and `/favicon.ico`. SVG icons can't be drawn, so those sites need an upload.
+  - **Its client only connects to public addresses** (`PublicAddresses.ConnectCallback`, checked on every connection, redirects included), so organizer-typed URLs can't reach the container network or the metadata endpoint. It has its own `HttpClient`, so the default retries don't apply.
+  - **Every logo is redrawn** by `LogoImages` (SkiaSharp) into a PNG of at most 128 pixels, refusing anything over 4096 pixels, so only plain images are served from `/others/logos/{id}.png?v=…` (cached for a week, `nosniff`).
+  - The AppHost turns the worker off in the Testing environment (`OtherAdvents:FetchLogosInBackground`), so tests never reach real sites.
 
 ## Social Announcements
 

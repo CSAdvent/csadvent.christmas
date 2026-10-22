@@ -52,6 +52,15 @@ builder.Services.AddScoped<RssFeed>();
 builder.Services.AddScoped<SocialService>();
 builder.Services.AddScoped<ContentService>();
 builder.Services.AddScoped<OtherAdventsService>();
+
+// Other Advents logos, fetched from each calendar's site. The fetcher has its own client rather than one from the factory,
+// so it skips the default retries: a missing icon is normal, and the worker asks again the next day.
+builder.Services.AddSingleton(services => new LogoFetcher(LogoFetcher.CreateClient(), services.GetRequiredService<ILogger<LogoFetcher>>()));
+builder.Services.AddScoped<OtherAdventLogoService>();
+if (builder.Configuration.GetValue("OtherAdvents:FetchLogosInBackground", defaultValue: true))
+{
+    builder.Services.AddHostedService<OtherAdventLogoWorker>();
+}
 builder.Services.AddOptions<SocialAccountsOptions>().BindConfiguration(SocialAccountsOptions.SectionName);
 builder.AddEmail();
 builder.Services.AddScoped<IClaimNotifier, EmailClaimNotifier>();
@@ -120,6 +129,7 @@ app.MapFeeds();
 app.MapSocial();
 app.MapLegacyRedirects();
 app.MapContentAdmin();
+app.MapOtherAdventLogos();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
