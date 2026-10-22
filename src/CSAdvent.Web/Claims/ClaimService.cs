@@ -1,5 +1,6 @@
 using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Data;
+using CSAdvent.Web.SeasonTesting;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -30,10 +31,14 @@ public sealed record ClaimantDetails(string? VerifiedEmail, string? Bluesky, str
 /// Claim requests: a signed-in contributor asks for an open slot and the organizer approves one request per slot. Requests
 /// don't reserve the slot, so several people can ask for the same one; first come, first served.
 /// </summary>
-public sealed class ClaimService(AdventDbContext db, AdventSchedule schedule, TimeProvider timeProvider, IClaimNotifier notifier)
+public sealed class ClaimService(AdventDbContext db, AdventSchedule schedule, TimeProvider timeProvider, IClaimNotifier notifier, SeasonAccess access)
 {
-    public static ClaimAvailability CheckAvailability(Season season, Slot slot, AdventSchedule schedule) =>
-        !schedule.AreClaimsOpen(season.ClaimsOpenAt) ? ClaimAvailability.ClaimsNotOpen
+    /// <summary>
+    /// Whether the slot can be requested. In a season being tested, sign-ups are open to its testers (<paramref name="isTester"/>)
+    /// and closed to everyone else, whatever its sign-up date.
+    /// </summary>
+    public static ClaimAvailability CheckAvailability(Season season, Slot slot, AdventSchedule schedule, bool isTester = false) =>
+        !(season.TestingStartedAt is not null ? isTester : schedule.AreClaimsOpen(season.ClaimsOpenAt)) ? ClaimAvailability.ClaimsNotOpen
         : schedule.IsRevealed(slot) ? ClaimAvailability.AlreadyRevealed
         : slot.IsClaimed ? ClaimAvailability.AlreadyClaimed
         : ClaimAvailability.Open;
@@ -47,7 +52,7 @@ public sealed class ClaimService(AdventDbContext db, AdventSchedule schedule, Ti
 
         return slot is null
             ? null
-            : new ClaimableSlot(slot.Id, year, day, part, slot.Season.SlotsPerDay, CheckAvailability(slot.Season, slot, schedule));
+            : new ClaimableSlot(slot.Id, year, day, part, slot.Season.SlotsPerDay, CheckAvailability(slot.Season, slot, schedule, access.CanSee(year)));
     }
 
     /// <summary>

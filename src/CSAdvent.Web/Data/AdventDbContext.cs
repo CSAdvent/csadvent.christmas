@@ -7,6 +7,8 @@ public sealed class AdventDbContext(DbContextOptions<AdventDbContext> options) :
 {
     public DbSet<Season> Seasons => Set<Season>();
 
+    public DbSet<SeasonTester> SeasonTesters => Set<SeasonTester>();
+
     public DbSet<Slot> Slots => Set<Slot>();
 
     public DbSet<SlotContact> SlotContacts => Set<SlotContact>();

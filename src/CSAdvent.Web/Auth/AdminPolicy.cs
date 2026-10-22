@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
 
@@ -7,6 +8,9 @@ public static class AdventPolicies
 {
     /// <summary>Organizers: signed-in users whose GitHub user ID is in <see cref="AccountOptions.Admins"/>.</summary>
     public const string Admin = "Admin";
+
+    public static bool IsOrganizer(ClaimsPrincipal user, AccountOptions options) =>
+        user.GetGitHubUserId() is { } id && options.Admins.Contains(id);
 }
 
 public sealed class AdminRequirement : IAuthorizationRequirement;
@@ -16,7 +20,7 @@ public sealed class AdminAuthorizationHandler(IOptionsMonitor<AccountOptions> op
 {
     protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, AdminRequirement requirement)
     {
-        if (context.User.GetGitHubUserId() is { } id && options.CurrentValue.Admins.Contains(id))
+        if (AdventPolicies.IsOrganizer(context.User, options.CurrentValue))
         {
             context.Succeed(requirement);
         }

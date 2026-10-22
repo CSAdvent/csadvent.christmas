@@ -27,6 +27,18 @@ public sealed class Season
 
     public DateTimeOffset CreatedAt { get; private set; }
 
+    /// <summary>
+    /// While set, the season is being tested before its sign-ups open: only its testers and the organizers see its spots,
+    /// and finishing testing deletes everything done in it (<see cref="SeasonTesting.SeasonTestingService"/>).
+    /// </summary>
+    public DateTimeOffset? TestingStartedAt { get; set; }
+
+    /// <summary>While testing, the date that stands in for December 1, so reveals, reminders and backup asks can be tried early.</summary>
+    public DateOnly? RehearsalStartsOn { get; set; }
+
+    /// <summary>Who can take part while the season is being tested, besides the organizers.</summary>
+    public List<SeasonTester> Testers { get; private set; } = [];
+
     public List<Slot> Slots { get; private set; } = [];
 
     public List<Substitute> Substitutes { get; private set; } = [];
@@ -65,6 +77,7 @@ internal sealed class SeasonConfiguration : IEntityTypeConfiguration<Season>
         {
             t.HasCheckConstraint("ck_seasons_year", $"year >= {Season.FirstYear}");
             t.HasCheckConstraint("ck_seasons_slots_per_day", $"slots_per_day BETWEEN 1 AND {Season.MaxSlotsPerDay}");
+            t.HasCheckConstraint("ck_seasons_rehearsal", "(testing_started_at IS NULL) = (rehearsal_starts_on IS NULL)");
         });
     }
 }

@@ -68,7 +68,7 @@ public sealed partial class BackupService(
 {
     /// <summary>When asking starts for a spot whose post link is missing: the evening before its day.</summary>
     public DateTimeOffset GetAskStart(int year, int day) =>
-        schedule.FromLocalTime(new DateTime(year, 12, day).AddDays(-1).Add(options.Value.AskFrom.ToTimeSpan()));
+        schedule.FromLocalTime(schedule.GetDate(year, day).AddDays(-1).ToDateTime(options.Value.AskFrom));
 
     /// <summary>
     /// Whether a backup could still fill the slot: it was dropped, or it has no post link, and its day isn't over. Anyone who
@@ -413,7 +413,7 @@ public sealed partial class BackupService(
         var record = new SentReminder
         {
             Kind = ReminderKind.AdminBackupsExhausted,
-            RunDate = new DateOnly(slot.SeasonYear, 12, slot.Day),
+            RunDate = schedule.GetDate(slot.SeasonYear, slot.Day),
             SlotId = slot.Id,
             SentAt = now,
         };

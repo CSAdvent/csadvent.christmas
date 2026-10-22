@@ -15,6 +15,7 @@ using CSAdvent.Web.Manage;
 using CSAdvent.Web.Reminders;
 using CSAdvent.Web.Social;
 using CSAdvent.Web.Retention;
+using CSAdvent.Web.SeasonTesting;
 using Microsoft.AspNetCore.DataProtection;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -38,6 +39,12 @@ builder.Services.AddOptions<SiteOptions>()
     .BindConfiguration(SiteOptions.SectionName)
     .ValidateDataAnnotations()
     .ValidateOnStart();
+// Seasons being tested follow a rehearsal schedule, and only their testers see what's happening in them.
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<TestSeasons>();
+builder.Services.AddHostedService<TestSeasonsRefresher>();
+builder.Services.AddScoped<SeasonAccess>();
+builder.Services.AddScoped<SeasonTestingService>();
 builder.Services.AddSingleton<AdventSchedule>();
 builder.Services.AddScoped<ArchiveService>();
 builder.Services.AddScoped<HomeService>();
@@ -130,6 +137,7 @@ app.MapSocial();
 app.MapLegacyRedirects();
 app.MapContentAdmin();
 app.MapOtherAdventLogos();
+app.MapSeasonTesting();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 

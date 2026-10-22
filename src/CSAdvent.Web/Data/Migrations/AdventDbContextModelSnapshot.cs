@@ -16,7 +16,7 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261022202741_AddOtherAdventLogos";
+    public override string LastMigrationId => "20261022212454_AddSeasonTesting";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -478,18 +478,52 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                     .HasColumnType("text")
                     .HasColumnName("notes");
 
+                b.Property<DateOnly?>("RehearsalStartsOn")
+                    .HasColumnType("date")
+                    .HasColumnName("rehearsal_starts_on");
+
                 b.Property<int>("SlotsPerDay")
                     .HasColumnType("integer")
                     .HasColumnName("slots_per_day");
+
+                b.Property<DateTimeOffset?>("TestingStartedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("testing_started_at");
 
                 b.HasKey("Year")
                     .HasName("pk_seasons");
 
                 b.ToTable("seasons", t =>
                     {
+                        t.HasCheckConstraint("ck_seasons_rehearsal", "(testing_started_at IS NULL) = (rehearsal_starts_on IS NULL)");
+
                         t.HasCheckConstraint("ck_seasons_slots_per_day", "slots_per_day BETWEEN 1 AND 2");
 
                         t.HasCheckConstraint("ck_seasons_year", "year >= 2017");
+                    });
+            });
+
+        modelBuilder.Entity("CSAdvent.Web.Data.SeasonTester", b =>
+            {
+                b.Property<int>("SeasonYear")
+                    .HasColumnType("integer")
+                    .HasColumnName("season_year");
+
+                b.Property<string>("GithubLogin")
+                    .HasMaxLength(39)
+                    .HasColumnType("character varying(39)")
+                    .HasColumnName("github_login");
+
+                b.Property<DateTimeOffset>("AddedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("added_at");
+
+                b.HasKey("SeasonYear", "GithubLogin")
+                    .HasName("pk_season_testers");
+
+                b.ToTable("season_testers", t =>
+                    {
+                        t.HasCheckConstraint("ck_season_testers_login", "github_login = lower(github_login)");
                     });
             });
 
@@ -882,6 +916,18 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                 b.Navigation("Season");
             });
 
+        modelBuilder.Entity("CSAdvent.Web.Data.SeasonTester", b =>
+            {
+                b.HasOne("CSAdvent.Web.Data.Season", "Season")
+                    .WithMany("Testers")
+                    .HasForeignKey("SeasonYear")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired()
+                    .HasConstraintName("fk_season_testers_seasons_season_year");
+
+                b.Navigation("Season");
+            });
+
         modelBuilder.Entity("CSAdvent.Web.Data.SentReminder", b =>
             {
                 b.HasOne("CSAdvent.Web.Data.Slot", "Slot")
@@ -977,6 +1023,8 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                 b.Navigation("Slots");
 
                 b.Navigation("Substitutes");
+
+                b.Navigation("Testers");
             });
 
         modelBuilder.Entity("CSAdvent.Web.Data.Slot", b =>

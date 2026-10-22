@@ -1,0 +1,245 @@
+@page "/manage/testing"
+@using System.Globalization
+@using CSAdvent.Web.SeasonTesting
+@inject SeasonAdminService Seasons
+@inject SeasonTestingService Testing
+@inject AdventSchedule Schedule
+@inject NavigationManager Navigation
+@inject TimeProvider TimeProvider
+
+<PageTitle>Testing · Manage · C# Advent</PageTitle>
+
+<ManageNav />
+
+@if (_view is { } view)
+{
+    <h1 class="text-3xl font-bold tracking-tight text-slate-900">Testing C# Advent @view.Year</h1>
+    <p class="mt-2 max-w-3xl text-slate-600">
+        Before sign-ups open, invited testers can try everything for real: claiming, approvals, adding posts, dropping out, the
+        backup list, reminders, reveals and the daily email. A rehearsal moves December 1 to a date you choose. Only the testers
+        and the organizers see any of it; everyone else sees the season waiting for its sign-ups. Finishing deletes it all.
+    </p>
+
+    @if (Message is { } message)
+    {
+        <p class="mt-4 max-w-3xl rounded-xl bg-slate-50 p-4 text-sm font-medium text-slate-800 ring-1 ring-slate-200" role="status">@message</p>
+    }
+
+    @if (!view.IsTesting)
+    {
+        <section class="mt-8 max-w-3xl rounded-xl bg-slate-50 p-5 ring-1 ring-slate-200">
+            <h2 class="text-xl font-semibold text-slate-900">Start testing</h2>
+            @if (view.ClaimsOpenAt is { } opensAt && opensAt <= TimeProvider.GetUtcNow())
+            {
+                <p class="mt-2 text-slate-700">Sign-ups for @view.Year are already open, so it can't be tested: finishing would delete real contributors' spots.</p>
+            }
+            else if (!view.Activity.IsEmpty)
+            {
+                <p class="mt-2 text-slate-700">This season already has spots, requests or backups, so it can't be tested: finishing would delete them.</p>
+            }
+            else
+            {
+                <p class="mt-2 text-slate-700">Pick the date that stands in for December 1. Tomorrow means Day 1 is revealed at midnight tonight.</p>
+                <EditForm Model="Start" FormName="start" OnValidSubmit="StartAsync" class="mt-4 flex flex-wrap items-end gap-4">
+                    <DataAnnotationsValidator />
+                    <label class="flex flex-col text-sm font-medium text-slate-700">
+                        December 1 is on
+                        <InputDate @bind-Value="Start!.RehearsalStartsOn" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                    </label>
+                    <button type="submit" class="rounded-lg bg-advent-600 px-4 py-2 font-semibold text-white hover:bg-advent-700">Start testing</button>
+                    <ValidationSummary class="w-full text-sm text-red-700" />
+                </EditForm>
+            }
+        </section>
+    }
+    else
+    {
+        <section class="mt-8 max-w-3xl rounded-xl bg-amber-50 p-5 ring-1 ring-amber-200">
+            <h2 class="text-xl font-semibold text-slate-900">Testing since @Format(view.TestingStartedAt!.Value)</h2>
+            <p class="mt-2 text-slate-700">
+                In this rehearsal, December 1 is on <strong>@Format(view.RehearsalStartsOn!.Value)</strong>
+                @(RehearsalDay(view) is { } day ? $"(today is December {day})." : ".")
+                Move it back to jump ahead: putting December 1 nine days ago makes today December 10.
+            </p>
+            <EditForm Model="Move" FormName="move" OnValidSubmit="MoveAsync" class="mt-4 flex flex-wrap items-end gap-4">
+                <DataAnnotationsValidator />
+                <label class="flex flex-col text-sm font-medium text-slate-700">
+                    December 1 is on
+                    <InputDate @bind-Value="Move!.RehearsalStartsOn" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                </label>
+                <button type="submit" class="rounded-lg bg-white px-4 py-2 font-semibold text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50">Move the rehearsal</button>
+            </EditForm>
+
+            <EditForm Model="Run" FormName="run" OnSubmit="RunAsync" class="mt-4">
+                <button type="submit" class="rounded-lg bg-white px-4 py-2 font-semibold text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50">Send due reminders and backup asks now</button>
+                <span class="ml-2 text-sm text-slate-600">They also go out on their own every 15 minutes.</span>
+            </EditForm>
+        </section>
+    }
+
+    <section class="mt-8 max-w-3xl">
+        <h2 class="text-xl font-semibold text-slate-900">Testers</h2>
+        <p class="mt-1 text-slate-600">GitHub logins of the people invited to test. The organizers can always test.</p>
+        @if (view.Testers.Count > 0)
+        {
+            <ul class="mt-4 flex flex-col divide-y divide-slate-100 rounded-xl ring-1 ring-slate-200">
+                @foreach (var tester in view.Testers)
+                {
+                    <li class="flex items-center justify-between gap-4 p-3">
+                        <a href="@($"https://github.com/{tester}")" class="font-medium text-advent-700 underline">@tester</a>
+                        <form method="post" action="manage/testing/testers/remove">
+                            <AntiforgeryToken />
+                            <input type="hidden" name="Year" value="@view.Year" />
+                            <input type="hidden" name="Login" value="@tester" />
+                            <button type="submit" class="rounded-md px-2 py-1 text-sm text-red-700 ring-1 ring-red-200 hover:bg-red-50">Remove</button>
+                        </form>
+                    </li>
+                }
+            </ul>
+        }
+        <EditForm Model="Tester" FormName="tester" OnValidSubmit="AddTesterAsync" class="mt-4 flex flex-wrap items-end gap-4">
+            <DataAnnotationsValidator />
+            <label class="flex flex-col text-sm font-medium text-slate-700">
+                GitHub login
+                <InputText @bind-Value="Tester!.Login" placeholder="octocat" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+            </label>
+            <button type="submit" class="rounded-lg bg-white px-4 py-2 font-semibold text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50">Add tester</button>
+            <ValidationSummary class="w-full text-sm text-red-700" />
+        </EditForm>
+    </section>
+
+    @if (view.IsTesting)
+    {
+        <section class="mt-10 max-w-3xl rounded-xl bg-red-50 p-5 ring-1 ring-red-200">
+            <h2 class="text-xl font-semibold text-slate-900">Finish testing</h2>
+            <p class="mt-2 text-slate-700">
+                Deletes everything done in @view.Year: @Plural(view.Activity.Spots, "spot") filled or dropped,
+                @Plural(view.Activity.Requests, "request"), @Plural(view.Activity.BackupPosters, "backup poster"),
+                @Plural(view.Activity.BackupOffers, "backup offer"), @Plural(view.Activity.Emails, "sent email record"),
+                @Plural(view.Activity.Visits, "visit"), and @Plural(view.Activity.SocialPosts, "social post mark").
+                Every spot is open again, and the season goes back to waiting for its sign-ups. The testers list stays.
+            </p>
+            <EditForm Model="Finish" FormName="finish" OnValidSubmit="FinishAsync" class="mt-4 flex flex-col gap-3">
+                <DataAnnotationsValidator />
+                <label class="flex items-center gap-2 text-sm font-medium text-slate-800">
+                    <InputCheckbox @bind-Value="Finish!.Confirm" />
+                    Delete everything done while testing @view.Year
+                </label>
+                <ValidationSummary class="text-sm text-red-700" />
+                <div>
+                    <button type="submit" class="rounded-lg bg-red-700 px-4 py-2 font-semibold text-white hover:bg-red-800">Finish testing</button>
+                </div>
+            </EditForm>
+        </section>
+    }
+}
+else if (_loaded)
+{
+    <p class="text-slate-600">There's no season yet. <a href="manage/seasons" class="text-advent-700 underline">Create one</a> first.</p>
+}
+
+@code {
+    private TestingView? _view;
+    private bool _loaded;
+
+    [SupplyParameterFromQuery]
+    public int? Year { get; set; }
+
+    [SupplyParameterFromQuery(Name = "done")]
+    public string? Done { get; set; }
+
+    [SupplyParameterFromForm(FormName = "start")]
+    private StartTestingForm? Start { get; set; }
+
+    [SupplyParameterFromForm(FormName = "move")]
+    private StartTestingForm? Move { get; set; }
+
+    [SupplyParameterFromForm(FormName = "tester")]
+    private TesterForm? Tester { get; set; }
+
+    [SupplyParameterFromForm(FormName = "run")]
+    private RunForm? Run { get; set; }
+
+    [SupplyParameterFromForm(FormName = "finish")]
+    private FinishTestingForm? Finish { get; set; }
+
+    private string? Message => Done switch
+    {
+        "started" => "Testing has started. Invite the testers below, then send them to the site.",
+        "moved" => "The rehearsal has moved.",
+        "added" => "Tester added. They see the test calendar the next time they open a page, once they've signed in.",
+        "removed" => "Tester removed.",
+        "not-a-login" => "That isn't a GitHub login.",
+        "ran" => "Due reminders and backup asks have gone out.",
+        "finished" => "Testing has finished, and everything done in it has been deleted.",
+        "signups-open" => "Sign-ups are already open, so this season can't be tested.",
+        "has-activity" => "This season already has spots, requests or backups, so it can't be tested.",
+        _ => null,
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Static rendering starts at the first await, so the forms need their models first.
+        var tomorrow = Schedule.Today.AddDays(1);
+        Start ??= new StartTestingForm { RehearsalStartsOn = tomorrow };
+        Move ??= new StartTestingForm();
+        Tester ??= new TesterForm();
+        Run ??= new RunForm();
+        Finish ??= new FinishTestingForm();
+
+        _loaded = true;
+        if ((Year ?? await Seasons.GetCurrentYearAsync()) is { } year)
+        {
+            _view = await Testing.GetAsync(year);
+            Move.RehearsalStartsOn ??= _view?.RehearsalStartsOn;
+        }
+    }
+
+    private async Task StartAsync()
+    {
+        var outcome = await Testing.StartAsync(_view!.Year, Start!.RehearsalStartsOn!.Value);
+        Back(outcome switch
+        {
+            StartTestingOutcome.Started or StartTestingOutcome.AlreadyTesting => "started",
+            StartTestingOutcome.SignUpsOpen => "signups-open",
+            _ => "has-activity",
+        });
+    }
+
+    private async Task MoveAsync()
+    {
+        if (Move!.RehearsalStartsOn is { } date)
+        {
+            await Testing.MoveAsync(_view!.Year, date);
+        }
+
+        Back("moved");
+    }
+
+    private async Task AddTesterAsync() => Back(await Testing.AddTesterAsync(_view!.Year, Tester!.Login) ? "added" : "not-a-login");
+
+    private async Task RunAsync()
+    {
+        await Testing.RunNowAsync(_view!.Year);
+        Back("ran");
+    }
+
+    private async Task FinishAsync()
+    {
+        await Testing.FinishAsync(_view!.Year);
+        Back("finished");
+    }
+
+    private void Back(string done) => Navigation.NavigateTo($"manage/testing?year={_view!.Year}&done={done}");
+
+    private int? RehearsalDay(TestingView view) => Schedule.GetDayOfAdvent(view.Year, Schedule.Today);
+
+    private string Format(DateOnly date) => date.ToString("dddd, MMMM d", CultureInfo.InvariantCulture);
+
+    private string Format(DateTimeOffset moment) => Schedule.ToLocalTime(moment).ToString("MMMM d 'at' h:mm tt", CultureInfo.InvariantCulture);
+
+    private static string Plural(int count, string noun) => string.Create(CultureInfo.InvariantCulture, $"{count} {noun}{(count == 1 ? "" : "s")}");
+
+    /// <summary>The run form has no fields; it only needs a model.</summary>
+    private sealed class RunForm;
+}

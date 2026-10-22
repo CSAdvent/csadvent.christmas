@@ -1,30 +1,47 @@
 using CSAdvent.Web.Data;
+using CSAdvent.Web.SeasonTesting;
 using Microsoft.Extensions.Options;
 
 namespace CSAdvent.Web.Calendar;
 
 /// <summary>
-/// When each day's posts are revealed: midnight on December {day} of the season's year, in the configured time zone.
-/// Reveal times are always computed from the season, the day and the time zone, never stored.
+/// When each day's posts are revealed: midnight on December {day} of the season's year, in the configured time zone. While
+/// a season is being tested, its days follow the rehearsal instead (<see cref="TestSeasons"/>), so everything built on
+/// these dates (reveals, reminders, backup asks) can be tried early. Reveal times are always computed, never stored.
 /// </summary>
 public sealed class AdventSchedule
 {
     private readonly TimeProvider _timeProvider;
+    private readonly TestSeasons? _testSeasons;
 
-    public AdventSchedule(IOptions<AdventOptions> options, TimeProvider timeProvider)
+    public AdventSchedule(IOptions<AdventOptions> options, TimeProvider timeProvider, TestSeasons? testSeasons = null)
     {
         TimeZone = TimeZoneInfo.FindSystemTimeZoneById(options.Value.TimeZone);
         _timeProvider = timeProvider;
+        _testSeasons = testSeasons;
     }
 
     public TimeZoneInfo TimeZone { get; }
 
-    public DateTimeOffset GetRevealTime(int year, int day)
+    /// <summary>The date of a day of Advent: December {day}, or the matching day of the season's rehearsal while it's being tested.</summary>
+    public DateOnly GetDate(int year, int day)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(day, 1);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(day, Season.DaysInAdvent);
 
-        var midnight = new DateTime(year, 12, day, 0, 0, 0, DateTimeKind.Unspecified);
+        return _testSeasons?.Find(year) is { } rehearsal ? rehearsal.RehearsalStartsOn.AddDays(day - 1) : new DateOnly(year, 12, day);
+    }
+
+    /// <summary>Which day of Advent a date is in the season (1 to 25), or null if it's outside Advent.</summary>
+    public int? GetDayOfAdvent(int year, DateOnly date) =>
+        (date.DayNumber - GetDate(year, 1).DayNumber + 1) is var day and >= 1 and <= Season.DaysInAdvent ? day : null;
+
+    /// <summary>Whether the season is being tested, so its days follow a rehearsal rather than December.</summary>
+    public bool IsRehearsing(int year) => _testSeasons?.IsTesting(year) == true;
+
+    public DateTimeOffset GetRevealTime(int year, int day)
+    {
+        var midnight = GetDate(year, day).ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified);
         return new DateTimeOffset(midnight, TimeZone.GetUtcOffset(midnight));
     }
 
@@ -35,7 +52,7 @@ public sealed class AdventSchedule
     public bool IsRevealed(Slot slot) => IsRevealed(slot.SeasonYear, slot.Day);
 
     /// <summary>When a day ends: midnight at the start of the next day, in the reveal time zone.</summary>
-    public DateTimeOffset GetDayEndTime(int year, int day) => FromLocalTime(new DateTime(year, 12, day).AddDays(1));
+    public DateTimeOffset GetDayEndTime(int year, int day) => FromLocalTime(GetDate(year, day).AddDays(1).ToDateTime(TimeOnly.MinValue));
 
     public bool IsDayOver(int year, int day) => _timeProvider.GetUtcNow() >= GetDayEndTime(year, day);
 

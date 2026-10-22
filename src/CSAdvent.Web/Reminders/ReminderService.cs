@@ -63,9 +63,8 @@ public sealed partial class ReminderService(
     {
         // The Advent days that are exactly one of the reminder intervals away.
         var days = options.Value.DaysBefore
-            .Select(daysBefore => today.AddDays(daysBefore))
-            .Where(date => date >= FirstDay(year) && date <= LastDay(year))
-            .Select(date => date.Day)
+            .Select(daysBefore => schedule.GetDayOfAdvent(year, today.AddDays(daysBefore)))
+            .OfType<int>()
             .ToList();
         if (days.Count == 0)
         {
@@ -82,7 +81,7 @@ public sealed partial class ReminderService(
         var sent = 0;
         foreach (var slot in slots)
         {
-            var daysBefore = new DateOnly(year, 12, slot.Day).DayNumber - today.DayNumber;
+            var daysBefore = schedule.GetDate(year, slot.Day).DayNumber - today.DayNumber;
             var content = ReminderEmails.PostLinkMissing(
                 new PostLinkReminder(slot.AuthorName, year, slot.Day, slot.Part, slot.SlotsPerDay, daysBefore),
                 site.Value);
@@ -97,7 +96,7 @@ public sealed partial class ReminderService(
 
     private async Task<int> SendDailySharesAsync(int year, DateOnly today, DateTimeOffset now, CancellationToken cancellationToken)
     {
-        if (today < FirstDay(year))
+        if (schedule.GetDayOfAdvent(year, today) is not { } day)
         {
             return 0;
         }
@@ -106,7 +105,7 @@ public sealed partial class ReminderService(
         // tries again.
         var revealed = await db.Slots
             .AsNoTracking()
-            .Where(s => s.SeasonYear == year && s.Day == today.Day && s.AuthorName != null && s.PostTitle != null && s.PostUrl != null)
+            .Where(s => s.SeasonYear == year && s.Day == day && s.AuthorName != null && s.PostTitle != null && s.PostUrl != null)
             .OrderBy(s => s.Part)
             .Select(s => new { s.Part, s.PostTitle, s.AuthorName })
             .ToListAsync(cancellationToken);
@@ -115,7 +114,7 @@ public sealed partial class ReminderService(
         var posts = revealed
             .Select(s => new SharedPost(
                 s.PostTitle!,
-                EntryLinks.Absolute(site.Value.BaseUrl, EntryLinks.Go(year, today.Day, s.Part, "email")),
+                EntryLinks.Absolute(site.Value.BaseUrl, EntryLinks.Go(year, day, s.Part, "email")),
                 s.AuthorName!))
             .ToList();
         if (posts.Count == 0)
@@ -134,7 +133,7 @@ public sealed partial class ReminderService(
             .GroupBy(c => c.Email.Trim().ToLowerInvariant())
             .Where(person => !person.Any(c => c.OptedOut))
             .Select(person => person.OrderBy(c => c.Id).ToList())
-            .Select(spots => new { First = spots[0], IsAuthorToday = spots.Any(c => c.Day == today.Day) });
+            .Select(spots => new { First = spots[0], IsAuthorToday = spots.Any(c => c.Day == day) });
 
         var sent = 0;
         foreach (var recipient in recipients)
@@ -198,9 +197,9 @@ public sealed partial class ReminderService(
         return true;
     }
 
-    private static DateOnly FirstDay(int year) => new(year, 12, 1);
+    private DateOnly FirstDay(int year) => schedule.GetDate(year, 1);
 
-    private static DateOnly LastDay(int year) => new(year, 12, Season.DaysInAdvent);
+    private DateOnly LastDay(int year) => schedule.GetDate(year, Season.DaysInAdvent);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't send the {Kind} reminder for slot {SlotId}; a later run will try again")]
     private partial void LogSendFailed(Exception exception, ReminderKind kind, int slotId);

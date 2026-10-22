@@ -129,6 +129,15 @@ dotnet test
 - 📡 **RSS:** `/rss` has every revealed post from every season, newest first, and `/archive/{year}/rss` has one season
 - 📈 **Read the post** goes through `/go/...`, which counts the click (people only, nothing personal) and redirects to the post. Links we publish carry `?via=` (bluesky, rss, email, calendar...), so the stats show where readers came from
 
+## 🧪 Testing a Season
+
+Before sign-ups open, organizers can let invited testers try everything for real on the live site, then wipe it.
+
+- 🚦 **Start testing** at `/manage/testing` with the date that stands in for December 1. Only a season whose sign-ups haven't opened, and that nobody has used yet, can be tested
+- 👥 **Invite testers** by GitHub login. They and the organizers see the test calendar, with a banner on every page; everyone else sees the season still waiting for its sign-ups
+- ⏩ **Rehearse December early:** reveals, reminders, the daily email and backup asks follow the rehearsal. Move it to jump ahead, or send what's due straight away
+- 🧹 **Finish testing** to delete everything done in the season: every spot is open again, and the requests, backups, emails, visits and social marks are gone
+
 ## ✉️ Email
 
 - 🎨 **Branded HTML emails** with a plain-text alternative, both rendered from one description of each email (`EmailContent`)

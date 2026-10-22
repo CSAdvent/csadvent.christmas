@@ -180,6 +180,23 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 - Static SSR renders a page at its first `await`, so create any `EditForm` model before awaiting.
 - Integration tests use `TestBrowser` (`fixture.SignInAsync`, and `browser.PostFormAsync(path, formName, fields)`, which also posts the page's hidden inputs unless the fields override them) and `TestSeasons.EnsureAsync` (each test class uses its own years, all after 2089).
 
+## Season Testing
+
+- Organizers test a season **before its sign-ups open** at `/manage/testing` (`SeasonTestingService`):
+  - **Start** with the date that stands in for December 1 (`seasons.rehearsal_starts_on`, set together with `testing_started_at`).
+  - **Invite testers** by GitHub login (`season_testers`, stored lowercase; `@login` and profile URLs are accepted).
+  - **Move the rehearsal** to jump ahead, and **send due reminders and backup asks now** rather than waiting for the worker.
+  - **Finish**, which deletes everything done in the season.
+- **Only an untouched season can be tested**: its sign-ups haven't opened and nothing has been done in it (`TestActivity`), so finishing can never delete a real contributor's spot.
+- **Finishing** clears every spot (author, link, post, contributor, contact, drop-out) and deletes the requests, backup list, offers, sent-email records, visits and social marks in one transaction. The transaction runs inside `CreateExecutionStrategy()`, because Aspire's database connection retries. The season, its sign-up date, its testers and its Other Advents list stay.
+- **The rehearsal moves every date.** `AdventSchedule.GetDate(year, day)` and `GetDayOfAdvent(year, date)` follow `TestSeasons`, an in-memory copy reloaded every 15 seconds by `TestSeasonsRefresher` and straight after an organizer changes something. Reveals, day ends, reminders, daily emails, backup asks, the calendar's "today" and the social screen all come from them. **Never write `new DateOnly(year, 12, day)`**; use `GetDate`.
+- **Only testers and organizers see a season being tested** (`SeasonAccess.CanSee`):
+  - They get its calendar on the home page, can claim and join its backup list whatever its sign-up date says, and see its entries. A banner on every page (`TestingBanner`) says it's a test.
+  - Everyone else sees it still waiting for sign-ups: the page between seasons counts down to its real registration date, claims and the backup list are closed, its entries, entry cards and `/go` links are 404s, and it's never in the archive.
+  - **RSS never includes a season being tested**, even for testers, because feed readers remember items.
+  - Background work has no signed-in user, so it sees everything.
+- Any new public page that reads a season's spots must check `SeasonAccess.CanSee` too.
+
 ## Email
 
 - **Branded HTML with a plain-text alternative.** Each email is an `EmailContent` (subject, preview line, heading, blocks: paragraphs, lists, a button, details). `Email/BrandedEmail.razor` renders the HTML and `EmailText` the text, and `EmailComposer` does both, so they never drift apart. Templates live next to their feature, such as `Claims/ClaimEmails.cs`.
