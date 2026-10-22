@@ -97,13 +97,33 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
   - The entry page's button passes on the tag the visit arrived with (`site` if none).
   - Tags are normalized by `EntryVia` (unknown becomes `other`).
 - **Counting:** `entry_hits` records a `View` or `Click` with the slot, time and tag. There's no IP, cookie or user agent, so nothing personal, and the hits are kept for the stats (#62). `EntryTraffic.IsPerson` skips link-preview fetchers (Facebook, LinkedIn, Mastodon, Bluesky, Discord...), crawlers, scripts, prefetches and non-GET requests. The organizers' entries list shows clicks per spot.
-- **Preview tags:** `SocialMeta` puts Open Graph tags, `twitter:card` (large image), a canonical URL without the query string, and `fediverse:creator` (when `Site:MastodonCreator` is set) on every public page.
+- **Preview tags:** `SocialMeta` puts Open Graph tags, `twitter:card` (large image), a canonical URL without the query string, and `fediverse:creator` (`Social:Mastodon`) on every public page.
 - **Cards** (`CardRenderer`, SkiaSharp):
   - What they show: a revealed entry's page uses `/cards/{year}/{day}/{part}.jpg` (title, author, day). Season pages and the home page use `/cards/{year}.jpg`. Anything else, including entries before their reveal, uses the static `images/social-card.jpg`.
   - Size: 1200×630 JPEGs of about 110 KB, under Bluesky's 1 MB limit.
   - Caching: `CardLinks` adds `?v=` (a hash of the text, or the post count), so an edited title gets a new URL. Responses are cached for a day, and rendered cards are kept in memory.
   - Before an entry's reveal there's no card for it (404).
   - Fonts and images: Inter Bold and Regular (SIL Open Font License, `Cards/Assets/Inter-LICENSE.txt`), the card background and the logo are embedded resources. Linux uses `SkiaSharp.NativeAssets.Linux.NoDependencies`, so containers need no fontconfig or system fonts. `CardRenderer.Printable` drops characters Inter can't draw (emoji, for example) rather than draw boxes.
+
+## Social Announcements
+
+- **C# Advent's own accounts** are in `Social` (`SocialAccountsOptions`):
+  - Bluesky `csadvent.christmas`
+  - Mastodon `@csadvent@mastodon.social`
+  - the Facebook and LinkedIn Pages
+  - Reddit `u/CS-Advent`, posting to **r/csadvent** (never r/csharp or r/dotnet)
+
+  The footer links them all ("Follow C# Advent"), with `rel="me"` on Mastodon so its profile can verify the site.
+
+- **Every revealed entry with a post gets one announcement per platform:** Bluesky, Mastodon, LinkedIn, Facebook and Reddit, using `Claims.SocialPlatform`. Never X. The content is the same everywhere (`Announcement`: title, author, "C# Advent 2026, December 6, part 2", and a link to the entry page tagged with the platform). `AnnouncementFormatter` handles each platform's conventions:
+  - **Bluesky:** 300 graphemes, `@handle` mentions, and a compose intent.
+  - **Mastodon:** 500 characters, where a link counts as 23 and `@user@server` counts as `@user`. The share link opens on `Social:Mastodon`'s server.
+  - **LinkedIn:** 3000 characters, with a "tag the author" hint.
+  - **Facebook:** fewer hashtags, and a hint.
+  - **Reddit:** a title of up to 300 characters plus the link, no hashtags, and a submit link.
+  - **Long titles** are shortened with an ellipsis to fit.
+- **`/manage/social`** (organizers) shows a day's announcements, today by default. Each has a preview, a count against the limit, Copy buttons (`wwwroot/js/copy.js`, `data-copy="element-id"`), and the composer link where one exists. Upcoming days are preview-only, with no composer and no marking before the reveal (#5).
+- **Mark as posted / Undo** are plain forms posting to `/manage/social/mark` and `/unmark` (minimal APIs; binding the form checks antiforgery; Admin policy). They're plain because the page has one per entry and platform, and Blazor form names must be unique. They record `social_posts` (unique per slot and platform: status, time, optional post link, and who marked it; `automation` for #61).
 
 ## RSS
 

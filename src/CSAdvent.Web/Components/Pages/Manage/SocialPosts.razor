@@ -1,0 +1,168 @@
+@page "/manage/social"
+@using CSAdvent.Web.Claims
+@using CSAdvent.Web.Data
+@using CSAdvent.Web.Social
+@inject SeasonAdminService Seasons
+@inject SocialService Social
+@inject AdventSchedule Schedule
+
+<PageTitle>Social · Manage · C# Advent</PageTitle>
+
+<ManageNav />
+
+@if (_day is { } day)
+{
+    <h1 class="text-3xl font-bold tracking-tight text-slate-900">Announcements for December @day.Day, @day.Year</h1>
+    <p class="mt-2 max-w-3xl text-slate-600">
+        One post per entry on each platform, with the same content everywhere. Copy each one (or open the composer where
+        there is one), post it, then mark it posted. Links go to the entry's page, tagged with the platform.
+    </p>
+
+    @if (Error == "not-revealed")
+    {
+        <p class="mt-4 rounded-xl bg-red-50 p-4 font-medium text-red-800 ring-1 ring-red-200" role="alert">That entry isn't revealed yet, so it can't be posted.</p>
+    }
+
+    <nav aria-label="Days" class="mt-6 flex flex-wrap gap-1 text-sm font-medium">
+        @for (var d = 1; d <= Season.DaysInAdvent; d++)
+        {
+            <a href="@DayLink(day.Year, d)"
+               aria-current="@(d == day.Day ? "page" : null)"
+               class="rounded-md px-2.5 py-1 tabular-nums @(d == day.Day ? "bg-slate-900 text-white" : d == _today ? "text-advent-700 ring-1 ring-advent-500" : "text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100")">@d</a>
+        }
+    </nav>
+
+    @if (!day.IsRevealed)
+    {
+        <p class="mt-6 rounded-xl bg-amber-50 p-4 text-amber-900 ring-1 ring-amber-200">
+            Preview only: December @day.Day is revealed at <LocalTime Value="day.RevealsAt" /> Eastern. Nothing can be posted before then.
+        </p>
+    }
+
+    @if (day.Entries.Count == 0)
+    {
+        <p class="mt-8 text-slate-500">No posts for this day yet. Entries appear here once they have a title and URL.</p>
+    }
+
+    @foreach (var entry in day.Entries)
+    {
+        <section class="mt-10">
+            <h2 class="text-xl font-semibold text-slate-900">Post @entry.Part: @entry.Title <span class="font-normal text-slate-500">by @entry.Author</span></h2>
+
+            <div class="mt-4 grid gap-4 lg:grid-cols-2">
+                @foreach (var platform in entry.Platforms)
+                {
+                    var id = $"announcement-{entry.SlotId}-{platform.Platform}";
+                    var posted = entry.Posted.GetValueOrDefault(platform.Platform);
+                    <article class="flex flex-col rounded-xl p-4 ring-1 @(posted is { Status: SocialPostStatus.Posted } ? "bg-green-50 ring-green-200" : "bg-white ring-slate-200")">
+                        <header class="flex items-center justify-between gap-2">
+                            <h3 class="font-semibold text-slate-900">@platform.Platform</h3>
+                            @if (platform.Limit is { } limit)
+                            {
+                                <span class="text-xs tabular-nums @(platform.Length > limit ? "font-semibold text-red-700" : "text-slate-500")">@platform.Length / @limit</span>
+                            }
+                        </header>
+
+                        @if (platform.Platform is SocialPlatform.Reddit)
+                        {
+                            <p class="mt-2 text-xs font-medium uppercase tracking-wide text-slate-500">Title</p>
+                        }
+                        <pre id="@id" class="mt-1 whitespace-pre-wrap break-words rounded-lg bg-slate-50 p-3 font-sans text-sm text-slate-800 ring-1 ring-slate-100">@platform.Text</pre>
+                        @if (platform.Platform is SocialPlatform.Reddit)
+                        {
+                            <p class="mt-2 text-xs font-medium uppercase tracking-wide text-slate-500">Link</p>
+                            <pre id="@($"{id}-link")" class="mt-1 whitespace-pre-wrap break-all rounded-lg bg-slate-50 p-3 font-sans text-sm text-slate-800 ring-1 ring-slate-100">@platform.Link</pre>
+                        }
+                        @if (platform.TagHint is { } hint)
+                        {
+                            <p class="mt-2 text-sm text-slate-600">@hint</p>
+                        }
+
+                        <div class="mt-3 flex flex-wrap items-center gap-2 text-sm">
+                            <button type="button" data-copy="@id" class="rounded-lg bg-advent-600 px-3 py-1.5 font-semibold text-white hover:bg-advent-700">Copy@(platform.Platform is SocialPlatform.Reddit ? " title" : "")</button>
+                            @if (platform.Platform is SocialPlatform.Reddit)
+                            {
+                                <button type="button" data-copy="@($"{id}-link")" class="rounded-lg px-3 py-1.5 font-medium text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50">Copy link</button>
+                            }
+                            @if (day.IsRevealed && platform.ComposerUrl is { } composer)
+                            {
+                                <a href="@composer" target="_blank" rel="noopener" class="rounded-lg px-3 py-1.5 font-medium text-advent-700 ring-1 ring-advent-300 hover:bg-advent-50">Open composer</a>
+                            }
+                        </div>
+
+                        <div class="mt-auto pt-4">
+                            @if (posted is { Status: SocialPostStatus.Posted })
+                            {
+                                <form method="post" action="manage/social/unmark" class="flex flex-wrap items-center gap-2 text-sm text-green-900">
+                                    <AntiforgeryToken />
+                                    <input type="hidden" name="SlotId" value="@entry.SlotId" />
+                                    <input type="hidden" name="Platform" value="@platform.Platform" />
+                                    <input type="hidden" name="ReturnUrl" value="@DayLink(day.Year, day.Day)" />
+                                    <span>
+                                        Posted by @posted.MarkedBy, <LocalTime Value="posted.At" />
+                                        @if (posted.PostUrl is { } postUrl)
+                                        {
+                                            <a href="@postUrl" target="_blank" rel="noopener" class="ml-1 underline">view</a>
+                                        }
+                                    </span>
+                                    <button type="submit" class="ml-auto rounded-md px-2 py-1 text-slate-600 ring-1 ring-slate-300 hover:bg-white">Undo</button>
+                                </form>
+                            }
+                            else
+                            {
+                                @if (posted is { Status: SocialPostStatus.Failed })
+                                {
+                                    <p class="mb-2 text-sm text-red-700">Automatic posting failed: @posted.Error</p>
+                                }
+                                <form method="post" action="manage/social/mark" class="flex flex-wrap items-center gap-2 text-sm">
+                                    <AntiforgeryToken />
+                                    <input type="hidden" name="SlotId" value="@entry.SlotId" />
+                                    <input type="hidden" name="Platform" value="@platform.Platform" />
+                                    <input type="hidden" name="ReturnUrl" value="@DayLink(day.Year, day.Day)" />
+                                    <input type="url" name="PostUrl" placeholder="Link to the post (optional)" maxlength="500" class="min-w-0 flex-1 rounded-lg border border-slate-300 px-2 py-1" />
+                                    <button type="submit" disabled="@(!day.IsRevealed)" class="rounded-lg px-3 py-1.5 font-semibold text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">Mark as posted</button>
+                                </form>
+                            }
+                        </div>
+                    </article>
+                }
+            </div>
+        </section>
+    }
+}
+else if (_loaded)
+{
+    <p class="text-slate-600">There's no season yet. <a href="manage/seasons" class="text-advent-700 underline">Create one</a> first.</p>
+}
+
+@code {
+    private AnnouncementDay? _day;
+    private int? _today;
+    private bool _loaded;
+
+    [SupplyParameterFromQuery]
+    public int? Year { get; set; }
+
+    [SupplyParameterFromQuery(Name = "day")]
+    public int? DayOfAdvent { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? Error { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loaded = true;
+        if ((Year ?? await Seasons.GetCurrentYearAsync()) is not { } year)
+        {
+            return;
+        }
+
+        // Today, during Advent; otherwise the first day before it starts, or the last one after.
+        var today = Schedule.Today;
+        _today = today.Year == year && today.Month == 12 && today.Day <= Season.DaysInAdvent ? today.Day : null;
+        var day = Math.Clamp(DayOfAdvent ?? _today ?? (today < new DateOnly(year, 12, 1) ? 1 : Season.DaysInAdvent), 1, Season.DaysInAdvent);
+        _day = await Social.GetDayAsync(year, day);
+    }
+
+    private static string DayLink(int year, int day) => $"manage/social?year={year}&day={day}";
+}

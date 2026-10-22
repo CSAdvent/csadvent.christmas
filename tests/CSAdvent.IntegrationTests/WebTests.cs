@@ -23,6 +23,13 @@ public sealed class WebTests(AppHostFixture fixture)
 
         Assert.Contains("<a href=\"privacy\"", html);
         Assert.Contains("<a href=\"terms\"", html);
+
+        // Follow links for every account, with rel="me" so the Mastodon profile can verify the site.
+        Assert.Contains("href=\"https://bsky.app/profile/csadvent.christmas\"", html);
+        Assert.Contains("<a href=\"https://mastodon.social/@csadvent\" rel=\"me noopener\"", html);
+        Assert.Contains("href=\"https://www.facebook.com/csadvent/\"", html);
+        Assert.Contains("href=\"https://www.linkedin.com/company/csadvent\"", html);
+        Assert.Contains("href=\"https://www.reddit.com/r/csadvent\"", html);
     }
 
     [Theory]

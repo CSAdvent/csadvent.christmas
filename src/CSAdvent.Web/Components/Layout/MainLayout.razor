@@ -1,4 +1,7 @@
 @inherits LayoutComponentBase
+@using CSAdvent.Web.Social
+@using Microsoft.Extensions.Options
+@inject IOptions<SocialAccountsOptions> Accounts
 
 <div class="flex min-h-screen flex-col">
     <header class="relative isolate overflow-hidden bg-advent-snowflakes bg-cover bg-center text-white">
@@ -33,7 +36,20 @@
 
     <footer class="bg-advent-950/90 text-sm text-advent-200">
         <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-6">
-            <p>C# Advent: a community calendar of C# content, every December since 2017.</p>
+            <div>
+                <p>C# Advent: a community calendar of C# content, every December since 2017.</p>
+                @if (Accounts.Value.Profiles().Any())
+                {
+                    <p class="mt-1">
+                        Follow C# Advent:
+                        @foreach (var (name, url) in Accounts.Value.Profiles())
+                        {
+                            @* rel="me" lets the Mastodon profile show this site as verified. *@
+                            <a href="@url" rel="@(name == "Mastodon" ? "me noopener" : "noopener")" class="ml-2 underline hover:text-white">@name</a>
+                        }
+                    </p>
+                }
+            </div>
             <nav aria-label="Site">
                 <ul class="flex gap-4">
                     <li><a href="privacy" class="underline hover:text-white">Privacy</a></li>
