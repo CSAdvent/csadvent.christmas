@@ -90,6 +90,9 @@ builder.Services.AddRazorComponents()
 
 var app = builder.Build();
 
+// www.csadvent.christmas (and links to it) go to csadvent.christmas.
+app.UseCanonicalHost();
+
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
@@ -113,6 +116,7 @@ app.MapEntries();
 app.MapCards();
 app.MapFeeds();
 app.MapSocial();
+app.MapLegacyRedirects();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 

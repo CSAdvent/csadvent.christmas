@@ -67,6 +67,34 @@ public sealed class WebTests(AppHostFixture fixture)
     }
 
     [Fact]
+    public async Task WwwRedirectsToTheCanonicalHostKeepingThePath()
+    {
+        using var browser = fixture.CreateBrowser();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/archive/2017?via=bluesky");
+        request.Headers.Host = "www.localhost";
+
+        var response = await browser.SendAsync(request, TestContext.Current.CancellationToken);
+
+        // Development's Site:BaseUrl is https://localhost:7092, so its canonical host is localhost.
+        Assert.Equal(HttpStatusCode.MovedPermanently, response.StatusCode);
+        Assert.Equal("https://localhost/archive/2017?via=bluesky", response.Headers.Location!.OriginalString);
+    }
+
+    [Fact]
+    public async Task LegacyAddressesStillWork()
+    {
+        using var browser = fixture.CreateBrowser();
+
+        var contributor = await browser.GetAsync("/contributor", TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.MovedPermanently, contributor.StatusCode);
+        Assert.Equal("/my-spots", contributor.Headers.Location!.OriginalString);
+
+        var substitute = await browser.GetAsync("/substitute", TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.Redirect, substitute.StatusCode);
+        Assert.StartsWith("/backups/", substitute.Headers.Location!.OriginalString);
+    }
+
+    [Fact]
     public async Task UnknownPageReturnsNotFound()
     {
         using var client = fixture.CreateWebClient();
