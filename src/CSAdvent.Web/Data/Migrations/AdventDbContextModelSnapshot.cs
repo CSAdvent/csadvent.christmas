@@ -16,7 +16,7 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261022124749_AddSocialPosts";
+    public override string LastMigrationId => "20261022202741_AddOtherAdventLogos";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -417,6 +417,47 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                     {
                         t.HasCheckConstraint("ck_other_advents_url", "url ~* '^https?://'");
                     });
+            });
+
+        modelBuilder.Entity("CSAdvent.Web.Data.OtherAdventLogo", b =>
+            {
+                var id = b.Property<int>("Id")
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("integer")
+                    .HasColumnName("id");
+
+                NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(id);
+
+                b.Property<bool>("IsUploaded")
+                    .HasColumnType("boolean")
+                    .HasColumnName("is_uploaded");
+
+                b.Property<DateTimeOffset?>("LastAttemptAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("last_attempt_at");
+
+                b.Property<byte[]>("Png")
+                    .HasColumnType("bytea")
+                    .HasColumnName("png");
+
+                b.Property<DateTimeOffset?>("UpdatedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("updated_at");
+
+                b.Property<string>("Url")
+                    .IsRequired()
+                    .HasMaxLength(500)
+                    .HasColumnType("character varying(500)")
+                    .HasColumnName("url");
+
+                b.HasKey("Id")
+                    .HasName("pk_other_advent_logos");
+
+                b.HasIndex("Url")
+                    .IsUnique()
+                    .HasDatabaseName("ix_other_advent_logos_url");
+
+                b.ToTable("other_advent_logos");
             });
 
         modelBuilder.Entity("CSAdvent.Web.Data.Season", b =>

@@ -135,6 +135,9 @@ if (isTesting)
     // RetentionTests and ReminderTests run these with a fake clock. The real-time background runs would race them.
     web.WithEnvironment("Retention__DeleteInBackground", "false");
     web.WithEnvironment("Reminders__SendInBackground", "false");
+
+    // The tests never reach out to the Other Advents calendars' real sites.
+    web.WithEnvironment("OtherAdvents__FetchLogosInBackground", "false");
 }
 else
 {

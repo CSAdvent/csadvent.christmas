@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using CSAdvent.Web.Content;
+using CSAdvent.Web.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace CSAdvent.IntegrationTests;
@@ -80,6 +81,62 @@ public sealed partial class ContentTests(AppHostFixture fixture)
         using var contributor = await fixture.SignInAsync("content-nosy", 6501);
         Assert.StartsWith("/access-denied", TestBrowser.PathOf((await contributor.GetAsync("/manage/content", CancellationToken)).Headers.Location!));
     }
+
+    [Fact]
+    public async Task OrganizersUploadLogosAndTheSiteServesThemAsItsOwnPngs()
+    {
+        await TestSeasons.EnsureAsync(fixture, 2117, claimsOpen: false);
+        int id;
+        await using (var db = await fixture.CreateDbContextAsync())
+        {
+            var season = await db.Seasons.Include(s => s.OtherAdvents).SingleAsync(s => s.Year == 2117, CancellationToken);
+            season.OtherAdvents.Add(new OtherAdvent { Name = "Logo Advent 2117", Url = "https://example.com/logo-advent-2117", SortOrder = 1 });
+            await db.SaveChangesAsync(CancellationToken);
+            id = season.OtherAdvents.Single().Id;
+        }
+
+        using var organizer = await fixture.SignInAsync("organizer", AppHostFixture.OrganizerGitHubId);
+        const string page = "/manage/other-advents?year=2117";
+        var html = await organizer.GetStringAsync(page, CancellationToken);
+        Assert.DoesNotMatch(LogoLink(), html);
+
+        var uploaded = await UploadLogoAsync(organizer, html, 2117, id, Convert.FromBase64String(Png200));
+        Assert.Equal($"{page}&logo=uploaded", TestBrowser.PathOf(uploaded.Headers.Location!));
+
+        html = await organizer.GetStringAsync(uploaded.Headers.Location, CancellationToken);
+        Assert.Contains("Logo uploaded.", html);
+        var link = System.Net.WebUtility.HtmlDecode(LogoLink().Match(html).Value);
+
+        // Redrawn by the site to fit 128 pixels, and safe to cache because the link changes with the logo.
+        using var client = fixture.CreateWebClient();
+        var logo = await client.GetAsync("/" + link, CancellationToken);
+        Assert.Equal("image/png", logo.Content.Headers.ContentType?.MediaType);
+        Assert.Equal("nosniff", logo.Headers.GetValues("X-Content-Type-Options").Single());
+        var png = await logo.Content.ReadAsByteArrayAsync(CancellationToken);
+        Assert.Equal(128, System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(png.AsSpan(16, 4)));
+
+        var rejected = await UploadLogoAsync(organizer, html, 2117, id, "<svg/>"u8.ToArray());
+        Assert.Equal($"{page}&logo=invalid", TestBrowser.PathOf(rejected.Headers.Location!));
+    }
+
+    private static async Task<HttpResponseMessage> UploadLogoAsync(HttpClient browser, string page, int year, int id, byte[] image)
+    {
+        var token = System.Net.WebUtility.HtmlDecode(AntiforgeryToken().Match(page).Groups["token"].Value);
+        using var form = new MultipartFormDataContent
+        {
+            { new StringContent(token), "__RequestVerificationToken" },
+            { new StringContent($"{year}"), "Year" },
+            { new StringContent($"{id}"), "Id" },
+            { new ByteArrayContent(image), "Logo", "logo.png" },
+        };
+        return await browser.PostAsync("/manage/other-advents/logo/upload", form, CancellationToken);
+    }
+
+    /// <summary>A 200×200 PNG in the logo blue.</summary>
+    private const string Png200 = "iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAYAAACtWK6eAAABoklEQVR42u3TMQ0AAAjAMHSgCoNoBQMoID1qYMkiqwe4hQhgEDAIGAQMAgYBg4BBwCBgEMAgYBAwCBgEDAIGAYOAQcAgYBAhwCBgEDAIGAQMAgYBg4BBwCCAQcAgYBAwCBgEDAIGAYOAQcAggEHAIGAQMAgYBAwCBgGDgEEAg4BBwCBgEDAIGAQMAgYBg4BBAIOAQcAgYBAwCBgEDAIGAYMABgGDgEHAIGAQMAgYBAwCBgGDAAYBg4BBwCBgEDAIGAQMAgYBg4gABgGDgEHAIGAQMAgYBAwCBgEMAgYBg4BBwCBgEDAIGAQMAgYRAgwCBgGDgEHAIGAQMAgYBAwCGAQMAgYBg4BBwCBgEDAIGAQMAhgEDAIGAYOAQcAgYBAwCBgEMAgYBAwCBgGDgEHAIGAQMAgYBDAIGAQMAgYBg4BBwCBgEDAIYBAwCBgEDAIGAYOAQcAgYBAwCGAQMAgYBAwCBgGDgEHAIGAQMIgIYBAwCBgEDAIGAYOAQcAgYBDAIGAQMAgYBAwCBgGDgEHAIGAQIcAgYBAwCBgEDAIGAYPARwvc0TwF76ncuQAAAABJRU5ErkJggg==";
+
+    [GeneratedRegex(@"others/logos/\d+\.png\?v=\d+")]
+    private static partial Regex LogoLink();
 
     [GeneratedRegex("<input[^>]*name=\"__RequestVerificationToken\"[^>]*value=\"(?<token>[^\"]+)\"")]
     private static partial Regex AntiforgeryToken();

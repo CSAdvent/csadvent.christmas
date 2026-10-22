@@ -1,0 +1,25 @@
+@* An Other Advents calendar's logo, or its first letter until one has been fetched. *@
+@if (Item.Logo is { } logo)
+{
+    <img src="@logo" alt="" width="@Size" height="@Size" class="@($"{SizeClass} shrink-0 rounded-xl bg-white object-contain p-1.5 ring-1 ring-slate-200")" loading="lazy" />
+}
+else
+{
+    <span aria-hidden="true" class="@($"{SizeClass} flex shrink-0 items-center justify-center rounded-xl bg-advent-50 text-2xl font-bold text-advent-700 ring-1 ring-advent-100")">@Initial</span>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public required OtherAdventItem Item { get; set; }
+
+    /// <summary>64 pixels on the public page, 48 on the admin list.</summary>
+    [Parameter]
+    public bool Small { get; set; }
+
+    private int Size => Small ? 48 : 64;
+
+    // Written out in full so Tailwind generates both.
+    private string SizeClass => Small ? "size-12" : "size-16";
+
+    private string Initial => Item.Name.TrimStart('.', ' ') is { Length: > 0 } name ? name[..1].ToUpperInvariant() : "?";
+}

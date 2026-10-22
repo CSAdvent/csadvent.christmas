@@ -108,6 +108,7 @@ dotnet test
 
 - ✍️ **Editable copy:** the About page and the Other Advents introduction are edited by organizers at `/manage/content`, in Markdown, with every version kept
 - 🎄 **Other Advents:** each season has its own list of other developer advent calendars, which can be started from last year's
+- 🖼️ **Logos** for the Other Advents are fetched from each calendar's site, redrawn as small PNGs and served from our own domain. Organizers can refresh one or upload a better one
 
 ## 📣 Social Announcements
 

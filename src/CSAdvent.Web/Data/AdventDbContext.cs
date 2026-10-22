@@ -25,6 +25,8 @@ public sealed class AdventDbContext(DbContextOptions<AdventDbContext> options) :
 
     public DbSet<OtherAdvent> OtherAdvents => Set<OtherAdvent>();
 
+    public DbSet<OtherAdventLogo> OtherAdventLogos => Set<OtherAdventLogo>();
+
     public DbSet<SentReminder> SentReminders => Set<SentReminder>();
 
     public DbSet<EntryHit> EntryHits => Set<EntryHit>();

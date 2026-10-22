@@ -7,25 +7,31 @@
 <PageTitle>Other Advents · C# Advent</PageTitle>
 <SocialMeta Title="Other developer advent calendars" Description="More developer advent calendars to enjoy this December, from F# to Advent of Code." />
 
-<article class="max-w-3xl">
+<article>
     <h1 class="text-3xl font-bold tracking-tight text-slate-900">Other Advent calendars</h1>
 
     @if (_intro is { } intro)
     {
-        <div class="mt-6 text-lg"><MarkdownBlock Text="@intro" /></div>
+        <div class="mt-6 max-w-3xl text-lg"><MarkdownBlock Text="@intro" /></div>
     }
 
     @if (_list is { } list)
     {
-        <ul class="mt-8 flex flex-col gap-4">
+        <ul class="mt-8 grid gap-4 sm:grid-cols-2">
             @foreach (var advent in list.Items)
             {
                 <li>
-                    <a href="@advent.Url" class="text-lg font-semibold text-advent-700 underline">@advent.Name</a>
-                    @if (advent.Description is { } description)
-                    {
-                        <p class="text-slate-600">@description</p>
-                    }
+                    <a href="@advent.Url" class="group flex h-full items-start gap-5 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 transition hover:shadow-md hover:ring-advent-400">
+                        <AdventLogo Item="advent" />
+                        <span class="min-w-0">
+                            <span class="block text-xl font-semibold text-slate-900 group-hover:text-advent-700">@advent.Name</span>
+                            <span class="block truncate text-sm text-slate-500">@advent.Host</span>
+                            @if (advent.Description is { } description)
+                            {
+                                <span class="mt-2 block text-slate-600">@description</span>
+                            }
+                        </span>
+                    </a>
                 </li>
             }
         </ul>
