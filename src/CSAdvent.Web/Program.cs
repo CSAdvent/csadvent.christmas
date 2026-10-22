@@ -10,6 +10,7 @@ using CSAdvent.Web.Data;
 using CSAdvent.Web.Data.Archive;
 using CSAdvent.Web.Email;
 using CSAdvent.Web.Entries;
+using CSAdvent.Web.Feed;
 using CSAdvent.Web.Manage;
 using CSAdvent.Web.Reminders;
 using CSAdvent.Web.Retention;
@@ -46,6 +47,7 @@ builder.Services.AddScoped<EntryAdminService>();
 builder.Services.AddScoped<MySpotsService>();
 builder.Services.AddScoped<EntryService>();
 builder.Services.AddSingleton<CardRenderer>();
+builder.Services.AddScoped<RssFeed>();
 builder.AddEmail();
 builder.Services.AddScoped<IClaimNotifier, EmailClaimNotifier>();
 
@@ -106,6 +108,7 @@ app.MapReminders();
 app.MapBackups();
 app.MapEntries();
 app.MapCards();
+app.MapFeeds();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 

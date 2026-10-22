@@ -1,7 +1,8 @@
 @*
     The tags link previews read: Open Graph (Facebook, LinkedIn, Mastodon, Bluesky, Reddit, Slack, Teams), the large-image
     card that Discord and others take from the Twitter tags, and Mastodon's author credit. URLs are absolute, and the
-    canonical URL drops the query string, so ?via= tags don't split a page into many.
+    canonical URL drops the query string, so ?via= tags don't split a page into many. A page gets one HeadContent (the last
+    one rendered wins), so other head tags go in this component's child content.
 *@
 @using Microsoft.Extensions.Options
 @inject IOptions<SiteOptions> Site
@@ -24,6 +25,7 @@
     {
         <meta name="fediverse:creator" content="@creator" />
     }
+    @ChildContent
 </HeadContent>
 
 @code {
@@ -43,6 +45,10 @@
 
     [Parameter]
     public string ImageAlt { get; set; } = "C# Advent: two C# posts a day, December 1 to 25";
+
+    /// <summary>More head tags for the page, such as a season's feed link.</summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
 
     private string Root => Site.Value.BaseUrl.TrimEnd('/');
 

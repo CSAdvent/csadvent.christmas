@@ -105,6 +105,17 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
   - Before an entry's reveal there's no card for it (404).
   - Fonts and images: Inter Bold and Regular (SIL Open Font License, `Cards/Assets/Inter-LICENSE.txt`), the card background and the logo are embedded resources. Linux uses `SkiaSharp.NativeAssets.Linux.NoDependencies`, so containers need no fontconfig or system fonts. `CardRenderer.Printable` drops characters Inter can't draw (emoji, for example) rather than draw boxes.
 
+## RSS
+
+- **`/rss`** carries every revealed entry from every season, and **`/archive/{year}/rss`** carries one season (`RssFeed`, hand-written RSS 2.0 with `atom:link` and `dc:creator`). Items are newest first by reveal time (posts in order within a day), and only revealed entries are included: the reveal is checked in C#, not SQL (#5).
+- **Each item:**
+  - `pubDate` is the reveal time.
+  - The GUID is `csadvent-{year}-{day}-{part}` (`isPermaLink="false"`), so edits never duplicate an item.
+  - The link goes to the entry page with `?via=rss`, never straight to the post.
+  - The description reads like "Day 6, post 2 of C# Advent 2025, by …".
+- **Caching:** responses carry an ETag (a hash of the XML) and `Cache-Control: public, max-age=600`, and a matching `If-None-Match` gets a 304.
+- **Discovery:** every page has `<link rel="alternate">` for `/rss` in `App.razor`, and season pages add their own feed through `SocialMeta`'s child content.
+
 ## Backup Posters
 
 - **Joining:** anyone signed in with a verified GitHub email can join a season's backup list at `/backups/{year}` while sign-ups are open (`BackupListService`), including people with a spot. The list (`substitutes`) is in sign-up order, and organizers see it at `/manage/backups`.
@@ -192,5 +203,6 @@ Entities and their EF configuration live together in `src/CSAdvent.Web/Data` (on
 - **`dotnet ef migrations remove` needs a database connection**, which only exists inside Aspire. Use **Remove Migration** on the `migrations` resource in the dashboard, or delete the migration's two files and restore `AdventDbContextModelSnapshot.cs` from git.
 - **`Aspire.Hosting.EntityFrameworkCore` is preview-only**, and logs a harmless `Could not perform substitution for environment variable ASPNETCORE_URLS` error when its tool process starts.
 - **AspireUseCliBundle is false** on purpose, so the AppHost works with `dotnet run`, IDEs, CI, and `Aspire.Hosting.Testing` without the Aspire CLI. ASPIRE010 is suppressed for that reason.
+- **A page renders only one `HeadContent`** (the last one wins). `SocialMeta` owns it on public pages, so put any other head tags in its child content.
 - **`.gitignore` used to ignore every `Backup*/` folder** (a Visual Studio template rule), which hid the app's `Backups` folders from git. It's now root-only (`/Backup*/`). If new files seem to vanish from `git status`, check `git check-ignore -v <path>`.
 - **When .NET 11 reaches GA:** update `global.json`, the EF Core, Npgsql, and Aspire packages, `dotnet-ef` (both places), and container base images.
