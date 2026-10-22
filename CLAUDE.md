@@ -105,6 +105,18 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
   - Before an entry's reveal there's no card for it (404).
   - Fonts and images: Inter Bold and Regular (SIL Open Font License, `Cards/Assets/Inter-LICENSE.txt`), the card background and the logo are embedded resources. Linux uses `SkiaSharp.NativeAssets.Linux.NoDependencies`, so containers need no fontconfig or system fonts. `CardRenderer.Printable` drops characters Inter can't draw (emoji, for example) rather than draw boxes.
 
+## Social Announcements
+
+- **Every revealed entry with a post gets one announcement per platform:** Bluesky, Mastodon, LinkedIn, Facebook and Reddit, using `Claims.SocialPlatform`. Never X. The content is the same everywhere (`Announcement`: title, author, "C# Advent 2026, December 6, part 2", and a link to the entry page tagged with the platform). `AnnouncementFormatter` handles each platform's conventions:
+  - **Bluesky:** 300 graphemes, `@handle` mentions, and a compose intent.
+  - **Mastodon:** 500 characters, where a link counts as 23 and `@user@server` counts as `@user`. A share link needs the instance from `Site:MastodonCreator`.
+  - **LinkedIn:** 3000 characters, with a "tag the author" hint.
+  - **Facebook:** fewer hashtags, and a hint.
+  - **Reddit:** a title of up to 300 characters plus the link, no hashtags, and a submit link.
+  - **Long titles** are shortened with an ellipsis to fit.
+- **`/manage/social`** (organizers) shows a day's announcements, today by default. Each has a preview, a count against the limit, Copy buttons (`wwwroot/js/copy.js`, `data-copy="element-id"`), and the composer link where one exists. Upcoming days are preview-only, with no composer and no marking before the reveal (#5).
+- **Mark as posted / Undo** are plain forms posting to `/manage/social/mark` and `/unmark` (minimal APIs; binding the form checks antiforgery; Admin policy). They're plain because the page has one per entry and platform, and Blazor form names must be unique. They record `social_posts` (unique per slot and platform: status, time, optional post link, and who marked it; `automation` for #61).
+
 ## RSS
 
 - **`/rss`** carries every revealed entry from every season, and **`/archive/{year}/rss`** carries one season (`RssFeed`, hand-written RSS 2.0 with `atom:link` and `dc:creator`). Items are newest first by reveal time (posts in order within a day), and only revealed entries are included: the reveal is checked in C#, not SQL (#5).

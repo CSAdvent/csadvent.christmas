@@ -13,6 +13,7 @@ using CSAdvent.Web.Entries;
 using CSAdvent.Web.Feed;
 using CSAdvent.Web.Manage;
 using CSAdvent.Web.Reminders;
+using CSAdvent.Web.Social;
 using CSAdvent.Web.Retention;
 using Microsoft.AspNetCore.DataProtection;
 
@@ -48,6 +49,7 @@ builder.Services.AddScoped<MySpotsService>();
 builder.Services.AddScoped<EntryService>();
 builder.Services.AddSingleton<CardRenderer>();
 builder.Services.AddScoped<RssFeed>();
+builder.Services.AddScoped<SocialService>();
 builder.AddEmail();
 builder.Services.AddScoped<IClaimNotifier, EmailClaimNotifier>();
 
@@ -109,6 +111,7 @@ app.MapBackups();
 app.MapEntries();
 app.MapCards();
 app.MapFeeds();
+app.MapSocial();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 

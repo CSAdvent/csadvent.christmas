@@ -104,6 +104,11 @@ dotnet test
 - 📝 **Contributors add their own post's title and URL** at `/my-spots` after signing in. That's how posts get onto the calendar.
 - 🚪 **Dropping out** there frees the spot straight away, without naming the author, emails the organizers, and offers the day to the backup posters
 
+## 📣 Social Announcements
+
+- 📋 **Organizers get every day's announcements at `/manage/social`**: one per post for Bluesky, Mastodon, LinkedIn, Facebook and Reddit, with the same content, each platform's formatting and limits, Copy buttons and composer links
+- ✅ **Mark as posted** keeps track of what's gone out where. Links go to our entry pages, tagged with the platform
+
 ## 🛟 Backup Posters
 
 - 🙋 **Anyone signed in can join a season's backup list** at `/backups/{year}`, kept in sign-up order
