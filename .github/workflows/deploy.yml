@@ -1,0 +1,109 @@
+name: Deploy
+
+on:
+  # Every push to main deploys once CI has passed on it.
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  # And by hand, from the Actions tab, to redeploy main.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  # Signs in to Azure with GitHub's OIDC token, so no Azure password is stored anywhere.
+  id-token: write
+
+# One deploy at a time, and never stop one halfway. A newer push waits, and replaces any push already waiting.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  ASPIRE_CLI_VERSION: 13.6.3
+  DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
+  ASPIRE_CLI_TELEMETRY_OPTOUT: 'true'
+
+jobs:
+  deploy:
+    name: Deploy to Azure
+    # A CI run for a pull request never deploys, and neither does a failed one.
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    # The environment holds the secrets, and only main may deploy to it. Azure only trusts tokens for this environment.
+    environment:
+      name: production
+      url: ${{ steps.site.outputs.url }}
+    env:
+      Azure__SubscriptionId: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      Azure__TenantId: ${{ vars.AZURE_TENANT_ID }}
+      Azure__Location: ${{ vars.AZURE_LOCATION }}
+      Azure__ResourceGroup: ${{ vars.AZURE_RESOURCE_GROUP }}
+      Azure__CredentialSource: AzureCli
+      # az can take more than the default ~10 seconds to hand out a token while images are building.
+      Azure__CredentialProcessTimeoutSeconds: '60'
+      # The AppHost's parameters (Parameters:{name}), so aspire deploy never asks for them.
+      Parameters__pg-admin-username: ${{ vars.PG_ADMIN_USERNAME }}
+      Parameters__pg-admin-password: ${{ secrets.PG_ADMIN_PASSWORD }}
+      Parameters__github-client-id: ${{ vars.OAUTH_CLIENT_ID }}
+      Parameters__github-client-secret: ${{ secrets.OAUTH_CLIENT_SECRET }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # The commit CI just tested, even if main has moved on since.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      # The build downloads Tailwind's standalone CLI (about 110 MB) into .tools/ unless it's already there.
+      - name: Cache the Tailwind CLI
+        uses: actions/cache@v6
+        with:
+          path: .tools
+          key: tailwind-${{ runner.os }}-${{ hashFiles('build/Tailwind.targets') }}
+
+      - name: Install the Aspire CLI and dotnet-ef
+        run: |
+          dotnet tool install --global Aspire.Cli --version "$ASPIRE_CLI_VERSION"
+          dotnet tool restore
+
+      - name: Sign in to Azure
+        uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy
+        run: aspire deploy --apphost src/CSAdvent.AppHost --non-interactive --nologo
+
+      # aspire deploy builds the migration bundle's job but never starts it.
+      - name: Run the migrations
+        run: |
+          az extension add --name containerapp --upgrade --only-show-errors
+          execution=$(az containerapp job start -n migrations -g "$Azure__ResourceGroup" --query name -o tsv)
+          echo "Started $execution."
+          for _ in $(seq 1 60); do
+            status=$(az containerapp job execution show -n migrations -g "$Azure__ResourceGroup" --job-execution-name "$execution" --query properties.status -o tsv)
+            case "$status" in
+              Succeeded) echo "The migrations succeeded."; exit 0 ;;
+              Failed|Stopped|Degraded) echo "::error::The migrations job ended as $status. Its logs are in the Azure portal, under the migrations job's execution history."; exit 1 ;;
+            esac
+            sleep 10
+          done
+          echo "::error::The migrations job didn't finish within 10 minutes."
+          exit 1
+
+      - name: Check the site
+        id: site
+        run: |
+          host=$(az containerapp show -n web -g "$Azure__ResourceGroup" --query properties.configuration.ingress.fqdn -o tsv)
+          echo "url=https://$host" >> "$GITHUB_OUTPUT"
+          # The new revision can take a minute to start.
+          curl --fail --silent --show-error --output /dev/null --retry 10 --retry-delay 15 --retry-all-errors "https://$host/"
+          echo "https://$host/ is up."
