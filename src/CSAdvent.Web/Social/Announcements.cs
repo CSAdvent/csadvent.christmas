@@ -47,9 +47,12 @@ public static partial class AnnouncementFormatter
 
     private const string Hashtags = "#csharp #dotnet #csadvent";
 
-    public static FormattedAnnouncement Format(Announcement announcement, SocialPlatform platform, string? mastodonInstance = null)
+    /// <param name="ours">C# Advent's accounts, for the Mastodon server and the subreddit the composer links open.</param>
+    public static FormattedAnnouncement Format(Announcement announcement, SocialPlatform platform, SocialAccountsOptions? ours = null)
     {
         var link = announcement.Link(platform);
+        var mastodonInstance = ours?.MastodonServer;
+        var submit = ours?.Subreddit is { Length: > 0 } subreddit ? $"https://www.reddit.com/r/{subreddit}/submit" : "https://www.reddit.com/submit";
         return platform switch
         {
             SocialPlatform.Bluesky => Fit(announcement, BlueskyLimit, Graphemes, title =>
@@ -67,7 +70,7 @@ public static partial class AnnouncementFormatter
             _ => Fit(announcement, RedditTitleLimit, text => text.Length, title =>
                 $"{Quote(title)} by {announcement.Author} ({announcement.When})",
                 text => (platform, link, Hint(announcement.Accounts.Reddit is { } user ? $"u/{user}" : null),
-                    $"https://www.reddit.com/submit?url={Uri.EscapeDataString(link)}&title={Uri.EscapeDataString(text)}")),
+                    $"{submit}?url={Uri.EscapeDataString(link)}&title={Uri.EscapeDataString(text)}")),
         };
     }
 

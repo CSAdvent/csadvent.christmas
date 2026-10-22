@@ -7,6 +7,8 @@ public sealed class AnnouncementTests
 {
     private static readonly AuthorAccounts Accounts = new("ada.bsky.social", "@ada@hachyderm.io", "https://www.linkedin.com/in/ada", "https://www.facebook.com/ada.dev", "ada_codes");
 
+    private static readonly SocialAccountsOptions Ours = new() { Mastodon = "@csadvent@mastodon.social", Subreddit = "csadvent" };
+
     private static Announcement Entry(string title = "Pattern matching all the way down", AuthorAccounts? accounts = null) =>
         new(2026, 6, 2, 2, title, "Ada Lovelace", accounts ?? Accounts, "https://csadvent.christmas");
 
@@ -15,7 +17,7 @@ public sealed class AnnouncementTests
     {
         foreach (var platform in Enum.GetValues<SocialPlatform>())
         {
-            var formatted = AnnouncementFormatter.Format(Entry(), platform, "hachyderm.io");
+            var formatted = AnnouncementFormatter.Format(Entry(), platform, Ours);
             var tag = platform.ToString().ToLowerInvariant();
 
             Assert.Contains("Pattern matching all the way down", formatted.Text);
@@ -39,9 +41,9 @@ public sealed class AnnouncementTests
         Assert.EndsWith("#csharp #dotnet #csadvent", bluesky.Text);
         Assert.StartsWith("https://bsky.app/intent/compose?text=", bluesky.ComposerUrl);
 
-        var mastodon = AnnouncementFormatter.Format(Entry(), SocialPlatform.Mastodon, "hachyderm.io");
+        var mastodon = AnnouncementFormatter.Format(Entry(), SocialPlatform.Mastodon, Ours);
         Assert.Contains("(@ada@hachyderm.io)", mastodon.Text);
-        Assert.StartsWith("https://hachyderm.io/share?text=", mastodon.ComposerUrl);
+        Assert.StartsWith("https://mastodon.social/share?text=", mastodon.ComposerUrl);
         Assert.Null(AnnouncementFormatter.Format(Entry(), SocialPlatform.Mastodon).ComposerUrl);
 
         // Pasted text can't tag on LinkedIn, Facebook or Reddit, so the page says who to tag.
@@ -50,7 +52,8 @@ public sealed class AnnouncementTests
         Assert.Equal("Tag the author: https://www.linkedin.com/in/ada", linkedIn.TagHint);
         Assert.EndsWith("#csharp #csadvent", AnnouncementFormatter.Format(Entry(), SocialPlatform.Facebook).Text);
 
-        var reddit = AnnouncementFormatter.Format(Entry(), SocialPlatform.Reddit);
+        var reddit = AnnouncementFormatter.Format(Entry(), SocialPlatform.Reddit, Ours);
+        Assert.StartsWith("https://www.reddit.com/r/csadvent/submit?url=", reddit.ComposerUrl);
         Assert.Equal("“Pattern matching all the way down” by Ada Lovelace (C# Advent 2026, December 6, part 2)", reddit.Text);
         Assert.DoesNotContain("#", reddit.Text.Replace("C#", ""));
         Assert.Contains("url=https%3A%2F%2Fcsadvent.christmas%2F2026%2Fday%2F6%2F2%3Fvia%3Dreddit", reddit.ComposerUrl);
@@ -86,7 +89,7 @@ public sealed class AnnouncementTests
         Assert.Equal(1, AnnouncementFormatter.Graphemes("🎄"));
         Assert.Equal(23, AnnouncementFormatter.MastodonLength("https://csadvent.christmas/2026/day/6/2?via=mastodon"));
         Assert.Equal(4, AnnouncementFormatter.MastodonLength("@ada@hachyderm.io"));
-        Assert.Equal("hachyderm.io", SocialService.MastodonInstance("@csadvent@hachyderm.io"));
-        Assert.Null(SocialService.MastodonInstance(null));
+        Assert.Equal(("mastodon.social", "csadvent"), (Ours.MastodonServer, Ours.MastodonUser));
+        Assert.Null(new SocialAccountsOptions().MastodonServer);
     }
 }

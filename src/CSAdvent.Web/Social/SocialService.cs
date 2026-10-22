@@ -30,7 +30,12 @@ public enum MarkOutcome
 /// The announcements for each day's entries, and which have been posted where. Entries without a post (dropouts) get
 /// none. Organizers can preview upcoming days, but nothing can be marked posted before its reveal (#5).
 /// </summary>
-public sealed class SocialService(AdventDbContext db, AdventSchedule schedule, TimeProvider timeProvider, IOptions<SiteOptions> site)
+public sealed class SocialService(
+    AdventDbContext db,
+    AdventSchedule schedule,
+    TimeProvider timeProvider,
+    IOptions<SiteOptions> site,
+    IOptions<SocialAccountsOptions> accounts)
 {
     public async Task<AnnouncementDay> GetDayAsync(int year, int day, CancellationToken cancellationToken = default)
     {
@@ -54,7 +59,6 @@ public sealed class SocialService(AdventDbContext db, AdventSchedule schedule, T
         var slotIds = slots.Select(s => s.Id).ToList();
         var posts = await db.SocialPosts.AsNoTracking().Where(p => slotIds.Contains(p.SlotId)).ToListAsync(cancellationToken);
 
-        var mastodonInstance = MastodonInstance(site.Value.MastodonCreator);
         var entries = slots.Select(s =>
         {
             var announcement = new Announcement(year, day, s.Part, s.SlotsPerDay, s.Title, s.Author, s.Accounts ?? AuthorAccounts.None, site.Value.BaseUrl);
@@ -63,7 +67,7 @@ public sealed class SocialService(AdventDbContext db, AdventSchedule schedule, T
                 s.Part,
                 s.Title,
                 s.Author,
-                [.. Enum.GetValues<SocialPlatform>().Select(platform => AnnouncementFormatter.Format(announcement, platform, mastodonInstance))],
+                [.. Enum.GetValues<SocialPlatform>().Select(platform => AnnouncementFormatter.Format(announcement, platform, accounts.Value))],
                 posts.Where(p => p.SlotId == s.Id).ToDictionary(p => p.Platform));
         });
 
@@ -123,8 +127,4 @@ public sealed class SocialService(AdventDbContext db, AdventSchedule schedule, T
 
     public Task UnmarkAsync(int slotId, SocialPlatform platform, CancellationToken cancellationToken = default) =>
         db.SocialPosts.Where(p => p.SlotId == slotId && p.Platform == platform).ExecuteDeleteAsync(cancellationToken);
-
-    /// <summary>The server of a Mastodon handle such as <c>@csadvent@hachyderm.io</c>, for the share link.</summary>
-    public static string? MastodonInstance(string? handle) =>
-        handle?.Split('@', StringSplitOptions.RemoveEmptyEntries) is [_, var server] ? server : null;
 }

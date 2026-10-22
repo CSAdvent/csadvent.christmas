@@ -50,6 +50,7 @@ builder.Services.AddScoped<EntryService>();
 builder.Services.AddSingleton<CardRenderer>();
 builder.Services.AddScoped<RssFeed>();
 builder.Services.AddScoped<SocialService>();
+builder.Services.AddOptions<SocialAccountsOptions>().BindConfiguration(SocialAccountsOptions.SectionName);
 builder.AddEmail();
 builder.Services.AddScoped<IClaimNotifier, EmailClaimNotifier>();
 

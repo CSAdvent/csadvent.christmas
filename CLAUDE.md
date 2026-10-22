@@ -97,7 +97,7 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
   - The entry page's button passes on the tag the visit arrived with (`site` if none).
   - Tags are normalized by `EntryVia` (unknown becomes `other`).
 - **Counting:** `entry_hits` records a `View` or `Click` with the slot, time and tag. There's no IP, cookie or user agent, so nothing personal, and the hits are kept for the stats (#62). `EntryTraffic.IsPerson` skips link-preview fetchers (Facebook, LinkedIn, Mastodon, Bluesky, Discord...), crawlers, scripts, prefetches and non-GET requests. The organizers' entries list shows clicks per spot.
-- **Preview tags:** `SocialMeta` puts Open Graph tags, `twitter:card` (large image), a canonical URL without the query string, and `fediverse:creator` (`Site:MastodonCreator`, `@csadvent@mastodon.social`) on every public page.
+- **Preview tags:** `SocialMeta` puts Open Graph tags, `twitter:card` (large image), a canonical URL without the query string, and `fediverse:creator` (`Social:Mastodon`) on every public page.
 - **Cards** (`CardRenderer`, SkiaSharp):
   - What they show: a revealed entry's page uses `/cards/{year}/{day}/{part}.jpg` (title, author, day). Season pages and the home page use `/cards/{year}.jpg`. Anything else, including entries before their reveal, uses the static `images/social-card.jpg`.
   - Size: 1200×630 JPEGs of about 110 KB, under Bluesky's 1 MB limit.
@@ -107,9 +107,17 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 
 ## Social Announcements
 
+- **C# Advent's own accounts** are in `Social` (`SocialAccountsOptions`):
+  - Bluesky `csadvent.christmas`
+  - Mastodon `@csadvent@mastodon.social`
+  - the Facebook and LinkedIn Pages
+  - Reddit `u/CS-Advent`, posting to **r/csadvent** (never r/csharp or r/dotnet)
+
+  The footer links them all ("Follow C# Advent"), with `rel="me"` on Mastodon so its profile can verify the site.
+
 - **Every revealed entry with a post gets one announcement per platform:** Bluesky, Mastodon, LinkedIn, Facebook and Reddit, using `Claims.SocialPlatform`. Never X. The content is the same everywhere (`Announcement`: title, author, "C# Advent 2026, December 6, part 2", and a link to the entry page tagged with the platform). `AnnouncementFormatter` handles each platform's conventions:
   - **Bluesky:** 300 graphemes, `@handle` mentions, and a compose intent.
-  - **Mastodon:** 500 characters, where a link counts as 23 and `@user@server` counts as `@user`. A share link needs the instance from `Site:MastodonCreator`.
+  - **Mastodon:** 500 characters, where a link counts as 23 and `@user@server` counts as `@user`. The share link opens on `Social:Mastodon`'s server.
   - **LinkedIn:** 3000 characters, with a "tag the author" hint.
   - **Facebook:** fewer hashtags, and a hint.
   - **Reddit:** a title of up to 300 characters plus the link, no hashtags, and a submit link.
