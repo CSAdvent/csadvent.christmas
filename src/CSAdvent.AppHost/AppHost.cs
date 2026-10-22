@@ -1,5 +1,6 @@
 using Azure.Provisioning.Expressions;
 using Azure.Provisioning.PostgreSql;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 
 var builder = DistributedApplication.CreateBuilder(args);
@@ -51,6 +52,16 @@ if (isPublish)
 
 var database = postgres.AddDatabase("csadvent");
 
+// The site's custom domains (CustomDomains in appsettings.json). Azure only accepts a domain once DNS points at the app, and
+// only issues its managed certificate after that, so each domain goes in in two steps (see the README): its name first,
+// then its certificate's name. Kept in configuration rather than set by hand, because a deploy replaces whatever isn't in
+// the model.
+var customDomains = (builder.Configuration.GetSection("CustomDomains").Get<CustomDomain[]>() ?? [])
+    .Select((domain, index) => (
+        Name: builder.AddParameter($"custom-domain-{index}", domain.Name, publishValueAsDefault: true),
+        Certificate: builder.AddParameter($"custom-domain-{index}-certificate", domain.Certificate ?? "", publishValueAsDefault: true)))
+    .ToList();
+
 var web = builder.AddProject<Projects.CSAdvent_Web>("web", launchProfileName: isTesting ? "http" : "https")
     .WithExternalHttpEndpoints()
     .WithHttpHealthCheck("/health")
@@ -61,6 +72,11 @@ var web = builder.AddProject<Projects.CSAdvent_Web>("web", launchProfileName: is
         // Always one replica running (a managed certificate needs the app up to renew), and room to scale in December.
         app.Template.Scale.MinReplicas = 1;
         app.Template.Scale.MaxReplicas = 3;
+
+        foreach (var (name, certificate) in customDomains)
+        {
+            app.ConfigureCustomDomain(name, certificate);
+        }
     });
 
 if (isPublish)
@@ -126,3 +142,6 @@ var migrations = web.AddEFMigrations(
 web.WaitForCompletion(migrations);
 
 builder.Build().Run();
+
+/// <summary>A custom domain for the site, and the name of its managed certificate once Azure has issued one.</summary>
+internal sealed record CustomDomain(string Name, string? Certificate);

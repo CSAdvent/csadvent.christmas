@@ -197,7 +197,9 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 - **Migrations** run as a manually triggered Container Apps job (`migrations`) built from the EF bundle on `mcr.microsoft.com/dotnet/aspnet:11.0`. `aspire deploy` never starts it: run `az containerapp job start -n migrations -g <rg>` after every deploy. The bundle runs `UseSeeding` too, so a new database gets the history.
 - Data protection keys are in Postgres (`data_protection_keys`), so cookies and antiforgery tokens survive restarts and work across replicas.
 - `aspire publish --output-path <dir>` generates the Bicep offline. Check it (and test the bundle image against a throwaway Postgres) after changing the app model.
-- Not modeled yet: the custom domain and managed certificate (two passes with `ConfigureCustomDomain`, part of the DNS switch, #17), and deploying from CI.
+- **Custom domains** are `CustomDomains` in the AppHost's `appsettings.json` (name, then managed certificate name), applied with `ConfigureCustomDomain`. Each domain goes in two steps, because Azure needs DNS pointing at the app before it accepts the domain or issues a certificate. While a certificate name is empty, the domain is HTTP only (`bindingType: Disabled`). The README has the cutover runbook. **Never bind domains by hand**: every deploy replaces what isn't in the model.
+- **Canonical host:** the web app redirects `www.` plus `Site:BaseUrl`'s host to that host, keeping the path and query (`SiteRedirects.UseCanonicalHost`). Legacy addresses redirect too: `/contributor` goes to `/my-spots`, and `/substitute` to the current season's `/backups/{year}`.
+- Not modeled yet: deploying from CI.
 
 ## Data Model
 

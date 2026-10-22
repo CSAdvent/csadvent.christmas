@@ -158,6 +158,34 @@ Production runs on **Azure Container Apps** with **Azure Database for PostgreSQL
 
 To skip the prompts, set `Azure__SubscriptionId`, `Azure__Location`, `Azure__ResourceGroup` and the `Parameters__*` values as environment variables. `aspire publish` writes the Bicep without deploying, and needs no Azure account.
 
+### 🌐 Moving csadvent.christmas to the new site
+
+Azure only accepts a custom domain once its DNS points at the app, and only issues the free managed certificate after that. So the switch goes in this order, and the site has no HTTPS on csadvent.christmas for a few minutes between steps 3 and 5. `<rg>` is the resource group, `<env>` the Container Apps environment and `web` the app.
+
+1. 🗂️ **Prepare the DNS zone** (an Azure DNS zone `csadvent.christmas` in the same resource group) with:
+   - `A @` set to the environment's IP: `az containerapp env show -n <env> -g <rg> --query properties.staticIp -o tsv`
+   - `TXT asuid` and `TXT asuid.www` set to the app's verification ID: `az containerapp show -n web -g <rg> --query properties.customDomainVerificationId -o tsv`
+   - `CNAME www` set to the app's address: `az containerapp show -n web -g <rg> --query properties.configuration.ingress.fqdn -o tsv`
+   - The email records from Azure Communication Services (SPF, DKIM, DMARC) and the MX records for hello@ forwarding
+2. 🔀 **Switch the nameservers** at Hover to the zone's four Azure nameservers (`az network dns zone show -n csadvent.christmas -g <rg> --query nameServers`). This takes the old site off the domain. Wait until `nslookup -type=NS csadvent.christmas` shows them.
+3. 🏷️ **Add the domains** to `CustomDomains` in `src/CSAdvent.AppHost/appsettings.json`, without certificates yet, and deploy. Both domains then work over HTTP only:
+
+   ```json
+   "CustomDomains": [
+     { "Name": "csadvent.christmas" },
+     { "Name": "www.csadvent.christmas" }
+   ]
+   ```
+4. 🔐 **Create the managed certificates**, then wait until `az containerapp env certificate list -n <env> -g <rg> -o table` shows them as Succeeded:
+
+   ```bash
+   az containerapp env certificate create -n <env> -g <rg> --hostname csadvent.christmas --validation-method HTTP --certificate-name csadvent-christmas
+   az containerapp env certificate create -n <env> -g <rg> --hostname www.csadvent.christmas --validation-method CNAME --certificate-name www-csadvent-christmas
+   ```
+5. ✅ **Add the certificate names** (`"Certificate": "csadvent-christmas"` and `"Certificate": "www-csadvent-christmas"`) and deploy again. Both domains are now on HTTPS, and www redirects to csadvent.christmas.
+
+Keep `CustomDomains` in the AppHost, not set by hand in the portal: every deploy replaces whatever isn't in the model.
+
 ## 🔏 Privacy
 
 - 📜 **[Privacy](https://csadvent.christmas/privacy) and [terms](https://csadvent.christmas/terms)** are pages in the site, with the organizers' address (`hello@csadvent.christmas`) from `Site:ContactEmail` in `appsettings.json`. The app won't start without it.
