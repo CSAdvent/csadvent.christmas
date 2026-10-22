@@ -1,0 +1,99 @@
+@page "/manage/content/{Key}"
+@using CSAdvent.Web.Auth
+@inject ContentService Content
+@inject NavigationManager Navigation
+
+@if (_block is { } block)
+{
+    <PageTitle>@block.Definition.Name · Content · Manage · C# Advent</PageTitle>
+
+    <ManageNav />
+
+    <nav class="mb-4 text-sm font-medium"><a href="manage/content" class="text-advent-700 hover:underline">← All content</a></nav>
+
+    @if (Done == "saved")
+    {
+        <p class="mb-6 rounded-xl bg-green-50 p-4 font-medium text-green-800 ring-1 ring-green-200" role="status">Saved. It's live.</p>
+    }
+
+    <h1 class="text-3xl font-bold tracking-tight text-slate-900">@block.Definition.Name</h1>
+    <p class="mt-2 text-slate-600">Shown on: @block.Definition.UsedOn. Markdown: <code>## Heading</code>, <code>**bold**</code>, <code>[link](https://…)</code>, lists with <code>1.</code> or <code>-</code>.</p>
+    @if (Revision is not null && !_posted)
+    {
+        <p class="mt-4 rounded-xl bg-amber-50 p-4 text-amber-900 ring-1 ring-amber-200">Loaded an earlier version into the editor. Save to bring it back.</p>
+    }
+
+    <EditForm Model="Form" FormName="content" OnValidSubmit="SaveAsync" class="mt-6 flex max-w-4xl flex-col gap-4">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="rounded-xl bg-red-50 p-4 text-sm ring-1 ring-red-200" />
+        <InputTextArea @bind-Value="Form!.Body" rows="20" class="w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm" />
+        <div>
+            <button type="submit" class="rounded-lg bg-advent-600 px-5 py-2.5 font-semibold text-white hover:bg-advent-700">Save</button>
+        </div>
+    </EditForm>
+
+    <h2 class="mt-12 text-xl font-semibold text-slate-900">What's live now</h2>
+    <div class="mt-4 max-w-3xl rounded-xl bg-white p-6 ring-1 ring-slate-200"><MarkdownBlock Text="@block.Body" /></div>
+
+    <h2 class="mt-12 text-xl font-semibold text-slate-900">Earlier versions</h2>
+    @if (block.Revisions.Count == 0)
+    {
+        <p class="mt-2 text-slate-500">None yet: the page shows the default copy until the first save.</p>
+    }
+    else
+    {
+        <ul class="mt-3 flex flex-col gap-1 text-sm">
+            @foreach (var revision in block.Revisions)
+            {
+                <li>
+                    <LocalTime Value="revision.CreatedAt" /> @(revision.CreatedBy is { } by ? $"by {by}" : "")
+                    · <a href="@($"manage/content/{block.Definition.Key}?revision={revision.Id}")" class="text-advent-700 underline">Load into the editor</a>
+                </li>
+            }
+        </ul>
+    }
+}
+
+@code {
+    private ContentBlockView? _block;
+    private bool _posted;
+
+    [Parameter]
+    public string Key { get; set; } = "";
+
+    [SupplyParameterFromQuery]
+    public string? Done { get; set; }
+
+    [SupplyParameterFromQuery]
+    public int? Revision { get; set; }
+
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationState { get; set; } = null!;
+
+    [SupplyParameterFromForm(FormName = "content")]
+    private ContentForm? Form { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _posted = Form is not null;
+        _block = await Content.GetForEditAsync(Key);
+        if (_block is null)
+        {
+            Navigation.NotFound();
+            return;
+        }
+
+        if (Form is null)
+        {
+            var earlier = Revision is { } id ? await Content.GetRevisionAsync(Key, id) : null;
+            Form = new ContentForm { Body = earlier ?? _block.Body };
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        var contributorId = (await AuthenticationState).User.GetContributorId();
+        await Content.SaveAsync(Key, Form!.Body, contributorId);
+        Navigation.NavigateTo($"manage/content/{Key}?done=saved");
+    }
+}

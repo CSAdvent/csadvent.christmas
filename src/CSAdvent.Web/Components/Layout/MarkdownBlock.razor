@@ -1,0 +1,9 @@
+@* Organizer-written Markdown (content blocks), styled like the rest of the site's long-form pages. *@
+<div class="text-slate-700 [&_a]:text-advent-700 [&_a]:underline [&_h2]:mt-10 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-slate-900 [&_h3]:mt-6 [&_h3]:font-semibold [&_h3]:text-slate-900 [&_li]:mt-2 [&_ol]:mt-3 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:mt-3 [&_strong]:text-slate-900 [&_ul]:mt-3 [&_ul]:list-disc [&_ul]:pl-6 [&>*:first-child]:mt-0">
+    @Markdown.ToHtml(Text)
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Text { get; set; } = "";
+}

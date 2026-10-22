@@ -18,4 +18,15 @@ public sealed class SiteOptions
     [Required(ErrorMessage = "Site:BaseUrl is required. Emails use it for their links.")]
     [Url(ErrorMessage = "Site:BaseUrl must be an absolute URL, such as https://csadvent.christmas.")]
     public string BaseUrl { get; set; } = "";
+
+    /// <summary>Who runs C# Advent, for the About page.</summary>
+    public List<Organizer> Organizers { get; set; } = [];
+}
+
+/// <summary>An organizer: their name, and their GitHub login for the photo and profile link.</summary>
+public sealed class Organizer
+{
+    public string Name { get; set; } = "";
+
+    public string GitHub { get; set; } = "";
 }

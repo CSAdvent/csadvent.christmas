@@ -1,0 +1,44 @@
+@page "/others"
+@using CSAdvent.Web.Manage
+@inject ContentService Content
+@inject OtherAdventsService Others
+@inject SeasonAdminService Seasons
+
+<PageTitle>Other Advents · C# Advent</PageTitle>
+<SocialMeta Title="Other developer advent calendars" Description="More developer advent calendars to enjoy this December, from F# to Advent of Code." />
+
+<article class="max-w-3xl">
+    <h1 class="text-3xl font-bold tracking-tight text-slate-900">Other Advent calendars</h1>
+
+    @if (_intro is { } intro)
+    {
+        <div class="mt-6 text-lg"><MarkdownBlock Text="@intro" /></div>
+    }
+
+    @if (_list is { } list)
+    {
+        <ul class="mt-8 flex flex-col gap-4">
+            @foreach (var advent in list.Items)
+            {
+                <li>
+                    <a href="@advent.Url" class="text-lg font-semibold text-advent-700 underline">@advent.Name</a>
+                    @if (advent.Description is { } description)
+                    {
+                        <p class="text-slate-600">@description</p>
+                    }
+                </li>
+            }
+        </ul>
+    }
+</article>
+
+@code {
+    private string? _intro;
+    private OtherAdventsList? _list;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _intro = await Content.GetAsync(ContentCatalog.OtherAdvents);
+        _list = await Others.GetForPageAsync(await Seasons.GetCurrentYearAsync());
+    }
+}
