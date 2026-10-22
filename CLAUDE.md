@@ -97,7 +97,7 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
   - The entry page's button passes on the tag the visit arrived with (`site` if none).
   - Tags are normalized by `EntryVia` (unknown becomes `other`).
 - **Counting:** `entry_hits` records a `View` or `Click` with the slot, time and tag. There's no IP, cookie or user agent, so nothing personal, and the hits are kept for the stats (#62). `EntryTraffic.IsPerson` skips link-preview fetchers (Facebook, LinkedIn, Mastodon, Bluesky, Discord...), crawlers, scripts, prefetches and non-GET requests. The organizers' entries list shows clicks per spot.
-- **Preview tags:** `SocialMeta` puts Open Graph tags, `twitter:card` (large image), a canonical URL without the query string, and `fediverse:creator` (when `Site:MastodonCreator` is set) on every public page.
+- **Preview tags:** `SocialMeta` puts Open Graph tags, `twitter:card` (large image), a canonical URL without the query string, and `fediverse:creator` (`Site:MastodonCreator`, `@csadvent@mastodon.social`) on every public page.
 - **Cards** (`CardRenderer`, SkiaSharp):
   - What they show: a revealed entry's page uses `/cards/{year}/{day}/{part}.jpg` (title, author, day). Season pages and the home page use `/cards/{year}.jpg`. Anything else, including entries before their reveal, uses the static `images/social-card.jpg`.
   - Size: 1200×630 JPEGs of about 110 KB, under Bluesky's 1 MB limit.
