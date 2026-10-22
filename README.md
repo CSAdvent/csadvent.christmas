@@ -180,7 +180,10 @@ One-time setup (`<sub>` is the subscription ID):
    ```bash
    az group create -n rg-csadvent-github -l centralus --subscription <sub>
    az identity create -n id-csadvent-github -g rg-csadvent-github --subscription <sub>
-   az identity federated-credential create -n github-production --identity-name id-csadvent-github -g rg-csadvent-github --subscription <sub>      --issuer https://token.actions.githubusercontent.com --subject repo:CodingWithCalvin/CSAdvent:environment:production --audiences api://AzureADTokenExchange
+   # GitHub names the repository by its owner's and its own IDs, so a renamed or re-created repository can't sign in.
+   subject=$(gh api repos/CodingWithCalvin/CSAdvent --jq '"repo:\(.owner.login)@\(.owner.id)/\(.name)@\(.id):environment:production"')
+   az identity federated-credential create -n github-production --identity-name id-csadvent-github -g rg-csadvent-github --subscription <sub> \
+     --issuer https://token.actions.githubusercontent.com --subject "$subject" --audiences api://AzureADTokenExchange
    az role assignment create --assignee-object-id <the identity's principalId> --assignee-principal-type ServicePrincipal --role Owner --scope /subscriptions/<sub>
    ```
 
