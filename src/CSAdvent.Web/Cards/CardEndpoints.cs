@@ -1,6 +1,7 @@
 using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Data;
 using CSAdvent.Web.Entries;
+using CSAdvent.Web.SeasonTesting;
 using Microsoft.EntityFrameworkCore;
 
 namespace CSAdvent.Web.Cards;
@@ -25,14 +26,14 @@ public static class CardEndpoints
         });
 
         // A season's card, with its post count once it's over.
-        app.MapGet("/cards/{year:int}.jpg", async (int year, AdventDbContext db, AdventSchedule schedule, CardRenderer cards, HttpResponse response, CancellationToken cancellationToken) =>
+        app.MapGet("/cards/{year:int}.jpg", async (int year, AdventDbContext db, AdventSchedule schedule, SeasonAccess access, CardRenderer cards, HttpResponse response, CancellationToken cancellationToken) =>
         {
             if (!await db.Seasons.AnyAsync(s => s.Year == year, cancellationToken))
             {
                 return Results.NotFound();
             }
 
-            int? postCount = schedule.IsSeasonOver(year)
+            int? postCount = schedule.IsSeasonOver(year) && access.CanSee(year)
                 ? await db.Slots.CountAsync(s => s.SeasonYear == year && s.PostUrl != null && s.PostTitle != null && s.AuthorName != null, cancellationToken)
                 : null;
             response.Headers.CacheControl = CacheControl;

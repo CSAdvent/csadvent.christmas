@@ -4,6 +4,7 @@ using CSAdvent.Web.Claims;
 using CSAdvent.Web.Content;
 using CSAdvent.Web.Data;
 using CSAdvent.Web.Email;
+using CSAdvent.Web.SeasonTesting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Npgsql;
@@ -48,6 +49,7 @@ public sealed partial class BackupListService(
     EmailComposer composer,
     IEmailSender sender,
     IOptions<SiteOptions> site,
+    SeasonAccess access,
     ILogger<BackupListService> logger)
 {
     public async Task<BackupSignupAvailability?> GetAvailabilityAsync(int year, CancellationToken cancellationToken = default)
@@ -55,7 +57,7 @@ public sealed partial class BackupListService(
         var season = await db.Seasons.AsNoTracking().SingleOrDefaultAsync(s => s.Year == year, cancellationToken);
         return season is null ? null
             : schedule.IsDayOver(year, Season.DaysInAdvent) ? BackupSignupAvailability.SeasonOver
-            : schedule.AreClaimsOpen(season.ClaimsOpenAt) ? BackupSignupAvailability.Open
+            : (season.TestingStartedAt is not null ? access.CanSee(year) : schedule.AreClaimsOpen(season.ClaimsOpenAt)) ? BackupSignupAvailability.Open
             : BackupSignupAvailability.NotOpen;
     }
 

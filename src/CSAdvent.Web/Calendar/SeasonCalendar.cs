@@ -30,14 +30,15 @@ public sealed record SeasonCalendar(
             season.SlotsPerDay,
             season.Notes,
             season.ClaimsOpenAt is { } opensAt ? DateOnly.FromDateTime(schedule.ToLocalTime(opensAt).DateTime) : null,
-            schedule.AreClaimsOpen(season.ClaimsOpenAt),
+            // Testers can claim spots in a season being tested; nobody else gets its calendar (SeasonAccess).
+            season.TestingStartedAt is not null || schedule.AreClaimsOpen(season.ClaimsOpenAt),
             [.. season.Slots
                 .GroupBy(slot => slot.Day)
                 .OrderBy(day => day.Key)
                 .Select(day => new CalendarDay(
                     day.Key,
                     schedule.GetRevealTime(season.Year, day.Key),
-                    IsToday: today == new DateOnly(season.Year, 12, day.Key),
+                    IsToday: today == schedule.GetDate(season.Year, day.Key),
                     [.. day.OrderBy(slot => slot.Part).Select(slot => CalendarEntry.From(slot, schedule.IsRevealed(slot)))]))]);
     }
 }

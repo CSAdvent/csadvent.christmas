@@ -159,8 +159,8 @@ else if (_loaded)
 
         // Today, during Advent; otherwise the first day before it starts, or the last one after.
         var today = Schedule.Today;
-        _today = today.Year == year && today.Month == 12 && today.Day <= Season.DaysInAdvent ? today.Day : null;
-        var day = Math.Clamp(DayOfAdvent ?? _today ?? (today < new DateOnly(year, 12, 1) ? 1 : Season.DaysInAdvent), 1, Season.DaysInAdvent);
+        _today = Schedule.GetDayOfAdvent(year, today);
+        var day = Math.Clamp(DayOfAdvent ?? _today ?? (today < Schedule.GetDate(year, 1) ? 1 : Season.DaysInAdvent), 1, Season.DaysInAdvent);
         _day = await Social.GetDayAsync(year, day);
     }
 

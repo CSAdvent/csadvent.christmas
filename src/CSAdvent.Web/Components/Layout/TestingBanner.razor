@@ -1,0 +1,20 @@
+@using System.Globalization
+@using CSAdvent.Web.SeasonTesting
+@inject SeasonAccess Access
+@inject AdventSchedule Schedule
+
+@* Shown to testers and organizers on every page while a season is being tested; everyone else never sees it. *@
+@if (Access.Testing is { } season)
+{
+    <div class="bg-amber-300 text-amber-950" role="note">
+        <p class="mx-auto max-w-6xl px-4 py-2 text-sm">
+            <strong>Testing C# Advent @season.Year.</strong>
+            In this rehearsal December 1 is on @season.RehearsalStartsOn.ToString("MMMM d", CultureInfo.InvariantCulture)@(Today(season) is { } day ? $", so today is December {day}" : "").
+            Everything done in @season.Year is deleted when testing finishes, and only testers can see it.
+        </p>
+    </div>
+}
+
+@code {
+    private int? Today(TestSeason season) => Schedule.GetDayOfAdvent(season.Year, Schedule.Today);
+}

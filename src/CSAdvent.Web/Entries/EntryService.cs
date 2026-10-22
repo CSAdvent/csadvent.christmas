@@ -1,5 +1,6 @@
 using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Data;
+using CSAdvent.Web.SeasonTesting;
 using Microsoft.EntityFrameworkCore;
 
 namespace CSAdvent.Web.Entries;
@@ -43,7 +44,7 @@ public sealed record EntryView(
 }
 
 /// <summary>Entry pages, the tracked redirect to each post, and their visit and click counts.</summary>
-public sealed class EntryService(AdventDbContext db, AdventSchedule schedule, TimeProvider timeProvider)
+public sealed class EntryService(AdventDbContext db, AdventSchedule schedule, TimeProvider timeProvider, SeasonAccess access)
 {
     /// <summary>
     /// The entry, or nothing if the spot doesn't exist, or it's been revealed without a post (an author who never published
@@ -51,6 +52,12 @@ public sealed class EntryService(AdventDbContext db, AdventSchedule schedule, Ti
     /// </summary>
     public async Task<EntryView?> GetAsync(int year, int day, int part, CancellationToken cancellationToken = default)
     {
+        // A season being tested has no entries, as far as anyone but its testers can tell.
+        if (!access.CanSee(year))
+        {
+            return null;
+        }
+
         var slots = await db.Slots
             .AsNoTracking()
             .Where(s => s.SeasonYear == year && s.Day == day)
@@ -95,7 +102,7 @@ public sealed class EntryService(AdventDbContext db, AdventSchedule schedule, Ti
     /// <summary>The post a click should go to: only a revealed entry's own post, so the redirect can't be pointed anywhere else.</summary>
     public async Task<(int SlotId, string PostUrl)?> FindPostAsync(int year, int day, int part, CancellationToken cancellationToken = default)
     {
-        if (!schedule.IsRevealed(year, day))
+        if (!access.CanSee(year) || !schedule.IsRevealed(year, day))
         {
             return null;
         }
