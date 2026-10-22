@@ -21,8 +21,9 @@ public static class ContentCatalog
 
             ## History
 
-            C# Advent started in 2017, inspired by the [F# Advent Calendar](https://sergeytihon.com/fsadvent/), which Sergey
-            Tihon has run since 2010 (in English since 2014). It began with his permission, and it's run every December since.
+            C# Advent is the brainchild of [Matt Groves](https://github.com/mgroves). It started in 2017, inspired by the
+            [F# Advent Calendar](https://sergeytihon.com/fsadvent/), which Sergey Tihon has run since 2010 (in English since
+            2014). It began with Sergey's permission, and it's run every December since.
 
             ## How it works
 

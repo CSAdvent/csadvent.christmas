@@ -23,10 +23,16 @@ public sealed class SiteOptions
     public List<Organizer> Organizers { get; set; } = [];
 }
 
-/// <summary>An organizer: their name, and their GitHub login for the photo and profile link.</summary>
+/// <summary>An organizer: their name, and their GitHub login for the photo and profile link. The About page lists them in order.</summary>
 public sealed class Organizer
 {
     public string Name { get; set; } = "";
 
     public string GitHub { get; set; } = "";
+
+    /// <summary>A line about what they do, under their name.</summary>
+    public string? Role { get; set; }
+
+    /// <summary>Who started C# Advent, and still hosts it. The About page features them above everything else.</summary>
+    public bool Founder { get; set; }
 }
