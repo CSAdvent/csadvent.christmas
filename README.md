@@ -165,9 +165,29 @@ Production runs on **Azure Container Apps** with **Azure Database for PostgreSQL
    On a new database it creates the schema and seeds the 2017–2025 history. After that it only applies new migrations.
 4. 🌐 Find the site's address: `az containerapp show -n web -g <resource group> --query properties.configuration.ingress.fqdn -o tsv`
 
-To skip the prompts, set `Azure__SubscriptionId`, `Azure__Location`, `Azure__ResourceGroup` and the `Parameters__*` values as environment variables. `aspire deploy` saves what it's given under `~/.aspire/deployments/` and reuses it next time. For a Bicep check, run `aspire publish --output-path <dir> --environment PublishCheck`, which needs no Azure account and keeps its own saved state.
+To skip the prompts, set `Azure__SubscriptionId`, `Azure__Location`, `Azure__ResourceGroup` and the `Parameters__*` values as environment variables. `aspire deploy` saves what it's given under `~/.aspire/deployments/` and reuses it next time. For a Bicep check, run `aspire publish --output-path <dir> --environment PublishCheck`, which needs no Azure account and keeps its own saved state. If the registry login fails with "Azure CLI authentication timed out", set `Azure__CredentialProcessTimeoutSeconds` to `60` and deploy again.
 
 Email can't be sent until the sending domain is verified, which happens after the nameserver switch below.
+
+### 🤖 Deploying from GitHub Actions
+
+[`deploy.yml`](.github/workflows/deploy.yml) deploys every push to `main` once CI has passed on it, and **Run workflow** in the Actions tab redeploys `main` by hand. It signs in to Azure with GitHub's OIDC token (no Azure password is stored), runs `aspire deploy`, starts the migrations job and waits for it, then checks the site. Deploys never overlap.
+
+One-time setup (`<sub>` is the subscription ID):
+
+1. 🪪 **An identity for the workflow**, trusted only for this repository's `production` environment. It has its own resource group, so deleting `rg-csadvent` never deletes it, and it's an **Owner** of the subscription, because `aspire deploy` creates the resource group and role assignments.
+
+   ```bash
+   az group create -n rg-csadvent-github -l centralus --subscription <sub>
+   az identity create -n id-csadvent-github -g rg-csadvent-github --subscription <sub>
+   az identity federated-credential create -n github-production --identity-name id-csadvent-github -g rg-csadvent-github --subscription <sub>      --issuer https://token.actions.githubusercontent.com --subject repo:CodingWithCalvin/CSAdvent:environment:production --audiences api://AzureADTokenExchange
+   az role assignment create --assignee-object-id <the identity's principalId> --assignee-principal-type ServicePrincipal --role Owner --scope /subscriptions/<sub>
+   ```
+
+2. 🏷️ **A `production` environment** in the repository's settings, limited to the `main` branch, with these **variables**: `AZURE_CLIENT_ID` (the identity's client ID), `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_LOCATION` (`centralus`), `AZURE_RESOURCE_GROUP` (`rg-csadvent`), `PG_ADMIN_USERNAME` and `OAUTH_CLIENT_ID` (the production GitHub OAuth app's).
+3. 🔑 **Two secrets** in the same environment, `PG_ADMIN_PASSWORD` and `OAUTH_CLIENT_SECRET`. `gh secret set PG_ADMIN_PASSWORD --env production` asks for the value without echoing it. GitHub reserves names starting with `GITHUB_`, hence `OAUTH_`.
+
+The new revision of the site starts before the migrations job runs, so keep each migration safe for the code before it: add columns and tables first, and only remove them in a later release.
 
 ### 🌐 Moving csadvent.christmas to the new site
 
