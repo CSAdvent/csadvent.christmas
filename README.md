@@ -139,19 +139,13 @@ dotnet test
 
 ## ☁️ Deploying to Azure
 
-Production runs on **Azure Container Apps** with **Azure Database for PostgreSQL** (Flexible Server, PostgreSQL 18, Burstable B1ms, 14-day backups) and **Application Insights**, all modeled in the AppHost.
+Production runs on **Azure Container Apps** with **Azure Database for PostgreSQL** (Flexible Server, PostgreSQL 18, Burstable B1ms, 14-day backups), **Application Insights**, the **Azure DNS** zone for csadvent.christmas, and **Azure Communication Services** for email. All of it is modeled in the AppHost, so one `aspire deploy` creates everything.
 
 1. 🔑 Sign in with an account that's an **Owner** of the subscription (`az login`), and make sure Docker is running
-2. 📧 Set up **Azure Communication Services Email** once, in the portal. Its sending domain has to be verified in DNS, so it isn't part of `aspire deploy`:
-   - Create an **Email Communication Services** resource and add the custom domain `mail.csadvent.christmas`. Add the TXT, SPF and DKIM records it shows to DNS (#17), then verify the domain.
-   - Leave **user engagement tracking off**. The privacy page promises we don't track opens or clicks.
-   - Under the domain's **MailFrom addresses**, keep `DoNotReply` and set its display name to **C# Advent**.
-   - Create a **Communication Services** resource, connect the verified domain to it, and copy its connection string from **Keys**.
-3. 🚀 Run `aspire deploy` from the repository root. It asks for the subscription, region (`eastus2`) and resource group, and for these parameters:
+2. 🚀 Run `aspire deploy` from the repository root. It asks for the subscription, region (`centralus`, which has Burstable PostgreSQL capacity for this subscription) and resource group, and for these parameters:
    - `pg-admin-username` and `pg-admin-password`: the database administrator. **The username can't be changed after the server is created**, and names like `admin`, `root` and `azure_superuser` aren't allowed. Keep the password in a password manager.
    - `github-client-id` and `github-client-secret`: the **production** GitHub OAuth app
-   - `email`: the Communication Services connection string
-4. 🗄️ Run the migrations job. `aspire deploy` doesn't start it, so do this after **every** deploy:
+3. 🗄️ Run the migrations job. `aspire deploy` doesn't start it, so do this after **every** deploy:
 
    ```bash
    az containerapp job start -n migrations -g <resource group>
@@ -159,21 +153,20 @@ Production runs on **Azure Container Apps** with **Azure Database for PostgreSQL
    ```
 
    On a new database it creates the schema and seeds the 2017–2025 history. After that it only applies new migrations.
-5. 🌐 Find the site's address: `az containerapp show -n web -g <resource group> --query properties.configuration.ingress.fqdn -o tsv`
+4. 🌐 Find the site's address: `az containerapp show -n web -g <resource group> --query properties.configuration.ingress.fqdn -o tsv`
 
-To skip the prompts, set `Azure__SubscriptionId`, `Azure__Location`, `Azure__ResourceGroup` and the `Parameters__*` values as environment variables. `aspire publish` writes the Bicep without deploying, and needs no Azure account.
+To skip the prompts, set `Azure__SubscriptionId`, `Azure__Location`, `Azure__ResourceGroup` and the `Parameters__*` values as environment variables. `aspire deploy` saves what it's given under `~/.aspire/deployments/` and reuses it next time. For a Bicep check, run `aspire publish --output-path <dir> --environment PublishCheck`, which needs no Azure account and keeps its own saved state.
+
+Email can't be sent until the sending domain is verified, which happens after the nameserver switch below.
 
 ### 🌐 Moving csadvent.christmas to the new site
 
-Azure only accepts a custom domain once its DNS points at the app, and only issues the free managed certificate after that. So the switch goes in this order, and the site has no HTTPS on csadvent.christmas for a few minutes between steps 3 and 5. `<rg>` is the resource group, `<env>` the Container Apps environment and `web` the app.
+The deploy already created the `csadvent.christmas` zone with every record in it ([`infra/dns.bicep`](src/CSAdvent.AppHost/infra/dns.bicep)): the site's A, `www` and `asuid` records, the email verification records (SPF, DKIM, DMARC), the MX and SPF records for hello@ forwarding, and the Bluesky handle's `_atproto` record. None of it is live until Hover points at the zone.
 
-1. 🗂️ **Prepare the DNS zone** (an Azure DNS zone `csadvent.christmas` in the same resource group) with:
-   - `A @` set to the environment's IP: `az containerapp env show -n <env> -g <rg> --query properties.staticIp -o tsv`
-   - `TXT asuid` and `TXT asuid.www` set to the app's verification ID: `az containerapp show -n web -g <rg> --query properties.customDomainVerificationId -o tsv`
-   - `CNAME www` set to the app's address: `az containerapp show -n web -g <rg> --query properties.configuration.ingress.fqdn -o tsv`
-   - The email records from Azure Communication Services (SPF, DKIM, DMARC) and the MX records for hello@ forwarding
-2. 🔀 **Switch the nameservers** at Hover to the zone's four Azure nameservers (`az network dns zone show -n csadvent.christmas -g <rg> --query nameServers`). This takes the old site off the domain. Wait until `nslookup -type=NS csadvent.christmas` shows them.
-3. 🏷️ **Add the domains** to `CustomDomains` in `src/CSAdvent.AppHost/appsettings.json`, without certificates yet, and deploy. Both domains then work over HTTP only:
+Azure only accepts a custom domain once its DNS points at the app, and only issues the free managed certificate after that. So the switch goes in this order, and the site has no HTTPS on csadvent.christmas for a few minutes between steps 2 and 4. `<rg>` is the resource group, `<env>` the Container Apps environment and `web` the app.
+
+1. 🔀 **Switch the nameservers** at Hover to the zone's four Azure nameservers (`az network dns zone show -n csadvent.christmas -g <rg> --query nameServers -o tsv`). This takes the old site off the domain. Wait until `nslookup -type=NS csadvent.christmas` shows them.
+2. 🏷️ **Add the domains** to `CustomDomains` in `src/CSAdvent.AppHost/appsettings.json`, without certificates yet, and deploy. Both domains then work over HTTP only:
 
    ```json
    "CustomDomains": [
@@ -181,15 +174,25 @@ Azure only accepts a custom domain once its DNS points at the app, and only issu
      { "Name": "www.csadvent.christmas" }
    ]
    ```
-4. 🔐 **Create the managed certificates**, then wait until `az containerapp env certificate list -n <env> -g <rg> -o table` shows them as Succeeded:
+3. 🔐 **Create the managed certificates**, then wait until `az containerapp env certificate list -n <env> -g <rg> -o table` shows them as Succeeded:
 
    ```bash
    az containerapp env certificate create -n <env> -g <rg> --hostname csadvent.christmas --validation-method HTTP --certificate-name csadvent-christmas
    az containerapp env certificate create -n <env> -g <rg> --hostname www.csadvent.christmas --validation-method CNAME --certificate-name www-csadvent-christmas
    ```
-5. ✅ **Add the certificate names** (`"Certificate": "csadvent-christmas"` and `"Certificate": "www-csadvent-christmas"`) and deploy again. Both domains are now on HTTPS, and www redirects to csadvent.christmas.
+4. ✅ **Add the certificate names** (`"Certificate": "csadvent-christmas"` and `"Certificate": "www-csadvent-christmas"`) and deploy again. Both domains are now on HTTPS, and www redirects to csadvent.christmas.
+5. 📧 **Verify the email domain**, then wait until all four show as Verified (the `communication` extension for `az` installs on first use):
 
-Keep `CustomDomains` in the AppHost, not set by hand in the portal: every deploy replaces whatever isn't in the model.
+   ```bash
+   for type in Domain SPF DKIM DKIM2; do
+     az communication email domain initiate-verification --email-service-name csadvent-email -g <rg> --domain-name mail.csadvent.christmas --verification-type $type
+   done
+   az communication email domain show --email-service-name csadvent-email -g <rg> --domain-name mail.csadvent.christmas --query verificationStates
+   ```
+6. 🔗 **Deploy again** to connect the verified domain to the Communication Service (`aspire deploy` connects it once all four checks pass). Email is sent from then on. A new domain can send 30 emails a minute and 100 an hour; ask Azure support for more if a season needs it.
+7. 📮 **Set up hello@** in ImprovMX: add csadvent.christmas and an alias `hello` that forwards to the organizers.
+
+Keep `CustomDomains` and DNS records in the AppHost, not set by hand in the portal: every deploy puts back what the model says.
 
 ## 🔏 Privacy
 

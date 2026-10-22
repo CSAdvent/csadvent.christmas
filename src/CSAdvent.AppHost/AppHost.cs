@@ -1,3 +1,4 @@
+using Aspire.Hosting.Azure;
 using Azure.Provisioning.Expressions;
 using Azure.Provisioning.PostgreSql;
 using Microsoft.Extensions.Configuration;
@@ -10,8 +11,11 @@ var builder = DistributedApplication.CreateBuilder(args);
 var isTesting = builder.Environment.IsEnvironment("Testing");
 var isPublish = builder.ExecutionContext.IsPublishMode;
 
+// The site's domain. In production its DNS zone and email are part of the deploy too.
+const string domainName = "csadvent.christmas";
+
 // Production runs on Azure Container Apps. Locally (run mode) this isn't part of the app model.
-builder.AddAzureContainerAppEnvironment("aca");
+var containerApps = builder.AddAzureContainerAppEnvironment("aca");
 
 // Azure Database for PostgreSQL in production; locally the same "postgres" container as always (same user, password
 // parameter and data volume).
@@ -84,9 +88,25 @@ if (isPublish)
     // Telemetry goes to Application Insights in production. Never added locally, where it would provision Azure resources.
     web.WithReference(builder.AddAzureApplicationInsights("appinsights"));
 
-    // Email goes through Azure Communication Services, set up by hand because its sending domain is verified in DNS (see
-    // the README). `aspire deploy` asks for the resource's connection string.
-    web.WithReference(builder.AddConnectionString("email"));
+    // Email goes through Azure Communication Services. The web app sends with its own managed identity, so there's no key.
+    var webIdentity = builder.AddAzureUserAssignedIdentity("web-identity");
+    web.WithAzureUserAssignedIdentity(webIdentity);
+
+    // The sending domain is connected by the first deploy after it's verified in DNS (see the README).
+    var acs = builder.AddBicepTemplate("acs", "infra/acs.bicep")
+        .WithParameter("domainName", domainName)
+        .WithParameter("webPrincipalId", webIdentity.Resource.PrincipalId);
+    web.WithReference(builder.AddConnectionString("email", ReferenceExpression.Create($"Endpoint={acs.GetOutput("endpoint")}")));
+
+    // The DNS zone, with the site's records and the email records. Hover is switched to its name servers at cutover.
+    builder.AddBicepTemplate("dns", "infra/dns.bicep")
+        .WithParameter("domainName", domainName)
+        .WithParameter("containerAppsEnvironmentName", containerApps.GetOutput("AZURE_CONTAINER_APPS_ENVIRONMENT_NAME"))
+        .WithParameter("webAppName", web.Resource.Name)
+        .WithParameter("emailDomainVerification", acs.GetOutput("domainVerification"))
+        .WithParameter("emailSpf", acs.GetOutput("spf"))
+        .WithParameter("emailDkim", acs.GetOutput("dkim"))
+        .WithParameter("emailDkim2", acs.GetOutput("dkim2"));
 }
 else
 {

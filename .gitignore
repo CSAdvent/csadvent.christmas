@@ -490,3 +490,6 @@ $RECYCLE.BIN/
 # Tailwind CSS: the downloaded standalone CLI and the generated stylesheet (see build/Tailwind.targets)
 .tools/
 src/CSAdvent.Web/wwwroot/app.css
+
+# Aspire publish and deploy output (Bicep, the EF migration bundle)
+aspire-output/

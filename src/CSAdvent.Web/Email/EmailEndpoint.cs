@@ -9,13 +9,19 @@ public enum EmailTransport
     /// <summary>SMTP, such as MailPit in development (<c>Endpoint=smtp://localhost:1025</c>).</summary>
     Smtp,
 
-    /// <summary>Azure Communication Services (<c>endpoint=https://….communication.azure.com/;accesskey=…</c>).</summary>
+    /// <summary>
+    /// Azure Communication Services: <c>Endpoint=https://….communication.azure.com/</c> with the app's managed identity, as
+    /// in production, or with <c>;AccessKey=…</c> added.
+    /// </summary>
     AzureCommunicationServices,
 }
 
 /// <summary>Where email goes, read from the <c>email</c> connection string.</summary>
 public sealed record EmailEndpoint(EmailTransport Transport, Uri Uri, NetworkCredential? Credentials, string ConnectionString)
 {
+    /// <summary>Whether an Azure Communication Services connection string carries a key. Without one, the app signs in with its managed identity.</summary>
+    public bool HasAccessKey { get; init; }
+
     public static bool TryParse(string? connectionString, [NotNullWhen(true)] out EmailEndpoint? endpoint)
     {
         endpoint = null;
@@ -42,7 +48,7 @@ public sealed record EmailEndpoint(EmailTransport Transport, Uri Uri, NetworkCre
         EmailTransport? transport = uri.Scheme switch
         {
             "smtp" or "smtps" => EmailTransport.Smtp,
-            "https" when builder.ContainsKey("AccessKey") => EmailTransport.AzureCommunicationServices,
+            "https" => EmailTransport.AzureCommunicationServices,
             _ => null,
         };
         if (transport is null)
@@ -54,12 +60,12 @@ public sealed record EmailEndpoint(EmailTransport Transport, Uri Uri, NetworkCre
             ? new NetworkCredential(user, builder.TryGetValue("Password", out var password) ? password as string : null)
             : null;
 
-        endpoint = new EmailEndpoint(transport.Value, uri, credentials, connectionString);
+        endpoint = new EmailEndpoint(transport.Value, uri, credentials, connectionString) { HasAccessKey = builder.ContainsKey("AccessKey") };
         return true;
     }
 
     public static EmailEndpoint Parse(string? connectionString) =>
         TryParse(connectionString, out var endpoint)
             ? endpoint
-            : throw new FormatException("The email connection string must be an SMTP endpoint or an Azure Communication Services connection string.");
+            : throw new FormatException("The email connection string must be an SMTP endpoint or an Azure Communication Services endpoint.");
 }
