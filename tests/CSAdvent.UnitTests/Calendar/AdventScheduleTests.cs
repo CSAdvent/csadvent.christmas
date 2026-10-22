@@ -122,6 +122,46 @@ public sealed class AdventScheduleTests
         // Midnight Eastern Standard Time on February 1.
         Assert.Equal(new DateTimeOffset(2027, 2, 1, 5, 0, 0, TimeSpan.Zero), CreateSchedule().GetContactDeletionTime(2026));
 
+    [Fact]
+    public void TheHomePageShowsTheCalendarFromWhenSignUpsOpen()
+    {
+        var opensAt = new DateTimeOffset(2026, 11, 1, 0, 0, 0, TimeSpan.FromHours(-4));
+        var clock = new FakeTimeProvider(opensAt.AddSeconds(-1));
+        var schedule = CreateSchedule(clock);
+
+        Assert.False(schedule.IsCalendarShown(2026, opensAt));
+
+        clock.Advance(TimeSpan.FromSeconds(1));
+        Assert.True(schedule.IsCalendarShown(2026, opensAt));
+    }
+
+    [Fact]
+    public void WithoutSignUpsTheCalendarStartsAtTheFirstReveal()
+    {
+        var schedule = CreateSchedule();
+
+        Assert.Equal(schedule.GetRevealTime(2026, 1), schedule.GetCalendarStart(2026, claimsOpenAt: null));
+        Assert.Equal(schedule.GetRevealTime(2026, 1), schedule.GetCalendarStart(2026, new DateTimeOffset(2026, 12, 5, 0, 0, 0, TimeSpan.Zero)));
+    }
+
+    [Fact]
+    public void TheCalendarStaysUpUntilTheEndOfDecember()
+    {
+        // Christmas Day, after the last reveal: the season is over, but people are still reading.
+        var clock = new FakeTimeProvider(new DateTimeOffset(2026, 12, 25, 9, 0, 0, TimeSpan.FromHours(-5)));
+        var schedule = CreateSchedule(clock);
+        var opensAt = new DateTimeOffset(2026, 11, 1, 0, 0, 0, TimeSpan.FromHours(-4));
+
+        Assert.True(schedule.IsSeasonOver(2026));
+        Assert.True(schedule.IsCalendarShown(2026, opensAt));
+
+        clock.SetUtcNow(new DateTimeOffset(2026, 12, 31, 23, 59, 59, TimeSpan.FromHours(-5)));
+        Assert.True(schedule.IsCalendarShown(2026, opensAt));
+
+        clock.Advance(TimeSpan.FromSeconds(1));
+        Assert.False(schedule.IsCalendarShown(2026, opensAt));
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(26)]

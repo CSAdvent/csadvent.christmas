@@ -60,7 +60,9 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 - Brand colors are the `advent-*` scale in `@theme`: `advent-600` (`#1a509d`) is the logo blue and `advent-400` (`#4e88c5`) the snowflake. Don't put `advent-400` behind body text, because its contrast on white is too low.
 - Photos live in `wwwroot/images` as WebP with a JPEG fallback, through the `bg-advent-candles` and `bg-advent-snowflakes` utilities.
 - Pages render statically on the server. `CalendarGrid` renders a season's days for the home page and the archive. `CalendarEntry` never carries a post's title or link before its reveal.
-- **Home page** (`HomeService`): the current season is the **earliest season that isn't over**, so creating next year's season early never replaces this year's. With no current season it's off-season, and the latest season is shown with a thank-you.
+- **Home page** (`HomeService.Plan`): a season's calendar is shown from when its sign-ups open (or December 1, if that's sooner or sign-ups aren't scheduled) **until the end of December** (`AdventSchedule.IsCalendarShown`), earliest season first, so creating next year's season early never replaces this year's. Once every day is revealed, `CurrentSeason` says "That's a wrap" instead of counting spots.
+- **Between seasons** the home page is `OffSeason`: thanks for the latest finished season (posts and authors), the organizers' `between-seasons` content block, when the next season's registration opens (if the season exists and is scheduled), and the archive. From **September 1** (`HomeService.CountdownFrom`) it counts down the days ("33 days until registration opens!"). It's server-rendered, so there's no script.
+- Organizer pages work on the **current season**: the earliest season that isn't over, or the latest (`HomeService.SelectSeason`).
 - Component tests use **bUnit** (`BunitContext`) in `tests/CSAdvent.UnitTests`. `CalendarFixtures` builds a season as seen on a given date with a fake clock.
 
 ## Sign-in

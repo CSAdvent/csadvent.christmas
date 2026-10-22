@@ -15,6 +15,9 @@ public sealed record SeasonCalendar(
 
     public int SpotCount => Days.Sum(day => day.Entries.Count);
 
+    /// <summary>Every day has been revealed: the season is over.</summary>
+    public bool IsFinished => Days.Count > 0 && Days.All(day => day.Entries.All(entry => entry.IsRevealed));
+
     /// <summary>Spots nobody has claimed whose day hasn't been revealed yet, so they can still be claimed.</summary>
     public int OpenSpotCount => Days.Sum(day => day.Entries.Count(entry => entry.IsOpen && !entry.IsRevealed));
 

@@ -1,30 +1,38 @@
 ﻿@page "/"
 @inject HomeService HomeService
+@inject ContentService Content
 
 <PageTitle>C# Advent</PageTitle>
 <SocialMeta Title="C# Advent"
             Description="Two new C# posts every day from December 1st to December 25th, written by the C# community."
-            Image="@(_home?.Calendar is { } season ? CSAdvent.Web.Cards.CardLinks.Season(season.Year, _home.IsOffSeason ? season.PostCount : null) : "images/social-card.jpg")" />
+            Image="@CardImage()" />
 
-@if (_home?.Calendar is { } calendar)
+@if (_home is { Calendar: { } calendar })
 {
-    @if (_home.IsOffSeason)
-    {
-        <OffSeason Calendar="calendar" />
-    }
-    else
-    {
-        <CurrentSeason Calendar="calendar" />
-    }
+    <CurrentSeason Calendar="calendar" />
 }
 else if (_home is not null)
 {
-    <h1 class="text-3xl font-bold tracking-tight text-slate-900">C# Advent</h1>
-    <p class="mt-2 text-slate-600">Two new C# posts every day from December 1st to December 25th. Check back soon!</p>
+    <OffSeason LastSeason="_home.LastSeason" NextSeason="_home.NextSeason" Message="@_message" />
 }
 
 @code {
     private HomePage? _home;
+    private string? _message;
 
-    protected override async Task OnInitializedAsync() => _home = await HomeService.GetAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        _home = await HomeService.GetAsync();
+        if (_home.IsBetweenSeasons)
+        {
+            _message = await Content.GetAsync(ContentCatalog.BetweenSeasons);
+        }
+    }
+
+    private string CardImage() => _home switch
+    {
+        { Calendar: { } calendar } => CSAdvent.Web.Cards.CardLinks.Season(calendar.Year, postCount: null),
+        { LastSeason: { } last } => CSAdvent.Web.Cards.CardLinks.Season(last.Year, last.PostCount),
+        _ => "images/social-card.jpg",
+    };
 }

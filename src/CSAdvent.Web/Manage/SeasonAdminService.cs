@@ -27,7 +27,7 @@ public sealed class SeasonAdminService(AdventDbContext db, AdventSchedule schedu
                 db.ClaimRequests.Count(r => r.Slot.SeasonYear == s.Year && r.Status == ClaimRequestStatus.Pending)))
             .ToListAsync(cancellationToken);
 
-    /// <summary>The season organizers work on: the same one the home page shows.</summary>
+    /// <summary>The season organizers work on: the earliest one that isn't over, or the latest.</summary>
     public async Task<int?> GetCurrentYearAsync(CancellationToken cancellationToken = default)
     {
         var years = await db.Seasons.OrderBy(s => s.Year).Select(s => s.Year).ToListAsync(cancellationToken);

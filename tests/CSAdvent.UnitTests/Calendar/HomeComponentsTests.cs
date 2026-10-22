@@ -1,4 +1,5 @@
 using Bunit;
+using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Components.Home;
 
 namespace CSAdvent.UnitTests.Calendar;
@@ -34,12 +35,60 @@ public sealed class HomeComponentsTests : BunitContext
     }
 
     [Fact]
-    public void ThanksEveryoneOffSeason()
+    public void SaysThatsAWrapOnceEveryDayIsRevealed()
     {
-        var page = Render<OffSeason>(p => p.Add(c => c.Calendar, CalendarFixtures.Calendar(November1, now: new DateTimeOffset(2027, 1, 10, 12, 0, 0, TimeSpan.Zero))));
+        var christmas = new DateTimeOffset(2026, 12, 25, 12, 0, 0, TimeSpan.FromHours(-5));
 
-        Assert.Contains("Thanks for C# Advent 2026!", page.Find("h1").TextContent);
-        Assert.Contains("We'll announce sign-ups for C# Advent 2027 here", page.Markup);
-        Assert.Equal("archive", page.Find("header a").GetAttribute("href"));
+        var page = Render<CurrentSeason>(p => p.Add(c => c.Calendar, CalendarFixtures.Calendar(November1, now: christmas)));
+
+        Assert.Contains("That's a wrap! All 2 posts are below.", page.Find("[role=status]").TextContent);
+        Assert.DoesNotContain("backup list", page.Markup);
+    }
+
+    [Fact]
+    public void BetweenSeasonsThanksEveryoneForTheLastSeason()
+    {
+        var page = Render<OffSeason>(p => p
+            .Add(c => c.LastSeason, new FinishedSeason(2025, PostCount: 50, AuthorCount: 47))
+            .Add(c => c.NextSeason, new UpcomingSeason(2026, new DateOnly(2026, 11, 1), DaysUntilSignUps: null))
+            .Add(c => c.Message, "See you **next December**!"));
+
+        Assert.Equal("Thanks for C# Advent 2025!", page.Find("h1").TextContent);
+        Assert.Contains("50 posts from 47 authors", page.Markup);
+        Assert.Equal("Registration for C# Advent 2026 opens on November 1.", page.Find("[role=status]").TextContent);
+        Assert.Contains("<strong>next December</strong>", page.Markup);
+        Assert.Equal(["archive/2025", "archive", "rss", "others"], page.FindAll("a").Select(a => a.GetAttribute("href")));
+    }
+
+    [Theory]
+    [InlineData(33, "33 days until registration opens!")]
+    [InlineData(1, "1 day until registration opens!")]
+    [InlineData(0, "Registration opens today!")]
+    public void CountsDownToRegistration(int days, string expected)
+    {
+        var page = Render<OffSeason>(p => p
+            .Add(c => c.LastSeason, new FinishedSeason(2025, 50, 47))
+            .Add(c => c.NextSeason, new UpcomingSeason(2026, new DateOnly(2026, 11, 1), days)));
+
+        var status = page.Find("[role=status]");
+        Assert.Equal(expected, status.QuerySelector("p")!.TextContent);
+        Assert.Contains("Registration for C# Advent 2026 opens on November 1.", status.TextContent);
+    }
+
+    [Fact]
+    public void BeforeTheNextSeasonExistsItPromisesAnAnnouncement()
+    {
+        var page = Render<OffSeason>(p => p.Add(c => c.LastSeason, new FinishedSeason(2026, 50, 47)));
+
+        Assert.Equal("We'll announce C# Advent 2027 here and on social media.", page.Find("[role=status]").TextContent);
+    }
+
+    [Fact]
+    public void WithoutAnySeasonItIntroducesCSharpAdvent()
+    {
+        var page = Render<OffSeason>();
+
+        Assert.Equal("C# Advent", page.Find("h1").TextContent);
+        Assert.Equal(["archive", "rss", "others"], page.FindAll("a").Select(a => a.GetAttribute("href")));
     }
 }

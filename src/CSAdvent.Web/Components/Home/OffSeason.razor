@@ -1,15 +1,79 @@
-<header class="mb-8">
-    <h1 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Thanks for C# Advent @Calendar.Year!</h1>
-    <p class="mt-2 max-w-2xl text-lg text-slate-600">
-        All @Calendar.PostCount posts from this year's calendar are below.
-        We'll announce sign-ups for C# Advent @(Calendar.Year + 1) here, so check back soon.
-    </p>
-    <a href="archive" class="mt-5 inline-block rounded-lg bg-advent-600 px-5 py-3 font-semibold text-white shadow hover:bg-advent-700">Browse every season since 2017</a>
-</header>
+@using System.Globalization
 
-<CalendarGrid Calendar="Calendar" />
+@* The home page between seasons: thanks for the last season, when the next one opens, and the way into the archive. *@
+<section class="max-w-3xl">
+    @if (LastSeason is { } last)
+    {
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Thanks for C# Advent @last.Year!</h1>
+        <p class="mt-2 text-lg text-slate-600">@Summary(last)</p>
+    }
+    else
+    {
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">C# Advent</h1>
+        <p class="mt-2 text-lg text-slate-600">Two new C# posts every day from December 1st to December 25th, written by the C# community.</p>
+    }
+
+    @if (NextSeason?.DaysUntilSignUps is { } days)
+    {
+        <div class="mt-8 rounded-2xl bg-advent-600 p-6 text-white shadow" role="status">
+            <p class="text-3xl font-bold tracking-tight">@Countdown(days)</p>
+            <p class="mt-1 text-advent-100">@Opening(NextSeason)</p>
+        </div>
+    }
+    else
+    {
+        <p class="mt-6 rounded-xl bg-slate-50 p-4 font-medium text-slate-800 ring-1 ring-slate-200" role="status">@Opening(NextSeason)</p>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(Message))
+    {
+        <div class="mt-8 text-lg"><MarkdownBlock Text="@Message" /></div>
+    }
+
+    <div class="mt-8 flex flex-wrap gap-3">
+        @if (LastSeason is { } season)
+        {
+            <a href="archive/@season.Year" class="rounded-lg bg-advent-600 px-5 py-3 font-semibold text-white shadow hover:bg-advent-700">Read C# Advent @season.Year</a>
+        }
+        <a href="archive" class="rounded-lg bg-white px-5 py-3 font-semibold text-advent-700 shadow-sm ring-1 ring-slate-200 hover:ring-advent-400">Every season since 2017</a>
+    </div>
+
+    <p class="mt-6 text-slate-600">
+        Subscribe to the <a href="rss" class="text-advent-700 underline">RSS feed</a> for every new post, or try some
+        <a href="others" class="text-advent-700 underline">other developer advent calendars</a>.
+    </p>
+</section>
 
 @code {
-    [Parameter, EditorRequired]
-    public required SeasonCalendar Calendar { get; set; }
+    [Parameter]
+    public FinishedSeason? LastSeason { get; set; }
+
+    [Parameter]
+    public UpcomingSeason? NextSeason { get; set; }
+
+    /// <summary>The organizers' message (the <see cref="ContentCatalog.BetweenSeasons"/> block).</summary>
+    [Parameter]
+    public string? Message { get; set; }
+
+    private static string Summary(FinishedSeason season) =>
+        string.Create(CultureInfo.InvariantCulture, $"{Plural(season.PostCount, "post")} from {Plural(season.AuthorCount, "author")}, December 1 to 25, {season.Year}.");
+
+    internal static string Countdown(int days) => days switch
+    {
+        0 => "Registration opens today!",
+        1 => "1 day until registration opens!",
+        _ => string.Create(CultureInfo.InvariantCulture, $"{days} days until registration opens!"),
+    };
+
+    private string Opening(UpcomingSeason? next) => next switch
+    {
+        { SignUpsOpenOn: { } opensOn } =>
+            string.Create(CultureInfo.InvariantCulture, $"Registration for C# Advent {next.Year} opens on {opensOn.ToString("MMMM d", CultureInfo.InvariantCulture)}."),
+        { } => $"We'll announce when registration for C# Advent {next.Year} opens, here and on social media.",
+        null when LastSeason is { } last => $"We'll announce C# Advent {last.Year + 1} here and on social media.",
+        null => "We'll announce the next C# Advent here and on social media.",
+    };
+
+    private static string Plural(int count, string noun) =>
+        string.Create(CultureInfo.InvariantCulture, $"{count} {noun}{(count == 1 ? "" : "s")}");
 }
