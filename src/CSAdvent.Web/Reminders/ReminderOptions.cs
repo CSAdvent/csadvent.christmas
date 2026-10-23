@@ -14,6 +14,12 @@ public sealed class ReminderOptions
     public int[] DaysBefore { get; set; } = [];
 
     /// <summary>
+    /// How long before an entry's announcement (<see cref="Social.Posting.SocialPostingOptions.PostAt"/>) its author gets the
+    /// day-of email, if their spot still has no post link: 7 AM for a 10 AM announcement.
+    /// </summary>
+    public TimeSpan DayOfLead { get; set; } = TimeSpan.FromHours(3);
+
+    /// <summary>
     /// The pause after each email, to stay under Azure Communication Services' sending limit (30 a minute for a new
     /// custom domain).
     /// </summary>

@@ -33,6 +33,32 @@ public sealed class ReminderEmailsTests
     public void OnlyTheLastRemindersWarnAboutBackupPosters(int daysBefore, bool warns) =>
         Assert.Equal(warns, Text(ReminderEmails.PostLinkMissing(Reminder(daysBefore), Site)).Contains("the backup takes your spot"));
 
+    [Theory]
+    [InlineData(10, 0, "10 AM")]
+    [InlineData(14, 0, "2 PM")]
+    [InlineData(14, 30, "2:30 PM")]
+    public void TheDayOfReminderGivesTheAnnouncementAsTheDeadline(int hour, int minute, string announced)
+    {
+        var email = ReminderEmails.PostLinkDueToday(new DayOfReminder("Ada Lovelace", 2026, 10, 2, 2, new TimeOnly(hour, minute)), Site);
+
+        Assert.Equal($"Today's your C# Advent day: add your post's link by {announced} Eastern", email.Subject);
+        Assert.Contains("today is your C# Advent day, December 10, 2026 (post 2)", Text(email));
+        Assert.Contains($"at {announced} Eastern", Text(email));
+        Assert.Contains("a backup poster can take your spot", Text(email));
+        Assert.Equal("https://csadvent.christmas/my-spots", Assert.Single(email.Body.OfType<ButtonBlock>()).Url);
+    }
+
+    [Theory]
+    [InlineData(6, 59, 10, false)]
+    [InlineData(7, 0, 10, true)]
+    [InlineData(9, 59, 10, true)]
+    [InlineData(10, 0, 10, false)]
+    [InlineData(10, 59, 14, false)]
+    [InlineData(11, 0, 14, true)]
+    [InlineData(0, 30, 1, true)]
+    public void TheDayOfReminderGoesOutInTheHoursBeforeTheAnnouncement(int hour, int minute, int announcedHour, bool due) =>
+        Assert.Equal(due, ReminderService.IsDayOfReminderDue(new TimeOnly(hour, minute), new TimeOnly(announcedHour, 0), TimeSpan.FromHours(3)));
+
     [Fact]
     public void TheDailyEmailListsTodaysPostsAndCanBeTurnedOff()
     {

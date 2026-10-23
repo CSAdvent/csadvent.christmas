@@ -11,6 +11,15 @@ public sealed record PostLinkReminder(string AuthorName, int Year, int Day, int 
     public string Spot => SlotsPerDay > 1 ? $"December {Day}, {Year} (post {Part})" : $"December {Day}, {Year}";
 }
 
+/// <summary>An author whose spot still has no post link on their day, a few hours before it's announced.</summary>
+public sealed record DayOfReminder(string AuthorName, int Year, int Day, int Part, int SlotsPerDay, TimeOnly AnnouncedAt)
+{
+    public string Spot => SlotsPerDay > 1 ? $"December {Day}, {Year} (post {Part})" : $"December {Day}, {Year}";
+
+    /// <summary>"10 AM", or "2:30 PM".</summary>
+    public string Announced => AnnouncedAt.ToString(AnnouncedAt.Minute == 0 ? "h tt" : "h:mm tt", System.Globalization.CultureInfo.InvariantCulture);
+}
+
 /// <summary>A revealed post, as the daily email lists it.</summary>
 public sealed record SharedPost(string Title, string Url, string AuthorName);
 
@@ -55,6 +64,27 @@ public static class ReminderEmails
             Reason = $"You're getting this email because you have a spot in C# Advent {reminder.Year} and we don't have your post's link yet.",
         };
     }
+
+    /// <summary>The last call: it's the author's day, and their post is announced in a few hours.</summary>
+    public static EmailContent PostLinkDueToday(DayOfReminder reminder, SiteOptions site) => new()
+    {
+        Subject = $"Today's your C# Advent day: add your post's link by {reminder.Announced} Eastern",
+        Preview = "We still don't have the link to your post, and it's announced today.",
+        Heading = "Today's your day!",
+        Body =
+        [
+            Paragraph($"Hi {reminder.AuthorName}, today is your C# Advent day, {reminder.Spot}, and we still don't have the link to your post."),
+            Paragraph(
+                $"We announce your post on C# Advent's social media accounts at {reminder.Announced} Eastern, so please add its title " +
+                "and URL on your ", Link("My spots", ClaimEmails.MySpots(site)), " page before then."),
+            Button("Add your post link", ClaimEmails.MySpots(site)),
+            Paragraph(
+                "Until your link arrives, a backup poster can take your spot. If your post won't be ready today, drop out from your ",
+                Link("My spots", ClaimEmails.MySpots(site)), " page so a backup can take your day."),
+            SignOff,
+        ],
+        Reason = $"You're getting this email because you have a spot in C# Advent {reminder.Year} and we don't have your post's link yet.",
+    };
 
     public static EmailContent Daily(DailyShare share, SiteOptions site, string unsubscribeUrl)
     {

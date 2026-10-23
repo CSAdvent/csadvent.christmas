@@ -11,6 +11,9 @@ public enum ReminderKind
     /// <summary>The slot has no post URL yet: "we need your link", 7, 5, 3, 2 and 1 days before its day.</summary>
     ContributorActionNeeded,
 
+    /// <summary>The slot still has no post URL on its day: the last call, a few hours before it's announced.</summary>
+    ContributorDayOf,
+
     /// <summary>Tells the organizer a claimed slot has no contact email.</summary>
     AdminMissingContact,
 

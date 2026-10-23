@@ -41,6 +41,21 @@ public sealed partial class ReminderTests(AppHostFixture fixture)
     }
 
     [Fact]
+    public async Task AnAuthorWithoutALinkOnTheirDayGetsALastCallBeforeTheAnnouncement()
+    {
+        await EnsureSeasonAsync();
+
+        // Lucy's post 1 on December 8 is announced at 10 AM Eastern, so her last call goes out from 7 AM.
+        Assert.Equal(new RunResult(0, 0, 0), await RunAsync("2106-12-08T11:30:00Z"));
+        Assert.Equal(new RunResult(0, 0, 1), await RunAsync("2106-12-08T12:30:00Z"));
+        var lastCall = await fixture.WaitForEmailAsync("lucy-2106@example.com", "Today's your C# Advent day: add your post's link by 10 AM Eastern");
+        Assert.Contains("/my-spots", lastCall.Html);
+
+        // Once only.
+        Assert.Equal(new RunResult(0, 0, 0), await RunAsync("2106-12-08T13:00:00Z"));
+    }
+
+    [Fact]
     public async Task TheDailyEmailGoesToEveryAuthorOnceAndCanBeTurnedOff()
     {
         await EnsureSeasonAsync();
@@ -123,5 +138,5 @@ public sealed partial class ReminderTests(AppHostFixture fixture)
     [GeneratedRegex(@"Stop these emails: (?<url>\S+)")]
     private static partial Regex StopLink();
 
-    private sealed record RunResult(int PostLinkReminders, int DailyShares);
+    private sealed record RunResult(int PostLinkReminders, int DailyShares, int DayOfReminders = 0);
 }
