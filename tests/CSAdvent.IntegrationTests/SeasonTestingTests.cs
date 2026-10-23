@@ -110,6 +110,26 @@ public sealed class SeasonTestingTests(AppHostFixture fixture)
     }
 
     [Fact]
+    public async Task TheDailyEmailNamesTheRehearsalsDay()
+    {
+        // Today is December 13 in the rehearsal, whatever the real date, and Day 13 has a post.
+        using var organizer = await TestSeasonAsync(todayIs: 12);
+        await using (var db = await fixture.CreateDbContextAsync())
+        {
+            var slot = await db.Slots.Include(s => s.Contact).SingleAsync(s => s.SeasonYear == TestYear && s.Day == 13 && s.Part == 1, CancellationToken);
+            slot.AuthorName = "Thirteen Theo";
+            slot.PostTitle = "Rehearsing day thirteen";
+            slot.PostUrl = "https://example.com/day-thirteen";
+            slot.Contact ??= new SlotContact { Email = "theo-rehearsal@example.com" };
+            await db.SaveChangesAsync(CancellationToken);
+        }
+
+        await RunRemindersAsync();
+
+        await fixture.WaitForEmailAsync("theo-rehearsal@example.com", "Day 13 of C# Advent: Rehearsing day thirteen");
+    }
+
+    [Fact]
     public async Task ResettingNeedsConfirming()
     {
         using var organizer = await TestSeasonAsync(todayIs: 0);
