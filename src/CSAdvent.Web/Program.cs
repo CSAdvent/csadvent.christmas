@@ -109,6 +109,15 @@ builder.Services.AddRazorComponents()
 
 var app = builder.Build();
 
+// Basic security headers on every response, static files included. HSTS comes from UseHsts, and the frame protection
+// (X-Frame-Options and frame-ancestors) from Blazor. Links out to authors' posts still tell them the visit came from here.
+app.Use(async (context, next) =>
+{
+    context.Response.Headers.XContentTypeOptions = "nosniff";
+    context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    await next();
+});
+
 // www.csadvent.christmas (and links to it) go to csadvent.christmas.
 app.UseCanonicalHost();
 
