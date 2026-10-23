@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using CSAdvent.Web.Calendar;
 using Microsoft.Extensions.Caching.Memory;
 using SkiaSharp;
 
@@ -15,6 +16,24 @@ public static class CardLinks
     public static string Entry(EntryCard card) => $"cards/{card.Year}/{card.Day}/{card.Part}.jpg?v={Version($"{card.Title}\n{card.Author}")}";
 
     public static string Season(int year, int? postCount) => $"cards/{year}.jpg" + (postCount is { } count ? $"?v={count}" : "");
+
+    /// <summary>A season whose sign-ups haven't opened yet: its card says when they do.</summary>
+    public static string Upcoming(int year, DateOnly signUpsOpenOn) =>
+        string.Create(CultureInfo.InvariantCulture, $"cards/{year}.jpg?v=signups-{signUpsOpenOn:yyyy-MM-dd}");
+
+    /// <summary>
+    /// The home page's card: the season on the calendar, or between seasons the next season once its sign-ups are scheduled,
+    /// and otherwise the general card. Never a finished season, which would say it's still that year's Advent.
+    /// </summary>
+    public static string Home(HomePage home) => home switch
+    {
+        { Calendar: { } calendar } => Season(calendar.Year, postCount: null),
+        { NextSeason: { SignUpsOpenOn: { } opens } next } => Upcoming(next.Year, opens),
+        _ => General,
+    };
+
+    /// <summary>"C# Advent: two C# posts a day, December 1–25", with no year.</summary>
+    public const string General = "images/social-card.jpg";
 
     private static string Version(string text) => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(text)))[..12];
 }
@@ -79,9 +98,9 @@ public sealed class CardRenderer : IDisposable
             });
         })!;
 
-    /// <summary>A season's card: its year, and how many posts it had once it's over.</summary>
-    public byte[] RenderSeason(int year, int? postCount) =>
-        _cache.GetOrCreate(("season", year, postCount), entry =>
+    /// <summary>A season's card: its year, and how many posts it had once it's over, or when its sign-ups open.</summary>
+    public byte[] RenderSeason(int year, int? postCount, DateOnly? signUpsOpenOn = null) =>
+        _cache.GetOrCreate(("season", year, postCount, signUpsOpenOn), entry =>
         {
             entry.Size = 1;
             return Render(canvas =>
@@ -92,9 +111,12 @@ public sealed class CardRenderer : IDisposable
                 canvas.DrawText($"C# Advent {year}", 320, 290, SKTextAlign.Left, titleFont, white);
                 using var subtitleFont = Font(_regular, 42);
                 using var pale = Paint(Pale);
-                var subtitle = postCount is { } count
-                    ? string.Create(CultureInfo.InvariantCulture, $"{count} C# posts, December 1–25")
-                    : "Two C# posts a day, December 1–25";
+                var subtitle = (postCount, signUpsOpenOn) switch
+                {
+                    ({ } count, _) => string.Create(CultureInfo.InvariantCulture, $"{count} C# posts, December 1–25"),
+                    (_, { } opens) => string.Create(CultureInfo.InvariantCulture, $"Sign-ups open {opens:MMMM d}"),
+                    _ => "Two C# posts a day, December 1–25",
+                };
                 canvas.DrawText(subtitle, 324, 362, SKTextAlign.Left, subtitleFont, pale);
                 DrawFooter(canvas);
             });

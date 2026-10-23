@@ -5,7 +5,7 @@
 <PageTitle>C# Advent</PageTitle>
 <SocialMeta Title="C# Advent"
             Description="Two new C# posts every day from December 1st to December 25th, written by the C# community."
-            Image="@CardImage()" />
+            Image="@(_home is null ? CSAdvent.Web.Cards.CardLinks.General : CSAdvent.Web.Cards.CardLinks.Home(_home))" />
 
 @if (_home is { Calendar: { } calendar })
 {
@@ -28,11 +28,4 @@ else if (_home is not null)
             _message = await Content.GetAsync(ContentCatalog.BetweenSeasons);
         }
     }
-
-    private string CardImage() => _home switch
-    {
-        { Calendar: { } calendar } => CSAdvent.Web.Cards.CardLinks.Season(calendar.Year, postCount: null),
-        { LastSeason: { } last } => CSAdvent.Web.Cards.CardLinks.Season(last.Year, last.PostCount),
-        _ => "images/social-card.jpg",
-    };
 }
