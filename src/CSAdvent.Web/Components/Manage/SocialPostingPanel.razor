@@ -13,6 +13,11 @@
         or as soon as its link arrives after that. <strong>Manual</strong> ones are posted from this page by hand, and
         <strong>Off</strong> ones aren't posted or shown here. The test season is never posted automatically.
     </p>
+    <p class="mt-1 text-sm text-slate-600">
+        <strong>Send a test post</strong> posts a short test for real, formatted exactly like an announcement but about no
+        entry ("C# Advent test post (please ignore)"), linking to the home page, so you can see how posts look to followers.
+        Delete it afterwards.
+    </p>
     <table class="mt-3 w-full text-left text-sm">
         <tbody class="divide-y divide-slate-200">
             @foreach (var platform in Platforms)
@@ -60,6 +65,22 @@
                                     </span>
                                 }
                                 <button type="submit" class="rounded-md bg-white px-2 py-1 font-medium text-slate-800 ring-1 ring-slate-300 hover:bg-slate-100">Check</button>
+                            </form>
+                            <form method="post" action="manage/social/test" class="mt-2 flex flex-wrap items-center gap-2">
+                                <AntiforgeryToken />
+                                <input type="hidden" name="Platform" value="@platform.Platform" />
+                                <input type="hidden" name="ReturnUrl" value="@ReturnUrl" />
+                                <button type="submit" class="rounded-md bg-white px-2 py-1 font-medium text-slate-800 ring-1 ring-slate-300 hover:bg-slate-100">Send a test post</button>
+                                @if (platform.TestedAt is { } testedAt)
+                                {
+                                    <span>
+                                        Test post sent <LocalTime Value="testedAt" />@(platform.TestPostUrl is null && platform.IsDryRun ? " (only logged: dry run)" : "")
+                                        @if (platform.TestPostUrl is { } testPostUrl)
+                                        {
+                                            <a href="@testPostUrl" target="_blank" rel="noopener" class="ml-1 text-advent-700 underline">view it</a>
+                                        }
+                                    </span>
+                                }
                             </form>
                         }
                     </td>

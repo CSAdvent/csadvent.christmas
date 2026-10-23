@@ -14,7 +14,9 @@ public sealed record PlatformPosting(
     bool CanPostAutomatically,
     bool IsDryRun,
     DateTimeOffset? CheckedAt,
-    string? CheckError)
+    string? CheckError,
+    DateTimeOffset? TestedAt = null,
+    string? TestPostUrl = null)
 {
     /// <summary>Automatic, and still able to be: a platform whose credentials were removed goes back to copy and paste.</summary>
     public bool IsAutomatic => Mode is SocialPostingMode.Automatic && CanPostAutomatically;
@@ -39,7 +41,9 @@ public sealed class SocialPlatformModes(AdventDbContext db, SocialPublishers pub
                 publisher is not null,
                 publisher is DryRunPublisher,
                 setting?.CheckedAt,
-                setting?.CheckError);
+                setting?.CheckError,
+                setting?.TestedAt,
+                setting?.TestPostUrl);
         })];
     }
 
@@ -86,6 +90,21 @@ public sealed class SocialPlatformModes(AdventDbContext db, SocialPublishers pub
         setting.CheckError = error is null ? null : error[..Math.Min(error.Length, 1000)];
         await db.SaveChangesAsync(cancellationToken);
         return error;
+    }
+
+    /// <summary>
+    /// Records a test post: when, and where it is. It's also the most thorough check of the credentials, so it counts as one,
+    /// passed or failed.
+    /// </summary>
+    public async Task RecordTestAsync(SocialPlatform platform, string? postUrl, string? error, string testedBy, CancellationToken cancellationToken = default)
+    {
+        var setting = await FindOrAddAsync(platform, testedBy, cancellationToken);
+        var now = timeProvider.GetUtcNow();
+        setting.TestedAt = now;
+        setting.TestPostUrl = error is null ? postUrl : null;
+        setting.CheckedAt = now;
+        setting.CheckError = error is null ? null : error[..Math.Min(error.Length, 1000)];
+        await db.SaveChangesAsync(cancellationToken);
     }
 
     private async Task<SocialPlatformSetting> FindOrAddAsync(SocialPlatform platform, string by, CancellationToken cancellationToken)

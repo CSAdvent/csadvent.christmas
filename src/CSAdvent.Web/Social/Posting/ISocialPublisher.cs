@@ -8,8 +8,11 @@ namespace CSAdvent.Web.Social.Posting;
 /// <param name="Card">The entry's share card (a JPEG), for platforms where we build the link card ourselves.</param>
 public sealed record SocialPublication(int Year, int Day, int Part, string Title, string Description, FormattedAnnouncement Announcement, byte[] Card)
 {
+    /// <summary>Instead of the entry's key: a test post's own, so each one goes out.</summary>
+    public string? Key { get; init; }
+
     /// <summary>The same for every try at this announcement, so a platform that supports one never posts it twice.</summary>
-    public string IdempotencyKey => $"csadvent-{Year}-{Day}-{Part}-{Announcement.Platform}".ToLowerInvariant();
+    public string IdempotencyKey => Key ?? $"csadvent-{Year}-{Day}-{Part}-{Announcement.Platform}".ToLowerInvariant();
 }
 
 /// <summary>Posts announcements to one platform, as C# Advent's account.</summary>
