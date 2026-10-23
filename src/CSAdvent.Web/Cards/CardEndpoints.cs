@@ -25,7 +25,7 @@ public static class CardEndpoints
             return Results.File(cards.RenderEntry(CardFor(entry)), "image/jpeg");
         });
 
-        // A season's card, with its post count once it's over.
+        // A season's card: with its post count once it's over, or before its sign-ups open, when they do.
         app.MapGet("/cards/{year:int}.jpg", async (int year, AdventDbContext db, AdventSchedule schedule, SeasonAccess access, CardRenderer cards, HttpResponse response, CancellationToken cancellationToken) =>
         {
             if (!access.CanSee(year) || !await db.Seasons.AnyAsync(s => s.Year == year, cancellationToken))
@@ -36,8 +36,12 @@ public static class CardEndpoints
             int? postCount = schedule.IsSeasonOver(year)
                 ? await db.Slots.CountAsync(s => s.SeasonYear == year && s.PostUrl != null && s.PostTitle != null && s.AuthorName != null, cancellationToken)
                 : null;
+            var claimsOpenAt = await db.Seasons.Where(s => s.Year == year).Select(s => s.ClaimsOpenAt).SingleAsync(cancellationToken);
+            DateOnly? signUpsOpenOn = postCount is null && claimsOpenAt is { } opensAt && !schedule.AreClaimsOpen(opensAt)
+                ? DateOnly.FromDateTime(schedule.ToLocalTime(opensAt).DateTime)
+                : null;
             response.Headers.CacheControl = CacheControl;
-            return Results.File(cards.RenderSeason(year, postCount), "image/jpeg");
+            return Results.File(cards.RenderSeason(year, postCount, signUpsOpenOn), "image/jpeg");
         });
 
         return app;

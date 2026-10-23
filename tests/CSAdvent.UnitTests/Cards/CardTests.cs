@@ -1,3 +1,4 @@
+using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Cards;
 using SkiaSharp;
 
@@ -43,6 +44,7 @@ public sealed class CardTests
             renderer.RenderEntry(new EntryCard(2026, 3, 1, 2, "Span<T> all the way down", "Ada Lovelace")),
             renderer.RenderSeason(2024, 50),
             renderer.RenderSeason(2026, null),
+            renderer.RenderSeason(2026, null, new DateOnly(2026, 11, 1)),
         })
         {
             using var bitmap = SKBitmap.Decode(card);
@@ -70,5 +72,16 @@ public sealed class CardTests
         Assert.NotEqual(CardLinks.Entry(card), CardLinks.Entry(card with { Title = "Fixed title" }));
         Assert.Equal("cards/2024.jpg?v=50", CardLinks.Season(2024, 50));
         Assert.Equal("cards/2026.jpg", CardLinks.Season(2026, null));
+        Assert.Equal("cards/2026.jpg?v=signups-2026-11-01", CardLinks.Upcoming(2026, new DateOnly(2026, 11, 1)));
+    }
+
+    [Fact]
+    public void BetweenSeasonsTheHomeCardNeverShowsTheFinishedSeason()
+    {
+        var finished = new FinishedSeason(2025, PostCount: 50, AuthorCount: 45);
+
+        Assert.Equal(CardLinks.General, CardLinks.Home(new HomePage(null, finished, NextSeason: null)));
+        Assert.Equal(CardLinks.General, CardLinks.Home(new HomePage(null, finished, new UpcomingSeason(2026, SignUpsOpenOn: null, DaysUntilSignUps: null))));
+        Assert.Equal("cards/2026.jpg?v=signups-2026-11-01", CardLinks.Home(new HomePage(null, finished, new UpcomingSeason(2026, new DateOnly(2026, 11, 1), 9))));
     }
 }
