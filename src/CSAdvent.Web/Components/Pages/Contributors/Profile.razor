@@ -1,0 +1,125 @@
+@page "/profile"
+@attribute [Authorize]
+@using CSAdvent.Web.Auth
+@using CSAdvent.Web.Contributors
+@inject ProfileService Profiles
+@inject NavigationManager Navigation
+
+<PageTitle>Your profile · C# Advent</PageTitle>
+
+@if (Done == "saved")
+{
+    <p class="mb-6 rounded-xl bg-green-50 p-4 font-medium text-green-800 ring-1 ring-green-200" role="status">Saved.</p>
+}
+
+<h1 class="text-3xl font-bold tracking-tight text-slate-900">Your profile</h1>
+<p class="mt-2 max-w-2xl text-slate-600">
+    How you'd like to be credited on C# Advent. It fills in your next request for a spot, and you can put it on the spots you
+    already have. Your post's title and URL are on <a href="my-spots" class="text-advent-700 underline">My spots</a>.
+</p>
+
+@if (_account is { } account)
+{
+    <section class="mt-8 max-w-2xl rounded-xl bg-slate-50 p-5 ring-1 ring-slate-200">
+        <h2 class="font-semibold text-slate-900">From GitHub</h2>
+        <dl class="mt-3 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[auto_1fr]">
+            <dt class="font-medium text-slate-700">Signed in as</dt>
+            <dd><a href="@($"https://github.com/{account.GithubLogin}")" class="text-advent-700 underline">@account.GithubLogin</a></dd>
+            <dt class="font-medium text-slate-700">Email</dt>
+            <dd>@(account.VerifiedEmail ?? "No verified email yet")</dd>
+        </dl>
+        <p class="mt-3 text-sm text-slate-600">
+            We email you at the primary, verified email on your GitHub account, and only the organizers see it. To change it,
+            change your primary email in your <a href="https://github.com/settings/emails" class="text-advent-700 underline">GitHub email settings</a>,
+            then sign out and sign in again.
+        </p>
+    </section>
+
+    <EditForm Model="Form" FormName="profile" OnValidSubmit="SaveAsync" class="mt-8 flex max-w-2xl flex-col gap-6">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="rounded-xl bg-red-50 p-4 text-sm ring-1 ring-red-200" />
+
+        <fieldset class="flex flex-col gap-4">
+            <legend class="font-semibold text-slate-900">On the calendar</legend>
+            <label class="flex flex-col text-sm font-medium text-slate-700">
+                Name
+                <InputText @bind-Value="Form!.Name" maxlength="50" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+            </label>
+            <label class="flex flex-col text-sm font-medium text-slate-700">
+                Link for your name <span class="font-normal text-slate-500">(optional; your blog, GitHub or a profile page, not a post)</span>
+                <InputText @bind-Value="Form!.Link" type="url" maxlength="200" placeholder="https://" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+            </label>
+            @if (account.Spots > 0)
+            {
+                <label class="flex items-start gap-3 text-sm text-slate-700">
+                    <InputCheckbox @bind-Value="Form!.UpdatePosts" class="mt-0.5 size-4" />
+                    <span>
+                        Also show this name and link on @(account.Spots == 1 ? "my spot" : $"all {account.Spots} of my spots"), past seasons included.
+                        <span class="block text-slate-500">Leave it unticked to change only what we fill in next time.</span>
+                    </span>
+                </label>
+            }
+        </fieldset>
+
+        <fieldset class="rounded-xl p-4 ring-1 ring-slate-200">
+            <legend class="px-1 font-semibold text-slate-900">Social accounts <span class="font-normal text-slate-500">(optional)</span></legend>
+            <p class="text-sm text-slate-600">If you add an account, we'll tag you there when we post about your article on that service. Leave any blank that you don't use.</p>
+            <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                <label class="flex flex-col text-sm font-medium text-slate-700">
+                    Bluesky
+                    <InputText @bind-Value="Form!.Bluesky" maxlength="253" placeholder="you.bsky.social" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                </label>
+                <label class="flex flex-col text-sm font-medium text-slate-700">
+                    Mastodon
+                    <InputText @bind-Value="Form!.Mastodon" maxlength="100" placeholder="@("@you@mastodon.social")" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                </label>
+                <label class="flex flex-col text-sm font-medium text-slate-700">
+                    LinkedIn
+                    <InputText @bind-Value="Form!.LinkedIn" maxlength="200" placeholder="https://www.linkedin.com/in/you" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                </label>
+                <label class="flex flex-col text-sm font-medium text-slate-700">
+                    Facebook
+                    <InputText @bind-Value="Form!.Facebook" maxlength="200" placeholder="https://www.facebook.com/you" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                </label>
+                <label class="flex flex-col text-sm font-medium text-slate-700">
+                    Reddit
+                    <InputText @bind-Value="Form!.Reddit" maxlength="40" placeholder="u/you" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                </label>
+            </div>
+        </fieldset>
+
+        <div>
+            <button type="submit" class="rounded-lg bg-advent-600 px-5 py-3 font-semibold text-white shadow hover:bg-advent-700">Save</button>
+        </div>
+    </EditForm>
+}
+
+@code {
+    private ProfileAccount? _account;
+    private int _contributorId;
+
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationState { get; set; } = null!;
+
+    [SupplyParameterFromForm(FormName = "profile")]
+    private ProfileForm? Form { get; set; }
+
+    [SupplyParameterFromQuery(Name = "done")]
+    public string? Done { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = (await AuthenticationState).User;
+        _contributorId = user.GetContributorId() ?? 0;
+
+        // A posted form keeps what was typed; a fresh page starts from what's saved.
+        Form ??= await Profiles.GetAsync(_contributorId, user.GetDisplayName()) ?? new();
+        _account = await Profiles.GetAccountAsync(_contributorId);
+    }
+
+    private async Task SaveAsync()
+    {
+        await Profiles.SaveAsync(_contributorId, Form!);
+        Navigation.NavigateTo("profile?done=saved");
+    }
+}

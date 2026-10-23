@@ -1,0 +1,162 @@
+@page "/manage/authors/unlinked"
+@inject AuthorService Authors
+@inject NavigationManager Navigation
+
+@if (_author is { } author)
+{
+    <PageTitle>@author.Name · Authors · Manage · C# Advent</PageTitle>
+
+    <ManageNav />
+
+    <nav class="mb-4 text-sm font-medium"><a href="manage/authors" class="text-advent-700 hover:underline">← All authors</a></nav>
+
+    @if (Done == "renamed")
+    {
+        <p class="mb-6 max-w-3xl rounded-xl bg-green-50 p-4 font-medium text-green-800 ring-1 ring-green-200" role="status">Saved.</p>
+    }
+
+    @if (_error is not null)
+    {
+        <p class="mb-6 max-w-3xl rounded-xl bg-red-50 p-4 font-medium text-red-800 ring-1 ring-red-200" role="alert">@_error</p>
+    }
+
+    <h1 class="text-3xl font-bold tracking-tight text-slate-900">@author.Name</h1>
+    <p class="mt-2 max-w-3xl text-slate-600">
+        An archive author who isn't linked to a GitHub account yet: @Summary(author). Linking them shows these posts as their history on My spots when they sign in, and gives them a profile.
+    </p>
+
+    <section class="mt-10 max-w-2xl">
+        <h2 class="text-xl font-semibold text-slate-900">Link to GitHub</h2>
+        <p class="mt-1 text-sm text-slate-600">
+            If they're already linked under another name, link this one to the same account: the posts are added to theirs.
+        </p>
+        <EditForm Model="Link" FormName="link" OnValidSubmit="LinkAsync" class="mt-4 flex flex-wrap items-end gap-3">
+            <DataAnnotationsValidator />
+            <label class="flex flex-col text-sm font-medium text-slate-700">
+                GitHub login
+                <InputText @bind-Value="Link!.Login" placeholder="their-login" class="mt-1 w-60 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+            </label>
+            <button type="submit" class="rounded-lg bg-advent-600 px-4 py-2 font-semibold text-white hover:bg-advent-700">Link</button>
+            <ValidationMessage For="() => Link!.Login" class="w-full text-sm" />
+        </EditForm>
+    </section>
+
+    <section class="mt-12 max-w-2xl">
+        <h2 class="text-xl font-semibold text-slate-900">Name on the calendar</h2>
+        <p class="mt-1 text-sm text-slate-600">
+            Changes the name and link on all of these posts, in the archive and everywhere else. Using the same name as another
+            archive author puts the two together.
+        </p>
+        <EditForm Model="Rename" FormName="rename" OnValidSubmit="RenameAsync" class="mt-4 flex flex-col gap-4">
+            <DataAnnotationsValidator />
+            <ValidationSummary class="rounded-xl bg-red-50 p-4 text-sm ring-1 ring-red-200" />
+            <label class="flex flex-col text-sm font-medium text-slate-700">
+                Name
+                <InputText @bind-Value="Rename!.Name" maxlength="100" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+            </label>
+            <label class="flex flex-col text-sm font-medium text-slate-700">
+                Link for their name <span class="font-normal text-slate-500">(optional)</span>
+                <InputText @bind-Value="Rename!.Link" type="url" maxlength="500" placeholder="https://" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+            </label>
+            <div>
+                <button type="submit" class="rounded-lg bg-white px-4 py-2 font-semibold text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50">Save</button>
+            </div>
+        </EditForm>
+    </section>
+
+    <section class="mt-12">
+        <h2 class="text-xl font-semibold text-slate-900">Posts</h2>
+        <table class="mt-4 w-full text-left text-sm">
+            <thead class="border-b border-slate-200 text-slate-500">
+                <tr>
+                    <th class="py-2 pr-4 font-medium">Spot</th>
+                    <th class="py-2 pr-4 font-medium">Post</th>
+                    <th class="py-2 pr-4 font-medium">Name on the calendar</th>
+                    <th class="py-2 font-medium"><span class="sr-only">Edit</span></th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                @foreach (var post in author.Posts)
+                {
+                    <tr class="align-top">
+                        <td class="py-3 pr-4 whitespace-nowrap">@post.Spot</td>
+                        <td class="py-3 pr-4"><a href="@post.PostUrl" class="text-advent-700 underline">@(post.PostTitle ?? post.PostUrl)</a></td>
+                        <td class="py-3 pr-4">
+                            @if (post.AuthorUrl is { } link)
+                            {
+                                <a href="@link" class="text-advent-700 underline">@post.AuthorName</a>
+                            }
+                            else
+                            {
+                                @post.AuthorName
+                            }
+                        </td>
+                        <td class="py-3"><a href="manage/entries/@post.SlotId" class="font-medium text-advent-700 hover:underline">Edit</a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </section>
+}
+
+@code {
+    private AuthorProfile? _author;
+    private string? _error;
+
+    [SupplyParameterFromQuery]
+    public string? Key { get; set; }
+
+    [SupplyParameterFromQuery(Name = "done")]
+    public string? Done { get; set; }
+
+    [SupplyParameterFromForm(FormName = "link")]
+    private GitHubLoginForm? Link { get; set; }
+
+    [SupplyParameterFromForm(FormName = "rename")]
+    private CalendarNameForm? Rename { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _author = string.IsNullOrEmpty(Key) ? null : await Authors.GetUnlinkedAsync(Key);
+        if (_author is null)
+        {
+            Navigation.NotFound();
+            return;
+        }
+
+        // A posted form keeps what was typed; a fresh page starts from what the archive shows.
+        Link ??= new() { Login = _author.SuggestedLogin ?? "" };
+        Rename ??= new() { Name = _author.Name, Link = _author.Links.Count == 1 ? _author.Links[0] : null };
+    }
+
+    private static string Summary(AuthorProfile author) =>
+        $"{author.Published} {(author.Published == 1 ? "post" : "posts")}" + (author.Names.Count > 1 ? $", as {string.Join(", ", author.Names)}" : "");
+
+    private async Task LinkAsync()
+    {
+        var (outcome, contributorId) = await Authors.LinkAsync(Key!, Link!.Login);
+        _error = outcome switch
+        {
+            AuthorLinkOutcome.NoSuchAccount => "There's no GitHub account with that login.",
+            AuthorLinkOutcome.GitHubUnavailable => "GitHub didn't answer just now. Try again in a minute.",
+            AuthorLinkOutcome.NoSuchAuthor => "That author isn't in the archive any more.",
+            _ => null,
+        };
+
+        if (contributorId is { } id)
+        {
+            Navigation.NavigateTo($"manage/authors/{id}?done=linked");
+        }
+    }
+
+    private async Task RenameAsync()
+    {
+        if (await Authors.RenameAsync(Key!, Rename!) is not { } key)
+        {
+            _error = "That author isn't in the archive any more.";
+            return;
+        }
+
+        Navigation.NavigateTo($"manage/authors/unlinked?key={Uri.EscapeDataString(key)}&done=renamed");
+    }
+}

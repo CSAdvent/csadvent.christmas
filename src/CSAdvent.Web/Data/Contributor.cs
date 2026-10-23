@@ -17,6 +17,12 @@ public sealed class Contributor
 
     public DateTimeOffset? EmailVerifiedAt { get; set; }
 
+    /// <summary>The name they'd like on the calendar, from their profile or their last claim. Prefills the next claim.</summary>
+    public string? DisplayName { get; set; }
+
+    /// <summary>The link they'd like their name to go to, from their profile or their last claim. Prefills the next claim.</summary>
+    public string? WebsiteUrl { get; set; }
+
     // Social accounts, so posts about their entries can tag them. Stored in the forms SocialAccounts produces.
 
     /// <summary>A Bluesky handle, such as <c>alice.bsky.social</c>.</summary>
@@ -44,6 +50,8 @@ internal sealed class ContributorConfiguration : IEntityTypeConfiguration<Contri
         // GitHub logins are at most 39 characters.
         builder.Property(c => c.GithubLogin).HasMaxLength(39);
         builder.Property(c => c.Email).HasMaxLength(254);
+        builder.Property(c => c.DisplayName).HasMaxLength(100);
+        builder.Property(c => c.WebsiteUrl).HasMaxLength(500);
         builder.Property(c => c.BlueskyHandle).HasMaxLength(253);
         builder.Property(c => c.MastodonHandle).HasMaxLength(100);
         builder.Property(c => c.LinkedInUrl).HasMaxLength(200).HasColumnName("linkedin_url");
