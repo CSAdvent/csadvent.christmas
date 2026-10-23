@@ -23,6 +23,12 @@ public sealed class Contributor
     /// <summary>The link they'd like their name to go to, from their profile or their last claim. Prefills the next claim.</summary>
     public string? WebsiteUrl { get; set; }
 
+    /// <summary>
+    /// When their social accounts were filled in from their GitHub profile. That happens on their first sign-in, and again
+    /// only when they ask, so an account they remove doesn't come back.
+    /// </summary>
+    public DateTimeOffset? GithubSocialCheckedAt { get; set; }
+
     // Social accounts, so posts about their entries can tag them. Stored in the forms SocialAccounts produces.
 
     /// <summary>A Bluesky handle, such as <c>alice.bsky.social</c>.</summary>

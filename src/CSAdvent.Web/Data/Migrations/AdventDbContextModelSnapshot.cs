@@ -16,7 +16,7 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261023180642_AddContributorProfile";
+    public override string LastMigrationId => "20261023200116_AddGithubSocialCheckedAt";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -308,6 +308,10 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                     .HasMaxLength(39)
                     .HasColumnType("character varying(39)")
                     .HasColumnName("github_login");
+
+                b.Property<DateTimeOffset?>("GithubSocialCheckedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("github_social_checked_at");
 
                 b.Property<long>("GithubUserId")
                     .HasColumnType("bigint")

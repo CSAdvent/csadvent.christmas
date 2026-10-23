@@ -38,6 +38,20 @@ public sealed class SocialAccountsTests
         Assert.Equal(url, SocialAccounts.ProfileUrl(platform, normalized));
 
     [Theory]
+    [InlineData("linkedin", "https://linkedin.com/in/mgroves", SocialPlatform.LinkedIn, "https://www.linkedin.com/in/mgroves")]
+    [InlineData("generic", "https://bsky.app/profile/alice.dev", SocialPlatform.Bluesky, "alice.dev")]
+    [InlineData("mastodon", "https://hachyderm.io/@alice", SocialPlatform.Mastodon, "@alice@hachyderm.io")]
+    [InlineData("facebook", "https://www.facebook.com/alice.dev", SocialPlatform.Facebook, "https://www.facebook.com/alice.dev")]
+    [InlineData("reddit", "https://www.reddit.com/user/alice_dev", SocialPlatform.Reddit, "alice_dev")]
+    [InlineData("twitter", "https://x.com/mgroves", null, null)]
+    [InlineData("linkedin", "https://www.linkedin.com/company/csadvent", null, null)]
+    [InlineData("generic", "https://medium.com/@alice", null, null)]
+    [InlineData("generic", "https://www.threads.net/@alice", null, null)]
+    [InlineData("generic", "not a link", null, null)]
+    public void TakesTheAccountsWeTagFromAGitHubProfile(string provider, string url, SocialPlatform? platform, string? account) =>
+        Assert.Equal(platform is { } p ? (p, account!) : null, SocialAccounts.FromGitHub(provider, url));
+
+    [Theory]
     [InlineData("https://twitter.com/alice", true)]
     [InlineData("https://x.com/alice", true)]
     [InlineData("https://bsky.app/profile/alice.dev", true)]

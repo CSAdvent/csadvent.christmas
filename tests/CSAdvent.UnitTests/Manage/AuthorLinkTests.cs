@@ -52,6 +52,21 @@ public sealed class AuthorLinkTests
         Assert.Null(github.Request!.Headers.Authorization);
     }
 
+    [Fact]
+    public async Task ReadsTheSocialLinksOnAGitHubProfile()
+    {
+        var github = new FakeGitHub("""[{ "provider": "twitter", "url": "https://x.com/mgroves" }, { "provider": "linkedin", "url": "https://linkedin.com/in/mgroves" }]""", HttpStatusCode.OK);
+
+        var links = await Users(github, new GitHubAppOptions()).SocialAccountsAsync("mgroves", TestContext.Current.CancellationToken);
+
+        Assert.Equal([new GitHubSocialAccount("twitter", "https://x.com/mgroves"), new GitHubSocialAccount("linkedin", "https://linkedin.com/in/mgroves")], links);
+        Assert.Equal("https://api.github.com/users/mgroves/social_accounts", github.Request!.RequestUri!.ToString());
+    }
+
+    [Fact]
+    public async Task AnUnknownLoginHasNoSocialLinks() =>
+        Assert.Empty(await Users(new FakeGitHub("""{ "message": "Not Found" }""", HttpStatusCode.NotFound), new GitHubAppOptions()).SocialAccountsAsync("nobody-here", TestContext.Current.CancellationToken));
+
     private static GitHubUsers Users(FakeGitHub github, GitHubAppOptions app)
     {
         var http = new HttpClient(github);

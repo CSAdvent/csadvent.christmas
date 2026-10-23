@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
+using CSAdvent.Web.Contributors;
 using Microsoft.AspNetCore.Authentication.OAuth;
 
 namespace CSAdvent.Web.Auth;
@@ -24,6 +25,9 @@ public static class GitHubSignIn
 
         var contributors = context.HttpContext.RequestServices.GetRequiredService<ContributorSignIn>();
         var contributorId = await contributors.RecordAsync(user.Id, user.Login, verifiedEmail, cancellationToken);
+
+        // The first time, the social links on their GitHub profile fill in their profile's accounts.
+        await context.HttpContext.RequestServices.GetRequiredService<ProfileService>().FillInFromGitHubOnceAsync(contributorId, cancellationToken);
 
         context.Identity!.AddClaims(AdventClaims.For(user.Id, user.Login, verifiedEmail, contributorId, user.Name));
     }
