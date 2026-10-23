@@ -471,7 +471,8 @@ public sealed class BackupAcceptForm
     public string AuthorName { get; set; } = "";
 
     [StringLength(200, ErrorMessage = "Keep the link to 200 characters or fewer.")]
-    [HttpUrl(ErrorMessage = "The link for your name must be a full web address that starts with https:// or http://.")]
+    [HttpUrl(ErrorMessage = "Your website must be a full web address that starts with https:// or http://.")]
+    [NotSocialProfile]
     public string? AuthorUrl { get; set; }
 
     [Required(ErrorMessage = "Enter your post's title.")]

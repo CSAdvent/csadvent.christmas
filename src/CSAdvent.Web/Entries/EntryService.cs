@@ -1,6 +1,7 @@
 using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Data;
 using CSAdvent.Web.SeasonTesting;
+using CSAdvent.Web.Social;
 using Microsoft.EntityFrameworkCore;
 
 namespace CSAdvent.Web.Entries;
@@ -37,6 +38,7 @@ public sealed record EntryView(
     string? PostUrl,
     string? AuthorName,
     string? AuthorUrl,
+    IReadOnlyList<AuthorLink> AuthorLinks,
     IReadOnlyList<SiblingEntry> Siblings,
     bool IsSeasonOver)
 {
@@ -62,7 +64,22 @@ public sealed class EntryService(AdventDbContext db, AdventSchedule schedule, Ti
             .AsNoTracking()
             .Where(s => s.SeasonYear == year && s.Day == day)
             .OrderBy(s => s.Part)
-            .Select(s => new { s.Id, s.Part, s.Season.SlotsPerDay, s.AuthorName, s.AuthorUrl, s.PostTitle, s.PostUrl })
+            .Select(s => new
+            {
+                s.Id,
+                s.Part,
+                s.Season.SlotsPerDay,
+                s.AuthorName,
+                s.AuthorUrl,
+                s.PostTitle,
+                s.PostUrl,
+                GithubLogin = s.Contributor != null ? s.Contributor.GithubLogin : null,
+                Bluesky = s.Contributor != null ? s.Contributor.BlueskyHandle : null,
+                Mastodon = s.Contributor != null ? s.Contributor.MastodonHandle : null,
+                LinkedIn = s.Contributor != null ? s.Contributor.LinkedInUrl : null,
+                Facebook = s.Contributor != null ? s.Contributor.FacebookUrl : null,
+                Reddit = s.Contributor != null ? s.Contributor.RedditUsername : null,
+            })
             .ToListAsync(cancellationToken);
         var slot = slots.SingleOrDefault(s => s.Part == part);
         if (slot is null)
@@ -73,7 +90,7 @@ public sealed class EntryService(AdventDbContext db, AdventSchedule schedule, Ti
         var revealsAt = schedule.GetRevealTime(year, day);
         if (!schedule.IsRevealed(year, day))
         {
-            return new EntryView(slot.Id, year, day, part, slot.SlotsPerDay, false, revealsAt, null, null, null, null, [], IsSeasonOver: false);
+            return new EntryView(slot.Id, year, day, part, slot.SlotsPerDay, false, revealsAt, null, null, null, null, [], [], IsSeasonOver: false);
         }
 
         if (slot.PostTitle is null || slot.PostUrl is null || slot.AuthorName is null)
@@ -92,7 +109,8 @@ public sealed class EntryService(AdventDbContext db, AdventSchedule schedule, Ti
             slot.PostTitle,
             slot.PostUrl,
             slot.AuthorName,
-            slot.AuthorUrl,
+            AuthorLinks.ForName(slot.AuthorUrl, slot.GithubLogin),
+            AuthorLinks.All(slot.AuthorUrl, slot.GithubLogin, new AuthorAccounts(slot.Bluesky, slot.Mastodon, slot.LinkedIn, slot.Facebook, slot.Reddit)),
             [.. slots
                 .Where(s => s.Part != part && s.PostTitle is not null && s.PostUrl is not null && s.AuthorName is not null)
                 .Select(s => new SiblingEntry(s.Part, s.PostTitle!, s.AuthorName!))],

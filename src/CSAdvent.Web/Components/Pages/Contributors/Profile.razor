@@ -46,8 +46,9 @@
                 <InputText @bind-Value="Form!.Name" maxlength="50" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
             </label>
             <label class="flex flex-col text-sm font-medium text-slate-700">
-                Link for your name <span class="font-normal text-slate-500">(optional; your blog, GitHub or a profile page, not a post)</span>
+                Your website or blog <span class="font-normal text-slate-500">(optional)</span>
                 <InputText @bind-Value="Form!.Link" type="url" maxlength="200" placeholder="https://" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                <span class="mt-1 font-normal text-slate-500">Your name links here, or to your GitHub profile if you leave it blank. Not a post, and not a social media profile: those go below.</span>
             </label>
             @if (account.Spots > 0)
             {
@@ -63,7 +64,7 @@
 
         <fieldset class="rounded-xl p-4 ring-1 ring-slate-200">
             <legend class="px-1 font-semibold text-slate-900">Social accounts <span class="font-normal text-slate-500">(optional)</span></legend>
-            <p class="text-sm text-slate-600">If you add an account, we'll tag you there when we post about your article on that service. Leave any blank that you don't use.</p>
+            <p class="text-sm text-slate-600">If you add an account, we'll tag you there when we post about your article on that service, and link to it from your articles' pages here. Leave any blank that you don't use.</p>
             <div class="mt-4 grid gap-4 sm:grid-cols-2">
                 <label class="flex flex-col text-sm font-medium text-slate-700">
                     Bluesky

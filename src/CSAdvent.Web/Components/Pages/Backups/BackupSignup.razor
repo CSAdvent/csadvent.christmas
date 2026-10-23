@@ -90,9 +90,12 @@ else if (_email is null)
         </div>
 
         <div>
-            <label for="link" class="block font-medium text-slate-800">Link for your name <span class="font-normal text-slate-500">(optional)</span></label>
+            <label for="link" class="block font-medium text-slate-800">Your website or blog <span class="font-normal text-slate-500">(optional)</span></label>
             <InputText id="link" type="url" @bind-Value="Form!.Link" maxlength="200" placeholder="https://" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" />
-            <p class="mt-1 text-sm text-slate-500">Your blog, GitHub or a profile page. Not a post.</p>
+            <p class="mt-1 text-sm text-slate-500">
+                When you fill in for someone, your name links here, or to your GitHub profile if you leave it blank. Not a post, and not a social
+                media profile: add those to your <a href="profile" class="text-advent-700 underline">profile</a>.
+            </p>
         </div>
 
         <div>

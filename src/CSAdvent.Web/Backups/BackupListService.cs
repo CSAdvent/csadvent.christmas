@@ -174,6 +174,7 @@ public sealed class BackupSignupForm
 
     [StringLength(200, ErrorMessage = "Keep the link to 200 characters or fewer.")]
     [HttpUrl(ErrorMessage = "Enter a full web address that starts with https:// or http://.")]
+    [NotSocialProfile]
     public string? Link { get; set; }
 
     [StringLength(500, ErrorMessage = "Keep your notes to 500 characters or fewer.")]

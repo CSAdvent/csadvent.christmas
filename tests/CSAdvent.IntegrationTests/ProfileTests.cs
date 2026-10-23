@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CSAdvent.IntegrationTests;
 
-/// <summary>Contributors manage how they're credited on their profile. Uses season 2124.</summary>
+/// <summary>Contributors manage how they're credited on their profile. Uses season 2124, and one 2025 archive post.</summary>
 public sealed class ProfileTests(AppHostFixture fixture)
 {
     private const int Year = 2124;
@@ -73,6 +73,33 @@ public sealed class ProfileTests(AppHostFixture fixture)
         var page = await browser.GetStringAsync("/profile", CancellationToken);
         Assert.Contains("value=\"Quin Claims\"", page);
         Assert.Contains("value=\"https://example.com/quin\"", page);
+    }
+
+    [Fact]
+    public async Task EntryPagesLinkTheAuthorsGitHubAndAccounts()
+    {
+        using var author = await fixture.SignInAsync("links-lee", 8406);
+        var refused = await author.PostFormAsync("/profile", "profile", new() { ["Form.Name"] = "Lee Links", ["Form.Link"] = "https://hachyderm.io/@lee" });
+        Assert.Contains("Add it under Social accounts", await refused.Content.ReadAsStringAsync(CancellationToken));
+        await author.PostFormAsync("/profile", "profile", new() { ["Form.Name"] = "Lee Links", ["Form.Bluesky"] = "lee.bsky.social" });
+
+        // A published post of theirs with no website, so their name links to GitHub.
+        int day, part;
+        await using (var db = await fixture.CreateDbContextAsync())
+        {
+            var slot = await db.Slots.Where(s => s.SeasonYear == 2025 && s.Day == 12 && s.PostTitle != null && s.PostUrl != null).OrderBy(s => s.Part).FirstAsync(CancellationToken);
+            slot.AuthorName = "Lee Links";
+            slot.AuthorUrl = null;
+            slot.ContributorId = await db.Contributors.Where(c => c.GithubUserId == 8406).Select(c => c.Id).SingleAsync(CancellationToken);
+            await db.SaveChangesAsync(CancellationToken);
+            (day, part) = (slot.Day, slot.Part);
+        }
+
+        using var reader = fixture.CreateBrowser();
+        var page = await reader.GetStringAsync($"/2025/day/{day}/{part}", CancellationToken);
+        Assert.Contains("<a href=\"https://github.com/links-lee\" class=\"font-medium text-advent-700 underline\">Lee Links</a>", page);
+        Assert.Contains("<a href=\"https://bsky.app/profile/lee.bsky.social\" class=\"text-advent-700 underline\">Bluesky</a>", page);
+        Assert.Contains("href=\"https://github.com/links-lee\"", await reader.GetStringAsync("/archive/2025", CancellationToken));
     }
 
     [Fact]

@@ -62,11 +62,12 @@
             </div>
 
             <div>
-                <label for="link" class="block font-medium text-slate-800">Link for your name <span class="font-normal text-slate-500">(optional)</span></label>
+                <label for="link" class="block font-medium text-slate-800">Your website or blog <span class="font-normal text-slate-500">(optional)</span></label>
                 <InputText id="link" type="url" @bind-Value="Form!.Link" maxlength="200" placeholder="https://" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" />
                 <p class="mt-1 text-sm text-slate-500">
-                    On the calendar, your <strong>name</strong> links here: your blog, GitHub or a profile page, for example.
-                    This isn't your article. You'll add your article's link later, and the article title links to that.
+                    On the calendar, your <strong>name</strong> links here, or to your GitHub profile if you leave it blank. It isn't
+                    your article (you'll add that later, and the article title links to it), and it isn't a social media profile:
+                    add those below.
                 </p>
             </div>
 
@@ -78,7 +79,7 @@
 
             <fieldset class="rounded-xl p-4 ring-1 ring-slate-200">
                 <legend class="px-1 font-medium text-slate-800">Social accounts <span class="font-normal text-slate-500">(optional)</span></legend>
-                <p class="text-sm text-slate-600"><strong>If you add an account, we'll tag you there when we post about your article on that service.</strong> Leave any blank that you don't use. They're saved for next time.</p>
+                <p class="text-sm text-slate-600"><strong>If you add an account, we'll tag you there when we post about your article on that service</strong>, and link to it from your article's page here. Leave any blank that you don't use. They're saved to your <a href="profile" class="text-advent-700 underline">profile</a> for next time.</p>
                 <div class="mt-4 grid gap-4 sm:grid-cols-2">
                     <label class="flex flex-col text-sm font-medium text-slate-700">
                         Bluesky

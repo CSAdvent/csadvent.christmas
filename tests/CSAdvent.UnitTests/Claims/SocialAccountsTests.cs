@@ -29,6 +29,36 @@ public sealed class SocialAccountsTests
     }
 
     [Theory]
+    [InlineData(SocialPlatform.Bluesky, "alice.bsky.social", "https://bsky.app/profile/alice.bsky.social")]
+    [InlineData(SocialPlatform.Mastodon, "@alice@hachyderm.io", "https://hachyderm.io/@alice")]
+    [InlineData(SocialPlatform.LinkedIn, "https://www.linkedin.com/in/alice-dev", "https://www.linkedin.com/in/alice-dev")]
+    [InlineData(SocialPlatform.Facebook, "https://www.facebook.com/alice.dev", "https://www.facebook.com/alice.dev")]
+    [InlineData(SocialPlatform.Reddit, "alice_dev", "https://www.reddit.com/user/alice_dev")]
+    public void AccountsLinkToTheirProfiles(SocialPlatform platform, string normalized, string url) =>
+        Assert.Equal(url, SocialAccounts.ProfileUrl(platform, normalized));
+
+    [Theory]
+    [InlineData("https://twitter.com/alice", true)]
+    [InlineData("https://x.com/alice", true)]
+    [InlineData("https://bsky.app/profile/alice.dev", true)]
+    [InlineData("https://hachyderm.io/@alice", true)]
+    [InlineData("https://dotnet.social/@alice/", true)]
+    [InlineData("https://www.linkedin.com/in/alice-dev", true)]
+    [InlineData("https://m.facebook.com/alice.dev", true)]
+    [InlineData("https://old.reddit.com/user/alice", true)]
+    [InlineData("https://www.instagram.com/alice", true)]
+    [InlineData("https://alice.dev", false)]
+    [InlineData("https://alice.dev/blog/@archive", false)]
+    [InlineData("https://github.com/alice", false)]
+    [InlineData("https://medium.com/@alice", false)]
+    [InlineData("https://alice.substack.com/@alice", false)]
+    [InlineData("https://www.youtube.com/@alice", false)]
+    [InlineData("https://notx.com/alice", false)]
+    [InlineData(null, false)]
+    public void TellsSocialProfilesFromWebsites(string? url, bool social) =>
+        Assert.Equal(social, SocialAccounts.IsSocialProfile(url));
+
+    [Theory]
     [InlineData(SocialPlatform.Bluesky, "alice")]
     [InlineData(SocialPlatform.Bluesky, "https://twitter.com/alice")]
     [InlineData(SocialPlatform.Mastodon, "@alice")]

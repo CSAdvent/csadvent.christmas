@@ -77,7 +77,9 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 
 - `/claim/{year}/{day}/{part}` (`CalendarLinks.Claim`) requires sign-in. `ClaimService.CheckAvailability` decides whether a slot can be requested: claims are open, the day isn't revealed, and nobody has claimed it. It's checked again on submit.
 - A request is stored as `Pending` with the contributor's **verified GitHub email** (there's no typed-in email). Requests don't reserve the slot; the organizer approves one. A duplicate pending request from the same contributor hits the unique index and is reported as already requested.
-- **Social accounts** (Bluesky, Mastodon, LinkedIn, Facebook, Reddit) are optional fields on the claim form. They're saved on `contributors` with the name and link (`display_name`, `website_url`), so they're on the contributor's profile and prefilled next time, and used to tag people in social posts (#59). `SocialAccounts.TryNormalize` accepts handles or profile URLs and stores one form per platform.
+- **Social accounts** (Bluesky, Mastodon, LinkedIn, Facebook, Reddit) are optional fields on the claim form. They're saved on `contributors` with the name and link (`display_name`, `website_url`), so they're on the contributor's profile and prefilled next time, used to tag people in social posts (#59), and linked from their entry pages. `SocialAccounts.TryNormalize` accepts handles or profile URLs and stores one form per platform.
+- **The name link is a website or blog.** Every form a contributor fills in (claim, profile, My spots, backup sign-up and offer) refuses social media profiles there (`[NotSocialProfile]`, `SocialAccounts.IsSocialProfile`: the big networks by host, and any `https://{server}/@user` as Mastodon, except Medium, Substack and YouTube). Organizer forms don't check it, because archive posts keep the links they were published with, Twitter included.
+- **Without a website, the name links to the author's GitHub profile** (`AuthorLinks.ForName`, from the slot's contributor), on the calendar, the archive and the entry page. Calendar queries include `Slot.Contributor` for this.
 - New requests and approvals go to `IClaimNotifier` (`EmailClaimNotifier`). It emails the contributor, and for new requests the organizers too, with replies going to the contributor. A failed send is logged without personal details and never blocks the claim.
 - Blazor SSR forms: `[SupplyParameterFromForm(FormName = ...)]` on a nullable model, `Form ??= new()` to tell a GET from a POST, and `@bind-Value="Form!.Field"`. The posted field names are `Form.Field`.
 
@@ -97,7 +99,7 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 
 ## Entry Pages and Traffic
 
-- **Every revealed entry with a post has a page** at `/{year}/day/{day}/{part}` (`EntryService`, `EntryLinks.Page`). It shows the title, author, a **Read the post** button and the day's other post. Before the reveal it says only when the post is coming (#5), and a revealed spot without a post (or with no title) is a 404.
+- **Every revealed entry with a post has a page** at `/{year}/day/{day}/{part}` (`EntryService`, `EntryLinks.Page`). It shows the title, author, the author's links (`AuthorLinks.All`: website, GitHub, then the social accounts on their profile), a **Read the post** button and the day's other post. Before the reveal it says only when the post is coming (#5), and a revealed spot without a post (or with no title) is a 404.
 - **"Read the post" goes through `/go/{year}/{day}/{part}`**, which counts the click and redirects (302) to the entry's own post URL. Nothing else can be a destination, so it isn't an open redirect.
 - **Every link we publish goes through us, tagged with `?via=`:**
   - Social posts and RSS link to the entry page (for the preview card).

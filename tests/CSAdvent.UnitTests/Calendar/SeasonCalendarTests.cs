@@ -47,4 +47,25 @@ public sealed class SeasonCalendarTests
 
         Assert.Equal(1, calendar.PostCount);
     }
+
+    [Fact]
+    public void AuthorsWithoutAWebsiteLinkToTheirGitHubProfile()
+    {
+        var season = Season.Create(2026, slotsPerDay: 2, Clock.GetUtcNow());
+        var github = new Contributor { GithubLogin = "ada-dev" };
+        Claim(season, part: 1, "Ada", website: null, github);
+        Claim(season, part: 2, "Grace", website: "https://grace.dev", github);
+
+        var day = SeasonCalendar.From(season, Schedule).Days[0];
+
+        Assert.Equal(["https://github.com/ada-dev", "https://grace.dev"], day.Entries.Select(e => e.AuthorUrl));
+    }
+
+    private static void Claim(Season season, int part, string name, string? website, Contributor contributor)
+    {
+        var slot = season.Slots.Single(s => s.Day == 1 && s.Part == part);
+        slot.AuthorName = name;
+        slot.AuthorUrl = website;
+        slot.Contributor = contributor;
+    }
 }

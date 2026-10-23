@@ -11,6 +11,7 @@ public sealed class ClaimForm
 
     [StringLength(200, ErrorMessage = "Keep the link to 200 characters or fewer.")]
     [HttpUrl(ErrorMessage = "Enter a full web address that starts with https:// or http://.")]
+    [NotSocialProfile]
     public string? Link { get; set; }
 
     [StringLength(200, ErrorMessage = "Keep comments to 200 characters or fewer.")]

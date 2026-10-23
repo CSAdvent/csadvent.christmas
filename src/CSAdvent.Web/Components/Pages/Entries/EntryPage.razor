@@ -32,6 +32,15 @@
                 <span class="font-medium">@entry.AuthorName</span>
             }
         </p>
+        @if (entry.AuthorLinks.Count > 0)
+        {
+            <ul class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm" aria-label="@($"{entry.AuthorName} on the web")">
+                @foreach (var link in entry.AuthorLinks)
+                {
+                    <li><a href="@link.Url" class="text-advent-700 underline">@link.Label</a></li>
+                }
+            </ul>
+        }
 
         <a href="@EntryLinks.Go(entry.Year, entry.Day, entry.Part, ClickVia)"
            class="mt-8 inline-flex items-center gap-2 rounded-xl bg-advent-600 px-6 py-3 text-lg font-semibold text-white shadow hover:bg-advent-700">

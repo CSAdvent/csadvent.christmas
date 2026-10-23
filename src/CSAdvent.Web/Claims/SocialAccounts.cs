@@ -44,8 +44,52 @@ public static partial class SocialAccounts
         return normalized is not null;
     }
 
+    /// <summary>Where an account's profile is on the web, from its normal form (<see cref="TryNormalize"/>).</summary>
+    public static string ProfileUrl(SocialPlatform platform, string normalized) => platform switch
+    {
+        SocialPlatform.Bluesky => $"https://bsky.app/profile/{normalized}",
+        SocialPlatform.Mastodon when normalized.Split('@', StringSplitOptions.RemoveEmptyEntries) is [var user, var host] => $"https://{host}/@{user}",
+        SocialPlatform.Reddit => $"https://www.reddit.com/user/{normalized}",
+        _ => normalized,
+    };
+
+    /// <summary>
+    /// Whether a link is a social media profile rather than someone's own site. The link for an author's name is for their
+    /// website or blog, because their social accounts have fields of their own.
+    /// </summary>
+    public static bool IsSocialProfile(string? url)
+    {
+        if (!Uri.TryCreate(url?.Trim(), UriKind.Absolute, out var uri))
+        {
+            return false;
+        }
+
+        var host = uri.Host.ToLowerInvariant();
+        if (SocialHosts.Any(social => IsHostOrSubdomain(host, social)))
+        {
+            return true;
+        }
+
+        // Mastodon profiles are https://{any server}/@user. Blogs and channels on these sites look the same.
+        return MastodonProfilePath().IsMatch(uri.AbsolutePath) && !NotMastodon.Any(site => IsHostOrSubdomain(host, site));
+    }
+
+    private static readonly string[] SocialHosts =
+    [
+        "bsky.app", "bsky.social", "twitter.com", "x.com", "linkedin.com", "facebook.com", "fb.com", "reddit.com",
+        "instagram.com", "threads.net", "threads.com", "tiktok.com",
+    ];
+
+    private static readonly string[] NotMastodon = ["medium.com", "substack.com", "youtube.com"];
+
+    private static bool IsHostOrSubdomain(string host, string domain) =>
+        host == domain || host.EndsWith($".{domain}", StringComparison.Ordinal);
+
     private static string? Match(Regex pattern, string text, Func<Match, string> format) =>
         pattern.Match(text) is { Success: true } match ? format(match) : null;
+
+    [GeneratedRegex(@"^/@[a-z0-9_]{1,30}/?$", RegexOptions.IgnoreCase)]
+    private static partial Regex MastodonProfilePath();
 
     // "alice.bsky.social", "@alice.bsky.social", "https://bsky.app/profile/alice.bsky.social"
     [GeneratedRegex(@"^(?:https?://bsky\.app/profile/|@)?(?<handle>(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,61}[a-z0-9])/?$", RegexOptions.IgnoreCase)]
@@ -71,6 +115,16 @@ public static partial class SocialAccounts
     // "alice", "u/alice", "/u/alice", "https://www.reddit.com/user/alice"
     [GeneratedRegex(@"^(?:(?:https?://)?(?:www\.|old\.)?reddit\.com/(?:u|user)/|/?u/)?(?<user>[a-z0-9_-]{3,20})/?$", RegexOptions.IgnoreCase)]
     private static partial Regex RedditPattern();
+}
+
+/// <summary>A link that isn't a social media profile (<see cref="SocialAccounts.IsSocialProfile"/>). Empty is allowed.</summary>
+public sealed class NotSocialProfileAttribute : ValidationAttribute
+{
+    public const string Message = "That's a social media profile. Add it under Social accounts: this link is for your website or blog.";
+
+    public NotSocialProfileAttribute() => ErrorMessage = Message;
+
+    public override bool IsValid(object? value) => !SocialAccounts.IsSocialProfile(value as string);
 }
 
 /// <summary>A valid account on <paramref name="platform"/> in any form <see cref="SocialAccounts"/> accepts. Empty is allowed.</summary>

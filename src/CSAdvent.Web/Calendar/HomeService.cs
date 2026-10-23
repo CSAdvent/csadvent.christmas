@@ -25,10 +25,10 @@ public sealed class HomeService(AdventDbContext db, AdventSchedule schedule, Sea
 
         if (plan.CalendarYear is { } year)
         {
-            // One query for the season and all of its slots.
+            // One query for the season and all of its slots, with their contributors for the GitHub links.
             var season = await db.Seasons
                 .AsNoTracking()
-                .Include(s => s.Slots)
+                .Include(s => s.Slots).ThenInclude(slot => slot.Contributor)
                 .SingleAsync(s => s.Year == year, cancellationToken);
 
             return new HomePage(SeasonCalendar.From(season, schedule), LastSeason: null, NextSeason: null);
