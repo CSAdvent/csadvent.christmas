@@ -1,0 +1,85 @@
+@using System.Globalization
+@using CSAdvent.Web.Claims
+@using CSAdvent.Web.Data
+@using CSAdvent.Web.Social.Posting
+@using Microsoft.Extensions.Options
+@inject IOptions<SocialPostingOptions> Posting
+
+@* How each platform's announcements go out (#61): its mode, and a check of its credentials. Not tied to a season. *@
+<section class="mt-6 max-w-4xl rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
+    <h2 class="font-semibold text-slate-900">How each platform is posted</h2>
+    <p class="mt-1 text-sm text-slate-600">
+        <strong>Automatic</strong> platforms post each entry on its day at @Time(1) (post 1) and @Time(2) (post 2) Eastern,
+        or as soon as its link arrives after that. <strong>Manual</strong> ones are posted from this page by hand, and
+        <strong>Off</strong> ones aren't posted or shown here. The test season is never posted automatically.
+    </p>
+    <table class="mt-3 w-full text-left text-sm">
+        <tbody class="divide-y divide-slate-200">
+            @foreach (var platform in Platforms)
+            {
+                <tr class="align-top">
+                    <th scope="row" class="py-2 pr-4 font-medium text-slate-900">@platform.Platform</th>
+                    <td class="py-2 pr-4">
+                        <form method="post" action="manage/social/mode" class="flex items-center gap-2">
+                            <AntiforgeryToken />
+                            <input type="hidden" name="Platform" value="@platform.Platform" />
+                            <input type="hidden" name="ReturnUrl" value="@ReturnUrl" />
+                            <select name="Mode" aria-label="@($"How {platform.Platform} is posted")" class="rounded-lg border border-slate-300 bg-white px-2 py-1">
+                                @foreach (var mode in Enum.GetValues<SocialPostingMode>().Where(m => m is not SocialPostingMode.Automatic || platform.CanPostAutomatically || platform.Mode == m))
+                                {
+                                    <option value="@mode" selected="@(platform.Mode == mode)">@mode</option>
+                                }
+                            </select>
+                            <button type="submit" class="rounded-md bg-white px-2 py-1 font-medium text-slate-800 ring-1 ring-slate-300 hover:bg-slate-100">Save</button>
+                        </form>
+                    </td>
+                    <td class="py-2 text-slate-600">
+                        @if (!SocialPublishers.Automatable.Contains(platform.Platform))
+                        {
+                            <span>Copy and paste only: there's no API access.</span>
+                        }
+                        else if (!platform.CanPostAutomatically)
+                        {
+                            <span>No credentials, so it's copy and paste.</span>
+                            @if (platform.Mode is SocialPostingMode.Automatic)
+                            {
+                                <span class="block font-medium text-red-700">Set to Automatic, but its credentials are gone, so nothing posts automatically.</span>
+                            }
+                        }
+                        else
+                        {
+                            <form method="post" action="manage/social/check" class="flex flex-wrap items-center gap-2">
+                                <AntiforgeryToken />
+                                <input type="hidden" name="Platform" value="@platform.Platform" />
+                                <input type="hidden" name="ReturnUrl" value="@ReturnUrl" />
+                                <span>@(platform.IsDryRun ? "Dry run: automatic posts are only logged." : "Credentials set.")</span>
+                                @if (platform.CheckedAt is { } checkedAt)
+                                {
+                                    <span class="@(platform.CheckError is null ? "text-green-800" : "font-medium text-red-700")">
+                                        Checked <LocalTime Value="checkedAt" />: @(platform.CheckError ?? "they work.")
+                                    </span>
+                                }
+                                <button type="submit" class="rounded-md bg-white px-2 py-1 font-medium text-slate-800 ring-1 ring-slate-300 hover:bg-slate-100">Check</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public required IReadOnlyList<PlatformPosting> Platforms { get; set; }
+
+    /// <summary>The social page to come back to after changing a mode or checking credentials.</summary>
+    [Parameter, EditorRequired]
+    public required string ReturnUrl { get; set; }
+
+    /// <summary>"10 AM", or "2:30 PM".</summary>
+    private string Time(int part) =>
+        Posting.Value.TimeFor(part) is var time && time.Minute == 0
+            ? time.ToString("h tt", CultureInfo.InvariantCulture)
+            : time.ToString("h:mm tt", CultureInfo.InvariantCulture);
+}

@@ -30,68 +30,7 @@
         <p class="mt-4 rounded-xl bg-red-50 p-4 font-medium text-red-800 ring-1 ring-red-200" role="alert">@error</p>
     }
 
-    <section class="mt-6 max-w-4xl rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
-        <h2 class="font-semibold text-slate-900">How each platform is posted</h2>
-        <p class="mt-1 text-sm text-slate-600">
-            <strong>Automatic</strong> platforms post each entry on its day at @Time(1) (post 1) and @Time(2) (post 2) Eastern,
-            or as soon as its link arrives after that. <strong>Manual</strong> ones are posted from this page by hand, and
-            <strong>Off</strong> ones aren't posted or shown here. The test season is never posted automatically.
-        </p>
-        <table class="mt-3 w-full text-left text-sm">
-            <tbody class="divide-y divide-slate-200">
-                @foreach (var platform in _platforms)
-                {
-                    <tr class="align-top">
-                        <th scope="row" class="py-2 pr-4 font-medium text-slate-900">@platform.Platform</th>
-                        <td class="py-2 pr-4">
-                            <form method="post" action="manage/social/mode" class="flex items-center gap-2">
-                                <AntiforgeryToken />
-                                <input type="hidden" name="Platform" value="@platform.Platform" />
-                                <input type="hidden" name="ReturnUrl" value="@DayLink(day.Year, day.Day)" />
-                                <select name="Mode" aria-label="@($"How {platform.Platform} is posted")" class="rounded-lg border border-slate-300 bg-white px-2 py-1">
-                                    @foreach (var mode in Enum.GetValues<SocialPostingMode>().Where(m => m is not SocialPostingMode.Automatic || platform.CanPostAutomatically || platform.Mode == m))
-                                    {
-                                        <option value="@mode" selected="@(platform.Mode == mode)">@mode</option>
-                                    }
-                                </select>
-                                <button type="submit" class="rounded-md bg-white px-2 py-1 font-medium text-slate-800 ring-1 ring-slate-300 hover:bg-slate-100">Save</button>
-                            </form>
-                        </td>
-                        <td class="py-2 text-slate-600">
-                            @if (!SocialPublishers.Automatable.Contains(platform.Platform))
-                            {
-                                <span>Copy and paste only: there's no API access.</span>
-                            }
-                            else if (!platform.CanPostAutomatically)
-                            {
-                                <span>No credentials, so it's copy and paste.</span>
-                                @if (platform.Mode is SocialPostingMode.Automatic)
-                                {
-                                    <span class="block font-medium text-red-700">Set to Automatic, but its credentials are gone, so nothing posts automatically.</span>
-                                }
-                            }
-                            else
-                            {
-                                <form method="post" action="manage/social/check" class="flex flex-wrap items-center gap-2">
-                                    <AntiforgeryToken />
-                                    <input type="hidden" name="Platform" value="@platform.Platform" />
-                                    <input type="hidden" name="ReturnUrl" value="@DayLink(day.Year, day.Day)" />
-                                    <span>@(platform.IsDryRun ? "Dry run: automatic posts are only logged." : "Credentials set.")</span>
-                                    @if (platform.CheckedAt is { } checkedAt)
-                                    {
-                                        <span class="@(platform.CheckError is null ? "text-green-800" : "font-medium text-red-700")">
-                                            Checked <LocalTime Value="checkedAt" />: @(platform.CheckError ?? "they work.")
-                                        </span>
-                                    }
-                                    <button type="submit" class="rounded-md bg-white px-2 py-1 font-medium text-slate-800 ring-1 ring-slate-300 hover:bg-slate-100">Check</button>
-                                </form>
-                            }
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </section>
+    <SocialPostingPanel Platforms="_platforms" ReturnUrl="@DayLink(day.Year, day.Day)" />
 
     <nav aria-label="Days" class="mt-6 flex flex-wrap gap-1 text-sm font-medium">
         @for (var d = 1; d <= Season.DaysInAdvent; d++)
@@ -229,7 +168,14 @@
 }
 else if (_loaded)
 {
+    <h1 class="text-3xl font-bold tracking-tight text-slate-900">Announcements</h1>
+    @if (ErrorMessage is { } error)
+    {
+        <p class="mt-4 rounded-xl bg-red-50 p-4 font-medium text-red-800 ring-1 ring-red-200" role="alert">@error</p>
+    }
+
     <NoCurrentSeason />
+    <SocialPostingPanel Platforms="_platforms" ReturnUrl="manage/social" />
 }
 
 @code {
@@ -259,6 +205,7 @@ else if (_loaded)
     protected override async Task OnInitializedAsync()
     {
         _loaded = true;
+        _platforms = await Modes.GetAsync();
         if ((Year ?? await Seasons.GetCurrentYearAsync()) is not { } year)
         {
             return;
@@ -269,7 +216,6 @@ else if (_loaded)
         _today = Schedule.GetDayOfAdvent(year, today);
         var day = Math.Clamp(DayOfAdvent ?? _today ?? (today < Schedule.GetDate(year, 1) ? 1 : Season.DaysInAdvent), 1, Season.DaysInAdvent);
         _day = await Social.GetDayAsync(year, day);
-        _platforms = await Modes.GetAsync();
     }
 
     private SocialPostingMode ModeOf(SocialPlatform platform) => _platforms.SingleOrDefault(p => p.Platform == platform)?.Mode ?? SocialPostingMode.Manual;
