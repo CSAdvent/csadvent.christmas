@@ -81,7 +81,16 @@ else if (Done == "saved")
                 </td>
                 <td class="py-2 pr-4">@season.ClaimedSpots of @season.Spots</td>
                 <td class="py-2 pr-4">@season.PendingRequests</td>
-                <td class="py-2 text-right"><a href="manage/seasons/@season.Year" class="text-advent-700 underline">Edit sign-ups</a></td>
+                <td class="py-2 text-right">
+                    @if (season.IsFinished)
+                    {
+                        <a href="manage/entries?year=@season.Year" class="text-slate-500 underline">Finished</a>
+                    }
+                    else
+                    {
+                        <a href="manage/seasons/@season.Year" class="text-advent-700 underline">Edit sign-ups</a>
+                    }
+                </td>
             </tr>
         }
     </tbody>

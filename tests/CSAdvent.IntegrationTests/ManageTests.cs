@@ -26,6 +26,23 @@ public sealed class ManageTests(AppHostFixture fixture)
     }
 
     [Fact]
+    public async Task PastSeasonsAreHistoryOpenedFromTheOverview()
+    {
+        using var organizer = await SignInAsOrganizerAsync();
+
+        // The archive's 2025 season is finished: the overview links into it, and nothing offers to change its sign-ups.
+        var overview = await organizer.GetStringAsync("/manage", CancellationToken);
+        Assert.Contains(">Past seasons</h2>", overview);
+        Assert.Contains("href=\"manage/entries?year=2025\"", overview);
+
+        var seasons = await organizer.GetStringAsync("/manage/seasons", CancellationToken);
+        Assert.DoesNotContain("href=\"manage/seasons/2025\"", seasons);
+        Assert.Contains("so its sign-ups can", await organizer.GetStringAsync("/manage/seasons/2025", CancellationToken));
+
+        Assert.Contains("C# Advent 2025 is over, so this is its history.", await organizer.GetStringAsync("/manage/entries?year=2025", CancellationToken));
+    }
+
+    [Fact]
     public async Task OrganizersCreateSeasonsWithSignUpsInTheRevealTimeZone()
     {
         using var organizer = await SignInAsOrganizerAsync();

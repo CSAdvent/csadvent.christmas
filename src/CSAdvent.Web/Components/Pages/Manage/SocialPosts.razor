@@ -13,6 +13,7 @@
 @if (_day is { } day)
 {
     <h1 class="text-3xl font-bold tracking-tight text-slate-900">Announcements for December @day.Day, @day.Year</h1>
+    <PastSeasonNotice Year="day.Year" />
     <p class="mt-2 max-w-3xl text-slate-600">
         One post per entry on each platform, with the same content everywhere. Copy each one (or open the composer where
         there is one), post it, then mark it posted. Links go to the entry's page, tagged with the platform.
@@ -132,7 +133,7 @@
 }
 else if (_loaded)
 {
-    <p class="text-slate-600">There's no season yet. <a href="manage/seasons" class="text-advent-700 underline">Create one</a> first.</p>
+    <NoCurrentSeason />
 }
 
 @code {

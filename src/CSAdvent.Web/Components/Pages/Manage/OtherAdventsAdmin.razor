@@ -12,6 +12,7 @@
     <nav class="mb-4 text-sm font-medium"><a href="manage/content" class="text-advent-700 hover:underline">← All content</a></nav>
 
     <h1 class="text-3xl font-bold tracking-tight text-slate-900">Other Advents for @year</h1>
+    <PastSeasonNotice Year="year" />
     <p class="mt-2 max-w-2xl text-slate-600">The list on the <a href="others" class="text-advent-700 underline">Other Advents</a> page. Each season has its own, so last year's stays with last year.</p>
     <p class="mt-2 max-w-2xl text-slate-600">Logos are fetched from each site within a minute or so of adding it. If one doesn't look right, refresh it or upload a better one.</p>
 
@@ -99,7 +100,7 @@
 }
 else if (_loaded)
 {
-    <p class="text-slate-600">There's no season yet. <a href="manage/seasons" class="text-advent-700 underline">Create one</a> first.</p>
+    <NoCurrentSeason />
 }
 
 @code {

@@ -83,23 +83,6 @@ public sealed class HomeService(AdventDbContext db, AdventSchedule schedule, Sea
         var counting = today >= new DateOnly(season.Year, CountdownFrom.Month, CountdownFrom.Day) && today <= opensOn;
         return new UpcomingSeason(season.Year, opensOn, counting ? opensOn.DayNumber - today.DayNumber : null);
     }
-
-    /// <summary>
-    /// The current season is the earliest one that isn't over, so a season created early for next year never replaces
-    /// this year's. With none, it's the latest season. Organizer pages work on this season.
-    /// </summary>
-    public static (int? Year, bool IsOffSeason) SelectSeason(IReadOnlyList<int> yearsInOrder, Func<int, bool> isSeasonOver)
-    {
-        foreach (var year in yearsInOrder)
-        {
-            if (!isSeasonOver(year))
-            {
-                return (year, false);
-            }
-        }
-
-        return (yearsInOrder.Count > 0 ? yearsInOrder[^1] : null, true);
-    }
 }
 
 public sealed record SeasonDates(int Year, DateTimeOffset? ClaimsOpenAt, bool IsTesting = false);
