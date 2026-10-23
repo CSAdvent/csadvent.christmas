@@ -11,6 +11,10 @@ param domainName string
 @description('The web app\'s managed identity, which is allowed to send.')
 param webPrincipalId string
 
+// The email service, the sending domain and its sender are only ever created, never updated: re-applying the domain makes
+// Azure throw away its verification, which disconnects it and stops every email. So a change to their settings here only
+// applies to a new environment; change a live one in the portal.
+@onlyIfNotExists()
 resource emailService 'Microsoft.Communication/emailServices@2025-09-01' = {
   name: 'csadvent-email'
   location: 'global'
@@ -19,6 +23,7 @@ resource emailService 'Microsoft.Communication/emailServices@2025-09-01' = {
   }
 }
 
+@onlyIfNotExists()
 resource sendingDomain 'Microsoft.Communication/emailServices/domains@2025-09-01' = {
   parent: emailService
   name: 'mail.${domainName}'
@@ -30,6 +35,7 @@ resource sendingDomain 'Microsoft.Communication/emailServices/domains@2025-09-01
   }
 }
 
+@onlyIfNotExists()
 resource sender 'Microsoft.Communication/emailServices/domains/senderUsernames@2025-09-01' = {
   parent: sendingDomain
   name: 'donotreply'
