@@ -1,7 +1,7 @@
 @using System.Globalization
 
 <header class="mb-8">
-    <h1 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">C# Advent @Calendar.Year</h1>
+    <h1 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">@(Calendar.Year == CSAdvent.Web.Data.Season.TestYear ? "C# Advent test season" : $"C# Advent {Calendar.Year}")</h1>
     <p class="mt-2 max-w-2xl text-lg text-slate-600">Two new C# posts every day from December 1st to December 25th, written by the C# community.</p>
 
     <p class="mt-5 rounded-xl bg-slate-50 p-4 font-medium text-slate-800 ring-1 ring-slate-200" role="status">

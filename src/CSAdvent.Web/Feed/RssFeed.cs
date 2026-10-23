@@ -5,7 +5,6 @@ using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Content;
 using CSAdvent.Web.Data;
 using CSAdvent.Web.Entries;
-using CSAdvent.Web.SeasonTesting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -26,20 +25,20 @@ public sealed record FeedItem(int Year, int Day, int Part, int SlotsPerDay, stri
 /// entry's page on our site tagged <c>?via=rss</c>, never straight to the post. GUIDs come from the season, day and post,
 /// so editing a title or URL never makes an item look new.
 /// </summary>
-public sealed class RssFeed(AdventDbContext db, AdventSchedule schedule, TestSeasons testSeasons, IOptions<SiteOptions> site)
+public sealed class RssFeed(AdventDbContext db, AdventSchedule schedule, IOptions<SiteOptions> site)
 {
     public async Task<List<FeedItem>> GetItemsAsync(int? year = null, CancellationToken cancellationToken = default)
     {
         var slots = await db.Slots
             .AsNoTracking()
-            .Where(s => (year == null || s.SeasonYear == year) && s.PostTitle != null && s.PostUrl != null && s.AuthorName != null)
+            // Never the test season, even for its testers: feed readers remember items, and these are deleted afterwards.
+            .Where(s => (year == null || s.SeasonYear == year) && s.SeasonYear != Season.TestYear && s.PostTitle != null && s.PostUrl != null && s.AuthorName != null)
             .Select(s => new { s.SeasonYear, s.Day, s.Part, s.Season.SlotsPerDay, s.PostTitle, s.AuthorName })
             .ToListAsync(cancellationToken);
 
         // Only what's been revealed: the reveal time depends on the time zone, so it's checked here rather than in SQL (#5).
-        // Never a season being tested, even for its testers: feed readers remember items, and these are deleted afterwards.
         return [.. slots
-            .Where(s => !testSeasons.IsTesting(s.SeasonYear) && schedule.IsRevealed(s.SeasonYear, s.Day))
+            .Where(s => schedule.IsRevealed(s.SeasonYear, s.Day))
             .Select(s => new FeedItem(s.SeasonYear, s.Day, s.Part, s.SlotsPerDay, s.PostTitle!, s.AuthorName!, schedule.GetRevealTime(s.SeasonYear, s.Day)))
             .OrderByDescending(item => item.RevealedAt)
             .ThenBy(item => item.Part)];

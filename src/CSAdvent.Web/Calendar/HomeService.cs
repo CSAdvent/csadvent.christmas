@@ -13,12 +13,15 @@ public sealed class HomeService(AdventDbContext db, AdventSchedule schedule, Sea
 {
     public async Task<HomePage> GetAsync(CancellationToken cancellationToken = default)
     {
+        // The test season only exists here for a tester in test mode.
+        var inTestMode = access.InTestMode;
         var seasons = await db.Seasons
             .AsNoTracking()
+            .Where(s => s.Year != Season.TestYear || inTestMode)
             .OrderBy(s => s.Year)
-            .Select(s => new SeasonDates(s.Year, s.ClaimsOpenAt, s.TestingStartedAt != null))
+            .Select(s => new SeasonDates(s.Year, s.ClaimsOpenAt, s.Year == Season.TestYear))
             .ToListAsync(cancellationToken);
-        var plan = Plan(seasons, schedule, access.CanSee);
+        var plan = Plan(seasons, schedule);
 
         if (plan.CalendarYear is { } year)
         {
@@ -53,21 +56,20 @@ public sealed class HomeService(AdventDbContext db, AdventSchedule schedule, Sea
     /// latest finished season and says when the next one opens, if it's been created, counting the days from
     /// <see cref="CountdownFrom"/>.
     /// <para>
-    /// A season being tested is its testers' calendar (<paramref name="canSee"/>), whatever the date. Everyone else sees
-    /// it as it will be: still to come, with its real sign-up date, however far its rehearsal has got.
+    /// In test mode the test season is among the seasons, and it's the calendar shown, whatever the date.
     /// </para>
     /// </summary>
-    public static HomePlan Plan(IReadOnlyList<SeasonDates> seasonsInOrder, AdventSchedule schedule, Func<int, bool>? canSee = null)
+    public static HomePlan Plan(IReadOnlyList<SeasonDates> seasonsInOrder, AdventSchedule schedule)
     {
-        canSee ??= _ => true;
-        var shown = seasonsInOrder.FirstOrDefault(s => s.IsTesting ? canSee(s.Year) : schedule.IsCalendarShown(s.Year, s.ClaimsOpenAt));
+        var shown = seasonsInOrder.FirstOrDefault(s => s.IsTest)
+            ?? seasonsInOrder.FirstOrDefault(s => schedule.IsCalendarShown(s.Year, s.ClaimsOpenAt));
         if (shown is not null)
         {
             return new HomePlan(shown.Year, LastYear: null, NextSeason: null);
         }
 
-        var last = seasonsInOrder.LastOrDefault(s => !s.IsTesting && schedule.IsSeasonOver(s.Year));
-        var next = seasonsInOrder.FirstOrDefault(s => s.IsTesting || !schedule.IsSeasonOver(s.Year));
+        var last = seasonsInOrder.LastOrDefault(s => schedule.IsSeasonOver(s.Year));
+        var next = seasonsInOrder.FirstOrDefault(s => !schedule.IsSeasonOver(s.Year));
         return new HomePlan(CalendarYear: null, last?.Year, next is null ? null : Upcoming(next, schedule));
     }
 
@@ -85,7 +87,7 @@ public sealed class HomeService(AdventDbContext db, AdventSchedule schedule, Sea
     }
 }
 
-public sealed record SeasonDates(int Year, DateTimeOffset? ClaimsOpenAt, bool IsTesting = false);
+public sealed record SeasonDates(int Year, DateTimeOffset? ClaimsOpenAt, bool IsTest = false);
 
 /// <summary>Which season's calendar to show, or between seasons, the last finished season and the next one.</summary>
 public sealed record HomePlan(int? CalendarYear, int? LastYear, UpcomingSeason? NextSeason);

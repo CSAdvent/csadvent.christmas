@@ -14,6 +14,12 @@ public sealed class Season
     public const int DaysInAdvent = 25;
     public const int MaxSlotsPerDay = 2;
 
+    /// <summary>
+    /// The test season's key. It's never a real year, and it leaves room for date maths that adds a year (DateTime stops at
+    /// 9999). Only testers and organizers ever see it (<see cref="SeasonTesting.SeasonAccess"/>).
+    /// </summary>
+    public const int TestYear = 9000;
+
     public int Year { get; private set; }
 
     /// <summary>Posts per day. The first season (2017) had one; every season since has had two.</summary>
@@ -27,17 +33,17 @@ public sealed class Season
 
     public DateTimeOffset CreatedAt { get; private set; }
 
-    /// <summary>
-    /// While set, the season is being tested before its sign-ups open: only its testers and the organizers see its spots,
-    /// and finishing testing deletes everything done in it (<see cref="SeasonTesting.SeasonTestingService"/>).
-    /// </summary>
+    /// <summary>The test season only: when it was created or last reset (<see cref="SeasonTesting.SeasonTestingService"/>).</summary>
     public DateTimeOffset? TestingStartedAt { get; set; }
 
-    /// <summary>While testing, the date that stands in for December 1, so reveals, reminders and backup asks can be tried early.</summary>
+    /// <summary>The test season only: the date that stands in for December 1, so reveals, reminders and backup asks can be tried any time.</summary>
     public DateOnly? RehearsalStartsOn { get; set; }
 
-    /// <summary>Who can take part while the season is being tested, besides the organizers.</summary>
+    /// <summary>The test season only: who can see it and take part, besides the organizers.</summary>
     public List<SeasonTester> Testers { get; private set; } = [];
+
+    /// <summary>The hidden test season (<see cref="TestYear"/>), rather than a real one.</summary>
+    public bool IsTest => Year == TestYear;
 
     public List<Slot> Slots { get; private set; } = [];
 
@@ -77,7 +83,8 @@ internal sealed class SeasonConfiguration : IEntityTypeConfiguration<Season>
         {
             t.HasCheckConstraint("ck_seasons_year", $"year >= {Season.FirstYear}");
             t.HasCheckConstraint("ck_seasons_slots_per_day", $"slots_per_day BETWEEN 1 AND {Season.MaxSlotsPerDay}");
-            t.HasCheckConstraint("ck_seasons_rehearsal", "(testing_started_at IS NULL) = (rehearsal_starts_on IS NULL)");
+            // Only the test season has a rehearsal.
+            t.HasCheckConstraint("ck_seasons_rehearsal", $"(testing_started_at IS NULL) = (rehearsal_starts_on IS NULL) AND (rehearsal_starts_on IS NULL OR year = {Season.TestYear})");
         });
     }
 }

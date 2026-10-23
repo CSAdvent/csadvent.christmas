@@ -54,10 +54,10 @@ public sealed partial class BackupListService(
 {
     public async Task<BackupSignupAvailability?> GetAvailabilityAsync(int year, CancellationToken cancellationToken = default)
     {
-        var season = await db.Seasons.AsNoTracking().SingleOrDefaultAsync(s => s.Year == year, cancellationToken);
+        var season = access.CanSee(year) ? await db.Seasons.AsNoTracking().SingleOrDefaultAsync(s => s.Year == year, cancellationToken) : null;
         return season is null ? null
             : schedule.IsDayOver(year, Season.DaysInAdvent) ? BackupSignupAvailability.SeasonOver
-            : (season.TestingStartedAt is not null ? access.CanSee(year) : schedule.AreClaimsOpen(season.ClaimsOpenAt)) ? BackupSignupAvailability.Open
+            : season.IsTest || schedule.AreClaimsOpen(season.ClaimsOpenAt) ? BackupSignupAvailability.Open
             : BackupSignupAvailability.NotOpen;
     }
 
