@@ -14,12 +14,31 @@ public sealed record AuthorAccounts(string? Bluesky, string? Mastodon, string? L
 /// <summary>What every platform's announcement of an entry says. Only the formatting differs (<see cref="AnnouncementFormatter"/>).</summary>
 public sealed record Announcement(int Year, int Day, int Part, int SlotsPerDay, string Title, string Author, AuthorAccounts Accounts, string BaseUrl)
 {
+    /// <summary>What a test post says instead of the entry's day.</summary>
+    public string? Label { get; init; }
+
+    /// <summary>Where a test post links instead of an entry's page, relative to the base URL: "" is the home page.</summary>
+    public string? Path { get; init; }
+
     /// <summary>For example "C# Advent 2026, December 6, part 2".</summary>
-    public string When => SlotsPerDay > 1 ? $"C# Advent {Year}, December {Day}, part {Part}" : $"C# Advent {Year}, December {Day}";
+    public string When => Label ?? (SlotsPerDay > 1 ? $"C# Advent {Year}, December {Day}, part {Part}" : $"C# Advent {Year}, December {Day}");
 
     /// <summary>The entry's page on our site, tagged with the platform, so the visit is counted and the click goes through us.</summary>
-    public string Link(SocialPlatform platform) =>
-        EntryLinks.Absolute(BaseUrl, EntryLinks.Page(Year, Day, Part, platform.ToString().ToLowerInvariant()));
+    public string Link(SocialPlatform platform)
+    {
+        var via = platform.ToString().ToLowerInvariant();
+        return EntryLinks.Absolute(BaseUrl, Path is null ? EntryLinks.Page(Year, Day, Part, via) : $"{Path}?via={via}");
+    }
+
+    /// <summary>
+    /// A test post: formatted exactly as an announcement is, but plainly a test, about no entry, linking to the home page.
+    /// </summary>
+    public static Announcement Test(int year, string baseUrl) =>
+        new(year, 1, 1, 2, "Checking that C# Advent can post here automatically", "the C# Advent organizers", AuthorAccounts.None, baseUrl)
+        {
+            Label = "C# Advent test post (please ignore)",
+            Path = "",
+        };
 }
 
 /// <summary>An announcement ready for one platform.</summary>

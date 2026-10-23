@@ -68,6 +68,13 @@ public static class SocialEndpoints
             return Results.LocalRedirect(Back(form.ReturnUrl, null));
         });
 
+        // A real, public post of the latest entry's announcement, so organizers can see it as followers will.
+        group.MapPost("/test", async ([FromForm] SocialPlatformForm form, HttpContext context, SocialPostingService posting, CancellationToken cancellationToken) =>
+        {
+            var error = await posting.SendTestAsync(form.Platform, context.User.Identity?.Name ?? "organizer", cancellationToken);
+            return Results.LocalRedirect(Back(form.ReturnUrl, error is null ? null : "test-failed"));
+        });
+
         // Development only: run automatic posting as if it were the given time. With dry-run mode, nothing reaches a real account.
         if (app.Environment.IsDevelopment())
         {

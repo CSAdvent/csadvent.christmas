@@ -117,7 +117,7 @@ dotnet test
 
 ## 📣 Social Announcements
 
-- 🤖 **Automatic posting** to Mastodon, Bluesky and the Facebook Page: each platform is Automatic, Manual or Off on `/manage/social`, changed without a redeploy. Automatic ones post each entry at 10 AM (post 1) or 2 PM (post 2) Eastern on its day, or as soon as its link arrives after that, exactly once even with several replicas. Failures retry a few times, then show the platform's error with a **Retry now** button. Development and the tests use dry-run mode, which only logs, so they never reach a real account
+- 🤖 **Automatic posting** to Mastodon, Bluesky and the Facebook Page: each platform is Automatic, Manual or Off on `/manage/social`, changed without a redeploy. Automatic ones post each entry at 10 AM (post 1) or 2 PM (post 2) Eastern on its day, or as soon as its link arrives after that, exactly once even with several replicas. Failures retry a few times, then show the platform's error with a **Retry now** button. **Send a test post** posts a labelled test, formatted like an announcement, to check how posts look. Development and the tests use dry-run mode, which only logs, so they never reach a real account
 
 - 📋 **Organizers get every day's announcements at `/manage/social`**: one per post for Bluesky, Mastodon, LinkedIn, Facebook and Reddit, with the same content, each platform's formatting and limits, Copy buttons and composer links
 - ✅ **Mark as posted** keeps track of what's gone out where. Links go to our entry pages, tagged with the platform

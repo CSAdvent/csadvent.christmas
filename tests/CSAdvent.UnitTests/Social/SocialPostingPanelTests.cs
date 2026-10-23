@@ -38,5 +38,21 @@ public sealed class SocialPostingPanelTests : BunitContext
         Assert.Equal("Bluesky", check.QuerySelector("input[name='Platform']")!.GetAttribute("value"));
         Assert.Contains("No credentials, so it's copy and paste.", panel.Markup);
         Assert.Contains("Copy and paste only: there's no API access.", panel.Markup);
+        Assert.Equal("Bluesky", Assert.Single(panel.FindAll("form[action='manage/social/test']")).QuerySelector("input[name='Platform']")!.GetAttribute("value"));
+    }
+
+    [Fact]
+    public void TheLastTestPostIsLinked()
+    {
+        var panel = Render<SocialPostingPanel>(p => p
+            .Add(c => c.Platforms,
+            [
+                new PlatformPosting(SocialPlatform.Mastodon, SocialPostingMode.Manual, CanPostAutomatically: true, IsDryRun: false, CheckedAt: null, CheckError: null,
+                    TestedAt: new DateTimeOffset(2026, 10, 23, 22, 0, 0, TimeSpan.Zero), TestPostUrl: "https://mastodon.social/@csadvent/1"),
+            ])
+            .Add(c => c.ReturnUrl, "manage/social"));
+
+        Assert.Contains("Test post sent", panel.Markup);
+        Assert.Equal("https://mastodon.social/@csadvent/1", panel.Find("a[target='_blank']").GetAttribute("href"));
     }
 }

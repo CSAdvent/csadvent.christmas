@@ -2,6 +2,7 @@ using System.Text.Json;
 using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Cards;
 using CSAdvent.Web.Claims;
+using CSAdvent.Web.Content;
 using CSAdvent.Web.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -48,8 +49,20 @@ public sealed partial class SocialPostingService(
     SocialPublishers publishers,
     CardRenderer cards,
     IOptions<SocialPostingOptions> options,
+    IOptions<SiteOptions> site,
+    IOptions<SocialAccountsOptions> accounts,
+    IWebHostEnvironment environment,
     ILogger<SocialPostingService> logger)
 {
+    // The general share card ("C# Advent, two C# posts a day"), for a test post's link card.
+    private readonly Lazy<byte[]> _generalCard = new(() =>
+    {
+        using var stream = environment.WebRootFileProvider.GetFileInfo(CardLinks.General).CreateReadStream();
+        using var bytes = new MemoryStream();
+        stream.CopyTo(bytes);
+        return bytes.ToArray();
+    });
+
     public const string Automation = "automation";
 
     /// <summary>A post still marked as posting after this long was interrupted (a restart, say), and won't be tried again by itself.</summary>
@@ -113,6 +126,47 @@ public sealed partial class SocialPostingService(
             : null;
     }
 
+    /// <summary>
+    /// Posts a test post on the platform for an organizer to see: formatted exactly as automatic posting formats an
+    /// announcement, but plainly a test, about no entry, linking to the home page (<see cref="Announcement.Test"/>). It's a
+    /// real, public post, so it's for checking before the season. Returns the platform's error, or null if it went out.
+    /// </summary>
+    public async Task<string?> SendTestAsync(SocialPlatform platform, string sentBy, CancellationToken cancellationToken = default)
+    {
+        if (publishers.For(platform) is not { } publisher)
+        {
+            return "There are no credentials for it.";
+        }
+
+        var test = Announcement.Test(schedule.Today.Year, site.Value.BaseUrl);
+        var publication = new SocialPublication(
+            test.Year,
+            test.Day,
+            test.Part,
+            "C# Advent",
+            "Two new C# posts every day from December 1st to December 25th, written by the C# community.",
+            AnnouncementFormatter.Format(test, platform, accounts.Value),
+            _generalCard.Value)
+        {
+            Key = $"csadvent-test-{Guid.NewGuid():N}",
+        };
+
+        string? postUrl = null;
+        string? error = null;
+        try
+        {
+            postUrl = await publisher.PublishAsync(publication, cancellationToken);
+        }
+        catch (Exception exception) when (exception is SocialPublishException or HttpRequestException or JsonException
+            || (exception is TaskCanceledException && !cancellationToken.IsCancellationRequested))
+        {
+            error = exception is TaskCanceledException ? $"{platform} didn't answer in time." : exception.Message;
+        }
+
+        await modes.RecordTestAsync(platform, SafeUrl(postUrl), error, sentBy, cancellationToken);
+        return error;
+    }
+
     /// <summary>How long a failed post waits before its next try: 5 minutes, then 10, then 20.</summary>
     public static TimeSpan WaitAfter(int attempts) => TimeSpan.FromMinutes(5 * Math.Pow(2, Math.Max(0, attempts - 1)));
 
@@ -128,18 +182,10 @@ public sealed partial class SocialPostingService(
             return PostOutcome.Skipped;
         }
 
-        var publication = new SocialPublication(
-            day.Year,
-            day.Day,
-            entry.Part,
-            entry.Title,
-            Description(day, entry),
-            announcement,
-            cards.RenderEntry(new EntryCard(day.Year, day.Day, entry.Part, day.SlotsPerDay, entry.Title, entry.Author)));
         try
         {
-            var postUrl = await publisher.PublishAsync(publication, cancellationToken);
-            await RecordAsync(entry.SlotId, platform, SocialPostStatus.Posted, Uri.TryCreate(postUrl, UriKind.Absolute, out var uri) && uri.Scheme is "https" or "http" ? postUrl : null, null, now, cancellationToken);
+            var postUrl = await publisher.PublishAsync(Publication(day, entry, announcement), cancellationToken);
+            await RecordAsync(entry.SlotId, platform, SocialPostStatus.Posted, SafeUrl(postUrl), null, now, cancellationToken);
             return PostOutcome.Posted;
         }
         catch (Exception exception) when (exception is SocialPublishException or HttpRequestException or JsonException
@@ -221,6 +267,19 @@ public sealed partial class SocialPostingService(
                 .SetProperty(p => p.Attempts, options.Value.MaxAttempts)
                 .SetProperty(p => p.Error, "Interrupted while posting. Check the account before retrying, in case it went out."), cancellationToken);
     }
+
+    private SocialPublication Publication(AnnouncementDay day, EntryAnnouncements entry, FormattedAnnouncement announcement) => new(
+        day.Year,
+        day.Day,
+        entry.Part,
+        entry.Title,
+        Description(day, entry),
+        announcement,
+        cards.RenderEntry(new EntryCard(day.Year, day.Day, entry.Part, day.SlotsPerDay, entry.Title, entry.Author)));
+
+    /// <summary>The post's address, if it's a web address (the column only takes those).</summary>
+    private static string? SafeUrl(string? postUrl) =>
+        Uri.TryCreate(postUrl, UriKind.Absolute, out var uri) && uri.Scheme is "https" or "http" ? postUrl : null;
 
     /// <summary>What a link card says under the title, like the entry page's preview.</summary>
     public static string Description(AnnouncementDay day, EntryAnnouncements entry) =>

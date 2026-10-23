@@ -36,6 +36,12 @@ public sealed class SocialPlatformSetting
 
     /// <summary>Why the last check failed, or null if it passed.</summary>
     public string? CheckError { get; set; }
+
+    /// <summary>When an organizer last sent a test post.</summary>
+    public DateTimeOffset? TestedAt { get; set; }
+
+    /// <summary>The last test post on the platform, if it went out and the platform gave its address.</summary>
+    public string? TestPostUrl { get; set; }
 }
 
 internal sealed class SocialPlatformSettingConfiguration : IEntityTypeConfiguration<SocialPlatformSetting>
@@ -47,5 +53,6 @@ internal sealed class SocialPlatformSettingConfiguration : IEntityTypeConfigurat
         builder.Property(s => s.Mode).HasConversion<string>().HasMaxLength(20);
         builder.Property(s => s.UpdatedBy).HasMaxLength(39);
         builder.Property(s => s.CheckError).HasMaxLength(1000);
+        builder.Property(s => s.TestPostUrl).HasMaxLength(500);
     }
 }

@@ -53,6 +53,26 @@ public sealed partial class SocialPostingTests(AppHostFixture fixture)
     }
 
     [Fact]
+    public async Task ATestPostGoesOutWithoutMarkingAnything()
+    {
+        using var organizer = await fixture.SignInAsync("organizer", AppHostFixture.OrganizerGitHubId);
+        int before;
+        await using (var db = await fixture.CreateDbContextAsync())
+        {
+            before = await db.SocialPosts.CountAsync(CancellationToken);
+        }
+
+        var sent = await PostPlatformFormAsync(organizer, "/manage/social/test", SocialPlatform.Bluesky, mode: null);
+
+        Assert.Equal(Page, TestBrowser.PathOf(sent.Headers.Location!));
+        Assert.Contains("(only logged: dry run)", await organizer.GetStringAsync(Page, CancellationToken));
+        await using (var db = await fixture.CreateDbContextAsync())
+        {
+            Assert.Equal(before, await db.SocialPosts.CountAsync(CancellationToken));
+        }
+    }
+
+    [Fact]
     public async Task OnlyPlatformsThatCanPostAutomaticallyCanBeAutomatic()
     {
         using var organizer = await fixture.SignInAsync("organizer", AppHostFixture.OrganizerGitHubId);
@@ -100,17 +120,24 @@ public sealed partial class SocialPostingTests(AppHostFixture fixture)
             .ToArrayAsync(CancellationToken);
     }
 
-    private async Task<HttpResponseMessage> SetModeAsync(HttpClient organizer, SocialPlatform platform, SocialPostingMode mode)
+    private Task<HttpResponseMessage> SetModeAsync(HttpClient organizer, SocialPlatform platform, SocialPostingMode mode) =>
+        PostPlatformFormAsync(organizer, "/manage/social/mode", platform, mode);
+
+    private async Task<HttpResponseMessage> PostPlatformFormAsync(HttpClient organizer, string action, SocialPlatform platform, SocialPostingMode? mode)
     {
         var html = await organizer.GetStringAsync(Page, CancellationToken);
         var fields = new Dictionary<string, string>
         {
             ["__RequestVerificationToken"] = System.Net.WebUtility.HtmlDecode(AntiforgeryToken().Match(html).Groups["token"].Value),
             ["Platform"] = platform.ToString(),
-            ["Mode"] = mode.ToString(),
             ["ReturnUrl"] = Page.TrimStart('/'),
         };
-        return await organizer.PostAsync("/manage/social/mode", new FormUrlEncodedContent(fields), CancellationToken);
+        if (mode is { } value)
+        {
+            fields["Mode"] = value.ToString();
+        }
+
+        return await organizer.PostAsync(action, new FormUrlEncodedContent(fields), CancellationToken);
     }
 
     [GeneratedRegex("<input[^>]*name=\"__RequestVerificationToken\"[^>]*value=\"(?<token>[^\"]+)\"")]
