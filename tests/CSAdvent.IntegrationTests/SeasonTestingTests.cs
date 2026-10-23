@@ -13,14 +13,12 @@ public sealed class SeasonTestingTests(AppHostFixture fixture)
 
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
-    private static DateOnly EasternToday =>
-        DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("America/New_York")).DateTime);
-
     [Fact]
     public async Task TestersTryTheHiddenTestSeasonAndResettingDeletesEverything()
     {
-        // December 1 five days ago in the rehearsal: Day 3 is revealed, and Day 20 is two weeks away.
-        using var organizer = await TestSeasonAsync(EasternToday.AddDays(-5));
+        // Today is December 6 in the rehearsal: Day 3 is revealed, and Day 20 is two weeks away.
+        using var organizer = await TestSeasonAsync(todayIs: 5);
+        Assert.Contains("today is <strong>December 6</strong>", await organizer.GetStringAsync(Page, CancellationToken));
         var invited = await organizer.PostFormAsync(Page, "tester", new() { ["Tester.Login"] = "@Testing-Tess" });
         Assert.Equal($"{Page}?done=added", TestBrowser.PathOf(invited.Headers.Location!));
 
@@ -89,9 +87,32 @@ public sealed class SeasonTestingTests(AppHostFixture fixture)
     }
 
     [Fact]
+    public async Task MovingTheRehearsalSendsTheNewDaysReminders()
+    {
+        // Today is December 18 in the rehearsal, and Day 20's author hasn't sent their post's link.
+        using var organizer = await TestSeasonAsync(todayIs: 17);
+        await using (var db = await fixture.CreateDbContextAsync())
+        {
+            var slot = await db.Slots.Include(s => s.Contact).SingleAsync(s => s.SeasonYear == TestYear && s.Day == 20 && s.Part == 2, CancellationToken);
+            slot.AuthorName = "Rehearsal Rae";
+            slot.PostUrl = null;
+            slot.Contact ??= new SlotContact { Email = "rae-rehearsal@example.com" };
+            await db.SaveChangesAsync(CancellationToken);
+        }
+
+        await RunRemindersAsync();
+        await fixture.WaitForEmailAsync("rae-rehearsal@example.com", "Your C# Advent post is due in 2 days (December 20)");
+
+        // Moving to the next day on the same real day sends that day's reminder: it isn't taken as already sent.
+        await organizer.PostFormAsync(Page, "move", new() { ["Move.TodayIs"] = "18" });
+        await RunRemindersAsync();
+        await fixture.WaitForEmailAsync("rae-rehearsal@example.com", "Your C# Advent post is due tomorrow (December 20)");
+    }
+
+    [Fact]
     public async Task ResettingNeedsConfirming()
     {
-        using var organizer = await TestSeasonAsync(EasternToday);
+        using var organizer = await TestSeasonAsync(todayIs: 0);
 
         var unconfirmed = await organizer.PostFormAsync(Page, "reset", new() { ["Reset.Confirm"] = "false" });
 
@@ -102,7 +123,7 @@ public sealed class SeasonTestingTests(AppHostFixture fixture)
     [Fact]
     public async Task EndingTestingDeletesTheTestSeason()
     {
-        using var organizer = await TestSeasonAsync(EasternToday);
+        using var organizer = await TestSeasonAsync(todayIs: 0);
         await organizer.PostFormAsync(Page, "tester", new() { ["Tester.Login"] = "testing-ted" });
         using var tester = await fixture.SignInAsync("testing-ted", 8203);
         await tester.GetAsync("/test-mode/on?returnUrl=%2F", CancellationToken);
@@ -137,17 +158,31 @@ public sealed class SeasonTestingTests(AppHostFixture fixture)
         Assert.Contains("Enter a year from 2017 to 8999.", await response.Content.ReadAsStringAsync(CancellationToken));
     }
 
-    /// <summary>Signs in as an organizer, creates the test season if there isn't one yet, and sets its rehearsal.</summary>
-    private async Task<HttpClient> TestSeasonAsync(DateOnly december1)
+    /// <summary>Runs the reminders at noon Eastern today, after they're due, whatever time the tests run.</summary>
+    private async Task RunRemindersAsync()
+    {
+        var eastern = TimeZoneInfo.FindSystemTimeZoneById("America/New_York");
+        var today = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, eastern).Date;
+        var noon = new DateTimeOffset(today.AddHours(12), eastern.GetUtcOffset(today.AddHours(12)));
+        using var client = fixture.CreateWebClient();
+        var response = await client.PostAsync($"/dev/reminders/run?at={Uri.EscapeDataString(noon.ToString("O", CultureInfo.InvariantCulture))}", null, CancellationToken);
+        response.EnsureSuccessStatusCode();
+    }
+
+    /// <summary>
+    /// Signs in as an organizer, creates the test season if there isn't one yet, and makes today the given day of its
+    /// rehearsal (0 is December 1).
+    /// </summary>
+    private async Task<HttpClient> TestSeasonAsync(int todayIs)
     {
         var organizer = await fixture.SignInAsync("organizer", AppHostFixture.OrganizerGitHubId);
-        var date = december1.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        var day = todayIs.ToString(CultureInfo.InvariantCulture);
         if ((await organizer.GetStringAsync(Page, CancellationToken)).Contains(">Create the test season</button>", StringComparison.Ordinal))
         {
-            await organizer.PostFormAsync(Page, "create", new() { ["Create.RehearsalStartsOn"] = date });
+            await organizer.PostFormAsync(Page, "create", new() { ["Create.TodayIs"] = day });
         }
 
-        await organizer.PostFormAsync(Page, "move", new() { ["Move.RehearsalStartsOn"] = date });
+        await organizer.PostFormAsync(Page, "move", new() { ["Move.TodayIs"] = day });
         return organizer;
     }
 }

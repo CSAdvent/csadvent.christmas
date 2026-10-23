@@ -85,7 +85,7 @@ public sealed partial class ReminderService(
             var content = ReminderEmails.PostLinkMissing(
                 new PostLinkReminder(slot.AuthorName, year, slot.Day, slot.Part, slot.SlotsPerDay, daysBefore),
                 site.Value);
-            if (await SendOnceAsync(ReminderKind.ContributorActionNeeded, today, slot.Id, now, content, new EmailRecipient(slot.Email, slot.AuthorName), cancellationToken))
+            if (await SendOnceAsync(ReminderKind.ContributorActionNeeded, schedule.InSeason(year, today), slot.Id, now, content, new EmailRecipient(slot.Email, slot.AuthorName), cancellationToken))
             {
                 sent++;
             }
@@ -143,7 +143,7 @@ public sealed partial class ReminderService(
                 site.Value,
                 optOut.CreateLink(recipient.First.Id));
             var to = new EmailRecipient(recipient.First.Email, recipient.First.AuthorName);
-            if (await SendOnceAsync(ReminderKind.ContributorDailyShare, today, recipient.First.Id, now, content, to, cancellationToken))
+            if (await SendOnceAsync(ReminderKind.ContributorDailyShare, schedule.InSeason(year, today), recipient.First.Id, now, content, to, cancellationToken))
             {
                 sent++;
             }

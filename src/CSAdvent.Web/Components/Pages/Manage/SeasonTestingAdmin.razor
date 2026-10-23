@@ -26,18 +26,28 @@
     <section class="mt-8 max-w-3xl rounded-xl bg-amber-50 p-5 ring-1 ring-amber-200">
         <h2 class="text-xl font-semibold text-slate-900">Testing since @Format(view.StartedAt)</h2>
         <p class="mt-2 text-slate-700">
-            In the rehearsal, December 1 is on <strong>@Format(view.RehearsalStartsOn)</strong>
-            @(Schedule.GetDayOfAdvent(CSAdvent.Web.Data.Season.TestYear, Schedule.Today) is { } day ? $"(today is December {day})." : ".")
-            Move it back to jump ahead: putting December 1 nine days ago makes today December 10.
+            In the rehearsal, today is <strong>@RehearsalDays.Describe(RehearsalDays.Today(Schedule.Today, view.RehearsalStartsOn))</strong>
+            (its December 1 is @Format(view.RehearsalStartsOn)). It moves on a day at a time, like the real thing. Pick another
+            day to jump ahead or go back: every day up to today is revealed, so it can't be claimed.
         </p>
         <EditForm Model="Move" FormName="move" OnValidSubmit="MoveAsync" class="mt-4 flex flex-wrap items-end gap-4">
             <DataAnnotationsValidator />
             <label class="flex flex-col text-sm font-medium text-slate-700">
-                December 1 is on
-                <InputDate @bind-Value="Move!.RehearsalStartsOn" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                Make today
+                <InputSelect @bind-Value="Move!.TodayIs" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal">
+                    @foreach (var day in RehearsalDays.Choices)
+                    {
+                        <option value="@day">@RehearsalDays.Describe(day)</option>
+                    }
+                </InputSelect>
             </label>
             <button type="submit" class="rounded-lg bg-white px-4 py-2 font-semibold text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50">Move the rehearsal</button>
+            <ValidationSummary class="w-full text-sm text-red-700" />
         </EditForm>
+        <p class="mt-3 text-sm text-slate-600">
+            Post link reminders go out 7, 5, 3, 2 and 1 days before an author's day, backup asks from 6 PM the evening before, and
+            the daily email at 9 AM on a day with posts.
+        </p>
 
         <EditForm Model="Run" FormName="run" OnSubmit="RunAsync" class="mt-4">
             <button type="submit" class="rounded-lg bg-white px-4 py-2 font-semibold text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50">Send due reminders and backup asks now</button>
@@ -110,12 +120,20 @@ else if (_loaded)
 {
     <section class="mt-8 max-w-3xl rounded-xl bg-slate-50 p-5 ring-1 ring-slate-200">
         <h2 class="text-xl font-semibold text-slate-900">Create the test season</h2>
-        <p class="mt-2 text-slate-700">Pick the date that stands in for December 1. Tomorrow means Day 1 is revealed at midnight tonight.</p>
+        <p class="mt-2 text-slate-700">
+            Choose what day today is in the rehearsal. Before December 1, testers can claim any day; you can jump ahead whenever
+            you like.
+        </p>
         <EditForm Model="Create" FormName="create" OnValidSubmit="CreateAsync" class="mt-4 flex flex-wrap items-end gap-4">
             <DataAnnotationsValidator />
             <label class="flex flex-col text-sm font-medium text-slate-700">
-                December 1 is on
-                <InputDate @bind-Value="Create!.RehearsalStartsOn" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                Today is
+                <InputSelect @bind-Value="Create!.TodayIs" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal">
+                    @foreach (var day in RehearsalDays.Choices)
+                    {
+                        <option value="@day">@RehearsalDays.Describe(day)</option>
+                    }
+                </InputSelect>
             </label>
             <button type="submit" class="rounded-lg bg-advent-600 px-4 py-2 font-semibold text-white hover:bg-advent-700">Create the test season</button>
             <ValidationSummary class="w-full text-sm text-red-700" />
@@ -192,7 +210,7 @@ else if (_loaded)
     protected override async Task OnInitializedAsync()
     {
         // Static rendering starts at the first await, so the forms need their models first.
-        Create ??= new RehearsalForm { RehearsalStartsOn = Schedule.Today.AddDays(1) };
+        Create ??= new RehearsalForm { TodayIs = -1 };
         Move ??= new RehearsalForm();
         Tester ??= new TesterForm();
         Run ??= new RunForm();
@@ -201,21 +219,21 @@ else if (_loaded)
         End ??= new EndTestingForm();
 
         _view = await Testing.GetAsync();
-        Move.RehearsalStartsOn ??= _view?.RehearsalStartsOn;
+        Move.TodayIs ??= _view is null ? null : Math.Clamp(RehearsalDays.Today(Schedule.Today, _view.RehearsalStartsOn), RehearsalDays.Earliest, RehearsalDays.Latest);
         _loaded = true;
     }
 
     private async Task CreateAsync()
     {
-        await Testing.CreateAsync(Create!.RehearsalStartsOn!.Value);
+        await Testing.CreateAsync(RehearsalDays.December1For(Schedule.Today, Create!.TodayIs!.Value));
         Back("created");
     }
 
     private async Task MoveAsync()
     {
-        if (Move!.RehearsalStartsOn is { } date)
+        if (Move!.TodayIs is { } day)
         {
-            await Testing.MoveAsync(date);
+            await Testing.MoveAsync(RehearsalDays.December1For(Schedule.Today, day));
         }
 
         Back("moved");
