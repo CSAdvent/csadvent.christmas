@@ -203,7 +203,15 @@ One-time setup (`<sub>` is the subscription ID):
 4. 📣 **Optional: automatic social posting** (#61). Add the credentials for any of these, and that platform can be switched to Automatic on `/manage/social` after the next deploy. Without them it stays copy and paste.
    - Mastodon: secret `MASTODON_ACCESS_TOKEN`, from an application on the account's server with the `write:statuses` scope.
    - Bluesky: secret `BLUESKY_APP_PASSWORD`, an app password for the `csadvent.christmas` account.
-   - Facebook: variable `FACEBOOK_PAGE_ID` and secret `FACEBOOK_PAGE_TOKEN`, a long-lived Page access token with `pages_manage_posts`.
+   - Facebook: variable `FACEBOOK_PAGE_ID` and secret `FACEBOOK_PAGE_TOKEN`, a **Page** token that never expires. It has to come from a long-lived user token, which takes a few steps:
+     1. On developers.facebook.com, create an app with the use case **Manage everything on your Page**, and add the permissions `pages_show_list`, `pages_read_engagement` and `pages_manage_posts`.
+     2. In the **Graph API Explorer**, pick the app, choose **Get User Access Token**, tick those three permissions, and generate it. In Facebook's dialog, select the C# Advent Page.
+     3. In the **Access Token Debugger**, paste that token and press **Extend Access Token**. The first token only lasts about an hour.
+     4. Back in the Graph API Explorer, with the extended token, run `GET me/accounts`. The C# Advent Page's `access_token` is `FACEBOOK_PAGE_TOKEN`, and its numeric `id` is `FACEBOOK_PAGE_ID`.
+     5. Check the Page token in the Access Token Debugger: **Type: Page**, **Expires: Never**, and all three permissions.
+     6. Switch the app to **Live** mode (it asks for the privacy policy, `https://csadvent.christmas/privacy`). Posts from an app in Development mode can be visible only to people with a role on it.
+
+     Changing the Facebook password, or losing the Page role, invalidates the Page token, so check it on `/manage/social` each November.
 
 The new revision of the site starts before the migrations job runs, so keep each migration safe for the code before it: add columns and tables first, and only remove them in a later release.
 
