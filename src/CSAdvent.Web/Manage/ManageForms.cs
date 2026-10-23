@@ -4,7 +4,8 @@ namespace CSAdvent.Web.Manage;
 
 public sealed class SeasonForm
 {
-    [Range(2017, 9998, ErrorMessage = "Enter a year from 2017 on.")]
+    // Below the test season (Season.TestYear).
+    [Range(2017, 8999, ErrorMessage = "Enter a year from 2017 to 8999.")]
     public int Year { get; set; }
 
     [Range(1, 2, ErrorMessage = "Choose one or two posts per day.")]

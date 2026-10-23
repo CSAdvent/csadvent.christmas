@@ -62,7 +62,7 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 - Pages render statically on the server. `CalendarGrid` renders a season's days for the home page and the archive. `CalendarEntry` never carries a post's title or link before its reveal.
 - **Home page** (`HomeService.Plan`): a season's calendar is shown from when its sign-ups open (or December 1, if that's sooner or sign-ups aren't scheduled) **until the end of December** (`AdventSchedule.IsCalendarShown`), earliest season first, so creating next year's season early never replaces this year's. Once every day is revealed, `CurrentSeason` says "That's a wrap" instead of counting spots.
 - **Between seasons** the home page is `OffSeason`: thanks for the latest finished season (posts and authors), the organizers' `between-seasons` content block, when the next season's registration opens (if the season exists and is scheduled), and the archive. From **September 1** (`HomeService.CountdownFrom`) it counts down the days ("33 days until registration opens!"). It's server-rendered, so there's no script.
-- Organizer pages work on the **current season** (`SeasonAdminService.GetCurrentYearAsync`): the earliest season whose last day isn't over. **When every season is finished there's no current season**, and Requests, Entries, Backups, Social, Other Advents and Testing show `NoCurrentSeason` rather than last year's data. Past seasons are opened from the overview's **Past seasons** list (`?year=`), where `PastSeasonNotice` says they're history. A finished season's sign-ups can't be edited.
+- Organizer pages work on the **current season** (`SeasonAdminService.GetCurrentYearAsync`): the earliest season whose last day isn't over. **When every season is finished there's no current season**, and Requests, Entries, Backups, Social and Other Advents show `NoCurrentSeason` rather than last year's data. Past seasons are opened from the overview's **Past seasons** list (`?year=`), where `PastSeasonNotice` says they're history. A finished season's sign-ups can't be edited.
 - Component tests use **bUnit** (`BunitContext`) in `tests/CSAdvent.UnitTests`. `CalendarFixtures` builds a season as seen on a given date with a fake clock.
 
 ## Sign-in
@@ -182,21 +182,16 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 
 ## Season Testing
 
-- Organizers test a season **before its sign-ups open** at `/manage/testing` (`SeasonTestingService`):
-  - **Start** with the date that stands in for December 1 (`seasons.rehearsal_starts_on`, set together with `testing_started_at`).
+- **The test season is a hidden season of its own**, keyed by `Season.TestYear` (9000: never a real year, and below 9999 so date maths that adds a year still works). It has nothing to do with the real seasons, so it can be used any time, including during Advent. The seasons form only accepts 2017 to 8999.
+- Organizers run it at `/manage/testing` (`SeasonTestingService`):
+  - **Create** it with the date that stands in for December 1 (`seasons.rehearsal_starts_on`; `testing_started_at` is when it was created or last reset). A check constraint allows a rehearsal on the test season only.
   - **Invite testers** by GitHub login (`season_testers`, stored lowercase; `@login` and profile URLs are accepted).
   - **Move the rehearsal** to jump ahead, and **send due reminders and backup asks now** rather than waiting for the worker.
-  - **Finish**, which deletes everything done in the season.
-- **Only an untouched season can be tested**: its sign-ups haven't opened and nothing has been done in it (`TestActivity`), so finishing can never delete a real contributor's spot.
-- **Finishing** clears every spot (author, link, post, contributor, contact, drop-out) and deletes the requests, backup list, offers, sent-email records, visits and social marks in one transaction. The transaction runs inside `CreateExecutionStrategy()`, because Aspire's database connection retries. The season, its sign-up date, its testers and its Other Advents list stay.
-- **The rehearsal moves every date.** `AdventSchedule.GetDate(year, day)` and `GetDayOfAdvent(year, date)` follow `TestSeasons`, an in-memory copy reloaded every 15 seconds by `TestSeasonsRefresher` and straight after an organizer changes something. Reveals, day ends, reminders, daily emails, backup asks, the calendar's "today" and the social screen all come from them. **Never write `new DateOnly(year, 12, day)`**; use `GetDate`.
-- **Only testers and organizers see a season being tested** (`SeasonAccess.CanSee`):
-  - They get its calendar on the home page, can claim and join its backup list whatever its sign-up date says, and see its entries. A banner on every page (`TestingBanner`) says it's a test.
-  - Everyone else sees it still waiting for sign-ups: the page between seasons counts down to its real registration date, claims and the backup list are closed, its entries, entry cards and `/go` links are 404s, and it's never in the archive.
-  - **RSS never includes a season being tested**, even for testers, because feed readers remember items.
-  - Background work has no signed-in user, so it sees everything.
-- Any new public page that reads a season's spots must check `SeasonAccess.CanSee` too.
-
+  - **Reset** it: every spot is cleared (author, link, post, contributor, contact, drop-out), and its requests, backup list, offers, sent-email records, visits and social marks are deleted, in one transaction inside `CreateExecutionStrategy()` (Aspire's database connection retries). The season, its rehearsal and its testers stay.
+- **The rehearsal moves every date.** `AdventSchedule.GetDate(year, day)` and `GetDayOfAdvent(year, date)` follow `TestSeasons`, an in-memory copy of the test season reloaded every 15 seconds by `TestSeasonsRefresher` and straight after an organizer changes something. Reveals, day ends, reminders, daily emails, backup asks, the calendar's "today" and the social screen all come from them. **Never write `new DateOnly(year, 12, day)`**; use `GetDate`.
+- **Only testers and organizers can see the test season** (`SeasonAccess.CanSee`). To everyone else it doesn't exist: its claim pages, backup list, entries, cards and `/go` links are 404s. It's never in RSS (feed readers remember items), and never the organizer pages' current season, history or seasons list.
+- **Test mode** (`/test-mode/on` and `/off`, a cookie) is what puts the test calendar on a tester's home page, and the test season in their archive. Outside test mode, testers and organizers see the real site. `TestingBanner` invites testers (not organizers) to switch, and reminds anyone in test mode how to switch back. The test season's own pages work for testers in either mode, and its organizer pages are the usual ones with `?year=9000`.
+- Any new public page that reads a season's spots must check `SeasonAccess.CanSee`. Emails about the test season say 9000 where a real one would say the year.
 ## Email
 
 - **Branded HTML with a plain-text alternative.** Each email is an `EmailContent` (subject, preview line, heading, blocks: paragraphs, lists, a button, details). `Email/BrandedEmail.razor` renders the HTML and `EmailText` the text, and `EmailComposer` does both, so they never drift apart. Templates live next to their feature, such as `Claims/ClaimEmails.cs`.

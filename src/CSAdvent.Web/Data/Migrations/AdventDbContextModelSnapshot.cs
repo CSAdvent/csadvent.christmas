@@ -16,7 +16,7 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261022212454_AddSeasonTesting";
+    public override string LastMigrationId => "20261023142314_LimitRehearsalsToTheTestSeason";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -495,7 +495,7 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
 
                 b.ToTable("seasons", t =>
                     {
-                        t.HasCheckConstraint("ck_seasons_rehearsal", "(testing_started_at IS NULL) = (rehearsal_starts_on IS NULL)");
+                        t.HasCheckConstraint("ck_seasons_rehearsal", "(testing_started_at IS NULL) = (rehearsal_starts_on IS NULL) AND (rehearsal_starts_on IS NULL OR year = 9000)");
 
                         t.HasCheckConstraint("ck_seasons_slots_per_day", "slots_per_day BETWEEN 1 AND 2");
 

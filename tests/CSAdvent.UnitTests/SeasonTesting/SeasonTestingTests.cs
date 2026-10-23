@@ -1,6 +1,5 @@
 using System.Collections.Frozen;
 using System.Security.Claims;
-using CSAdvent.UnitTests.Calendar;
 using CSAdvent.Web.Auth;
 using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Claims;
@@ -14,78 +13,64 @@ namespace CSAdvent.UnitTests.SeasonTesting;
 
 public sealed class SeasonTestingTests
 {
-    // An October 2026 rehearsal of the 2026 season: December 1 is on October 20.
+    private const int TestYear = Season.TestYear;
+
+    // The test season's rehearsal: December 1 is on October 20.
     private static readonly DateOnly October20 = new(2026, 10, 20);
     private static readonly DateTimeOffset October25Noon = new(2026, 10, 25, 12, 0, 0, TimeSpan.FromHours(-4));
 
-    private static TestSeasons Testing(params TestSeason[] seasons)
+    private static TestSeasons Testing(params string[] testers)
     {
         var testSeasons = new TestSeasons(null!);
-        testSeasons.Replace(seasons);
+        testSeasons.Replace([new TestSeason(TestYear, October20, testers.ToFrozenSet(StringComparer.OrdinalIgnoreCase))]);
         return testSeasons;
     }
-
-    private static TestSeason Rehearsal(int year = 2026, params string[] testers) =>
-        new(year, October20, testers.ToFrozenSet(StringComparer.OrdinalIgnoreCase));
 
     private static AdventSchedule Schedule(DateTimeOffset now, TestSeasons testSeasons) =>
         new(Options.Create(new AdventOptions { TimeZone = "America/New_York" }), new FakeTimeProvider(now), testSeasons);
 
     [Fact]
-    public void ARehearsalMovesEveryDayOfAdvent()
+    public void TheRehearsalMovesEveryDayOfTheTestSeason()
     {
-        var schedule = Schedule(October25Noon, Testing(Rehearsal()));
+        var schedule = Schedule(October25Noon, Testing());
 
-        Assert.Equal(October20, schedule.GetDate(2026, 1));
-        Assert.Equal(new DateOnly(2026, 11, 13), schedule.GetDate(2026, 25));
-        Assert.Equal(new DateTimeOffset(2026, 10, 25, 0, 0, 0, TimeSpan.FromHours(-4)), schedule.GetRevealTime(2026, 6));
-        Assert.Equal(new DateTimeOffset(2026, 10, 26, 0, 0, 0, TimeSpan.FromHours(-4)), schedule.GetDayEndTime(2026, 6));
-        Assert.Equal(6, schedule.GetDayOfAdvent(2026, new DateOnly(2026, 10, 25)));
-        Assert.True(schedule.IsRevealed(2026, 6));
-        Assert.False(schedule.IsRevealed(2026, 7));
+        Assert.Equal(October20, schedule.GetDate(TestYear, 1));
+        Assert.Equal(new DateOnly(2026, 11, 13), schedule.GetDate(TestYear, 25));
+        Assert.Equal(new DateTimeOffset(2026, 10, 25, 0, 0, 0, TimeSpan.FromHours(-4)), schedule.GetRevealTime(TestYear, 6));
+        Assert.Equal(new DateTimeOffset(2026, 10, 26, 0, 0, 0, TimeSpan.FromHours(-4)), schedule.GetDayEndTime(TestYear, 6));
+        Assert.Equal(6, schedule.GetDayOfAdvent(TestYear, new DateOnly(2026, 10, 25)));
+        Assert.True(schedule.IsRevealed(TestYear, 6));
+        Assert.False(schedule.IsRevealed(TestYear, 7));
     }
 
     [Fact]
-    public void OtherSeasonsKeepDecember()
+    public void RealSeasonsKeepDecember()
     {
-        var schedule = Schedule(October25Noon, Testing(Rehearsal()));
+        var schedule = Schedule(October25Noon, Testing());
 
-        Assert.Equal(new DateOnly(2025, 12, 6), schedule.GetDate(2025, 6));
-        Assert.Null(schedule.GetDayOfAdvent(2025, new DateOnly(2026, 10, 25)));
-        Assert.False(schedule.IsRehearsing(2025));
-        Assert.True(schedule.IsRehearsing(2026));
+        Assert.Equal(new DateOnly(2026, 12, 6), schedule.GetDate(2026, 6));
+        Assert.Null(schedule.GetDayOfAdvent(2026, new DateOnly(2026, 10, 25)));
+        Assert.False(schedule.IsRehearsing(2026));
+        Assert.True(schedule.IsRehearsing(TestYear));
     }
 
     [Fact]
-    public void ARehearsalCanFinishTheSeason()
+    public void TheRehearsalCanFinishTheTestSeason()
     {
-        var schedule = Schedule(new DateTimeOffset(2026, 11, 14, 12, 0, 0, TimeSpan.FromHours(-5)), Testing(Rehearsal()));
+        var schedule = Schedule(new DateTimeOffset(2026, 11, 14, 12, 0, 0, TimeSpan.FromHours(-5)), Testing());
 
-        Assert.True(schedule.IsSeasonOver(2026));
+        Assert.True(schedule.IsSeasonOver(TestYear));
     }
 
     [Fact]
-    public void TestersGetTheTestCalendar()
+    public void InTestModeTheHomePageShowsTheTestSeason()
     {
-        var schedule = Schedule(October25Noon, Testing(Rehearsal()));
-        SeasonDates[] seasons = [new(2025, null), new(2026, new DateTimeOffset(2026, 11, 1, 0, 0, 0, TimeSpan.FromHours(-4)), IsTesting: true)];
+        // Even during a real season's calendar, test mode is about the test season.
+        var schedule = Schedule(new DateTimeOffset(2026, 12, 3, 12, 0, 0, TimeSpan.FromHours(-5)), Testing());
+        SeasonDates[] seasons = [new(2026, new DateTimeOffset(2026, 11, 1, 0, 0, 0, TimeSpan.FromHours(-4))), new(TestYear, null, IsTest: true)];
 
-        Assert.Equal(2026, HomeService.Plan(seasons, schedule, canSee: _ => true).CalendarYear);
-    }
-
-    [Fact]
-    public void EveryoneElseStillSeesTheSeasonComing()
-    {
-        // Even after the rehearsal has revealed every day, the season isn't over for anyone but its testers.
-        var schedule = Schedule(new DateTimeOffset(2026, 11, 20, 12, 0, 0, TimeSpan.FromHours(-5)), Testing(Rehearsal()));
-        var opensAt = new DateTimeOffset(2026, 12, 1, 0, 0, 0, TimeSpan.FromHours(-5));
-        SeasonDates[] seasons = [new(2025, null), new(2026, opensAt, IsTesting: true)];
-
-        var plan = HomeService.Plan(seasons, schedule, canSee: _ => false);
-
-        Assert.Null(plan.CalendarYear);
-        Assert.Equal(2025, plan.LastYear);
-        Assert.Equal(new UpcomingSeason(2026, new DateOnly(2026, 12, 1), DaysUntilSignUps: 11), plan.NextSeason);
+        Assert.Equal(TestYear, HomeService.Plan(seasons, schedule).CalendarYear);
+        Assert.Equal(2026, HomeService.Plan([seasons[0]], schedule).CalendarYear);
     }
 
     [Theory]
@@ -94,7 +79,7 @@ public sealed class SeasonTestingTests
     [InlineData("Tess", true)]
     [InlineData("stranger", false)]
     [InlineData("", false)]
-    public void OnlyTestersAndOrganizersSeeASeasonBeingTested(string? who, bool canSee)
+    public void OnlyTestersAndOrganizersSeeTheTestSeason(string? who, bool canSee)
     {
         var http = new HttpContextAccessor();
         if (who is not null)
@@ -108,27 +93,34 @@ public sealed class SeasonTestingTests
             http.HttpContext = new DefaultHttpContext { User = user };
         }
 
-        var access = new SeasonAccess(Testing(Rehearsal(2026, "tess")), http, new StaticOptions(new AccountOptions { Admins = [1] }));
+        var access = Access(http, Testing("tess"));
 
-        Assert.Equal(canSee, access.CanSee(2026));
-        Assert.True(access.CanSee(2025));
-        Assert.Equal(canSee, access.Testing is not null);
+        Assert.Equal(canSee, access.CanSee(TestYear));
+        Assert.True(access.CanSee(2026));
+        Assert.Equal(canSee, access.TestSeason is not null);
     }
 
     [Fact]
-    public void TestersCanClaimBeforeSignUpsOpenAndNobodyElseCanAfter()
+    public void TestModeIsForTestersWithTheCookie()
     {
-        var season = CalendarFixtures.BuildSeason(claimsOpenAt: new DateTimeOffset(2026, 11, 1, 0, 0, 0, TimeSpan.FromHours(-4)));
-        season.TestingStartedAt = October25Noon;
+        var context = new DefaultHttpContext { User = SignedIn(2, "tess") };
+        context.Request.Headers.Cookie = $"{SeasonAccess.TestModeCookie}=on";
+        var http = new HttpContextAccessor { HttpContext = context };
+
+        Assert.True(Access(http, Testing("tess")).InTestMode);
+        Assert.False(Access(http, Testing("someone-else")).InTestMode);
+
+        // Without a test season there's nothing to switch to.
+        Assert.False(Access(http, new TestSeasons(null!)).InTestMode);
+    }
+
+    [Fact]
+    public void TheTestSeasonIsAlwaysOpenToTheTestersWhoCanSeeIt()
+    {
+        var season = Season.Create(TestYear, slotsPerDay: 2, October25Noon);
         var slot = season.Slots.Single(s => s.Day == 20 && s.Part == 2);
-        var schedule = Schedule(October25Noon, Testing(Rehearsal()));
 
-        Assert.Equal(ClaimAvailability.Open, ClaimService.CheckAvailability(season, slot, schedule, isTester: true));
-        Assert.Equal(ClaimAvailability.ClaimsNotOpen, ClaimService.CheckAvailability(season, slot, schedule, isTester: false));
-
-        // Past its sign-up date, a season still being tested stays closed to everyone else.
-        var later = Schedule(new DateTimeOffset(2026, 11, 2, 12, 0, 0, TimeSpan.FromHours(-5)), Testing(Rehearsal()));
-        Assert.Equal(ClaimAvailability.ClaimsNotOpen, ClaimService.CheckAvailability(season, slot, later, isTester: false));
+        Assert.Equal(ClaimAvailability.Open, ClaimService.CheckAvailability(season, slot, Schedule(October25Noon, Testing())));
     }
 
     [Theory]
@@ -144,6 +136,9 @@ public sealed class SeasonTestingTests
     [InlineData("a1234567890123456789012345678901234567890", null)]
     public void AcceptsGitHubLoginsInTheUsualForms(string input, string? expected) =>
         Assert.Equal(expected, SeasonTestingService.NormalizeLogin(input));
+
+    private static SeasonAccess Access(IHttpContextAccessor http, TestSeasons testSeasons) =>
+        new(testSeasons, http, new StaticOptions(new AccountOptions { Admins = [1] }));
 
     private static ClaimsPrincipal SignedIn(long githubUserId, string login) =>
         new(new ClaimsIdentity(AdventClaims.For(githubUserId, login, verifiedEmail: null, contributorId: 1), "test"));

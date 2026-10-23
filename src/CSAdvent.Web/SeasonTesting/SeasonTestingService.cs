@@ -7,40 +7,18 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CSAdvent.Web.SeasonTesting;
 
-public enum StartTestingOutcome
-{
-    Started,
-    NoSuchSeason,
-    AlreadyTesting,
-
-    /// <summary>Real people could be signing up, so their spots must never be wiped as test data.</summary>
-    SignUpsOpen,
-
-    /// <summary>The season already has spots, requests or backups that finishing testing would delete.</summary>
-    HasActivity,
-}
-
-/// <summary>What's been done in a season: everything finishing testing deletes.</summary>
+/// <summary>What's been done in the test season: everything resetting it deletes.</summary>
 public sealed record TestActivity(int Spots, int Requests, int BackupPosters, int BackupOffers, int Emails, int Visits, int SocialPosts)
 {
     public bool IsEmpty => Spots + Requests + BackupPosters + BackupOffers + Emails + Visits + SocialPosts == 0;
 }
 
-public sealed record TestingView(
-    int Year,
-    DateTimeOffset? ClaimsOpenAt,
-    DateTimeOffset? TestingStartedAt,
-    DateOnly? RehearsalStartsOn,
-    IReadOnlyList<string> Testers,
-    TestActivity Activity)
-{
-    public bool IsTesting => TestingStartedAt is not null;
-}
+public sealed record TestingView(DateTimeOffset StartedAt, DateOnly RehearsalStartsOn, IReadOnlyList<string> Testers, TestActivity Activity);
 
 /// <summary>
-/// Testing a season before its sign-ups open: invited testers try everything for real on the live site, following a
-/// rehearsal schedule, and finishing deletes everything they did. Only a season nobody has signed up for can be tested, so
-/// finishing can never delete a real contributor's spot.
+/// The hidden test season (<see cref="Season.TestYear"/>): invited testers try everything for real on the live site,
+/// following a rehearsal schedule, and resetting it deletes everything they did. It has nothing to do with the real seasons,
+/// so it can be used any time, including during Advent to try something new.
 /// </summary>
 public sealed partial class SeasonTestingService(
     AdventDbContext db,
@@ -49,71 +27,58 @@ public sealed partial class SeasonTestingService(
     ReminderService reminders,
     BackupService backups)
 {
-    public async Task<TestingView?> GetAsync(int year, CancellationToken cancellationToken = default)
+    private const int Year = Season.TestYear;
+
+    /// <summary>The test season, or null until an organizer creates it.</summary>
+    public async Task<TestingView?> GetAsync(CancellationToken cancellationToken = default)
     {
         var season = await db.Seasons
             .AsNoTracking()
-            .Where(s => s.Year == year)
-            .Select(s => new { s.Year, s.ClaimsOpenAt, s.TestingStartedAt, s.RehearsalStartsOn, Testers = s.Testers.OrderBy(t => t.GithubLogin).Select(t => t.GithubLogin).ToList() })
+            .Where(s => s.Year == Year && s.TestingStartedAt != null && s.RehearsalStartsOn != null)
+            .Select(s => new { s.TestingStartedAt, s.RehearsalStartsOn, Testers = s.Testers.OrderBy(t => t.GithubLogin).Select(t => t.GithubLogin).ToList() })
             .SingleOrDefaultAsync(cancellationToken);
 
         return season is null
             ? null
-            : new TestingView(season.Year, season.ClaimsOpenAt, season.TestingStartedAt, season.RehearsalStartsOn, season.Testers, await GetActivityAsync(year, cancellationToken));
+            : new TestingView(season.TestingStartedAt!.Value, season.RehearsalStartsOn!.Value, season.Testers, await GetActivityAsync(cancellationToken));
     }
 
-    public async Task<StartTestingOutcome> StartAsync(int year, DateOnly rehearsalStartsOn, CancellationToken cancellationToken = default)
+    /// <summary>Creates the test season, with every spot open. Returns false if it already exists.</summary>
+    public async Task<bool> CreateAsync(DateOnly rehearsalStartsOn, CancellationToken cancellationToken = default)
     {
-        var season = await db.Seasons.SingleOrDefaultAsync(s => s.Year == year, cancellationToken);
-        if (season is null)
-        {
-            return StartTestingOutcome.NoSuchSeason;
-        }
-
-        if (season.TestingStartedAt is not null)
-        {
-            return StartTestingOutcome.AlreadyTesting;
-        }
-
-        var now = timeProvider.GetUtcNow();
-        if (season.ClaimsOpenAt is { } opensAt && opensAt <= now)
-        {
-            return StartTestingOutcome.SignUpsOpen;
-        }
-
-        if (!(await GetActivityAsync(year, cancellationToken)).IsEmpty)
-        {
-            return StartTestingOutcome.HasActivity;
-        }
-
-        season.TestingStartedAt = now;
-        season.RehearsalStartsOn = rehearsalStartsOn;
-        await db.SaveChangesAsync(cancellationToken);
-        await testSeasons.RefreshAsync(cancellationToken);
-        return StartTestingOutcome.Started;
-    }
-
-    /// <summary>Moves the rehearsal, for example to jump ahead to a later day. Returns false if the season isn't being tested.</summary>
-    public async Task<bool> MoveAsync(int year, DateOnly rehearsalStartsOn, CancellationToken cancellationToken = default)
-    {
-        var moved = await db.Seasons
-            .Where(s => s.Year == year && s.TestingStartedAt != null)
-            .ExecuteUpdateAsync(s => s.SetProperty(x => x.RehearsalStartsOn, rehearsalStartsOn), cancellationToken);
-        await testSeasons.RefreshAsync(cancellationToken);
-        return moved > 0;
-    }
-
-    /// <summary>Adds a tester by GitHub login (or @login, or their GitHub profile URL). Returns false if it isn't a GitHub login.</summary>
-    public async Task<bool> AddTesterAsync(int year, string login, CancellationToken cancellationToken = default)
-    {
-        if (NormalizeLogin(login) is not { } normalized || !await db.Seasons.AnyAsync(s => s.Year == year, cancellationToken))
+        if (await db.Seasons.AnyAsync(s => s.Year == Year, cancellationToken))
         {
             return false;
         }
 
-        if (!await db.SeasonTesters.AnyAsync(t => t.SeasonYear == year && t.GithubLogin == normalized, cancellationToken))
+        var now = timeProvider.GetUtcNow();
+        var season = Season.Create(Year, Season.MaxSlotsPerDay, now);
+        season.TestingStartedAt = now;
+        season.RehearsalStartsOn = rehearsalStartsOn;
+        db.Seasons.Add(season);
+        await db.SaveChangesAsync(cancellationToken);
+        await testSeasons.RefreshAsync(cancellationToken);
+        return true;
+    }
+
+    /// <summary>Moves the rehearsal, for example to jump ahead to a later day.</summary>
+    public async Task MoveAsync(DateOnly rehearsalStartsOn, CancellationToken cancellationToken = default)
+    {
+        await db.Seasons.Where(s => s.Year == Year).ExecuteUpdateAsync(s => s.SetProperty(x => x.RehearsalStartsOn, rehearsalStartsOn), cancellationToken);
+        await testSeasons.RefreshAsync(cancellationToken);
+    }
+
+    /// <summary>Adds a tester by GitHub login (or @login, or their GitHub profile URL). Returns false if it isn't a GitHub login.</summary>
+    public async Task<bool> AddTesterAsync(string login, CancellationToken cancellationToken = default)
+    {
+        if (NormalizeLogin(login) is not { } normalized || !await db.Seasons.AnyAsync(s => s.Year == Year, cancellationToken))
         {
-            db.SeasonTesters.Add(new SeasonTester { SeasonYear = year, GithubLogin = normalized, AddedAt = timeProvider.GetUtcNow() });
+            return false;
+        }
+
+        if (!await db.SeasonTesters.AnyAsync(t => t.SeasonYear == Year && t.GithubLogin == normalized, cancellationToken))
+        {
+            db.SeasonTesters.Add(new SeasonTester { SeasonYear = Year, GithubLogin = normalized, AddedAt = timeProvider.GetUtcNow() });
             await db.SaveChangesAsync(cancellationToken);
         }
 
@@ -121,33 +86,34 @@ public sealed partial class SeasonTestingService(
         return true;
     }
 
-    public async Task RemoveTesterAsync(int year, string login, CancellationToken cancellationToken = default)
+    public async Task RemoveTesterAsync(string login, CancellationToken cancellationToken = default)
     {
         var normalized = login.Trim().ToLowerInvariant();
-        await db.SeasonTesters.Where(t => t.SeasonYear == year && t.GithubLogin == normalized).ExecuteDeleteAsync(cancellationToken);
+        await db.SeasonTesters.Where(t => t.SeasonYear == Year && t.GithubLogin == normalized).ExecuteDeleteAsync(cancellationToken);
         await testSeasons.RefreshAsync(cancellationToken);
     }
 
     /// <summary>Sends whatever reminders and backup asks are due now, rather than waiting up to 15 minutes for the worker.</summary>
-    public async Task<(ReminderRun Reminders, BackupRun Backups)> RunNowAsync(int year, CancellationToken cancellationToken = default)
+    public async Task<(ReminderRun Reminders, BackupRun Backups)> RunNowAsync(CancellationToken cancellationToken = default)
     {
         var now = timeProvider.GetUtcNow();
-        return (await reminders.RunAsync(now, cancellationToken), await backups.RunAsync(now, year, cancellationToken));
+        return (await reminders.RunAsync(now, cancellationToken), await backups.RunAsync(now, Year, cancellationToken));
     }
 
     /// <summary>
-    /// Ends testing and deletes everything done in the season: every spot is open again, and the requests, backup list, offers,
-    /// sent emails, visits and social posts are gone. The season itself, its sign-up date, its testers and its Other Advents
-    /// list stay. Returns what was deleted, or null if the season isn't being tested.
+    /// Deletes everything done in the test season: every spot is open again, and the requests, backup list, offers, sent
+    /// emails, visits and social posts are gone. The season, its rehearsal and its testers stay. Returns what was deleted, or
+    /// null if there's no test season.
     /// </summary>
-    public async Task<TestActivity?> FinishAsync(int year, CancellationToken cancellationToken = default)
+    public async Task<TestActivity?> ResetAsync(CancellationToken cancellationToken = default)
     {
-        if (!await db.Seasons.AnyAsync(s => s.Year == year && s.TestingStartedAt != null, cancellationToken))
+        if (!await db.Seasons.AnyAsync(s => s.Year == Year, cancellationToken))
         {
             return null;
         }
 
-        var deleted = await GetActivityAsync(year, cancellationToken);
+        var deleted = await GetActivityAsync(cancellationToken);
+        var now = timeProvider.GetUtcNow();
 
         // Aspire's database connection retries, which needs the whole transaction inside the retry: every step can run again.
         await db.Database.CreateExecutionStrategy().ExecuteAsync(
@@ -155,15 +121,15 @@ public sealed partial class SeasonTestingService(
             {
                 await using var transaction = await db.Database.BeginTransactionAsync(token);
                 // Offers point at both the backup list and the spots, so they go first.
-                await db.BackupOffers.Where(o => o.Slot.SeasonYear == year).ExecuteDeleteAsync(token);
-                await db.Substitutes.Where(s => s.SeasonYear == year).ExecuteDeleteAsync(token);
-                await db.SentReminders.Where(r => r.Slot != null && r.Slot.SeasonYear == year).ExecuteDeleteAsync(token);
-                await db.EntryHits.Where(h => h.Slot.SeasonYear == year).ExecuteDeleteAsync(token);
-                await db.SocialPosts.Where(p => p.Slot.SeasonYear == year).ExecuteDeleteAsync(token);
-                await db.ClaimRequests.Where(r => r.Slot.SeasonYear == year).ExecuteDeleteAsync(token);
-                await db.SlotContacts.Where(c => c.Slot.SeasonYear == year).ExecuteDeleteAsync(token);
+                await db.BackupOffers.Where(o => o.Slot.SeasonYear == Year).ExecuteDeleteAsync(token);
+                await db.Substitutes.Where(s => s.SeasonYear == Year).ExecuteDeleteAsync(token);
+                await db.SentReminders.Where(r => r.Slot != null && r.Slot.SeasonYear == Year).ExecuteDeleteAsync(token);
+                await db.EntryHits.Where(h => h.Slot.SeasonYear == Year).ExecuteDeleteAsync(token);
+                await db.SocialPosts.Where(p => p.Slot.SeasonYear == Year).ExecuteDeleteAsync(token);
+                await db.ClaimRequests.Where(r => r.Slot.SeasonYear == Year).ExecuteDeleteAsync(token);
+                await db.SlotContacts.Where(c => c.Slot.SeasonYear == Year).ExecuteDeleteAsync(token);
                 await db.Slots
-                    .Where(s => s.SeasonYear == year)
+                    .Where(s => s.SeasonYear == Year)
                     .ExecuteUpdateAsync(
                         s => s
                             .SetProperty(x => x.AuthorName, (string?)null)
@@ -173,11 +139,7 @@ public sealed partial class SeasonTestingService(
                             .SetProperty(x => x.ContributorId, (int?)null)
                             .SetProperty(x => x.DroppedOutAt, (DateTimeOffset?)null),
                         token);
-                await db.Seasons
-                    .Where(s => s.Year == year)
-                    .ExecuteUpdateAsync(
-                        s => s.SetProperty(x => x.TestingStartedAt, (DateTimeOffset?)null).SetProperty(x => x.RehearsalStartsOn, (DateOnly?)null),
-                        token);
+                await db.Seasons.Where(s => s.Year == Year).ExecuteUpdateAsync(s => s.SetProperty(x => x.TestingStartedAt, now), token);
                 await transaction.CommitAsync(token);
             },
             cancellationToken);
@@ -186,14 +148,14 @@ public sealed partial class SeasonTestingService(
         return deleted;
     }
 
-    private async Task<TestActivity> GetActivityAsync(int year, CancellationToken cancellationToken) => new(
-        await db.Slots.CountAsync(s => s.SeasonYear == year && (s.AuthorName != null || s.ContributorId != null || s.DroppedOutAt != null || s.PostUrl != null), cancellationToken),
-        await db.ClaimRequests.CountAsync(r => r.Slot.SeasonYear == year, cancellationToken),
-        await db.Substitutes.CountAsync(s => s.SeasonYear == year, cancellationToken),
-        await db.BackupOffers.CountAsync(o => o.Slot.SeasonYear == year, cancellationToken),
-        await db.SentReminders.CountAsync(r => r.Slot != null && r.Slot.SeasonYear == year, cancellationToken),
-        await db.EntryHits.CountAsync(h => h.Slot.SeasonYear == year, cancellationToken),
-        await db.SocialPosts.CountAsync(p => p.Slot.SeasonYear == year, cancellationToken));
+    private async Task<TestActivity> GetActivityAsync(CancellationToken cancellationToken) => new(
+        await db.Slots.CountAsync(s => s.SeasonYear == Year && (s.AuthorName != null || s.ContributorId != null || s.DroppedOutAt != null || s.PostUrl != null), cancellationToken),
+        await db.ClaimRequests.CountAsync(r => r.Slot.SeasonYear == Year, cancellationToken),
+        await db.Substitutes.CountAsync(s => s.SeasonYear == Year, cancellationToken),
+        await db.BackupOffers.CountAsync(o => o.Slot.SeasonYear == Year, cancellationToken),
+        await db.SentReminders.CountAsync(r => r.Slot != null && r.Slot.SeasonYear == Year, cancellationToken),
+        await db.EntryHits.CountAsync(h => h.Slot.SeasonYear == Year, cancellationToken),
+        await db.SocialPosts.CountAsync(p => p.Slot.SeasonYear == Year, cancellationToken));
 
     /// <summary>A GitHub login, lowercase, from "login", "@login" or a GitHub profile URL; null if it can't be one.</summary>
     public static string? NormalizeLogin(string? input)
@@ -213,7 +175,7 @@ public sealed partial class SeasonTestingService(
     private static partial Regex GitHubLogin();
 }
 
-public sealed class StartTestingForm
+public sealed class RehearsalForm
 {
     [Required(ErrorMessage = "Choose the date that stands in for December 1.")]
     public DateOnly? RehearsalStartsOn { get; set; }
@@ -226,8 +188,8 @@ public sealed class TesterForm
     public string Login { get; set; } = "";
 }
 
-public sealed class FinishTestingForm
+public sealed class ResetTestingForm
 {
-    [Range(typeof(bool), "true", "true", ErrorMessage = "Tick the box to confirm that everything done in this season should be deleted.")]
+    [Range(typeof(bool), "true", "true", ErrorMessage = "Tick the box to confirm that everything done in the test season should be deleted.")]
     public bool Confirm { get; set; }
 }

@@ -8,7 +8,7 @@ namespace CSAdvent.Web.Calendar;
 /// Past seasons, read from the same tables as the current one. A season joins the archive as soon as its last day is
 /// revealed, so there's no archiving step.
 /// </summary>
-/// <summary>Finished seasons. A season being tested can finish its rehearsal, but only its testers see it here.</summary>
+/// <summary>Finished seasons. The test season can finish its rehearsal, but it's only listed for testers in test mode.</summary>
 public sealed class ArchiveService(AdventDbContext db, AdventSchedule schedule, SeasonAccess access)
 {
     public async Task<IReadOnlyList<ArchivedSeasonSummary>> GetSeasonsAsync(CancellationToken cancellationToken = default)
@@ -18,7 +18,7 @@ public sealed class ArchiveService(AdventDbContext db, AdventSchedule schedule, 
             .Select(s => new ArchivedSeasonSummary(s.Year, s.Slots.Count(slot => slot.PostUrl != null)))
             .ToListAsync(cancellationToken);
 
-        return [.. seasons.Where(s => schedule.IsSeasonOver(s.Year) && access.CanSee(s.Year))];
+        return [.. seasons.Where(s => schedule.IsSeasonOver(s.Year) && (s.Year != Season.TestYear || access.InTestMode))];
     }
 
     /// <summary>The season's calendar, or null if there's no such season or it isn't over yet.</summary>

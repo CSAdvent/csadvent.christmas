@@ -33,18 +33,20 @@ public sealed record ClaimantDetails(string? VerifiedEmail, string? Bluesky, str
 /// </summary>
 public sealed class ClaimService(AdventDbContext db, AdventSchedule schedule, TimeProvider timeProvider, IClaimNotifier notifier, SeasonAccess access)
 {
-    /// <summary>
-    /// Whether the slot can be requested. In a season being tested, sign-ups are open to its testers (<paramref name="isTester"/>)
-    /// and closed to everyone else, whatever its sign-up date.
-    /// </summary>
-    public static ClaimAvailability CheckAvailability(Season season, Slot slot, AdventSchedule schedule, bool isTester = false) =>
-        !(season.TestingStartedAt is not null ? isTester : schedule.AreClaimsOpen(season.ClaimsOpenAt)) ? ClaimAvailability.ClaimsNotOpen
+    /// <summary>Whether the slot can be requested. The test season is always open, to the testers who can see it.</summary>
+    public static ClaimAvailability CheckAvailability(Season season, Slot slot, AdventSchedule schedule) =>
+        !(season.IsTest || schedule.AreClaimsOpen(season.ClaimsOpenAt)) ? ClaimAvailability.ClaimsNotOpen
         : schedule.IsRevealed(slot) ? ClaimAvailability.AlreadyRevealed
         : slot.IsClaimed ? ClaimAvailability.AlreadyClaimed
         : ClaimAvailability.Open;
 
     public async Task<ClaimableSlot?> FindAsync(int year, int day, int part, CancellationToken cancellationToken = default)
     {
+        if (!access.CanSee(year))
+        {
+            return null;
+        }
+
         var slot = await db.Slots
             .AsNoTracking()
             .Include(s => s.Season)
@@ -52,7 +54,7 @@ public sealed class ClaimService(AdventDbContext db, AdventSchedule schedule, Ti
 
         return slot is null
             ? null
-            : new ClaimableSlot(slot.Id, year, day, part, slot.Season.SlotsPerDay, CheckAvailability(slot.Season, slot, schedule, access.CanSee(year)));
+            : new ClaimableSlot(slot.Id, year, day, part, slot.Season.SlotsPerDay, CheckAvailability(slot.Season, slot, schedule));
     }
 
     /// <summary>

@@ -2,7 +2,6 @@ using System.Xml.Linq;
 using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Content;
 using CSAdvent.Web.Feed;
-using CSAdvent.Web.SeasonTesting;
 using Microsoft.Extensions.Options;
 
 namespace CSAdvent.UnitTests.Feed;
@@ -15,7 +14,6 @@ public sealed class RssFeedTests
     private static RssFeed CreateFeed() => new(
         null!,
         new AdventSchedule(Options.Create(new AdventOptions { TimeZone = "America/New_York" }), TimeProvider.System),
-        new TestSeasons(null!),
         Options.Create(new SiteOptions { ContactEmail = "hello@csadvent.christmas", BaseUrl = "https://csadvent.christmas" }));
 
     private static readonly FeedItem[] Items =

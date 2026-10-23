@@ -5,9 +5,9 @@ using Microsoft.Extensions.Options;
 namespace CSAdvent.Web.Calendar;
 
 /// <summary>
-/// When each day's posts are revealed: midnight on December {day} of the season's year, in the configured time zone. While
-/// a season is being tested, its days follow the rehearsal instead (<see cref="TestSeasons"/>), so everything built on
-/// these dates (reveals, reminders, backup asks) can be tried early. Reveal times are always computed, never stored.
+/// When each day's posts are revealed: midnight on December {day} of the season's year, in the configured time zone. The
+/// test season's days follow its rehearsal instead (<see cref="TestSeasons"/>), so everything built on these dates (reveals,
+/// reminders, backup asks) can be tried any time. Reveal times are always computed, never stored.
 /// </summary>
 public sealed class AdventSchedule
 {
@@ -23,7 +23,7 @@ public sealed class AdventSchedule
 
     public TimeZoneInfo TimeZone { get; }
 
-    /// <summary>The date of a day of Advent: December {day}, or the matching day of the season's rehearsal while it's being tested.</summary>
+    /// <summary>The date of a day of Advent: December {day}, or the matching day of the test season's rehearsal.</summary>
     public DateOnly GetDate(int year, int day)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(day, 1);
@@ -36,8 +36,8 @@ public sealed class AdventSchedule
     public int? GetDayOfAdvent(int year, DateOnly date) =>
         (date.DayNumber - GetDate(year, 1).DayNumber + 1) is var day and >= 1 and <= Season.DaysInAdvent ? day : null;
 
-    /// <summary>Whether the season is being tested, so its days follow a rehearsal rather than December.</summary>
-    public bool IsRehearsing(int year) => _testSeasons?.IsTesting(year) == true;
+    /// <summary>Whether the season's days follow a rehearsal rather than December: only the test season's do.</summary>
+    public bool IsRehearsing(int year) => _testSeasons?.Find(year) is not null;
 
     public DateTimeOffset GetRevealTime(int year, int day)
     {

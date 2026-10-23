@@ -30,8 +30,8 @@ public sealed record SeasonCalendar(
             season.SlotsPerDay,
             season.Notes,
             season.ClaimsOpenAt is { } opensAt ? DateOnly.FromDateTime(schedule.ToLocalTime(opensAt).DateTime) : null,
-            // Testers can claim spots in a season being tested; nobody else gets its calendar (SeasonAccess).
-            season.TestingStartedAt is not null || schedule.AreClaimsOpen(season.ClaimsOpenAt),
+            // The test season is always open to its testers; nobody else gets its calendar (SeasonAccess).
+            season.IsTest || schedule.AreClaimsOpen(season.ClaimsOpenAt),
             [.. season.Slots
                 .GroupBy(slot => slot.Day)
                 .OrderBy(day => day.Key)

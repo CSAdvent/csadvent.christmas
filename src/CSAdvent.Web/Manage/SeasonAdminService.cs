@@ -18,7 +18,9 @@ public sealed class SeasonAdminService(AdventDbContext db, AdventSchedule schedu
 {
     public async Task<List<SeasonSummary>> ListAsync(CancellationToken cancellationToken = default)
     {
+        // The test season has its own page (/manage/testing), and is never the current season or history.
         var seasons = await db.Seasons
+            .Where(s => s.Year != Season.TestYear)
             .OrderByDescending(s => s.Year)
             .Select(s => new
             {
@@ -44,7 +46,7 @@ public sealed class SeasonAdminService(AdventDbContext db, AdventSchedule schedu
     /// </summary>
     public async Task<int?> GetCurrentYearAsync(CancellationToken cancellationToken = default)
     {
-        var years = await db.Seasons.OrderBy(s => s.Year).Select(s => s.Year).ToListAsync(cancellationToken);
+        var years = await db.Seasons.Where(s => s.Year != Season.TestYear).OrderBy(s => s.Year).Select(s => s.Year).ToListAsync(cancellationToken);
         return CurrentYear(years, IsFinished);
     }
 
