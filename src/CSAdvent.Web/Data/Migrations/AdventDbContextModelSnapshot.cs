@@ -16,7 +16,7 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261023200116_AddGithubSocialCheckedAt";
+    public override string LastMigrationId => "20261023214801_AddAutomaticSocialPosting";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -684,6 +684,44 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                 b.ToTable("slot_contacts");
             });
 
+        modelBuilder.Entity("CSAdvent.Web.Data.SocialPlatformSetting", b =>
+            {
+                b.Property<string>("Platform")
+                    .HasMaxLength(20)
+                    .HasColumnType("character varying(20)")
+                    .HasColumnName("platform");
+
+                b.Property<string>("CheckError")
+                    .HasMaxLength(1000)
+                    .HasColumnType("character varying(1000)")
+                    .HasColumnName("check_error");
+
+                b.Property<DateTimeOffset?>("CheckedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("checked_at");
+
+                b.Property<string>("Mode")
+                    .IsRequired()
+                    .HasMaxLength(20)
+                    .HasColumnType("character varying(20)")
+                    .HasColumnName("mode");
+
+                b.Property<DateTimeOffset>("UpdatedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("updated_at");
+
+                b.Property<string>("UpdatedBy")
+                    .IsRequired()
+                    .HasMaxLength(39)
+                    .HasColumnType("character varying(39)")
+                    .HasColumnName("updated_by");
+
+                b.HasKey("Platform")
+                    .HasName("pk_social_platform_settings");
+
+                b.ToTable("social_platform_settings");
+            });
+
         modelBuilder.Entity("CSAdvent.Web.Data.SocialPost", b =>
             {
                 var id = b.Property<int>("Id")
@@ -696,6 +734,10 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                 b.Property<DateTimeOffset>("At")
                     .HasColumnType("timestamp with time zone")
                     .HasColumnName("at");
+
+                b.Property<int>("Attempts")
+                    .HasColumnType("integer")
+                    .HasColumnName("attempts");
 
                 b.Property<string>("Error")
                     .HasMaxLength(1000)

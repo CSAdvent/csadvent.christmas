@@ -117,6 +117,8 @@ dotnet test
 
 ## 📣 Social Announcements
 
+- 🤖 **Automatic posting** to Mastodon, Bluesky and the Facebook Page: each platform is Automatic, Manual or Off on `/manage/social`, changed without a redeploy. Automatic ones post each entry at 10 AM (post 1) or 2 PM (post 2) Eastern on its day, or as soon as its link arrives after that, exactly once even with several replicas. Failures retry a few times, then show the platform's error with a **Retry now** button. Development and the tests use dry-run mode, which only logs, so they never reach a real account
+
 - 📋 **Organizers get every day's announcements at `/manage/social`**: one per post for Bluesky, Mastodon, LinkedIn, Facebook and Reddit, with the same content, each platform's formatting and limits, Copy buttons and composer links
 - ✅ **Mark as posted** keeps track of what's gone out where. Links go to our entry pages, tagged with the platform
 
@@ -197,6 +199,10 @@ One-time setup (`<sub>` is the subscription ID):
 
 2. 🏷️ **A `production` environment** in the repository's settings, limited to the `main` branch, with these **variables**: `AZURE_CLIENT_ID` (the identity's client ID), `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_LOCATION` (`centralus`), `AZURE_RESOURCE_GROUP` (`rg-csadvent`), `PG_ADMIN_USERNAME` and `OAUTH_CLIENT_ID` (the production GitHub OAuth app's).
 3. 🔑 **Two secrets** in the same environment, `PG_ADMIN_PASSWORD` and `OAUTH_CLIENT_SECRET`. `gh secret set PG_ADMIN_PASSWORD --env production` asks for the value without echoing it. GitHub reserves names starting with `GITHUB_`, hence `OAUTH_`.
+4. 📣 **Optional: automatic social posting** (#61). Add the credentials for any of these, and that platform can be switched to Automatic on `/manage/social` after the next deploy. Without them it stays copy and paste.
+   - Mastodon: secret `MASTODON_ACCESS_TOKEN`, from an application on the account's server with the `write:statuses` scope.
+   - Bluesky: secret `BLUESKY_APP_PASSWORD`, an app password for the `csadvent.christmas` account.
+   - Facebook: variable `FACEBOOK_PAGE_ID` and secret `FACEBOOK_PAGE_TOKEN`, a long-lived Page access token with `pages_manage_posts`.
 
 The new revision of the site starts before the migrations job runs, so keep each migration safe for the code before it: add columns and tables first, and only remove them in a later release.
 

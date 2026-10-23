@@ -10,6 +10,12 @@ public enum SocialPostStatus
 
     /// <summary>Automatic posting (#61) tried and failed; <see cref="SocialPost.Error"/> says why.</summary>
     Failed,
+
+    /// <summary>
+    /// Automatic posting has claimed the announcement and is posting it. The claim is what stops two replicas or runs posting
+    /// it twice.
+    /// </summary>
+    Posting,
 }
 
 /// <summary>
@@ -37,6 +43,9 @@ public sealed class SocialPost
     public required string MarkedBy { get; set; }
 
     public string? Error { get; set; }
+
+    /// <summary>How many times automatic posting has tried. It gives up after a few, until an organizer retries.</summary>
+    public int Attempts { get; set; }
 }
 
 internal sealed class SocialPostConfiguration : IEntityTypeConfiguration<SocialPost>

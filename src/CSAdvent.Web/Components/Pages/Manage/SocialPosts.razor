@@ -1,10 +1,16 @@
 @page "/manage/social"
+@using System.Globalization
 @using CSAdvent.Web.Claims
 @using CSAdvent.Web.Data
 @using CSAdvent.Web.Social
+@using CSAdvent.Web.Social.Posting
+@using Microsoft.Extensions.Options
 @inject SeasonAdminService Seasons
 @inject SocialService Social
+@inject SocialPlatformModes Modes
+@inject IOptions<SocialPostingOptions> Posting
 @inject AdventSchedule Schedule
+@inject TimeProvider Clock
 
 <PageTitle>Social · Manage · C# Advent</PageTitle>
 
@@ -19,10 +25,73 @@
         there is one), post it, then mark it posted. Links go to the entry's page, tagged with the platform.
     </p>
 
-    @if (Error == "not-revealed")
+    @if (ErrorMessage is { } error)
     {
-        <p class="mt-4 rounded-xl bg-red-50 p-4 font-medium text-red-800 ring-1 ring-red-200" role="alert">That entry isn't revealed yet, so it can't be posted.</p>
+        <p class="mt-4 rounded-xl bg-red-50 p-4 font-medium text-red-800 ring-1 ring-red-200" role="alert">@error</p>
     }
+
+    <section class="mt-6 max-w-4xl rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
+        <h2 class="font-semibold text-slate-900">How each platform is posted</h2>
+        <p class="mt-1 text-sm text-slate-600">
+            <strong>Automatic</strong> platforms post each entry on its day at @Time(1) (post 1) and @Time(2) (post 2) Eastern,
+            or as soon as its link arrives after that. <strong>Manual</strong> ones are posted from this page by hand, and
+            <strong>Off</strong> ones aren't posted or shown here. The test season is never posted automatically.
+        </p>
+        <table class="mt-3 w-full text-left text-sm">
+            <tbody class="divide-y divide-slate-200">
+                @foreach (var platform in _platforms)
+                {
+                    <tr class="align-top">
+                        <th scope="row" class="py-2 pr-4 font-medium text-slate-900">@platform.Platform</th>
+                        <td class="py-2 pr-4">
+                            <form method="post" action="manage/social/mode" class="flex items-center gap-2">
+                                <AntiforgeryToken />
+                                <input type="hidden" name="Platform" value="@platform.Platform" />
+                                <input type="hidden" name="ReturnUrl" value="@DayLink(day.Year, day.Day)" />
+                                <select name="Mode" aria-label="@($"How {platform.Platform} is posted")" class="rounded-lg border border-slate-300 bg-white px-2 py-1">
+                                    @foreach (var mode in Enum.GetValues<SocialPostingMode>().Where(m => m is not SocialPostingMode.Automatic || platform.CanPostAutomatically || platform.Mode == m))
+                                    {
+                                        <option value="@mode" selected="@(platform.Mode == mode)">@mode</option>
+                                    }
+                                </select>
+                                <button type="submit" class="rounded-md bg-white px-2 py-1 font-medium text-slate-800 ring-1 ring-slate-300 hover:bg-slate-100">Save</button>
+                            </form>
+                        </td>
+                        <td class="py-2 text-slate-600">
+                            @if (!SocialPublishers.Automatable.Contains(platform.Platform))
+                            {
+                                <span>Copy and paste only: there's no API access.</span>
+                            }
+                            else if (!platform.CanPostAutomatically)
+                            {
+                                <span>No credentials, so it's copy and paste.</span>
+                                @if (platform.Mode is SocialPostingMode.Automatic)
+                                {
+                                    <span class="block font-medium text-red-700">Set to Automatic, but its credentials are gone, so nothing posts automatically.</span>
+                                }
+                            }
+                            else
+                            {
+                                <form method="post" action="manage/social/check" class="flex flex-wrap items-center gap-2">
+                                    <AntiforgeryToken />
+                                    <input type="hidden" name="Platform" value="@platform.Platform" />
+                                    <input type="hidden" name="ReturnUrl" value="@DayLink(day.Year, day.Day)" />
+                                    <span>@(platform.IsDryRun ? "Dry run: automatic posts are only logged." : "Credentials set.")</span>
+                                    @if (platform.CheckedAt is { } checkedAt)
+                                    {
+                                        <span class="@(platform.CheckError is null ? "text-green-800" : "font-medium text-red-700")">
+                                            Checked <LocalTime Value="checkedAt" />: @(platform.CheckError ?? "they work.")
+                                        </span>
+                                    }
+                                    <button type="submit" class="rounded-md bg-white px-2 py-1 font-medium text-slate-800 ring-1 ring-slate-300 hover:bg-slate-100">Check</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </section>
 
     <nav aria-label="Days" class="mt-6 flex flex-wrap gap-1 text-sm font-medium">
         @for (var d = 1; d <= Season.DaysInAdvent; d++)
@@ -51,10 +120,12 @@
             <h2 class="text-xl font-semibold text-slate-900">Post @entry.Part: @entry.Title <span class="font-normal text-slate-500">by @entry.Author</span></h2>
 
             <div class="mt-4 grid gap-4 lg:grid-cols-2">
-                @foreach (var platform in entry.Platforms)
+                @foreach (var platform in entry.Platforms.Where(p => ModeOf(p.Platform) is not SocialPostingMode.Off))
                 {
                     var id = $"announcement-{entry.SlotId}-{platform.Platform}";
                     var posted = entry.Posted.GetValueOrDefault(platform.Platform);
+                    var automatic = _platforms.Single(p => p.Platform == platform.Platform).IsAutomatic && day.Year != Season.TestYear;
+                    var byAutomation = posted?.MarkedBy == SocialPostingService.Automation;
                     <article class="flex flex-col rounded-xl p-4 ring-1 @(posted is { Status: SocialPostStatus.Posted } ? "bg-green-50 ring-green-200" : "bg-white ring-slate-200")">
                         <header class="flex items-center justify-between gap-2">
                             <h3 class="font-semibold text-slate-900">@platform.Platform</h3>
@@ -92,7 +163,21 @@
                         </div>
 
                         <div class="mt-auto pt-4">
-                            @if (posted is { Status: SocialPostStatus.Posted })
+                            @if (posted is { Status: SocialPostStatus.Posted } && byAutomation)
+                            {
+                                <p class="text-sm text-green-900">
+                                    Posted automatically, <LocalTime Value="posted.At" />
+                                    @if (posted.PostUrl is { } postUrl)
+                                    {
+                                        <a href="@postUrl" target="_blank" rel="noopener" class="ml-1 underline">view</a>
+                                    }
+                                </p>
+                            }
+                            else if (posted is { Status: SocialPostStatus.Posting })
+                            {
+                                <p class="text-sm font-medium text-slate-700">Posting now…</p>
+                            }
+                            else if (posted is { Status: SocialPostStatus.Posted })
                             {
                                 <form method="post" action="manage/social/unmark" class="flex flex-wrap items-center gap-2 text-sm text-green-900">
                                     <AntiforgeryToken />
@@ -113,7 +198,18 @@
                             {
                                 @if (posted is { Status: SocialPostStatus.Failed })
                                 {
-                                    <p class="mb-2 text-sm text-red-700">Automatic posting failed: @posted.Error</p>
+                                    <form method="post" action="manage/social/retry" class="mb-3 flex flex-wrap items-center gap-2 text-sm text-red-700">
+                                        <AntiforgeryToken />
+                                        <input type="hidden" name="SlotId" value="@entry.SlotId" />
+                                        <input type="hidden" name="Platform" value="@platform.Platform" />
+                                        <input type="hidden" name="ReturnUrl" value="@DayLink(day.Year, day.Day)" />
+                                        <span>Automatic posting failed (@Plural(posted.Attempts, "try", "tries")): @posted.Error</span>
+                                        <button type="submit" class="rounded-md bg-white px-2 py-1 font-medium text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50">Retry now</button>
+                                    </form>
+                                }
+                                else if (automatic)
+                                {
+                                    <p class="mb-2 text-sm text-slate-600">@AutomaticNote(day, entry.Part)</p>
                                 }
                                 <form method="post" action="manage/social/mark" class="flex flex-wrap items-center gap-2 text-sm">
                                     <AntiforgeryToken />
@@ -150,6 +246,16 @@ else if (_loaded)
     [SupplyParameterFromQuery]
     public string? Error { get; set; }
 
+    private IReadOnlyList<PlatformPosting> _platforms = [];
+
+    private string? ErrorMessage => Error switch
+    {
+        "not-revealed" => "That entry isn't revealed yet, so it can't be posted.",
+        "no-credentials" => "That platform has no credentials, so it can't post automatically.",
+        "retry-failed" => "Retrying didn't work. The post shows the platform's error.",
+        _ => null,
+    };
+
     protected override async Task OnInitializedAsync()
     {
         _loaded = true;
@@ -163,7 +269,33 @@ else if (_loaded)
         _today = Schedule.GetDayOfAdvent(year, today);
         var day = Math.Clamp(DayOfAdvent ?? _today ?? (today < Schedule.GetDate(year, 1) ? 1 : Season.DaysInAdvent), 1, Season.DaysInAdvent);
         _day = await Social.GetDayAsync(year, day);
+        _platforms = await Modes.GetAsync();
     }
+
+    private SocialPostingMode ModeOf(SocialPlatform platform) => _platforms.SingleOrDefault(p => p.Platform == platform)?.Mode ?? SocialPostingMode.Manual;
+
+    /// <summary>When an entry not posted yet goes out on a platform in Automatic mode. Only on its day, so never once that's passed.</summary>
+    private string AutomaticNote(AnnouncementDay day, int part)
+    {
+        var date = Schedule.GetDate(day.Year, day.Day);
+        if (Schedule.Today > date)
+        {
+            return "Its day has passed, so it isn't posted automatically. Post it by hand if it should still go out.";
+        }
+
+        var due = Schedule.Today == date && TimeOnly.FromDateTime(Schedule.ToLocalTime(Clock.GetUtcNow()).DateTime) >= Posting.Value.TimeFor(part);
+        return due
+            ? "Posts automatically within a few minutes. Or post it by hand and mark it below."
+            : $"Posts automatically at {Time(part)} Eastern on December {day.Day}. Or post it by hand and mark it below.";
+    }
+
+    /// <summary>"10 AM", or "2:30 PM".</summary>
+    private string Time(int part) =>
+        Posting.Value.TimeFor(part) is var time && time.Minute == 0
+            ? time.ToString("h tt", CultureInfo.InvariantCulture)
+            : time.ToString("h:mm tt", CultureInfo.InvariantCulture);
+
+    private static string Plural(int count, string one, string many) => string.Create(CultureInfo.InvariantCulture, $"{count} {(count == 1 ? one : many)}");
 
     private static string DayLink(int year, int day) => $"manage/social?year={year}&day={day}";
 }
