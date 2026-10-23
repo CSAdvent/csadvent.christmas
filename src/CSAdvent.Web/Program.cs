@@ -14,6 +14,7 @@ using CSAdvent.Web.Feed;
 using CSAdvent.Web.Manage;
 using CSAdvent.Web.Reminders;
 using CSAdvent.Web.Social;
+using CSAdvent.Web.Social.Posting;
 using CSAdvent.Web.Retention;
 using CSAdvent.Web.SeasonTesting;
 using Microsoft.AspNetCore.DataProtection;
@@ -70,6 +71,21 @@ if (builder.Configuration.GetValue("OtherAdvents:FetchLogosInBackground", defaul
     builder.Services.AddHostedService<OtherAdventLogoWorker>();
 }
 builder.Services.AddOptions<SocialAccountsOptions>().BindConfiguration(SocialAccountsOptions.SectionName);
+
+// Posts each day's announcements on the platforms in Automatic mode (#61). Without credentials a platform stays copy and
+// paste, and in development and the tests dry-run mode only logs what it would post.
+builder.Services.AddOptions<SocialPostingOptions>()
+    .BindConfiguration(SocialPostingOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddKeyedSingleton(SocialPublishers.ClientKey, (_, _) => SocialPublishers.CreateClient());
+builder.Services.AddScoped<SocialPublishers>();
+builder.Services.AddScoped<SocialPlatformModes>();
+builder.Services.AddScoped<SocialPostingService>();
+if (builder.Configuration.GetValue("SocialPosting:PostInBackground", defaultValue: true))
+{
+    builder.Services.AddHostedService<SocialPostingWorker>();
+}
 builder.AddEmail();
 builder.Services.AddScoped<IClaimNotifier, EmailClaimNotifier>();
 builder.Services.AddScoped<SampleEmailService>();

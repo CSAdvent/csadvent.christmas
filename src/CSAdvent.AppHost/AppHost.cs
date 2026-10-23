@@ -121,6 +121,25 @@ if (isPublish || builder.Configuration["Parameters:github-client-id"] is not nul
         .WithEnvironment("Accounts__GitHub__ClientSecret", builder.AddParameter("github-client-secret", secret: true));
 }
 
+// Automatic social posting (#61). Each platform's credentials are optional: one without them stays copy and paste. Only
+// published, so nothing run locally can post to C# Advent's real accounts (development uses dry-run mode instead).
+if (isPublish)
+{
+    foreach (var (parameter, setting, secret) in new[]
+    {
+        ("mastodon-access-token", "SocialPosting__Mastodon__AccessToken", true),
+        ("bluesky-app-password", "SocialPosting__Bluesky__AppPassword", true),
+        ("facebook-page-id", "SocialPosting__Facebook__PageId", false),
+        ("facebook-page-token", "SocialPosting__Facebook__PageToken", true),
+    })
+    {
+        if (builder.Configuration[$"Parameters:{parameter}"] is { Length: > 0 })
+        {
+            web.WithEnvironment(setting, builder.AddParameter(parameter, secret: secret));
+        }
+    }
+}
+
 if (builder.ExecutionContext.IsRunMode)
 {
     // Lets developers and the integration tests sign in as anyone without GitHub. The web app only honors it in Development.
@@ -135,6 +154,7 @@ if (isTesting)
     // RetentionTests and ReminderTests run these with a fake clock. The real-time background runs would race them.
     web.WithEnvironment("Retention__DeleteInBackground", "false");
     web.WithEnvironment("Reminders__SendInBackground", "false");
+    web.WithEnvironment("SocialPosting__PostInBackground", "false");
 
     // The tests never reach out to the Other Advents calendars' real sites.
     web.WithEnvironment("OtherAdvents__FetchLogosInBackground", "false");

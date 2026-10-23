@@ -17,7 +17,7 @@ public sealed record EntryAnnouncements(
     IReadOnlyList<FormattedAnnouncement> Platforms,
     IReadOnlyDictionary<SocialPlatform, SocialPost> Posted);
 
-public sealed record AnnouncementDay(int Year, int Day, bool IsRevealed, DateTimeOffset RevealsAt, IReadOnlyList<EntryAnnouncements> Entries);
+public sealed record AnnouncementDay(int Year, int Day, int SlotsPerDay, bool IsRevealed, DateTimeOffset RevealsAt, IReadOnlyList<EntryAnnouncements> Entries);
 
 public enum MarkOutcome
 {
@@ -71,7 +71,8 @@ public sealed class SocialService(
                 posts.Where(p => p.SlotId == s.Id).ToDictionary(p => p.Platform));
         });
 
-        return new AnnouncementDay(year, day, schedule.IsRevealed(year, day), schedule.GetRevealTime(year, day), [.. entries]);
+        var slotsPerDay = await db.Seasons.Where(s => s.Year == year).Select(s => s.SlotsPerDay).SingleOrDefaultAsync(cancellationToken);
+        return new AnnouncementDay(year, day, slotsPerDay, schedule.IsRevealed(year, day), schedule.GetRevealTime(year, day), [.. entries]);
     }
 
     /// <summary>Records that an entry was posted on a platform (or updates the record). Not before the entry's reveal.</summary>
