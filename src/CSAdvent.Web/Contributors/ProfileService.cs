@@ -42,7 +42,8 @@ public sealed class ProfileService(AdventDbContext db)
         return new ProfileForm
         {
             Name = contributor.DisplayName ?? latest?.AuthorName ?? fallbackName ?? contributor.GithubLogin,
-            Link = contributor.WebsiteUrl ?? latest?.AuthorUrl,
+            // An archive post's link can be a social media profile, which the website field doesn't take.
+            Link = contributor.WebsiteUrl ?? (SocialAccounts.IsSocialProfile(latest?.AuthorUrl) ? null : latest?.AuthorUrl),
             Bluesky = contributor.BlueskyHandle,
             Mastodon = contributor.MastodonHandle,
             LinkedIn = contributor.LinkedInUrl,
@@ -99,6 +100,7 @@ public sealed class ProfileForm
 
     [StringLength(200, ErrorMessage = "Keep the link to 200 characters or fewer.")]
     [HttpUrl(ErrorMessage = "Enter a full web address that starts with https:// or http://.")]
+    [NotSocialProfile]
     public string? Link { get; set; }
 
     /// <summary>Also put the name and link on every spot of theirs, not just the next one.</summary>

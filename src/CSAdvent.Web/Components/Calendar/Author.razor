@@ -1,4 +1,4 @@
-@* An entry's author, linked to their own site when they gave one. *@
+@* An entry's author, linked to their website, or to their GitHub profile if they didn't give one. *@
 @if (Entry.AuthorUrl is not null)
 {
     <a href="@Entry.AuthorUrl" class="text-slate-700 underline decoration-slate-300 decoration-1 underline-offset-2 hover:text-advent-700 hover:decoration-advent-700">@Entry.AuthorName</a>

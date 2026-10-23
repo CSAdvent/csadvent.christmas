@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using CSAdvent.Web.Claims;
 using CSAdvent.Web.Contributors;
 using CSAdvent.Web.Manage;
 
@@ -17,6 +18,10 @@ public sealed class ProfileFormTests
     [Fact]
     public void TheLinkMustBeHttp() =>
         Assert.Equal(["Enter a full web address that starts with https:// or http://."], Errors(new ProfileForm { Name = "Ada", Link = "javascript:alert(1)" }));
+
+    [Fact]
+    public void TheLinkIsAWebsiteNotASocialProfile() =>
+        Assert.Equal([NotSocialProfileAttribute.Message], Errors(new ProfileForm { Name = "Ada", Link = "https://x.com/ada" }));
 
     [Fact]
     public void SocialAccountsAreCheckedLikeTheClaimForm()

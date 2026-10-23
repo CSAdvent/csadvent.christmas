@@ -55,7 +55,7 @@
                     <InputText @bind-Value="Form!.Name" maxlength="50" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
                 </label>
                 <label class="flex flex-col text-sm font-medium text-slate-700">
-                    Link for their name <span class="font-normal text-slate-500">(optional)</span>
+                    Their website or blog <span class="font-normal text-slate-500">(optional; without one, their name links to their GitHub profile)</span>
                     <InputText @bind-Value="Form!.Link" type="url" maxlength="200" placeholder="https://" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
                 </label>
                 @if (author.Posts.Count > 0)

@@ -1,4 +1,5 @@
 using CSAdvent.Web.Data;
+using CSAdvent.Web.Entries;
 
 namespace CSAdvent.Web.Calendar;
 
@@ -52,9 +53,15 @@ public sealed record CalendarEntry(int Part, bool IsRevealed, string? AuthorName
     /// <summary>Nobody has claimed the slot.</summary>
     public bool IsOpen => AuthorName is null;
 
-    /// <summary>Before its reveal time, an entry never carries the post's title or link, so no page can leak them.</summary>
-    public static CalendarEntry From(Slot slot, bool isRevealed) =>
-        isRevealed
-            ? new(slot.Part, IsRevealed: true, slot.AuthorName, slot.AuthorUrl, slot.PostTitle, slot.PostUrl)
-            : new(slot.Part, IsRevealed: false, slot.AuthorName, slot.AuthorUrl, PostTitle: null, PostUrl: null);
+    /// <summary>
+    /// Before its reveal time, an entry never carries the post's title or link, so no page can leak them. The author's name
+    /// links to their website, or to their GitHub profile (with the slot's contributor loaded).
+    /// </summary>
+    public static CalendarEntry From(Slot slot, bool isRevealed)
+    {
+        var authorUrl = AuthorLinks.ForName(slot.AuthorUrl, slot.Contributor?.GithubLogin);
+        return isRevealed
+            ? new(slot.Part, IsRevealed: true, slot.AuthorName, authorUrl, slot.PostTitle, slot.PostUrl)
+            : new(slot.Part, IsRevealed: false, slot.AuthorName, authorUrl, PostTitle: null, PostUrl: null);
+    }
 }
