@@ -100,6 +100,34 @@ public sealed class SeasonTestingTests(AppHostFixture fixture)
     }
 
     [Fact]
+    public async Task EndingTestingDeletesTheTestSeason()
+    {
+        using var organizer = await TestSeasonAsync(EasternToday);
+        await organizer.PostFormAsync(Page, "tester", new() { ["Tester.Login"] = "testing-ted" });
+        using var tester = await fixture.SignInAsync("testing-ted", 8203);
+        await tester.GetAsync("/test-mode/on?returnUrl=%2F", CancellationToken);
+        Assert.Contains("Test mode.", await tester.GetStringAsync("/", CancellationToken));
+
+        var unconfirmed = await organizer.PostFormAsync(Page, "end", new() { ["End.Confirm"] = "false" });
+        Assert.Contains("Tick the box to confirm that the test season should be deleted.", await unconfirmed.Content.ReadAsStringAsync(CancellationToken));
+
+        var ended = await organizer.PostFormAsync(Page, "end", new() { ["End.Confirm"] = "true" });
+        Assert.Equal($"{Page}?done=ended", TestBrowser.PathOf(ended.Headers.Location!));
+        Assert.Contains(">Create the test season</button>", await organizer.GetStringAsync(Page, CancellationToken));
+
+        // A tester still in test mode just sees the real site.
+        var home = await tester.GetStringAsync("/", CancellationToken);
+        Assert.DoesNotContain("Test mode.", home);
+        Assert.DoesNotContain("C# Advent test season", home);
+        Assert.Equal(HttpStatusCode.NotFound, (await tester.GetAsync($"/claim/{TestYear}/20/1", CancellationToken)).StatusCode);
+
+        await using var db = await fixture.CreateDbContextAsync();
+        Assert.False(await db.Seasons.AnyAsync(s => s.Year == TestYear, CancellationToken));
+        Assert.False(await db.Slots.AnyAsync(s => s.SeasonYear == TestYear, CancellationToken));
+        Assert.False(await db.SeasonTesters.AnyAsync(t => t.SeasonYear == TestYear, CancellationToken));
+    }
+
+    [Fact]
     public async Task TheTestSeasonsYearCantBeARealSeason()
     {
         using var organizer = await fixture.SignInAsync("organizer", AppHostFixture.OrganizerGitHubId);
