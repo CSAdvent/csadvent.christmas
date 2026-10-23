@@ -68,10 +68,46 @@
             }
         </ul>
     }
+
+    @if (_history.Count > 0)
+    {
+        <section class="mt-12 max-w-3xl">
+            <h2 class="text-xl font-semibold text-slate-900">Your C# Advent history</h2>
+            <p class="mt-1 text-slate-600">@HistorySummary</p>
+            <ul class="mt-4 flex flex-col gap-4">
+                @foreach (var season in _history.GroupBy(p => p.Year))
+                {
+                    <li>
+                        <a href="@($"archive/{season.Key}")" class="font-semibold text-slate-900 hover:text-advent-700">C# Advent @season.Key</a>
+                        <ul class="mt-1 flex flex-col gap-1">
+                            @foreach (var post in season)
+                            {
+                                <li class="text-slate-700">
+                                    <span class="text-sm text-slate-500">@post.Spot:</span>
+                                    <a href="@post.EntryPage" class="text-advent-700 underline">@post.Title</a>
+                                </li>
+                            }
+                        </ul>
+                    </li>
+                }
+            </ul>
+        </section>
+    }
 }
 
 @code {
     private MySpotsOverview? _overview;
+    private IReadOnlyList<PastPost> _history = [];
+
+    private string HistorySummary
+    {
+        get
+        {
+            var seasons = _history.Select(p => p.Year).Distinct().Count();
+            var posts = _history.Count;
+            return $"Welcome back! You've written {posts} {(posts == 1 ? "post" : "posts")} across {seasons} {(seasons == 1 ? "season" : "seasons")}. Thank you.";
+        }
+    }
 
     [CascadingParameter]
     private Task<AuthenticationState> AuthenticationState { get; set; } = null!;
@@ -80,5 +116,6 @@
     {
         var user = (await AuthenticationState).User;
         _overview = await MySpots.GetOverviewAsync(user.GetContributorId() ?? 0);
+        _history = await MySpots.GetHistoryAsync(user.GetContributorId() ?? 0);
     }
 }

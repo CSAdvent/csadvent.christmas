@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using System.Text.RegularExpressions;
+using CSAdvent.Web.Auth;
 using CSAdvent.Web.Backups;
 using CSAdvent.Web.Data;
 using CSAdvent.Web.Reminders;
@@ -20,7 +20,7 @@ public sealed record TestingView(DateTimeOffset StartedAt, DateOnly RehearsalSta
 /// following a rehearsal schedule, and resetting it deletes everything they did. It has nothing to do with the real seasons,
 /// so it can be used any time, including during Advent to try something new.
 /// </summary>
-public sealed partial class SeasonTestingService(
+public sealed class SeasonTestingService(
     AdventDbContext db,
     TestSeasons testSeasons,
     TimeProvider timeProvider,
@@ -71,7 +71,7 @@ public sealed partial class SeasonTestingService(
     /// <summary>Adds a tester by GitHub login (or @login, or their GitHub profile URL). Returns false if it isn't a GitHub login.</summary>
     public async Task<bool> AddTesterAsync(string login, CancellationToken cancellationToken = default)
     {
-        if (NormalizeLogin(login) is not { } normalized || !await db.Seasons.AnyAsync(s => s.Year == Year, cancellationToken))
+        if (GitHubLogins.Normalize(login) is not { } normalized || !await db.Seasons.AnyAsync(s => s.Year == Year, cancellationToken))
         {
             return false;
         }
@@ -156,23 +156,6 @@ public sealed partial class SeasonTestingService(
         await db.SentReminders.CountAsync(r => r.Slot != null && r.Slot.SeasonYear == Year, cancellationToken),
         await db.EntryHits.CountAsync(h => h.Slot.SeasonYear == Year, cancellationToken),
         await db.SocialPosts.CountAsync(p => p.Slot.SeasonYear == Year, cancellationToken));
-
-    /// <summary>A GitHub login, lowercase, from "login", "@login" or a GitHub profile URL; null if it can't be one.</summary>
-    public static string? NormalizeLogin(string? input)
-    {
-        var login = (input ?? "").Trim();
-        if (Uri.TryCreate(login, UriKind.Absolute, out var uri) && uri.Host is "github.com" or "www.github.com")
-        {
-            login = uri.AbsolutePath.Trim('/');
-        }
-
-        login = login.TrimStart('@');
-        return GitHubLogin().IsMatch(login) ? login.ToLowerInvariant() : null;
-    }
-
-    /// <summary>Letters, digits and single hyphens between them, up to 39 characters.</summary>
-    [GeneratedRegex("^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}$")]
-    private static partial Regex GitHubLogin();
 }
 
 public sealed class RehearsalForm

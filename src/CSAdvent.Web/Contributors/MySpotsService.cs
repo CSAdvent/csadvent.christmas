@@ -5,6 +5,7 @@ using CSAdvent.Web.Claims;
 using CSAdvent.Web.Content;
 using CSAdvent.Web.Data;
 using CSAdvent.Web.Email;
+using CSAdvent.Web.Entries;
 using CSAdvent.Web.Manage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -22,6 +23,14 @@ public sealed record MyRequest(int Year, int Day, int Part, int SlotsPerDay, Dat
 }
 
 public sealed record MySpotsOverview(IReadOnlyList<MySpot> Spots, IReadOnlyList<MyRequest> PendingRequests);
+
+/// <summary>A post the contributor published in a finished season, linked to their entry page.</summary>
+public sealed record PastPost(int Year, int Day, int Part, int SlotsPerDay, string Title)
+{
+    public string Spot => SlotsPerDay > 1 ? $"December {Day} · Post {Part}" : $"December {Day}";
+
+    public string EntryPage => EntryLinks.Page(Year, Day, Part);
+}
 
 public sealed record MySpotDetails(int SlotId, int Year, int Day, int Part, int SlotsPerDay, bool IsRevealed, bool IsDayOver, uint Version, MySpotForm Values)
 {
@@ -85,6 +94,24 @@ public sealed partial class MySpotsService(
                     EntryAdminService.StatusOf(s.AuthorName, s.PostTitle, s.PostUrl),
                     schedule.IsDayOver(s.SeasonYear, s.Day)))],
             [.. requests.Where(r => !schedule.IsSeasonOver(r.Year))]);
+    }
+
+    /// <summary>
+    /// Every post linked to the contributor in a season that's over, newest season first: their C# Advent history. Posts from
+    /// 2026 on are linked when their claim is approved, and organizers link earlier ones (<see cref="AuthorLinkService"/>).
+    /// </summary>
+    public async Task<IReadOnlyList<PastPost>> GetHistoryAsync(int contributorId, CancellationToken cancellationToken = default)
+    {
+        var posts = await db.Slots
+            .AsNoTracking()
+            .Where(s => s.ContributorId == contributorId && s.SeasonYear != Season.TestYear && s.PostUrl != null && s.AuthorName != null)
+            .Select(s => new { s.SeasonYear, s.Day, s.Part, s.Season.SlotsPerDay, s.PostTitle })
+            .ToListAsync(cancellationToken);
+
+        return [.. posts
+            .Where(p => schedule.IsSeasonOver(p.SeasonYear))
+            .OrderByDescending(p => p.SeasonYear).ThenBy(p => p.Day).ThenBy(p => p.Part)
+            .Select(p => new PastPost(p.SeasonYear, p.Day, p.Part, p.SlotsPerDay, p.PostTitle ?? "Untitled"))];
     }
 
     public async Task<MySpotDetails?> GetAsync(int contributorId, int slotId, CancellationToken cancellationToken = default)

@@ -88,6 +88,8 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 - The title and URL go together, because the calendar links the title to the post. Edits post the spot's `xmin` version back, so an organizer's edit in between isn't overwritten.
 - **Dropping out** (until the day is over) clears the author, link, post, contributor and contact, so they're never named, sets `slots.dropped_out_at`, and emails the organizers. An organizer releasing a spot in the entry editor sets `dropped_out_at` too. A dropped-out spot that's still open is what the backup posters get asked about (#36).
 - Emails link to `ClaimEmails.MySpots(site)`.
+- **History:** My spots also lists every post linked to the contributor (`slots.contributor_id`) in seasons that are over, as "Your C# Advent history" (`MySpotsService.GetHistoryAsync`). Organizers see "Returning · N posts" on that person's requests.
+- **Linking the archive** (`/manage/authors`, `AuthorLinkService`): an organizer links each archive author, grouped by name whatever its case or spacing (`AuthorLinkService.Key`), to a GitHub login. That sets `contributor_id` on every finished-season post with that name. Someone who hasn't signed in gets a contributor record with only their public GitHub user ID and login, looked up through `GitHubUsers` (with the OAuth app's credentials, for GitHub's higher rate limit). Their first sign-in picks it up, because sign-in upserts by GitHub user ID. Posts from 2026 on are linked when their claim is approved. The privacy page says so.
 
 ## Entry Pages and Traffic
 

@@ -135,7 +135,7 @@ public sealed class SeasonTestingTests
     [InlineData("", null)]
     [InlineData("a1234567890123456789012345678901234567890", null)]
     public void AcceptsGitHubLoginsInTheUsualForms(string input, string? expected) =>
-        Assert.Equal(expected, SeasonTestingService.NormalizeLogin(input));
+        Assert.Equal(expected, GitHubLogins.Normalize(input));
 
     private static SeasonAccess Access(IHttpContextAccessor http, TestSeasons testSeasons) =>
         new(testSeasons, http, new StaticOptions(new AccountOptions { Admins = [1] }));

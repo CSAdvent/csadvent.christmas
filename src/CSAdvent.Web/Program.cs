@@ -72,6 +72,8 @@ builder.Services.AddOptions<SocialAccountsOptions>().BindConfiguration(SocialAcc
 builder.AddEmail();
 builder.Services.AddScoped<IClaimNotifier, EmailClaimNotifier>();
 builder.Services.AddScoped<SampleEmailService>();
+builder.Services.AddHttpClient<GitHubUsers>(GitHubUsers.Configure);
+builder.Services.AddScoped<AuthorLinkService>();
 
 // Post link reminders and the daily "today's posts" email, sent each morning in the reveal time zone.
 builder.Services.AddOptions<ReminderOptions>()
@@ -148,6 +150,7 @@ app.MapLegacyRedirects();
 app.MapContentAdmin();
 app.MapOtherAdventLogos();
 app.MapSeasonTesting();
+app.MapAuthors();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
