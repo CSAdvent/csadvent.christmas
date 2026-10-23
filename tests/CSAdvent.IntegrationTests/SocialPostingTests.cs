@@ -73,6 +73,19 @@ public sealed partial class SocialPostingTests(AppHostFixture fixture)
     }
 
     [Fact]
+    public async Task EachTestPostHasAPageOfItsOwnForAFreshPreview()
+    {
+        using var client = fixture.CreateWebClient();
+
+        var page = await client.GetStringAsync("/test-post/abc123def456?via=mastodon", CancellationToken);
+
+        Assert.Contains("<meta property=\"og:title\" content=\"C# Advent test post\" />", page);
+        Assert.Contains("<link rel=\"canonical\" href=\"https://localhost:7092/test-post/abc123def456\" />", page);
+        Assert.Contains("<meta name=\"robots\" content=\"noindex\" />", page);
+        Assert.Equal(System.Net.HttpStatusCode.NotFound, (await client.GetAsync("/test-post/Not-An-Id", CancellationToken)).StatusCode);
+    }
+
+    [Fact]
     public async Task OnlyPlatformsThatCanPostAutomaticallyCanBeAutomatic()
     {
         using var organizer = await fixture.SignInAsync("organizer", AppHostFixture.OrganizerGitHubId);

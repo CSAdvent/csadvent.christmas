@@ -1,0 +1,31 @@
+@page "/test-post/{Id}"
+@using System.Text.RegularExpressions
+@inject NavigationManager Navigation
+
+@*
+    Where a test post links (SocialPostingService.SendTestAsync). Each test gets its own address, so every platform fetches
+    a fresh preview, as it will for a real announcement's new entry page, rather than one it cached for another page.
+*@
+<SocialMeta Title="C# Advent test post" Description="Checking that C# Advent can post here automatically.">
+    <meta name="robots" content="noindex" />
+</SocialMeta>
+<PageTitle>Test post · C# Advent</PageTitle>
+
+<h1 class="text-3xl font-bold tracking-tight text-slate-900">A C# Advent test post</h1>
+<p class="mt-2 max-w-2xl text-slate-600">
+    This page was linked from a test post the organizers sent to check C# Advent's automatic posting. There's nothing else
+    here: the calendar is on the <a href="" class="text-advent-700 underline">home page</a>.
+</p>
+
+@code {
+    [Parameter]
+    public string Id { get; set; } = "";
+
+    protected override void OnInitialized()
+    {
+        if (!Regex.IsMatch(Id, "^[a-z0-9]{8,32}$"))
+        {
+            Navigation.NotFound();
+        }
+    }
+}

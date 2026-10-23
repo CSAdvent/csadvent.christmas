@@ -18,8 +18,8 @@ public sealed class AnnouncementTests
     [InlineData(SocialPlatform.Facebook, "#csharp #csadvent")]
     public void ATestPostIsFormattedLikeAnAnnouncementButAboutNoEntry(SocialPlatform platform, string hashtags)
     {
-        var formatted = AnnouncementFormatter.Format(Announcement.Test(2026, "https://csadvent.christmas"), platform, Ours);
-        var link = $"https://csadvent.christmas/?via={platform.ToString().ToLowerInvariant()}";
+        var formatted = AnnouncementFormatter.Format(Announcement.Test(2026, "https://csadvent.christmas", "abc123def456"), platform, Ours);
+        var link = $"https://csadvent.christmas/test-post/abc123def456?via={platform.ToString().ToLowerInvariant()}";
 
         Assert.Equal(
             $"C# Advent test post (please ignore): “Checking that C# Advent can post here automatically” by the C# Advent organizers\n\n{link}\n\n{hashtags}",

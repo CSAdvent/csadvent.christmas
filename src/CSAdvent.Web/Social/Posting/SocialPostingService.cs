@@ -128,7 +128,7 @@ public sealed partial class SocialPostingService(
 
     /// <summary>
     /// Posts a test post on the platform for an organizer to see: formatted exactly as automatic posting formats an
-    /// announcement, but plainly a test, about no entry, linking to the home page (<see cref="Announcement.Test"/>). It's a
+    /// announcement, but plainly a test, about no entry, linking to a page of its own (<see cref="Announcement.Test"/>). It's a
     /// real, public post, so it's for checking before the season. Returns the platform's error, or null if it went out.
     /// </summary>
     public async Task<string?> SendTestAsync(SocialPlatform platform, string sentBy, CancellationToken cancellationToken = default)
@@ -138,17 +138,18 @@ public sealed partial class SocialPostingService(
             return "There are no credentials for it.";
         }
 
-        var test = Announcement.Test(schedule.Today.Year, site.Value.BaseUrl);
+        var id = Guid.NewGuid().ToString("N")[..12];
+        var test = Announcement.Test(schedule.Today.Year, site.Value.BaseUrl, id);
         var publication = new SocialPublication(
             test.Year,
             test.Day,
             test.Part,
-            "C# Advent",
-            "Two new C# posts every day from December 1st to December 25th, written by the C# community.",
+            "C# Advent test post",
+            "Checking that C# Advent can post here automatically.",
             AnnouncementFormatter.Format(test, platform, accounts.Value),
             _generalCard.Value)
         {
-            Key = $"csadvent-test-{Guid.NewGuid():N}",
+            Key = $"csadvent-test-{id}",
         };
 
         string? postUrl = null;
