@@ -69,6 +69,19 @@ public sealed partial class ArchivePageTests(AppHostFixture fixture)
     }
 
     [Fact]
+    public async Task PagesAndFilesSendTheSecurityHeaders()
+    {
+        using var client = fixture.CreateWebClient();
+
+        foreach (var path in new[] { "/", "/favicon.ico" })
+        {
+            var response = await client.GetAsync(path, CancellationToken);
+            Assert.Equal("nosniff", Assert.Single(response.Headers.GetValues("X-Content-Type-Options")));
+            Assert.Equal("strict-origin-when-cross-origin", Assert.Single(response.Headers.GetValues("Referrer-Policy")));
+        }
+    }
+
+    [Fact]
     public async Task TheTailwindStylesheetIsServed()
     {
         var html = await GetHtmlAsync("/");
