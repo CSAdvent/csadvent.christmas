@@ -1,15 +1,20 @@
 @page "/profile"
 @attribute [Authorize]
 @using CSAdvent.Web.Auth
+@using CSAdvent.Web.Claims
 @using CSAdvent.Web.Contributors
 @inject ProfileService Profiles
 @inject NavigationManager Navigation
 
 <PageTitle>Your profile · C# Advent</PageTitle>
 
-@if (Done == "saved")
+@if (Done == "github-unavailable")
 {
-    <p class="mb-6 rounded-xl bg-green-50 p-4 font-medium text-green-800 ring-1 ring-green-200" role="status">Saved.</p>
+    <p class="mb-6 rounded-xl bg-red-50 p-4 font-medium text-red-800 ring-1 ring-red-200" role="alert">GitHub didn't answer just now. Try again in a minute.</p>
+}
+else if (Message is { } message)
+{
+    <p class="mb-6 rounded-xl bg-green-50 p-4 font-medium text-green-800 ring-1 ring-green-200" role="status">@message</p>
 }
 
 <h1 class="text-3xl font-bold tracking-tight text-slate-900">Your profile</h1>
@@ -93,6 +98,15 @@
             <button type="submit" class="rounded-lg bg-advent-600 px-5 py-3 font-semibold text-white shadow hover:bg-advent-700">Save</button>
         </div>
     </EditForm>
+
+    <EditForm Model="GitHub" FormName="github" OnSubmit="FillInFromGitHubAsync" class="mt-8 max-w-2xl rounded-xl bg-slate-50 p-4 text-sm text-slate-600 ring-1 ring-slate-200">
+        <p>
+            Your first sign-in filled in any of these accounts that are linked on your
+            <a href="@($"https://github.com/{account.GithubLogin}")" class="text-advent-700 underline">GitHub profile</a>.
+            Added one there since? This fills in the ones that are empty here, without changing the others.
+        </p>
+        <button type="submit" class="mt-3 rounded-lg bg-white px-4 py-2 font-semibold text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50">Fill in from GitHub</button>
+    </EditForm>
 }
 
 @code {
@@ -105,11 +119,26 @@
     [SupplyParameterFromForm(FormName = "profile")]
     private ProfileForm? Form { get; set; }
 
+    [SupplyParameterFromForm(FormName = "github")]
+    private GitHubFillForm? GitHub { get; set; }
+
     [SupplyParameterFromQuery(Name = "done")]
     public string? Done { get; set; }
 
+    [SupplyParameterFromQuery(Name = "added")]
+    public string? Added { get; set; }
+
+    private string? Message => Done switch
+    {
+        "saved" => "Saved.",
+        "github" when AddedPlatforms is { Count: > 0 } added => $"Added your {Join(added)} from GitHub. Check {(added.Count > 1 ? "them" : "it")} below.",
+        "github-none" => "There's nothing new to add from your GitHub profile. GitHub lists the social links you add to your profile there.",
+        _ => null,
+    };
+
     protected override async Task OnInitializedAsync()
     {
+        GitHub ??= new();
         var user = (await AuthenticationState).User;
         _contributorId = user.GetContributorId() ?? 0;
 
@@ -123,4 +152,23 @@
         await Profiles.SaveAsync(_contributorId, Form!);
         Navigation.NavigateTo("profile?done=saved");
     }
+
+    private async Task FillInFromGitHubAsync()
+    {
+        var added = await Profiles.FillInFromGitHubAsync(_contributorId);
+        Navigation.NavigateTo(added switch
+        {
+            null => "profile?done=github-unavailable",
+            [] => "profile?done=github-none",
+            _ => $"profile?done=github&added={string.Join(',', added)}",
+        });
+    }
+
+    // The query string is anyone's to edit, so only platform names are shown.
+    private List<string> AddedPlatforms =>
+        [.. (Added ?? "").Split(',').Where(name => Enum.TryParse<SocialPlatform>(name, out _) && !int.TryParse(name, out _))];
+
+    /// <summary>"Bluesky", "Bluesky and LinkedIn", "Bluesky, LinkedIn and Reddit".</summary>
+    private static string Join(IReadOnlyList<string> platforms) =>
+        platforms.Count < 2 ? string.Join("", platforms) : $"{string.Join(", ", platforms.Take(platforms.Count - 1))} and {platforms[^1]}";
 }

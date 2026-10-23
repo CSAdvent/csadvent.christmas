@@ -19,6 +19,7 @@ public sealed class ProfileTests(AppHostFixture fixture)
         var page = await browser.GetStringAsync("/profile", CancellationToken);
         Assert.Contains("value=\"Pat From GitHub\"", page);
         Assert.Contains("profile-pat@example.com", page);
+        Assert.Contains("Fill in from GitHub</button>", page);
 
         int slotId;
         await using (var db = await fixture.CreateDbContextAsync())

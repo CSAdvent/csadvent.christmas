@@ -54,6 +54,32 @@ public static partial class SocialAccounts
     };
 
     /// <summary>
+    /// One of the social links on a GitHub profile as an account we tag, if it's on one of our platforms. GitHub names the
+    /// Mastodon links it recognizes; the rest are known by their address, because GitHub calls some of them (Bluesky, for
+    /// one) "generic". Anything else, such as X or a LinkedIn company page, is skipped.
+    /// </summary>
+    public static (SocialPlatform Platform, string Account)? FromGitHub(string provider, string url)
+    {
+        if (!Uri.TryCreate(url.Trim(), UriKind.Absolute, out var uri))
+        {
+            return null;
+        }
+
+        var host = uri.Host.ToLowerInvariant();
+        SocialPlatform? platform = provider.ToLowerInvariant() switch
+        {
+            "mastodon" or "hometown" => SocialPlatform.Mastodon,
+            _ when IsHostOrSubdomain(host, "bsky.app") => SocialPlatform.Bluesky,
+            _ when IsHostOrSubdomain(host, "linkedin.com") => SocialPlatform.LinkedIn,
+            _ when IsHostOrSubdomain(host, "facebook.com") || IsHostOrSubdomain(host, "fb.com") => SocialPlatform.Facebook,
+            _ when IsHostOrSubdomain(host, "reddit.com") => SocialPlatform.Reddit,
+            _ => null,
+        };
+
+        return platform is { } found && TryNormalize(found, url, out var account) && account is not null ? (found, account) : null;
+    }
+
+    /// <summary>
     /// Whether a link is a social media profile rather than someone's own site. The link for an author's name is for their
     /// website or blog, because their social accounts have fields of their own.
     /// </summary>

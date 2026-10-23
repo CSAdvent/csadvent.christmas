@@ -1,6 +1,8 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 using CSAdvent.Web.Claims;
 using CSAdvent.Web.Data;
+using CSAdvent.Web.Manage;
 using Microsoft.EntityFrameworkCore;
 
 namespace CSAdvent.Web.Contributors;
@@ -10,10 +12,14 @@ public sealed record ProfileAccount(string GithubLogin, string? VerifiedEmail, i
 
 /// <summary>
 /// The parts of a contributor's account they manage themselves (on <c>/profile</c>), and organizers can manage for them: the
-/// name and link they're credited with, and their social accounts. Their GitHub login and email come from GitHub.
+/// name and link they're credited with, and their social accounts. Their GitHub login and email come from GitHub, and the
+/// social links on their GitHub profile fill in any accounts they haven't given us.
 /// </summary>
-public sealed class ProfileService(AdventDbContext db)
+public sealed class ProfileService(AdventDbContext db, GitHubUsers github, TimeProvider timeProvider, ILogger<ProfileService> logger)
 {
+    /// <summary>How long to wait for GitHub's list of social links before carrying on without them.</summary>
+    public static readonly TimeSpan GitHubTimeout = TimeSpan.FromSeconds(5);
+
     public async Task<ProfileAccount?> GetAccountAsync(int contributorId, CancellationToken cancellationToken = default) =>
         await db.Contributors
             .AsNoTracking()
@@ -84,9 +90,109 @@ public sealed class ProfileService(AdventDbContext db)
         return true;
     }
 
+    /// <summary>
+    /// Fills in the accounts missing from their profile from the links on their GitHub profile, on their first sign-in. It's
+    /// done once, so an account they remove here doesn't come back. If GitHub is slow or down, the sign-in carries on and
+    /// it's tried again next time.
+    /// </summary>
+    public async Task FillInFromGitHubOnceAsync(int contributorId, CancellationToken cancellationToken = default)
+    {
+        if (await db.Contributors.SingleOrDefaultAsync(c => c.Id == contributorId, cancellationToken) is not { GithubSocialCheckedAt: null } contributor)
+        {
+            return;
+        }
+
+        if (await ReadGitHubAsync(contributor.GithubLogin, cancellationToken) is not { } found)
+        {
+            return;
+        }
+
+        FillIn(contributor, found);
+        contributor.GithubSocialCheckedAt = timeProvider.GetUtcNow();
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Fills in missing accounts from their GitHub profile when they ask, for links they've added there since. Returns the
+    /// platforms it added, or null if GitHub didn't answer.
+    /// </summary>
+    public async Task<IReadOnlyList<SocialPlatform>?> FillInFromGitHubAsync(int contributorId, CancellationToken cancellationToken = default)
+    {
+        if (await db.Contributors.SingleOrDefaultAsync(c => c.Id == contributorId, cancellationToken) is not { } contributor)
+        {
+            return [];
+        }
+
+        if (await ReadGitHubAsync(contributor.GithubLogin, cancellationToken) is not { } found)
+        {
+            return null;
+        }
+
+        var added = FillIn(contributor, found);
+        contributor.GithubSocialCheckedAt = timeProvider.GetUtcNow();
+        await db.SaveChangesAsync(cancellationToken);
+        return added;
+    }
+
+    /// <summary>
+    /// Puts the GitHub profile's accounts on our platforms into the contributor's empty fields, never over one they've given
+    /// us. Returns the platforms it filled in.
+    /// </summary>
+    public static IReadOnlyList<SocialPlatform> FillIn(Contributor contributor, IEnumerable<GitHubSocialAccount> found)
+    {
+        var added = new List<SocialPlatform>();
+        foreach (var (platform, account) in found.Select(a => SocialAccounts.FromGitHub(a.Provider, a.Url)).OfType<(SocialPlatform Platform, string Account)>())
+        {
+            switch (platform)
+            {
+                case SocialPlatform.Bluesky when contributor.BlueskyHandle is null:
+                    contributor.BlueskyHandle = account;
+                    break;
+                case SocialPlatform.Mastodon when contributor.MastodonHandle is null:
+                    contributor.MastodonHandle = account;
+                    break;
+                case SocialPlatform.LinkedIn when contributor.LinkedInUrl is null:
+                    contributor.LinkedInUrl = account;
+                    break;
+                case SocialPlatform.Facebook when contributor.FacebookUrl is null:
+                    contributor.FacebookUrl = account;
+                    break;
+                case SocialPlatform.Reddit when contributor.RedditUsername is null:
+                    contributor.RedditUsername = account;
+                    break;
+                default:
+                    continue;
+            }
+
+            added.Add(platform);
+        }
+
+        return added;
+    }
+
+    private async Task<IReadOnlyList<GitHubSocialAccount>?> ReadGitHubAsync(string login, CancellationToken cancellationToken)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(GitHubTimeout);
+        try
+        {
+            return await github.SocialAccountsAsync(login, timeout.Token);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or JsonException
+            || (exception is OperationCanceledException && !cancellationToken.IsCancellationRequested))
+        {
+            // Without the login: the logs never carry personal details.
+            logger.LogWarning(exception, "Couldn't read a contributor's social links from GitHub.");
+            return null;
+        }
+    }
+
     private static string? Normalized(SocialPlatform platform, string? input) =>
         SocialAccounts.TryNormalize(platform, input, out var normalized) ? normalized : null;
 }
+
+/// <summary>The "Fill in from GitHub" button on the profile. It posts nothing but its antiforgery token.</summary>
+public sealed class GitHubFillForm;
 
 /// <summary>
 /// How a contributor is credited, and their social accounts, checked the way the claim form checks them (with the same limits,
