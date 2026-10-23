@@ -71,6 +71,7 @@ if (builder.Configuration.GetValue("OtherAdvents:FetchLogosInBackground", defaul
 builder.Services.AddOptions<SocialAccountsOptions>().BindConfiguration(SocialAccountsOptions.SectionName);
 builder.AddEmail();
 builder.Services.AddScoped<IClaimNotifier, EmailClaimNotifier>();
+builder.Services.AddScoped<SampleEmailService>();
 
 // Post link reminders and the daily "today's posts" email, sent each morning in the reveal time zone.
 builder.Services.AddOptions<ReminderOptions>()

@@ -143,6 +143,7 @@ A hidden test season lets invited testers try everything for real on the live si
 
 - 🎨 **Branded HTML emails** with a plain-text alternative, both rendered from one description of each email (`EmailContent`)
 - 👀 **Preview every email** at <https://localhost:7092/dev/emails> while the AppHost runs (Development only). It lists when each one is sent and who gets it.
+- 📮 **Send any email now** from `/manage/emails` on the live site: organizers preview each one, and send it with sample data to themselves, the organizers' inbox or a tester, without waiting for the date that would trigger it
 - 📬 **Nothing leaves your machine locally**: MailPit catches every email, and its inbox is linked from the dashboard
 - ☁️ **In production** email goes through Azure Communication Services, from `donotreply@mail.csadvent.christmas`, with replies going to `hello@csadvent.christmas`
 - ⏰ **Reminders** go out at 9 AM Eastern: post link reminders 7, 5, 3, 2 and 1 days before an author's day, and a daily "today's posts" email to every author during Advent, which has a one-click unsubscribe link

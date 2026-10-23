@@ -1,0 +1,96 @@
+using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
+using CSAdvent.Web.Content;
+using CSAdvent.Web.Data;
+using CSAdvent.Web.Email;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+
+namespace CSAdvent.Web.Manage;
+
+/// <summary>Someone a sample email can go to, and why they're on the list.</summary>
+public sealed record SampleRecipient(string Address, string Label);
+
+public enum SampleEmailOutcome
+{
+    Sent,
+
+    /// <summary>The email or the address isn't one of the choices on the page.</summary>
+    NotAllowed,
+
+    /// <summary>The email service refused it, for example before the sending domain is verified.</summary>
+    Failed,
+}
+
+/// <summary>
+/// Sends any email in <see cref="EmailCatalog"/> right away, with its sample data, so organizers can see what lands in an
+/// inbox without waiting for the date that would trigger it. It only goes to people on the page's list (the organizer,
+/// the organizers' inbox, or a signed-in tester), never to an address typed in.
+/// </summary>
+public sealed partial class SampleEmailService(
+    AdventDbContext db,
+    EmailComposer composer,
+    IEmailSender sender,
+    IOptions<SiteOptions> site,
+    ILogger<SampleEmailService> logger)
+{
+    /// <summary>Starts every sample's subject, so nobody mistakes it for the real thing.</summary>
+    public const string SubjectPrefix = "[Sample] ";
+
+    public async Task<IReadOnlyList<SampleRecipient>> GetRecipientsAsync(ClaimsPrincipal organizer, CancellationToken cancellationToken = default)
+    {
+        var recipients = new List<SampleRecipient>();
+        if (organizer.FindFirstValue(ClaimTypes.Email) is { Length: > 0 } mine)
+        {
+            recipients.Add(new SampleRecipient(mine, $"Me ({mine})"));
+        }
+
+        recipients.Add(new SampleRecipient(site.Value.ContactEmail, $"The organizers' inbox ({site.Value.ContactEmail})"));
+
+        // Testers who've signed in, at the verified address they'd get real emails at.
+        var testers = await db.Contributors
+            .AsNoTracking()
+            .Where(c => c.Email != null && c.EmailVerifiedAt != null
+                && db.SeasonTesters.Any(t => t.SeasonYear == Season.TestYear && t.GithubLogin == c.GithubLogin.ToLower()))
+            .OrderBy(c => c.GithubLogin)
+            .Select(c => new { c.GithubLogin, Email = c.Email! })
+            .ToListAsync(cancellationToken);
+        recipients.AddRange(testers.Select(t => new SampleRecipient(t.Email, $"Tester {t.GithubLogin} ({t.Email})")));
+
+        return [.. recipients.DistinctBy(r => r.Address, StringComparer.OrdinalIgnoreCase)];
+    }
+
+    public async Task<SampleEmailOutcome> SendAsync(string key, string address, ClaimsPrincipal organizer, CancellationToken cancellationToken = default)
+    {
+        var recipients = await GetRecipientsAsync(organizer, cancellationToken);
+        if (EmailCatalog.Find(key) is not { } entry || !recipients.Any(r => string.Equals(r.Address, address, StringComparison.OrdinalIgnoreCase)))
+        {
+            return SampleEmailOutcome.NotAllowed;
+        }
+
+        var content = entry.Sample(site.Value);
+        var email = await composer.ComposeAsync(content with { Subject = SubjectPrefix + content.Subject }, new EmailRecipient(address));
+        try
+        {
+            await sender.SendAsync(email, cancellationToken);
+            return SampleEmailOutcome.Sent;
+        }
+        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            LogSendFailed(exception, key);
+            return SampleEmailOutcome.Failed;
+        }
+    }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't send the sample {Key} email")]
+    private partial void LogSendFailed(Exception exception, string key);
+}
+
+public sealed class SampleEmailForm
+{
+    [Required(ErrorMessage = "Choose an email.")]
+    public string Key { get; set; } = "";
+
+    [Required(ErrorMessage = "Choose who to send it to.")]
+    public string To { get; set; } = "";
+}
