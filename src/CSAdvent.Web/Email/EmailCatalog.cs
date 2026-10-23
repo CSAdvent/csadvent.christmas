@@ -116,6 +116,12 @@ public static class EmailCatalog
             "The author. Replies go to the organizers.",
             site => ReminderEmails.PostLinkMissing(new PostLinkReminder("Ada Lovelace", 2026, 10, 1, 2, DaysBefore: 1), site)),
         new(
+            "post-link-day-of",
+            "Post link reminder, on the day",
+            "On an author's day, 3 hours before their post is announced (7 AM Eastern for post 1, 11 AM for post 2), if their spot still has no post link.",
+            "The author. Replies go to the organizers.",
+            site => ReminderEmails.PostLinkDueToday(new DayOfReminder("Ada Lovelace", 2026, 10, 1, 2, new TimeOnly(10, 0)), site)),
+        new(
             "daily-share",
             "Today's posts",
             "At 9 AM Eastern each day from December 1 to 25, once at least one of the day's posts has its title and link.",
