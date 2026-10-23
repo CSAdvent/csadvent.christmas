@@ -32,7 +32,7 @@ public sealed class SeasonTestingTests(AppHostFixture fixture)
         Assert.Contains("You're invited to test C# Advent.", await tester.GetStringAsync("/about", CancellationToken));
         Assert.DoesNotContain("test C# Advent", await stranger.GetStringAsync("/about", CancellationToken));
         Assert.Equal(HttpStatusCode.NotFound, (await stranger.GetAsync($"/claim/{TestYear}/20/1", CancellationToken)).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await anonymous.GetAsync($"/backups/{TestYear}", CancellationToken)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await stranger.GetAsync($"/backups/{TestYear}", CancellationToken)).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await anonymous.GetAsync($"/cards/{TestYear}.jpg", CancellationToken)).StatusCode);
 
         var claimed = await tester.PostFormAsync($"/claim/{TestYear}/20/1", "claim", new()
