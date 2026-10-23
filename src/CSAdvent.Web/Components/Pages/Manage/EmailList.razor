@@ -1,0 +1,113 @@
+@page "/manage/emails"
+@using CSAdvent.Web.Email
+@inject SampleEmailService Samples
+@inject NavigationManager Navigation
+
+<PageTitle>Emails · Manage · C# Advent</PageTitle>
+
+<ManageNav />
+
+<h1 class="text-3xl font-bold tracking-tight text-slate-900">Emails</h1>
+<p class="mt-2 max-w-3xl text-slate-600">
+    Every email the site sends, when it goes out and who gets it. Preview any of them, or send one now with sample names and
+    dates to see exactly what lands in an inbox. Samples start with "[Sample]".
+</p>
+
+@if (Message is { } message)
+{
+    <p class="mt-4 max-w-3xl rounded-xl bg-slate-50 p-4 text-sm font-medium text-slate-800 ring-1 ring-slate-200" role="status">@message</p>
+}
+
+<section class="mt-6 max-w-3xl rounded-xl bg-slate-50 p-5 ring-1 ring-slate-200">
+    <h2 class="text-lg font-semibold text-slate-900">Send a sample</h2>
+    <EditForm Model="Form" FormName="send" OnValidSubmit="SendAsync" class="mt-3 flex flex-wrap items-end gap-4">
+        <DataAnnotationsValidator />
+        <label class="flex flex-col text-sm font-medium text-slate-700">
+            Email
+            <InputSelect @bind-Value="Form!.Key" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal">
+                <option value="">Choose an email</option>
+                @foreach (var entry in EmailCatalog.Entries)
+                {
+                    <option value="@entry.Key">@entry.Name</option>
+                }
+            </InputSelect>
+        </label>
+        <label class="flex flex-col text-sm font-medium text-slate-700">
+            To
+            <InputSelect @bind-Value="Form!.To" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal">
+                @foreach (var recipient in _recipients)
+                {
+                    <option value="@recipient.Address">@recipient.Label</option>
+                }
+            </InputSelect>
+        </label>
+        <button type="submit" class="rounded-lg bg-advent-600 px-4 py-2 font-semibold text-white hover:bg-advent-700">Send now</button>
+        <ValidationSummary class="w-full text-sm text-red-700" />
+    </EditForm>
+    <p class="mt-3 text-sm text-slate-600">
+        Testers who've signed in can get samples at their GitHub email. Add testers on the <a href="manage/testing" class="text-advent-700 underline">Testing</a> page.
+    </p>
+</section>
+
+<table class="mt-8 w-full text-left text-sm">
+    <thead class="border-b border-slate-200 text-slate-500">
+        <tr>
+            <th class="py-2 pr-4 font-medium">Email</th>
+            <th class="py-2 pr-4 font-medium">When</th>
+            <th class="py-2 pr-4 font-medium">To</th>
+            <th class="py-2 font-medium"><span class="sr-only">Preview</span></th>
+        </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+        @foreach (var entry in EmailCatalog.Entries)
+        {
+            <tr class="align-top">
+                <td class="py-2 pr-4 font-semibold text-slate-900">@entry.Name</td>
+                <td class="py-2 pr-4 text-slate-600">@entry.When</td>
+                <td class="py-2 pr-4 text-slate-600">@entry.To</td>
+                <td class="whitespace-nowrap py-2 text-right">
+                    <a href="@($"manage/emails/{entry.Key}")" target="_blank" class="text-advent-700 underline">Preview</a>
+                    · <a href="@($"manage/emails/{entry.Key}/text")" target="_blank" class="text-advent-700 underline">Text</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private IReadOnlyList<SampleRecipient> _recipients = [];
+
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationState { get; set; } = null!;
+
+    [SupplyParameterFromQuery(Name = "done")]
+    public string? Done { get; set; }
+
+    [SupplyParameterFromForm(FormName = "send")]
+    private SampleEmailForm? Form { get; set; }
+
+    private string? Message => Done switch
+    {
+        "sent" => "Sample sent. It can take a minute to arrive.",
+        "failed" => "The email service didn't accept it. Until the sending domain is verified (after the DNS switch), nothing can be sent.",
+        "not-allowed" => "Choose an email and someone from the list.",
+        _ => null,
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Static rendering starts at the first await, so the form needs its model first.
+        Form ??= new SampleEmailForm();
+        _recipients = await Samples.GetRecipientsAsync((await AuthenticationState).User);
+        if (string.IsNullOrEmpty(Form.To) && _recipients.Count > 0)
+        {
+            Form.To = _recipients[0].Address;
+        }
+    }
+
+    private async Task SendAsync()
+    {
+        var outcome = await Samples.SendAsync(Form!.Key, Form.To, (await AuthenticationState).User);
+        Navigation.NavigateTo($"manage/emails?done={outcome switch { SampleEmailOutcome.Sent => "sent", SampleEmailOutcome.Failed => "failed", _ => "not-allowed" }}");
+    }
+}

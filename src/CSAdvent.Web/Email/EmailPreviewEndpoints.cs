@@ -1,27 +1,38 @@
 using System.Net;
 using System.Text;
+using CSAdvent.Web.Auth;
 using CSAdvent.Web.Content;
 using Microsoft.Extensions.Options;
 
 namespace CSAdvent.Web.Email;
 
 /// <summary>
-/// Development only: <c>/dev/emails</c> lists every email in <see cref="EmailCatalog"/> with when it's sent and who gets
-/// it, and renders each one with sample data, as HTML or as its plain-text alternative.
+/// Renders every email in <see cref="EmailCatalog"/> with sample data, as HTML or as its plain-text alternative. Organizers
+/// get them at <c>/manage/emails/{key}</c>, beside the list (and the Send form) at <c>/manage/emails</c>. In Development,
+/// <c>/dev/emails</c> has the same previews with a list of its own, without signing in.
 /// </summary>
 public static class EmailPreviewEndpoints
 {
     public const string Path = "/dev/emails";
 
+    public const string ManagePath = "/manage/emails";
+
     public static WebApplication MapEmailPreviews(this WebApplication app)
     {
-        if (!app.Environment.IsDevelopment())
+        MapPreviews(app.MapGroup(ManagePath).RequireAuthorization(AdventPolicies.Admin));
+
+        if (app.Environment.IsDevelopment())
         {
-            return app;
+            var previews = app.MapGroup(Path);
+            previews.MapGet("/", () => Results.Content(Index(), "text/html; charset=utf-8"));
+            MapPreviews(previews);
         }
 
-        var previews = app.MapGroup(Path);
-        previews.MapGet("/", () => Results.Content(Index(), "text/html; charset=utf-8"));
+        return app;
+    }
+
+    private static void MapPreviews(RouteGroupBuilder previews)
+    {
         previews.MapGet("/{key}", async (string key, EmailComposer composer, IOptions<SiteOptions> site) =>
             EmailCatalog.Find(key) is { } entry
                 ? Results.Content(await composer.RenderHtmlAsync(entry.Sample(site.Value)), "text/html; charset=utf-8")
@@ -30,8 +41,6 @@ public static class EmailPreviewEndpoints
             EmailCatalog.Find(key) is { } entry
                 ? Results.Text(composer.RenderText(entry.Sample(site.Value)), "text/plain; charset=utf-8")
                 : Results.NotFound());
-
-        return app;
     }
 
     private static string Index()
