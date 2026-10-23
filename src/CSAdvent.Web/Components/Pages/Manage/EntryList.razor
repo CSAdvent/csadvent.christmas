@@ -11,6 +11,8 @@
 
 @if (_entries.Count > 0)
 {
+    <PastSeasonNotice Year="_year!.Value" />
+
     <p class="mt-2 text-slate-600">
         @Count(EntryStatus.Ready) ready ·
         @(_entries.Count(e => e.Status is EntryStatus.ClaimedWithoutPost or EntryStatus.TitleOnly or EntryStatus.UrlOnly)) claimed without a complete post ·
@@ -60,7 +62,7 @@
 }
 else if (_loaded)
 {
-    <p class="mt-4 text-slate-600">There's no season yet. <a href="manage/seasons" class="text-advent-700 underline">Create one</a> first.</p>
+    <NoCurrentSeason />
 }
 
 @code {

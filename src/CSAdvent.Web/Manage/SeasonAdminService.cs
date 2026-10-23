@@ -4,7 +4,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CSAdvent.Web.Manage;
 
-public sealed record SeasonSummary(int Year, int SlotsPerDay, DateTimeOffset? ClaimsOpenAt, int Spots, int ClaimedSpots, int PendingRequests);
+/// <summary>A season for the organizer pages. <paramref name="IsFinished"/> once its last day is over, and it's history.</summary>
+public sealed record SeasonSummary(int Year, int SlotsPerDay, DateTimeOffset? ClaimsOpenAt, int Spots, int ClaimedSpots, int PendingRequests, int Posts, bool IsFinished);
 
 public enum CreateSeasonOutcome
 {
@@ -15,24 +16,40 @@ public enum CreateSeasonOutcome
 /// <summary>Creating seasons and scheduling their sign-ups. Creating a season only adds rows; earlier seasons are never touched.</summary>
 public sealed class SeasonAdminService(AdventDbContext db, AdventSchedule schedule, TimeProvider timeProvider)
 {
-    public Task<List<SeasonSummary>> ListAsync(CancellationToken cancellationToken = default) =>
-        db.Seasons
+    public async Task<List<SeasonSummary>> ListAsync(CancellationToken cancellationToken = default)
+    {
+        var seasons = await db.Seasons
             .OrderByDescending(s => s.Year)
-            .Select(s => new SeasonSummary(
+            .Select(s => new
+            {
                 s.Year,
                 s.SlotsPerDay,
                 s.ClaimsOpenAt,
-                s.Slots.Count,
-                s.Slots.Count(slot => slot.AuthorName != null),
-                db.ClaimRequests.Count(r => r.Slot.SeasonYear == s.Year && r.Status == ClaimRequestStatus.Pending)))
+                Spots = s.Slots.Count,
+                ClaimedSpots = s.Slots.Count(slot => slot.AuthorName != null),
+                PendingRequests = db.ClaimRequests.Count(r => r.Slot.SeasonYear == s.Year && r.Status == ClaimRequestStatus.Pending),
+                Posts = s.Slots.Count(slot => slot.PostUrl != null && slot.AuthorName != null),
+            })
             .ToListAsync(cancellationToken);
 
-    /// <summary>The season organizers work on: the earliest one that isn't over, or the latest.</summary>
+        return [.. seasons.Select(s => new SeasonSummary(s.Year, s.SlotsPerDay, s.ClaimsOpenAt, s.Spots, s.ClaimedSpots, s.PendingRequests, s.Posts, IsFinished(s.Year)))];
+    }
+
+    /// <summary>A season is history once its last day is over: the end of December 25 (or of its rehearsal's last day).</summary>
+    public bool IsFinished(int year) => schedule.IsDayOver(year, Season.DaysInAdvent);
+
+    /// <summary>
+    /// The season the organizer pages work on: the earliest one that isn't finished, so a season created early for next year
+    /// never replaces this year's. None once the last one is finished; past seasons are opened from the overview.
+    /// </summary>
     public async Task<int?> GetCurrentYearAsync(CancellationToken cancellationToken = default)
     {
         var years = await db.Seasons.OrderBy(s => s.Year).Select(s => s.Year).ToListAsync(cancellationToken);
-        return HomeService.SelectSeason(years, schedule.IsSeasonOver).Year;
+        return CurrentYear(years, IsFinished);
     }
+
+    public static int? CurrentYear(IEnumerable<int> yearsInOrder, Func<int, bool> isFinished) =>
+        yearsInOrder.Cast<int?>().FirstOrDefault(year => !isFinished(year!.Value));
 
     /// <summary>The first year from this one that doesn't have a season yet.</summary>
     public async Task<int> GetNextYearAsync(CancellationToken cancellationToken = default)

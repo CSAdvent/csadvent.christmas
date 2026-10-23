@@ -4,8 +4,6 @@ namespace CSAdvent.UnitTests.Calendar;
 
 public sealed class HomeServiceTests
 {
-    private static bool OverBefore2026(int year) => year < 2026;
-
     private static readonly DateTimeOffset November1 = new(2026, 11, 1, 0, 0, 0, TimeSpan.FromHours(-4));
 
     private static readonly SeasonDates[] Seasons = [new(2024, null), new(2025, null), new(2026, November1)];
@@ -80,23 +78,5 @@ public sealed class HomeServiceTests
     public void HasNothingToShowWithoutSeasons()
     {
         Assert.Equal(new HomePlan(null, null, null), HomeService.Plan([], CalendarFixtures.Schedule(November1)));
-    }
-
-    [Fact]
-    public void OrganizersWorkOnTheCurrentSeason()
-    {
-        Assert.Equal((2026, false), HomeService.SelectSeason([2024, 2025, 2026], OverBefore2026));
-    }
-
-    [Fact]
-    public void ASeasonCreatedEarlyForNextYearDoesNotReplaceTheCurrentOne()
-    {
-        Assert.Equal((2026, false), HomeService.SelectSeason([2025, 2026, 2027], OverBefore2026));
-    }
-
-    [Fact]
-    public void OffSeasonOrganizersWorkOnTheLatestSeason()
-    {
-        Assert.Equal((2025, true), HomeService.SelectSeason([2017, 2024, 2025], OverBefore2026));
     }
 }

@@ -3,6 +3,7 @@
 @using CSAdvent.Web.SeasonTesting
 @inject SeasonAdminService Seasons
 @inject SeasonTestingService Testing
+@inject TestSeasons TestSeasons
 @inject AdventSchedule Schedule
 @inject NavigationManager Navigation
 @inject TimeProvider TimeProvider
@@ -135,7 +136,7 @@
 }
 else if (_loaded)
 {
-    <p class="text-slate-600">There's no season yet. <a href="manage/seasons" class="text-advent-700 underline">Create one</a> first.</p>
+    <NoCurrentSeason />
 }
 
 @code {
@@ -188,7 +189,8 @@ else if (_loaded)
         Finish ??= new FinishTestingForm();
 
         _loaded = true;
-        if ((Year ?? await Seasons.GetCurrentYearAsync()) is { } year)
+        // The season being tested, if there is one, even once its rehearsal has finished; otherwise the current season.
+        if ((Year ?? TestSeasons.All.MinBy(s => s.Year)?.Year ?? await Seasons.GetCurrentYearAsync()) is { } year)
         {
             _view = await Testing.GetAsync(year);
             Move.RehearsalStartsOn ??= _view?.RehearsalStartsOn;

@@ -8,54 +8,116 @@
 
 <h1 class="text-3xl font-bold tracking-tight text-slate-900">Organizer overview</h1>
 
-@if (_loaded && _current is null)
+@if (_loaded)
 {
-    <p class="mt-4 text-slate-600">There's no season to run yet. <a href="manage/seasons" class="text-advent-700 underline">Create one</a> to open sign-ups.</p>
-}
-else if (_current is not null)
-{
-    <section class="mt-6 rounded-xl bg-white p-5 ring-1 ring-slate-200">
-        <h2 class="text-lg font-semibold text-slate-900">C# Advent @_current.Year</h2>
-        <dl class="mt-4 grid gap-4 sm:grid-cols-3">
-            <div>
-                <dt class="text-sm text-slate-500">Sign-ups</dt>
-                <dd class="mt-1 font-medium text-slate-900">
-                    @if (_current.ClaimsOpenAt is not { } opensAt)
+    @if (_current is { } current)
+    {
+        <section class="mt-6 rounded-xl bg-white p-5 ring-1 ring-slate-200">
+            <h2 class="text-lg font-semibold text-slate-900">C# Advent @current.Year</h2>
+            <dl class="mt-4 grid gap-4 sm:grid-cols-3">
+                <div>
+                    <dt class="text-sm text-slate-500">Sign-ups</dt>
+                    <dd class="mt-1 font-medium text-slate-900">
+                        @if (current.ClaimsOpenAt is not { } opensAt)
+                        {
+                            <span>Not scheduled · <a href="manage/seasons/@current.Year" class="text-advent-700 underline">schedule</a></span>
+                        }
+                        else if (Schedule.AreClaimsOpen(opensAt))
+                        {
+                            <span>Open since <LocalTime Value="opensAt" /></span>
+                        }
+                        else
+                        {
+                            <span>Open <LocalTime Value="opensAt" /></span>
+                        }
+                    </dd>
+                </div>
+                <div>
+                    <dt class="text-sm text-slate-500">Spots claimed</dt>
+                    <dd class="mt-1 font-medium text-slate-900">@current.ClaimedSpots of @current.Spots</dd>
+                </div>
+                <div>
+                    <dt class="text-sm text-slate-500">Requests waiting</dt>
+                    <dd class="mt-1 font-medium text-slate-900">
+                        <a href="manage/requests" class="text-advent-700 underline">@current.PendingRequests pending</a>
+                    </dd>
+                </div>
+            </dl>
+        </section>
+    }
+    else
+    {
+        <NoCurrentSeason />
+    }
+
+    @if (_upcoming.Count > 0)
+    {
+        <h2 class="mt-10 text-xl font-semibold text-slate-900">Coming up</h2>
+        <ul class="mt-3 flex flex-col gap-2">
+            @foreach (var season in _upcoming)
+            {
+                <li class="text-slate-700">
+                    <span class="font-semibold text-slate-900">C# Advent @season.Year</span>:
+                    @if (season.ClaimsOpenAt is { } opensAt)
                     {
-                        <span>Not scheduled · <a href="manage/seasons/@_current.Year" class="text-advent-700 underline">schedule</a></span>
-                    }
-                    else if (Schedule.AreClaimsOpen(opensAt))
-                    {
-                        <span>Open since <LocalTime Value="opensAt" /></span>
+                        <span>sign-ups open <LocalTime Value="opensAt" /></span>
                     }
                     else
                     {
-                        <span>Open <LocalTime Value="opensAt" /></span>
+                        <span>sign-ups not scheduled</span>
                     }
-                </dd>
-            </div>
-            <div>
-                <dt class="text-sm text-slate-500">Spots claimed</dt>
-                <dd class="mt-1 font-medium text-slate-900">@_current.ClaimedSpots of @_current.Spots</dd>
-            </div>
-            <div>
-                <dt class="text-sm text-slate-500">Requests waiting</dt>
-                <dd class="mt-1 font-medium text-slate-900">
-                    <a href="manage/requests" class="text-advent-700 underline">@_current.PendingRequests pending</a>
-                </dd>
-            </div>
-        </dl>
-    </section>
+                    · <a href="manage/seasons/@season.Year" class="text-advent-700 underline">Sign-ups</a>
+                    · <a href="manage/entries?year=@season.Year" class="text-advent-700 underline">Entries</a>
+                </li>
+            }
+        </ul>
+    }
+
+    @if (_past.Count > 0)
+    {
+        <h2 class="mt-10 text-xl font-semibold text-slate-900">Past seasons</h2>
+        <p class="mt-1 text-slate-600">Open a past season to see its entries, requests, backup posters and announcements.</p>
+        <table class="mt-4 w-full text-left text-sm">
+            <thead class="border-b border-slate-200 text-slate-500">
+                <tr>
+                    <th class="py-2 pr-4 font-medium">Season</th>
+                    <th class="py-2 pr-4 font-medium">Posts</th>
+                    <th class="py-2 font-medium"><span class="sr-only">Details</span></th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                @foreach (var season in _past)
+                {
+                    <tr>
+                        <td class="py-2 pr-4 font-semibold text-slate-900">@season.Year</td>
+                        <td class="py-2 pr-4">@season.Posts</td>
+                        <td class="py-2 text-right">
+                            <a href="manage/entries?year=@season.Year" class="text-advent-700 underline">Entries</a>
+                            · <a href="manage/requests?year=@season.Year&status=approved" class="text-advent-700 underline">Requests</a>
+                            · <a href="manage/backups?year=@season.Year" class="text-advent-700 underline">Backups</a>
+                            · <a href="manage/social?year=@season.Year" class="text-advent-700 underline">Social</a>
+                            · <a href="archive/@season.Year" class="text-advent-700 underline">Archive</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
 }
 
 @code {
     private SeasonSummary? _current;
+    private List<SeasonSummary> _upcoming = [];
+    private List<SeasonSummary> _past = [];
     private bool _loaded;
 
     protected override async Task OnInitializedAsync()
     {
+        var seasons = await Seasons.ListAsync();
         var year = await Seasons.GetCurrentYearAsync();
-        _current = year is null ? null : (await Seasons.ListAsync()).Single(s => s.Year == year);
+        _current = seasons.SingleOrDefault(s => s.Year == year);
+        _upcoming = [.. seasons.Where(s => !s.IsFinished && s.Year != year).OrderBy(s => s.Year)];
+        _past = [.. seasons.Where(s => s.IsFinished)];
         _loaded = true;
     }
 }

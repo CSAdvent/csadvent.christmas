@@ -16,13 +16,20 @@
         an empty one means they aren't scheduled yet.
     </p>
 
-    <EditForm Model="Form" FormName="sign-ups" OnValidSubmit="SaveAsync" class="mt-6 flex flex-wrap items-end gap-4">
-        <label class="flex flex-col text-sm font-medium text-slate-700">
-            Sign-ups open
-            <InputDate Type="InputDateType.DateTimeLocal" @bind-Value="Form!.ClaimsOpen" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
-        </label>
-        <button type="submit" class="rounded-lg bg-advent-600 px-4 py-2 font-semibold text-white hover:bg-advent-700">Save</button>
-    </EditForm>
+    @if (_season.IsFinished)
+    {
+        <p class="mt-6 max-w-2xl rounded-xl bg-slate-50 p-4 text-slate-700 ring-1 ring-slate-200" role="status">C# Advent @Year is over, so its sign-ups can't change.</p>
+    }
+    else
+    {
+        <EditForm Model="Form" FormName="sign-ups" OnValidSubmit="SaveAsync" class="mt-6 flex flex-wrap items-end gap-4">
+            <label class="flex flex-col text-sm font-medium text-slate-700">
+                Sign-ups open
+                <InputDate Type="InputDateType.DateTimeLocal" @bind-Value="Form!.ClaimsOpen" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+            </label>
+            <button type="submit" class="rounded-lg bg-advent-600 px-4 py-2 font-semibold text-white hover:bg-advent-700">Save</button>
+        </EditForm>
+    }
 }
 
 @code {
@@ -51,6 +58,11 @@
 
     private async Task SaveAsync()
     {
+        if (_season!.IsFinished)
+        {
+            return;
+        }
+
         var claimsOpenAt = Form!.ClaimsOpen is { } local ? Schedule.FromLocalTime(local) : (DateTimeOffset?)null;
         await Seasons.SetClaimsOpenAtAsync(Year, claimsOpenAt);
         Navigation.NavigateTo("manage/seasons?done=saved");
