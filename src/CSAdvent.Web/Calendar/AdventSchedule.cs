@@ -36,6 +36,13 @@ public sealed class AdventSchedule
     public int? GetDayOfAdvent(int year, DateOnly date) =>
         (date.DayNumber - GetDate(year, 1).DayNumber + 1) is var day and >= 1 and <= Season.DaysInAdvent ? day : null;
 
+    /// <summary>
+    /// A date as the season sees it: the date itself for a real season, and for the test season the date its rehearsal makes
+    /// it, with the rehearsal's December 1 on December 1 of the season's year. Emails sent once a day are recorded against
+    /// this date, so moving the rehearsal sends the new day's emails, even on the same real day.
+    /// </summary>
+    public DateOnly InSeason(int year, DateOnly date) => new DateOnly(year, 12, 1).AddDays(date.DayNumber - GetDate(year, 1).DayNumber);
+
     /// <summary>Whether the season's days follow a rehearsal rather than December: only the test season's do.</summary>
     public bool IsRehearsing(int year) => _testSeasons?.Find(year) is not null;
 

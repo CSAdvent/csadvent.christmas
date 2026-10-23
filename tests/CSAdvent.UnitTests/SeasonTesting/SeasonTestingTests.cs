@@ -44,6 +44,36 @@ public sealed class SeasonTestingTests
     }
 
     [Fact]
+    public void EmailsAreRecordedAgainstTheRehearsalsDateSoMovingItSendsTheNewDay()
+    {
+        var schedule = Schedule(October25Noon, Testing());
+
+        // October 25 is December 6 in the rehearsal; a real season's dates are themselves.
+        Assert.Equal(new DateOnly(TestYear, 12, 6), schedule.InSeason(TestYear, new DateOnly(2026, 10, 25)));
+        Assert.Equal(new DateOnly(TestYear, 11, 24), schedule.InSeason(TestYear, new DateOnly(2026, 10, 13)));
+        Assert.Equal(new DateOnly(2026, 12, 6), schedule.InSeason(2026, new DateOnly(2026, 12, 6)));
+    }
+
+    [Theory]
+    [InlineData(-1, "1 day before December 1 (Day 1 is revealed at midnight tonight)")]
+    [InlineData(-7, "7 days before December 1")]
+    [InlineData(0, "December 1")]
+    [InlineData(5, "December 6")]
+    [InlineData(25, "December 26, after Advent")]
+    public void TheRehearsalIsChosenByWhatDayTodayIs(int day, string description)
+    {
+        var today = new DateOnly(2026, 10, 25);
+
+        Assert.Equal(description, RehearsalDays.Describe(day));
+        Assert.Equal(day, RehearsalDays.Today(today, RehearsalDays.December1For(today, day)));
+        Assert.Contains(day, RehearsalDays.Choices);
+    }
+
+    [Fact]
+    public void MakingTodayDecember6PutsDecember1FiveDaysAgo() =>
+        Assert.Equal(new DateOnly(2026, 10, 20), RehearsalDays.December1For(new DateOnly(2026, 10, 25), 5));
+
+    [Fact]
     public void RealSeasonsKeepDecember()
     {
         var schedule = Schedule(October25Noon, Testing());

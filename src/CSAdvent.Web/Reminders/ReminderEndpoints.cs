@@ -22,8 +22,9 @@ public static class ReminderEndpoints
         {
             // Development only: runs the reminders as if it were the given time, so they can be tried (and tested) without
             // waiting for December. Everything goes to MailPit.
+            // In UTC whatever offset it's given, because PostgreSQL's timestamps only take UTC.
             app.MapPost("/dev/reminders/run", async (DateTimeOffset at, ReminderService reminders, CancellationToken cancellationToken) =>
-                Results.Ok(await reminders.RunAsync(at, cancellationToken)));
+                Results.Ok(await reminders.RunAsync(at.ToUniversalTime(), cancellationToken)));
         }
 
         return app;

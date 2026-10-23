@@ -200,10 +200,12 @@ public sealed class SeasonTestingService(
         await db.SocialPosts.CountAsync(p => p.Slot.SeasonYear == Year, cancellationToken));
 }
 
+/// <summary>What day today should be in the rehearsal (<see cref="RehearsalDays"/>): 0 is December 1.</summary>
 public sealed class RehearsalForm
 {
-    [Required(ErrorMessage = "Choose the date that stands in for December 1.")]
-    public DateOnly? RehearsalStartsOn { get; set; }
+    [Required(ErrorMessage = "Choose what day today should be in the rehearsal.")]
+    [Range(RehearsalDays.Earliest, RehearsalDays.Latest, ErrorMessage = "Choose what day today should be in the rehearsal.")]
+    public int? TodayIs { get; set; }
 }
 
 public sealed class TesterForm
