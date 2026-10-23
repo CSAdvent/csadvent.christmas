@@ -103,6 +103,7 @@ dotnet test
 
 - 📝 **Contributors add their own post's title and URL** at `/my-spots` after signing in. That's how posts get onto the calendar.
 - 🚪 **Dropping out** there frees the spot straight away, without naming the author, emails the organizers, and offers the day to the backup posters
+- 📜 **Your C# Advent history:** returning authors see every post they've written, season by season, once an organizer has linked their archive posts to their GitHub account at `/manage/authors`. Organizers see them as returning on their requests
 
 ## 📝 Content
 

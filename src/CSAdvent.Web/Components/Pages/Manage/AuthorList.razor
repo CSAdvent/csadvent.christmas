@@ -1,0 +1,119 @@
+@page "/manage/authors"
+@inject AuthorLinkService Authors
+
+<PageTitle>Authors · Manage · C# Advent</PageTitle>
+
+<ManageNav />
+
+<h1 class="text-3xl font-bold tracking-tight text-slate-900">Authors</h1>
+<p class="mt-2 max-w-3xl text-slate-600">
+    Everyone who's published a post in a past season, by the name on the calendar. Link an author to their GitHub account and
+    their posts show up as their history on My spots, even before they've signed in here, and as "returning" on their requests.
+    Posts from 2026 on are linked when their claim is approved.
+</p>
+
+@if (Message is { } message)
+{
+    <p class="mt-4 max-w-3xl rounded-xl bg-slate-50 p-4 text-sm font-medium text-slate-800 ring-1 ring-slate-200" role="status">@message</p>
+}
+
+<form method="get" action="manage/authors" class="mt-6 flex flex-wrap items-end gap-3">
+    <label class="flex flex-col text-sm font-medium text-slate-700">
+        Find an author
+        <input name="q" value="@Q" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+    </label>
+    <label class="flex items-center gap-2 pb-2 text-sm text-slate-700">
+        <input type="checkbox" name="unlinked" value="true" checked="@Unlinked" />
+        Only authors without a GitHub account
+    </label>
+    <button type="submit" class="rounded-lg bg-white px-4 py-2 font-semibold text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50">Show</button>
+</form>
+
+<p class="mt-4 text-sm text-slate-500">@_linked of @_total authors linked. Showing @_shown.Count.</p>
+
+<table class="mt-4 w-full text-left text-sm">
+    <thead class="border-b border-slate-200 text-slate-500">
+        <tr>
+            <th class="py-2 pr-4 font-medium">Author</th>
+            <th class="py-2 pr-4 font-medium">Posts</th>
+            <th class="py-2 pr-4 font-medium">Seasons</th>
+            <th class="py-2 font-medium">GitHub account</th>
+        </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+        @foreach (var author in _shown)
+        {
+            <tr class="align-top">
+                <td class="py-3 pr-4">
+                    <span class="font-semibold text-slate-900">@author.Name</span>
+                    @foreach (var link in author.Links.Take(2))
+                    {
+                        <a href="@link" class="block max-w-xs truncate text-xs text-advent-700 underline">@link</a>
+                    }
+                </td>
+                <td class="py-3 pr-4">@author.Posts</td>
+                <td class="py-3 pr-4 text-slate-600">@string.Join(", ", author.Years)</td>
+                <td class="py-3">
+                    @if (author.GithubLogin is { } login)
+                    {
+                        <div class="flex flex-wrap items-center gap-3">
+                            <a href="@($"https://github.com/{login.Split(',')[0].Trim()}")" class="font-medium text-advent-700 underline">@login</a>
+                            <form method="post" action="manage/authors/unlink">
+                                <AntiforgeryToken />
+                                <input type="hidden" name="Key" value="@author.Key" />
+                                <button type="submit" class="rounded-md px-2 py-1 text-xs text-red-700 ring-1 ring-red-200 hover:bg-red-50">Unlink</button>
+                            </form>
+                        </div>
+                    }
+                    else
+                    {
+                        <form method="post" action="manage/authors/link" class="flex flex-wrap items-center gap-2">
+                            <AntiforgeryToken />
+                            <input type="hidden" name="Key" value="@author.Key" />
+                            <label>
+                                <span class="sr-only">GitHub login for @author.Name</span>
+                                <input name="Login" value="@author.SuggestedLogin" placeholder="GitHub login" class="w-40 rounded-lg border border-slate-300 px-2 py-1" />
+                            </label>
+                            <button type="submit" class="rounded-md px-2 py-1 text-xs font-semibold text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50">Link</button>
+                        </form>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private List<ArchiveAuthor> _shown = [];
+    private int _total;
+    private int _linked;
+
+    [SupplyParameterFromQuery]
+    public string? Q { get; set; }
+
+    [SupplyParameterFromQuery]
+    public bool Unlinked { get; set; }
+
+    [SupplyParameterFromQuery(Name = "done")]
+    public string? Done { get; set; }
+
+    private string? Message => Done switch
+    {
+        "linked" => "Linked. Their posts are their history now.",
+        "unlinked" => "Unlinked.",
+        "no-account" => "There's no GitHub account with that login.",
+        "github-unavailable" => "GitHub didn't answer just now. Try again in a minute.",
+        "no-author" => "That author isn't in the archive any more.",
+        _ => null,
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authors = await Authors.ListAsync();
+        _total = authors.Count;
+        _linked = authors.Count(a => a.GithubLogin is not null);
+        _shown = [.. authors.Where(a =>
+            (!Unlinked || a.GithubLogin is null)
+            && (string.IsNullOrWhiteSpace(Q) || a.Name.Contains(Q.Trim(), StringComparison.OrdinalIgnoreCase)))];
+    }
+}
