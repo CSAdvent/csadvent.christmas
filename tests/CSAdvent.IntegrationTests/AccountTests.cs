@@ -63,6 +63,7 @@ public sealed partial class AccountTests(AppHostFixture fixture)
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.StartsWith("/access-denied", response.Headers.Location!.PathAndQuery);
+        Assert.DoesNotContain(">Manage</a>", await browser.GetStringAsync("/", CancellationToken));
     }
 
     [Fact]
@@ -75,6 +76,9 @@ public sealed partial class AccountTests(AppHostFixture fixture)
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains(">Organizer overview</h1>", await response.Content.ReadAsStringAsync(CancellationToken));
+
+        // Every page links organizers to their area.
+        Assert.Matches("<a href=\"manage\"[^>]*>Manage</a>", await browser.GetStringAsync("/about", CancellationToken));
     }
 
     [Fact]

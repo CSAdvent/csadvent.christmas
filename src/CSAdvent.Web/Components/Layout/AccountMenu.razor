@@ -1,3 +1,4 @@
+@using CSAdvent.Web.Auth
 @inject NavigationManager Navigation
 
 <AuthorizeView>
@@ -5,6 +6,11 @@
         <li>
             <NavLink href="my-spots" class="rounded-lg px-3 py-2 hover:bg-white/15" ActiveClass="bg-white/20">My spots</NavLink>
         </li>
+        <AuthorizeView Policy="@AdventPolicies.Admin" Context="organizer">
+            <li>
+                <NavLink href="manage" class="rounded-lg px-3 py-2 hover:bg-white/15" ActiveClass="bg-white/20">Manage</NavLink>
+            </li>
+        </AuthorizeView>
         <li class="flex items-center gap-2 pl-2">
             <span class="hidden text-advent-100 sm:inline">@context.User.Identity?.Name</span>
             <form method="post" action="signout">
