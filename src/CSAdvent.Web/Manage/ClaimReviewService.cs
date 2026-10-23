@@ -69,7 +69,7 @@ public sealed class ClaimReviewService(AdventDbContext db, TimeProvider timeProv
                 r.SubmittedAt,
                 r.Status,
                 db.ClaimRequests.Count(other => other.SlotId == r.SlotId && other.Id != r.Id && other.Status == ClaimRequestStatus.Pending),
-                // Posts they've published in earlier seasons, linked to their account (AuthorLinkService).
+                // Posts they've published in earlier seasons, linked to their account (AuthorService).
                 db.Slots.Count(s => s.ContributorId == r.ContributorId && s.SeasonYear < r.Slot.SeasonYear && s.SeasonYear != Season.TestYear
                     && s.PostUrl != null && s.AuthorName != null)))
             .ToListAsync(cancellationToken);

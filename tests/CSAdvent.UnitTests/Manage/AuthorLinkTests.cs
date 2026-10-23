@@ -12,7 +12,7 @@ public sealed class AuthorLinkTests
     [InlineData("Ada Lovelace", "ada lovelace")]
     [InlineData("  Ada   LOVELACE ", "ada lovelace")]
     public void AuthorsAreGroupedByNameWhateverItsCaseOrSpacing(string name, string key) =>
-        Assert.Equal(key, AuthorLinkService.Key(name));
+        Assert.Equal(key, AuthorService.Key(name));
 
     [Theory]
     [InlineData("https://github.com/Ada-Lovelace", "ada-lovelace")]
@@ -21,7 +21,15 @@ public sealed class AuthorLinkTests
     [InlineData("https://twitter.com/ada", null)]
     [InlineData(null, null)]
     public void GitHubProfileLinksSuggestALogin(string? url, string? login) =>
-        Assert.Equal(login, AuthorLinkService.SuggestLogin(url));
+        Assert.Equal(login, AuthorService.SuggestLogin(url));
+
+    [Theory]
+    [InlineData("calvin a. allen", true)]
+    [InlineData("c. allen", true)]
+    [InlineData("matt groves", false)]
+    [InlineData("al bundy", false)]
+    public void ArchiveAuthorsSharingANameAreSuggestedFirst(string key, bool suggested) =>
+        Assert.Equal(suggested, AuthorService.SharesAName(new AuthorRow(null, key, key, null, 1, [], null), ["Calvin Allen"]));
 
     [Fact]
     public async Task FindsAGitHubAccountWithTheAppsCredentials()

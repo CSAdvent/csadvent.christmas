@@ -53,6 +53,7 @@ builder.Services.AddScoped<SeasonAdminService>();
 builder.Services.AddScoped<ClaimReviewService>();
 builder.Services.AddScoped<EntryAdminService>();
 builder.Services.AddScoped<MySpotsService>();
+builder.Services.AddScoped<ProfileService>();
 builder.Services.AddScoped<EntryService>();
 builder.Services.AddSingleton<CardRenderer>();
 builder.Services.AddScoped<RssFeed>();
@@ -73,7 +74,7 @@ builder.AddEmail();
 builder.Services.AddScoped<IClaimNotifier, EmailClaimNotifier>();
 builder.Services.AddScoped<SampleEmailService>();
 builder.Services.AddHttpClient<GitHubUsers>(GitHubUsers.Configure);
-builder.Services.AddScoped<AuthorLinkService>();
+builder.Services.AddScoped<AuthorService>();
 
 // Post link reminders and the daily "today's posts" email, sent each morning in the reveal time zone.
 builder.Services.AddOptions<ReminderOptions>()

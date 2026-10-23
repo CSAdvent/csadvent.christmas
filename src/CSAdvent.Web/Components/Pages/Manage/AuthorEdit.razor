@@ -1,0 +1,265 @@
+@page "/manage/authors/{ContributorId:int}"
+@using CSAdvent.Web.Contributors
+@inject AuthorService Authors
+@inject ProfileService Profiles
+@inject NavigationManager Navigation
+
+@if (_author is { } author)
+{
+    <PageTitle>@author.Name · Authors · Manage · C# Advent</PageTitle>
+
+    <ManageNav />
+
+    <nav class="mb-4 text-sm font-medium"><a href="manage/authors" class="text-advent-700 hover:underline">← All authors</a></nav>
+
+    @if (Message is { } message)
+    {
+        <p class="mb-6 max-w-3xl rounded-xl bg-green-50 p-4 font-medium text-green-800 ring-1 ring-green-200" role="status">@message</p>
+    }
+
+    @if (_error is not null)
+    {
+        <p class="mb-6 max-w-3xl rounded-xl bg-red-50 p-4 font-medium text-red-800 ring-1 ring-red-200" role="alert">@_error</p>
+    }
+
+    <div class="flex flex-wrap items-center gap-4">
+        <img src="@($"https://github.com/{author.GithubLogin}.png?size=128")" alt="" width="64" height="64" class="size-16 rounded-full ring-1 ring-slate-200" />
+        <div>
+            <h1 class="text-3xl font-bold tracking-tight text-slate-900">@author.Name</h1>
+            <p class="mt-1 text-sm text-slate-600">
+                <a href="@($"https://github.com/{author.GithubLogin}")" class="font-medium text-advent-700 underline">@author.GithubLogin</a>
+                · @(author.Email ?? "No verified email (they haven't signed in, or GitHub hasn't verified one)")
+                · @author.Published @(author.Published == 1 ? "post" : "posts")
+            </p>
+            @if (author.Names.Count > 1)
+            {
+                <p class="mt-1 text-sm text-slate-500">Has written as @string.Join(", ", author.Names).</p>
+            }
+        </div>
+    </div>
+
+    <section class="mt-10 max-w-2xl">
+        <h2 class="text-xl font-semibold text-slate-900">Profile</h2>
+        <p class="mt-1 text-sm text-slate-600">
+            What they'd see on their own profile page: it fills in their next claim. Their GitHub login and email come from GitHub.
+        </p>
+
+        <EditForm Model="Form" FormName="profile" OnValidSubmit="SaveAsync" class="mt-4 flex flex-col gap-6">
+            <DataAnnotationsValidator />
+            <ValidationSummary class="rounded-xl bg-red-50 p-4 text-sm ring-1 ring-red-200" />
+
+            <fieldset class="flex flex-col gap-4">
+                <legend class="font-semibold text-slate-900">On the calendar</legend>
+                <label class="flex flex-col text-sm font-medium text-slate-700">
+                    Name
+                    <InputText @bind-Value="Form!.Name" maxlength="50" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                </label>
+                <label class="flex flex-col text-sm font-medium text-slate-700">
+                    Link for their name <span class="font-normal text-slate-500">(optional)</span>
+                    <InputText @bind-Value="Form!.Link" type="url" maxlength="200" placeholder="https://" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                </label>
+                @if (author.Posts.Count > 0)
+                {
+                    <label class="flex items-center gap-3 text-sm text-slate-700">
+                        <InputCheckbox @bind-Value="Form!.UpdatePosts" class="size-4" />
+                        Also put this name and link on @(author.Posts.Count == 1 ? "their spot" : $"all {author.Posts.Count} of their spots")
+                    </label>
+                }
+            </fieldset>
+
+            <fieldset class="rounded-xl p-4 ring-1 ring-slate-200">
+                <legend class="px-1 font-semibold text-slate-900">Social accounts</legend>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <label class="flex flex-col text-sm font-medium text-slate-700">
+                        Bluesky
+                        <InputText @bind-Value="Form!.Bluesky" maxlength="253" placeholder="them.bsky.social" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                    </label>
+                    <label class="flex flex-col text-sm font-medium text-slate-700">
+                        Mastodon
+                        <InputText @bind-Value="Form!.Mastodon" maxlength="100" placeholder="@("@them@mastodon.social")" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                    </label>
+                    <label class="flex flex-col text-sm font-medium text-slate-700">
+                        LinkedIn
+                        <InputText @bind-Value="Form!.LinkedIn" maxlength="200" placeholder="https://www.linkedin.com/in/them" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                    </label>
+                    <label class="flex flex-col text-sm font-medium text-slate-700">
+                        Facebook
+                        <InputText @bind-Value="Form!.Facebook" maxlength="200" placeholder="https://www.facebook.com/them" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                    </label>
+                    <label class="flex flex-col text-sm font-medium text-slate-700">
+                        Reddit
+                        <InputText @bind-Value="Form!.Reddit" maxlength="40" placeholder="u/them" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                    </label>
+                </div>
+            </fieldset>
+
+            <div>
+                <button type="submit" class="rounded-lg bg-advent-600 px-5 py-2 font-semibold text-white hover:bg-advent-700">Save profile</button>
+            </div>
+        </EditForm>
+    </section>
+
+    @* Shown while there's anyone to add, and rendered after a post so a repeat reaches its handler. *@
+    @if (author.OtherAuthors.Count > 0 || _combinePosted)
+    {
+        <section class="mt-12 max-w-2xl">
+            <h2 class="text-xl font-semibold text-slate-900">Also wrote as</h2>
+            <p class="mt-1 text-sm text-slate-600">
+                If they're also an archive author under another name (a middle initial, a nickname, a typo), add those posts to
+                them. Names that share a word with theirs are listed first. Their posts keep the name they were published under;
+                tick the box above and save to put one name on all of them.
+            </p>
+            <EditForm Model="Combine" FormName="combine" OnValidSubmit="CombineAsync" class="mt-4 flex flex-wrap items-end gap-3">
+                <DataAnnotationsValidator />
+                <label class="flex flex-col text-sm font-medium text-slate-700">
+                    Archive author
+                    <InputSelect @bind-Value="Combine!.Key" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal">
+                        <option value="">Pick a name…</option>
+                        @foreach (var other in author.OtherAuthors)
+                        {
+                            <option value="@other.Key">@other.Name (@string.Join(", ", other.Seasons.Select(s => s.Year).Distinct()))@(AuthorService.SharesAName(other, author.Names) ? " · suggested" : "")</option>
+                        }
+                    </InputSelect>
+                </label>
+                <button type="submit" class="rounded-lg bg-white px-4 py-2 font-semibold text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50">Add their posts</button>
+                <ValidationMessage For="() => Combine!.Key" class="w-full text-sm" />
+            </EditForm>
+        </section>
+    }
+
+    <section class="mt-12">
+        <h2 class="text-xl font-semibold text-slate-900">Spots</h2>
+        @if (author.Posts.Count == 0)
+        {
+            <p class="mt-2 text-slate-600">No spots yet.</p>
+        }
+        else
+        {
+            <table class="mt-4 w-full text-left text-sm">
+                <thead class="border-b border-slate-200 text-slate-500">
+                    <tr>
+                        <th class="py-2 pr-4 font-medium">Spot</th>
+                        <th class="py-2 pr-4 font-medium">Post</th>
+                        <th class="py-2 pr-4 font-medium">Name on the calendar</th>
+                        <th class="py-2 font-medium"><span class="sr-only">Edit</span></th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    @foreach (var post in author.Posts)
+                    {
+                        <tr class="align-top">
+                            <td class="py-3 pr-4 whitespace-nowrap">@post.Spot</td>
+                            <td class="py-3 pr-4">
+                                @if (post.PostUrl is { } url)
+                                {
+                                    <a href="@url" class="text-advent-700 underline">@(post.PostTitle ?? url)</a>
+                                }
+                                else
+                                {
+                                    <span class="text-slate-500">No post yet</span>
+                                }
+                            </td>
+                            <td class="py-3 pr-4">
+                                @if (post.AuthorUrl is { } link)
+                                {
+                                    <a href="@link" class="text-advent-700 underline">@post.AuthorName</a>
+                                }
+                                else
+                                {
+                                    @post.AuthorName
+                                }
+                            </td>
+                            <td class="py-3"><a href="manage/entries/@post.SlotId" class="font-medium text-advent-700 hover:underline">Edit</a></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+
+    <section class="mt-12 max-w-2xl rounded-xl bg-red-50 p-5 ring-1 ring-red-200">
+        <h2 class="font-semibold text-red-900">Unlink</h2>
+        <p class="mt-1 text-sm text-red-900">
+            For a link made by mistake. Their posts in seasons that are over go back to being archive authors, grouped by name,
+            and leave their history on My spots. Spots in a season still running stay theirs. Their profile isn't changed.
+        </p>
+        <EditForm Model="Unlink" FormName="unlink" OnValidSubmit="UnlinkAsync" class="mt-4 flex flex-wrap items-center gap-4">
+            <DataAnnotationsValidator />
+            <label class="flex items-center gap-2 text-sm text-red-900">
+                <InputCheckbox @bind-Value="Unlink!.Confirm" class="size-4" />
+                Unlink their archive posts
+            </label>
+            <button type="submit" class="rounded-lg bg-red-700 px-4 py-2 font-semibold text-white hover:bg-red-800">Unlink</button>
+            <ValidationMessage For="() => Unlink!.Confirm" class="w-full text-sm" />
+        </EditForm>
+    </section>
+}
+
+@code {
+    private AuthorProfile? _author;
+    private bool _combinePosted;
+    private string? _error;
+
+    [Parameter]
+    public int ContributorId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "done")]
+    public string? Done { get; set; }
+
+    [SupplyParameterFromForm(FormName = "profile")]
+    private ProfileForm? Form { get; set; }
+
+    [SupplyParameterFromForm(FormName = "combine")]
+    private CombineForm? Combine { get; set; }
+
+    [SupplyParameterFromForm(FormName = "unlink")]
+    private UnlinkForm? Unlink { get; set; }
+
+    private string? Message => Done switch
+    {
+        "saved" => "Saved.",
+        "linked" => "Linked. Their posts are their history now.",
+        "combined" => "Added. Those posts are theirs now.",
+        _ => null,
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        _combinePosted = Combine is not null;
+        Combine ??= new();
+        Unlink ??= new();
+
+        _author = await Authors.GetAsync(ContributorId);
+        if (_author is null)
+        {
+            Navigation.NotFound();
+            return;
+        }
+
+        // A posted form keeps what was typed; a fresh page starts from their profile.
+        Form ??= await Profiles.GetAsync(ContributorId) ?? new();
+    }
+
+    private async Task SaveAsync()
+    {
+        await Profiles.SaveAsync(ContributorId, Form!);
+        Navigation.NavigateTo($"manage/authors/{ContributorId}?done=saved");
+    }
+
+    private async Task CombineAsync()
+    {
+        if (!await Authors.CombineAsync(ContributorId, Combine!.Key))
+        {
+            _error = "That archive author isn't there any more. Someone may have linked them already.";
+            return;
+        }
+
+        Navigation.NavigateTo($"manage/authors/{ContributorId}?done=combined");
+    }
+
+    private async Task UnlinkAsync()
+    {
+        await Authors.UnlinkAsync(ContributorId);
+        Navigation.NavigateTo("manage/authors?done=unlinked");
+    }
+}

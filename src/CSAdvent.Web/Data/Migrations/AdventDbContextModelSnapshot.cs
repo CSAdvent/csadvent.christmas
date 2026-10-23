@@ -16,7 +16,7 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261023142314_LimitRehearsalsToTheTestSeason";
+    public override string LastMigrationId => "20261023180642_AddContributorProfile";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -284,6 +284,11 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                     .HasColumnType("timestamp with time zone")
                     .HasColumnName("created_at");
 
+                b.Property<string>("DisplayName")
+                    .HasMaxLength(100)
+                    .HasColumnType("character varying(100)")
+                    .HasColumnName("display_name");
+
                 b.Property<string>("Email")
                     .HasMaxLength(254)
                     .HasColumnType("character varying(254)")
@@ -322,6 +327,11 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                     .HasMaxLength(20)
                     .HasColumnType("character varying(20)")
                     .HasColumnName("reddit_username");
+
+                b.Property<string>("WebsiteUrl")
+                    .HasMaxLength(500)
+                    .HasColumnType("character varying(500)")
+                    .HasColumnName("website_url");
 
                 b.HasKey("Id")
                     .HasName("pk_contributors");

@@ -11,8 +11,13 @@
                 <NavLink href="manage" class="rounded-lg px-3 py-2 hover:bg-white/15" ActiveClass="bg-white/20">Manage</NavLink>
             </li>
         </AuthorizeView>
-        <li class="flex items-center gap-2 pl-2">
-            <span class="hidden text-advent-100 sm:inline">@context.User.Identity?.Name</span>
+        <li>
+            <NavLink href="profile" title="Your profile" class="rounded-lg px-3 py-2 hover:bg-white/15" ActiveClass="bg-white/20">
+                <span class="sm:hidden">Profile</span>
+                <span class="hidden sm:inline">@context.User.Identity?.Name</span>
+            </NavLink>
+        </li>
+        <li class="flex items-center gap-2">
             <form method="post" action="signout">
                 <AntiforgeryToken />
                 <button type="submit" class="rounded-lg px-3 py-2 hover:bg-white/15">Sign out</button>

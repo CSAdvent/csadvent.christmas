@@ -25,7 +25,7 @@ public enum ClaimOutcome
 public sealed record ClaimableSlot(int SlotId, int Year, int Day, int Part, int SlotsPerDay, ClaimAvailability Availability);
 
 /// <summary>What the claim form shows and prefills for the signed-in contributor.</summary>
-public sealed record ClaimantDetails(string? VerifiedEmail, string? Bluesky, string? Mastodon, string? LinkedIn, string? Facebook, string? Reddit);
+public sealed record ClaimantDetails(string? VerifiedEmail, string? Bluesky, string? Mastodon, string? LinkedIn, string? Facebook, string? Reddit, string? DisplayName, string? WebsiteUrl);
 
 /// <summary>
 /// Claim requests: a signed-in contributor asks for an open slot and the organizer approves one request per slot. Requests
@@ -58,8 +58,8 @@ public sealed class ClaimService(AdventDbContext db, AdventSchedule schedule, Ti
     }
 
     /// <summary>
-    /// The contributor's verified email, where claim emails go (null if GitHub hasn't verified one), and the social accounts
-    /// they gave before.
+    /// The contributor's verified email, where claim emails go (null if GitHub hasn't verified one), and the name, link and
+    /// social accounts they gave before (on their profile or their last claim).
     /// </summary>
     public Task<ClaimantDetails?> GetClaimantAsync(int contributorId, CancellationToken cancellationToken = default) =>
         db.Contributors
@@ -70,7 +70,9 @@ public sealed class ClaimService(AdventDbContext db, AdventSchedule schedule, Ti
                 c.MastodonHandle,
                 c.LinkedInUrl,
                 c.FacebookUrl,
-                c.RedditUsername))
+                c.RedditUsername,
+                c.DisplayName,
+                c.WebsiteUrl))
             .SingleOrDefaultAsync(cancellationToken);
 
     public async Task<ClaimOutcome> SubmitAsync(int contributorId, int year, int day, int part, ClaimForm form, CancellationToken cancellationToken = default)
@@ -105,7 +107,9 @@ public sealed class ClaimService(AdventDbContext db, AdventSchedule schedule, Ti
 
         db.ClaimRequests.Add(request);
 
-        // Saved on the contributor, so they're prefilled next time. The form has already validated them.
+        // Saved on the contributor, so they're prefilled next time and show on their profile. The form has already validated them.
+        contributor.DisplayName = form.DisplayName.Trim();
+        contributor.WebsiteUrl = string.IsNullOrWhiteSpace(form.Link) ? null : form.Link.Trim();
         contributor.BlueskyHandle = Normalize(SocialPlatform.Bluesky, form.Bluesky);
         contributor.MastodonHandle = Normalize(SocialPlatform.Mastodon, form.Mastodon);
         contributor.LinkedInUrl = Normalize(SocialPlatform.LinkedIn, form.LinkedIn);

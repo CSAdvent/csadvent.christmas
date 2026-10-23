@@ -165,10 +165,11 @@
         var claimant = await Claims.GetClaimantAsync(_contributorId);
         _email = claimant?.VerifiedEmail;
 
-        // A new form starts with the GitHub profile name and the accounts given last time; a posted form keeps what was typed.
+        // A new form starts with their profile's name, link and accounts (or their GitHub name); a posted form keeps what was typed.
         Form ??= new ClaimForm
         {
-            DisplayName = Truncate(user.GetDisplayName(), 50),
+            DisplayName = Truncate(claimant?.DisplayName ?? user.GetDisplayName(), 50),
+            Link = claimant?.WebsiteUrl,
             Bluesky = claimant?.Bluesky,
             Mastodon = claimant?.Mastodon,
             LinkedIn = claimant?.LinkedIn,

@@ -98,7 +98,7 @@ public sealed partial class MySpotsService(
 
     /// <summary>
     /// Every post linked to the contributor in a season that's over, newest season first: their C# Advent history. Posts from
-    /// 2026 on are linked when their claim is approved, and organizers link earlier ones (<see cref="AuthorLinkService"/>).
+    /// 2026 on are linked when their claim is approved, and organizers link earlier ones (<see cref="AuthorService"/>).
     /// </summary>
     public async Task<IReadOnlyList<PastPost>> GetHistoryAsync(int contributorId, CancellationToken cancellationToken = default)
     {
