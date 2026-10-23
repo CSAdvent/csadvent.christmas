@@ -139,7 +139,8 @@ public sealed partial class ReminderService(
         foreach (var recipient in recipients)
         {
             var content = ReminderEmails.Daily(
-                new DailyShare(year, today.Day, posts, recipient.First.AuthorName, recipient.IsAuthorToday),
+                // The day of Advent, not today's day of the month: they differ in the test season's rehearsal.
+                new DailyShare(year, day, posts, recipient.First.AuthorName, recipient.IsAuthorToday),
                 site.Value,
                 optOut.CreateLink(recipient.First.Id));
             var to = new EmailRecipient(recipient.First.Email, recipient.First.AuthorName);
