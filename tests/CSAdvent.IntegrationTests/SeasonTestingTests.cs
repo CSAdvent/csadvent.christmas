@@ -165,7 +165,7 @@ public sealed class SeasonTestingTests(AppHostFixture fixture)
         var today = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, eastern).Date;
         var noon = new DateTimeOffset(today.AddHours(12), eastern.GetUtcOffset(today.AddHours(12)));
         using var client = fixture.CreateWebClient();
-        var response = await client.PostAsync($"/dev/reminders/run?at={Uri.EscapeDataString(noon.ToString("O", CultureInfo.InvariantCulture))}", null, CancellationToken);
+        var response = await client.PostAsync($"/dev/reminders/run?at={Uri.EscapeDataString(noon.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture))}", null, CancellationToken);
         response.EnsureSuccessStatusCode();
     }
 
