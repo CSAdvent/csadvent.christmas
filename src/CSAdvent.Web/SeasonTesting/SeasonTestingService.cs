@@ -114,20 +114,10 @@ public sealed class SeasonTestingService(
 
         var deleted = await GetActivityAsync(cancellationToken);
         var now = timeProvider.GetUtcNow();
-
-        // Aspire's database connection retries, which needs the whole transaction inside the retry: every step can run again.
-        await db.Database.CreateExecutionStrategy().ExecuteAsync(
+        await InTransactionAsync(
             async token =>
             {
-                await using var transaction = await db.Database.BeginTransactionAsync(token);
-                // Offers point at both the backup list and the spots, so they go first.
-                await db.BackupOffers.Where(o => o.Slot.SeasonYear == Year).ExecuteDeleteAsync(token);
-                await db.Substitutes.Where(s => s.SeasonYear == Year).ExecuteDeleteAsync(token);
-                await db.SentReminders.Where(r => r.Slot != null && r.Slot.SeasonYear == Year).ExecuteDeleteAsync(token);
-                await db.EntryHits.Where(h => h.Slot.SeasonYear == Year).ExecuteDeleteAsync(token);
-                await db.SocialPosts.Where(p => p.Slot.SeasonYear == Year).ExecuteDeleteAsync(token);
-                await db.ClaimRequests.Where(r => r.Slot.SeasonYear == Year).ExecuteDeleteAsync(token);
-                await db.SlotContacts.Where(c => c.Slot.SeasonYear == Year).ExecuteDeleteAsync(token);
+                await DeleteActivityAsync(token);
                 await db.Slots
                     .Where(s => s.SeasonYear == Year)
                     .ExecuteUpdateAsync(
@@ -140,13 +130,65 @@ public sealed class SeasonTestingService(
                             .SetProperty(x => x.DroppedOutAt, (DateTimeOffset?)null),
                         token);
                 await db.Seasons.Where(s => s.Year == Year).ExecuteUpdateAsync(s => s.SetProperty(x => x.TestingStartedAt, now), token);
-                await transaction.CommitAsync(token);
             },
             cancellationToken);
 
         await testSeasons.RefreshAsync(cancellationToken);
         return deleted;
     }
+
+    /// <summary>
+    /// Ends testing: deletes the test season itself, with its spots, testers, rehearsal and everything done in it, as if it had
+    /// never been created. Testers who are still in test mode just see the real site. Returns false if there's no test season.
+    /// </summary>
+    public async Task<bool> EndAsync(CancellationToken cancellationToken = default)
+    {
+        if (!await db.Seasons.AnyAsync(s => s.Year == Year, cancellationToken))
+        {
+            return false;
+        }
+
+        await InTransactionAsync(
+            async token =>
+            {
+                await DeleteActivityAsync(token);
+                await db.Slots.Where(s => s.SeasonYear == Year).ExecuteDeleteAsync(token);
+                await db.SeasonTesters.Where(t => t.SeasonYear == Year).ExecuteDeleteAsync(token);
+                await db.OtherAdvents.Where(a => a.SeasonYear == Year).ExecuteDeleteAsync(token);
+                await db.Seasons.Where(s => s.Year == Year).ExecuteDeleteAsync(token);
+            },
+            cancellationToken);
+
+        await testSeasons.RefreshAsync(cancellationToken);
+        return true;
+    }
+
+    /// <summary>Deletes the requests, backup list, offers, sent emails, visits, social posts and contacts of the test season's spots.</summary>
+    private async Task DeleteActivityAsync(CancellationToken token)
+    {
+        // Offers point at both the backup list and the spots, so they go first.
+        await db.BackupOffers.Where(o => o.Slot.SeasonYear == Year).ExecuteDeleteAsync(token);
+        await db.Substitutes.Where(s => s.SeasonYear == Year).ExecuteDeleteAsync(token);
+        await db.SentReminders.Where(r => r.Slot != null && r.Slot.SeasonYear == Year).ExecuteDeleteAsync(token);
+        await db.EntryHits.Where(h => h.Slot.SeasonYear == Year).ExecuteDeleteAsync(token);
+        await db.SocialPosts.Where(p => p.Slot.SeasonYear == Year).ExecuteDeleteAsync(token);
+        await db.ClaimRequests.Where(r => r.Slot.SeasonYear == Year).ExecuteDeleteAsync(token);
+        await db.SlotContacts.Where(c => c.Slot.SeasonYear == Year).ExecuteDeleteAsync(token);
+    }
+
+    /// <summary>
+    /// Runs the steps in one transaction. Aspire's database connection retries, which needs the whole transaction inside the
+    /// retry: every step can run again.
+    /// </summary>
+    private async Task InTransactionAsync(Func<CancellationToken, Task> steps, CancellationToken cancellationToken) =>
+        await db.Database.CreateExecutionStrategy().ExecuteAsync(
+            async token =>
+            {
+                await using var transaction = await db.Database.BeginTransactionAsync(token);
+                await steps(token);
+                await transaction.CommitAsync(token);
+            },
+            cancellationToken);
 
     private async Task<TestActivity> GetActivityAsync(CancellationToken cancellationToken) => new(
         await db.Slots.CountAsync(s => s.SeasonYear == Year && (s.AuthorName != null || s.ContributorId != null || s.DroppedOutAt != null || s.PostUrl != null), cancellationToken),
@@ -174,5 +216,11 @@ public sealed class TesterForm
 public sealed class ResetTestingForm
 {
     [Range(typeof(bool), "true", "true", ErrorMessage = "Tick the box to confirm that everything done in the test season should be deleted.")]
+    public bool Confirm { get; set; }
+}
+
+public sealed class EndTestingForm
+{
+    [Range(typeof(bool), "true", "true", ErrorMessage = "Tick the box to confirm that the test season should be deleted.")]
     public bool Confirm { get; set; }
 }

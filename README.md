@@ -143,6 +143,7 @@ A hidden test season lets invited testers try everything for real on the live si
 - 🔀 **Test mode** puts the test calendar on a tester's home page. Testers get an invitation to switch, and a banner to switch back
 - ⏩ **Rehearse December any time:** reveals, reminders, the daily email and backup asks follow the rehearsal. Move it to jump ahead, or send what's due straight away
 - 🧹 **Reset the test season** to delete everything done in it: every spot is open again, and the requests, backups, emails, visits and social marks are gone
+- 🛑 **End testing** to delete the test season itself, with its testers and everything done in it. Testers still in test mode just see the real site, and you can create a new test season for another round
 
 ## ✉️ Email
 

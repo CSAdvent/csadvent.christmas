@@ -123,6 +123,30 @@ else if (_loaded)
     </section>
 }
 
+@* Rendered (hidden) after an end post too, so a repeated post reaches its handler instead of getting a 400. *@
+@if (_view is not null || _endPosted)
+{
+    <section hidden="@(_view is null)" class="mt-10 max-w-3xl rounded-xl bg-red-50 p-5 ring-1 ring-red-200">
+        <h2 class="text-xl font-semibold text-slate-900">End testing</h2>
+        <p class="mt-2 text-slate-700">
+            Deletes the test season itself: its spots, its rehearsal, its testers and everything done in it. Nobody sees it any
+            more, testers still in test mode just see the real site, and this page goes back to creating one. Create it again
+            whenever you want another round.
+        </p>
+        <EditForm Model="End" FormName="end" OnValidSubmit="EndAsync" class="mt-4 flex flex-col gap-3">
+            <DataAnnotationsValidator />
+            <label class="flex items-center gap-2 text-sm font-medium text-slate-800">
+                <InputCheckbox @bind-Value="End!.Confirm" />
+                Delete the test season, its testers and everything done in it
+            </label>
+            <ValidationSummary class="text-sm text-red-700" />
+            <div>
+                <button type="submit" class="rounded-lg bg-red-700 px-4 py-2 font-semibold text-white hover:bg-red-800">End testing</button>
+            </div>
+        </EditForm>
+    </section>
+}
+
 @code {
     private const int TestYear = CSAdvent.Web.Data.Season.TestYear;
 
@@ -147,6 +171,11 @@ else if (_loaded)
     [SupplyParameterFromForm(FormName = "reset")]
     private ResetTestingForm? Reset { get; set; }
 
+    [SupplyParameterFromForm(FormName = "end")]
+    private EndTestingForm? End { get; set; }
+
+    private bool _endPosted;
+
     private string? Message => Done switch
     {
         "created" => "The test season is ready. Invite the testers below, then send them to the site.",
@@ -156,6 +185,7 @@ else if (_loaded)
         "not-a-login" => "That isn't a GitHub login.",
         "ran" => "Due reminders and backup asks have gone out.",
         "reset" => "The test season has been reset, and everything done in it deleted.",
+        "ended" => "Testing has ended. The test season, its testers and everything done in it are gone.",
         _ => null,
     };
 
@@ -167,6 +197,8 @@ else if (_loaded)
         Tester ??= new TesterForm();
         Run ??= new RunForm();
         Reset ??= new ResetTestingForm();
+        _endPosted = End is not null;
+        End ??= new EndTestingForm();
 
         _view = await Testing.GetAsync();
         Move.RehearsalStartsOn ??= _view?.RehearsalStartsOn;
@@ -201,6 +233,12 @@ else if (_loaded)
     {
         await Testing.ResetAsync();
         Back("reset");
+    }
+
+    private async Task EndAsync()
+    {
+        await Testing.EndAsync();
+        Back("ended");
     }
 
     private void Back(string done) => Navigation.NavigateTo($"manage/testing?done={done}");
