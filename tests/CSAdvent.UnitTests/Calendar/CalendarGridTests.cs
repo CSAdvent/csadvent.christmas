@@ -21,6 +21,19 @@ public sealed class CalendarGridTests : BunitContext
     }
 
     [Fact]
+    public void TomorrowCountsDownToItsReveal()
+    {
+        var grid = Render<CalendarGrid>(p => p.Add(c => c.Calendar, CalendarFixtures.Calendar(ClaimsOpened)));
+
+        // Midday on December 10: December 11 is revealed at midnight Eastern, 12 hours away, and nothing else counts down.
+        var countdown = Assert.Single(grid.FindAll("time[data-countdown]"));
+        Assert.Equal("12:00:00", countdown.TextContent);
+        Assert.Equal("2026-12-11T00:00:00.0000000-05:00", countdown.GetAttribute("data-countdown"));
+        Assert.Equal("2026-12-10T12:00:00.0000000-05:00", countdown.GetAttribute("data-now"));
+        Assert.NotNull(grid.Find("#december-11").QuerySelector("time[data-countdown]"));
+    }
+
+    [Fact]
     public void DoesNotNameAuthorsWhoNeverPublished()
     {
         var day10 = Render<CalendarGrid>(p => p.Add(c => c.Calendar, CalendarFixtures.Calendar(ClaimsOpened))).Find("#december-10");

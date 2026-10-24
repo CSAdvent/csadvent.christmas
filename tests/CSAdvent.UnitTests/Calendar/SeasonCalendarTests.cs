@@ -49,6 +49,25 @@ public sealed class SeasonCalendarTests
     }
 
     [Fact]
+    public void TheNextRevealCountsDownOnceItsWithinADay()
+    {
+        var season = Season.Create(2026, slotsPerDay: 2, Clock.GetUtcNow());
+
+        // Midday on December 10: December 11 is revealed in 12 hours.
+        var calendar = SeasonCalendar.From(season, Schedule);
+        Assert.Equal(11, calendar.CountingDownTo?.Day);
+        Assert.Equal(Clock.GetUtcNow(), calendar.GeneratedAt);
+
+        // Two weeks before Advent, December 1 is too far off.
+        var early = SeasonCalendar.From(season, new AdventSchedule(Options.Create(new AdventOptions { TimeZone = "America/New_York" }), new FakeTimeProvider(new DateTimeOffset(2026, 11, 17, 12, 0, 0, TimeSpan.FromHours(-5)))));
+        Assert.Null(early.CountingDownTo);
+
+        // After December 25 there's nothing left to reveal.
+        var after = SeasonCalendar.From(season, new AdventSchedule(Options.Create(new AdventOptions { TimeZone = "America/New_York" }), new FakeTimeProvider(new DateTimeOffset(2026, 12, 25, 12, 0, 0, TimeSpan.FromHours(-5)))));
+        Assert.Null(after.CountingDownTo);
+    }
+
+    [Fact]
     public void AuthorsWithoutAWebsiteLinkToTheirGitHubProfile()
     {
         var season = Season.Create(2026, slotsPerDay: 2, Clock.GetUtcNow());
