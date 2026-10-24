@@ -98,6 +98,8 @@ public sealed class AdventSchedule
     /// <summary>Today's date in the reveal time zone.</summary>
     public DateOnly Today => DateOnly.FromDateTime(ToLocalTime(_timeProvider.GetUtcNow()).DateTime);
 
+    public DateTimeOffset Now => _timeProvider.GetUtcNow();
+
     public DateTimeOffset ToLocalTime(DateTimeOffset moment) => TimeZoneInfo.ConvertTime(moment, TimeZone);
 
     /// <summary>A date and time in the reveal time zone (such as a <c>datetime-local</c> form value), as UTC.</summary>

@@ -22,6 +22,16 @@ public sealed record SeasonCalendar(
     /// <summary>Spots nobody has claimed whose day hasn't been revealed yet, so they can still be claimed.</summary>
     public int OpenSpotCount => Days.Sum(day => day.Entries.Count(entry => entry.IsOpen && !entry.IsRevealed));
 
+    /// <summary>When the calendar was put together: what "now" means for its reveals.</summary>
+    public DateTimeOffset GeneratedAt { get; init; }
+
+    /// <summary>How close the next reveal has to be for its day to count down to it, as "tomorrow" on the old site did.</summary>
+    public static readonly TimeSpan CountdownWithin = TimeSpan.FromHours(24);
+
+    /// <summary>The day revealed next, if it's within <see cref="CountdownWithin"/>, for its countdown (#31).</summary>
+    public CalendarDay? CountingDownTo =>
+        Days.FirstOrDefault(day => day.RevealsAt > GeneratedAt) is { } next && next.RevealsAt - GeneratedAt <= CountdownWithin ? next : null;
+
     public static SeasonCalendar From(Season season, AdventSchedule schedule)
     {
         var today = schedule.Today;
@@ -40,7 +50,10 @@ public sealed record SeasonCalendar(
                     day.Key,
                     schedule.GetRevealTime(season.Year, day.Key),
                     IsToday: today == schedule.GetDate(season.Year, day.Key),
-                    [.. day.OrderBy(slot => slot.Part).Select(slot => CalendarEntry.From(slot, schedule.IsRevealed(slot)))]))]);
+                    [.. day.OrderBy(slot => slot.Part).Select(slot => CalendarEntry.From(slot, schedule.IsRevealed(slot)))]))])
+        {
+            GeneratedAt = schedule.Now,
+        };
     }
 }
 
