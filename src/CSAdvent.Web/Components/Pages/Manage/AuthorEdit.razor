@@ -225,6 +225,11 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Every form's model exists before the first await. Blazor renders the page when the first await actually waits, and
+        // that isn't always the first one: if loading the author finished without waiting, the render came at the profile
+        // load, with the author shown and no profile model, and the page failed with a 500 (#109).
+        var profilePosted = Form is not null;
+        Form ??= new();
         _combinePosted = Combine is not null;
         Combine ??= new();
         Unlink ??= new();
@@ -237,7 +242,10 @@
         }
 
         // A posted form keeps what was typed; a fresh page starts from their profile.
-        Form ??= await Profiles.GetAsync(ContributorId) ?? new();
+        if (!profilePosted && await Profiles.GetAsync(ContributorId) is { } profile)
+        {
+            Form = profile;
+        }
     }
 
     private async Task SaveAsync()

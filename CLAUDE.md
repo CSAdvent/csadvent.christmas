@@ -202,7 +202,7 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 - **Requests** (`/manage/requests`, `ClaimReviewService`): oldest first. Approving copies a request into a spot (author, link, contributor, contact email) and can target any open spot in the season. It's idempotent: an already-decided request or a claimed spot is reported, never applied twice (`xmin` guards concurrent approvals). Archive sets a request aside.
 - **Entries** (`/manage/entries`, `EntryAdminService`): every spot in a season with its status (Open, No post yet, Title only, URL only, Ready). An organizer can edit any spot's author, link, contact email and post, put a substitute into an open spot, or release a spot (cleared completely, with a confirmation checkbox). Edits post the spot's `xmin` version back, so a stale edit is refused instead of overwriting.
 - Forms that can disappear after a post (approve/archive) are still rendered, hidden, when their form was posted. Otherwise Blazor answers a repeated post with a 400 instead of reaching the handler.
-- Static SSR renders a page at its first `await`, so create any `EditForm` model before awaiting.
+- Static SSR renders a page when `OnInitializedAsync` first actually waits, so create every `EditForm` model before the first `await`. The first wait isn't always the first `await`: a fast query can complete without waiting, so a model set between two awaits can be missing when a form it guards appears (#109).
 - Integration tests use `TestBrowser` (`fixture.SignInAsync`, and `browser.PostFormAsync(path, formName, fields)`, which also posts the page's hidden inputs unless the fields override them) and `TestSeasons.EnsureAsync` (each test class uses its own years, all after 2089).
 
 ## Season Testing
