@@ -16,7 +16,7 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261024144848_AddAnnouncements";
+    public override string LastMigrationId => "20261024153015_AddSeasonSocialPosts";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -664,6 +664,74 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                     });
             });
 
+        modelBuilder.Entity("CSAdvent.Web.Data.SeasonSocialPost", b =>
+            {
+                var id = b.Property<int>("Id")
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("integer")
+                    .HasColumnName("id");
+
+                NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(id);
+
+                b.Property<DateTimeOffset>("At")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("at");
+
+                b.Property<string>("Error")
+                    .HasMaxLength(1000)
+                    .HasColumnType("character varying(1000)")
+                    .HasColumnName("error");
+
+                b.Property<string>("Kind")
+                    .IsRequired()
+                    .HasMaxLength(20)
+                    .HasColumnType("character varying(20)")
+                    .HasColumnName("kind");
+
+                b.Property<string>("MarkedBy")
+                    .IsRequired()
+                    .HasMaxLength(39)
+                    .HasColumnType("character varying(39)")
+                    .HasColumnName("marked_by");
+
+                b.Property<string>("Platform")
+                    .IsRequired()
+                    .HasMaxLength(20)
+                    .HasColumnType("character varying(20)")
+                    .HasColumnName("platform");
+
+                b.Property<string>("PostUrl")
+                    .HasMaxLength(500)
+                    .HasColumnType("character varying(500)")
+                    .HasColumnName("post_url");
+
+                b.Property<int>("SeasonYear")
+                    .HasColumnType("integer")
+                    .HasColumnName("season_year");
+
+                b.Property<string>("Status")
+                    .IsRequired()
+                    .HasMaxLength(20)
+                    .HasColumnType("character varying(20)")
+                    .HasColumnName("status");
+
+                b.HasKey("Id")
+                    .HasName("pk_season_social_posts");
+
+                b.HasIndex("SeasonYear", "Kind")
+                    .HasDatabaseName("ix_season_social_posts_season_year_kind");
+
+                b.HasIndex("SeasonYear", "Platform")
+                    .IsUnique()
+                    .HasDatabaseName("ix_season_social_posts_season_year_platform")
+                    .HasFilter("kind = 'SignUpsOpen'");
+
+                b.ToTable("season_social_posts", t =>
+                    {
+                        t.HasCheckConstraint("ck_season_social_posts_post_url", "post_url ~* '^https?://'");
+                    });
+            });
+
         modelBuilder.Entity("CSAdvent.Web.Data.SeasonTester", b =>
             {
                 b.Property<int>("SeasonYear")
@@ -1145,6 +1213,18 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                     .OnDelete(DeleteBehavior.Cascade)
                     .IsRequired()
                     .HasConstraintName("fk_other_advents_seasons_season_year");
+
+                b.Navigation("Season");
+            });
+
+        modelBuilder.Entity("CSAdvent.Web.Data.SeasonSocialPost", b =>
+            {
+                b.HasOne("CSAdvent.Web.Data.Season", "Season")
+                    .WithMany()
+                    .HasForeignKey("SeasonYear")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired()
+                    .HasConstraintName("fk_season_social_posts_seasons_season_year");
 
                 b.Navigation("Season");
             });

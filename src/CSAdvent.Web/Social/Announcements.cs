@@ -94,6 +94,54 @@ public static partial class AnnouncementFormatter
         };
     }
 
+    /// <summary>
+    /// The season's "sign-ups are open" post, in each platform's conventions. It links to the home page tagged with the
+    /// platform and the season: an address never posted before, so each platform fetches a fresh preview of the calendar
+    /// rather than one it cached for the home page earlier.
+    /// </summary>
+    public static FormattedAnnouncement FormatSignUpsOpen(int year, SocialPlatform platform, string baseUrl, SocialAccountsOptions? ours = null) =>
+        FormatSeasonPost(
+            platform,
+            $"Sign-ups for C# Advent {year} are open! Claim a day in December and write a post about C# for the community: two posts a day, December 1–25.",
+            $"Sign-ups for C# Advent {year} are open: claim a day in December and write a post about C#",
+            $"{baseUrl.TrimEnd('/')}/?via={platform.ToString().ToLowerInvariant()}&season={year}",
+            ours);
+
+    /// <summary>
+    /// The "sign-ups open soon" post, counting down to the day: "in 8 days", or "tomorrow". Its link carries the countdown,
+    /// so a post a week later still gets a fresh preview.
+    /// </summary>
+    public static FormattedAnnouncement FormatSignUpsSoon(int year, DateOnly opensOn, int daysUntil, SocialPlatform platform, string baseUrl, SocialAccountsOptions? ours = null)
+    {
+        var when = daysUntil == 1
+            ? $"tomorrow, {opensOn.ToString("MMMM d", CultureInfo.InvariantCulture)}"
+            : string.Create(CultureInfo.InvariantCulture, $"in {daysUntil} days, on {opensOn:MMMM d}");
+        return FormatSeasonPost(
+            platform,
+            $"C# Advent {year} sign-ups open {when}! Get ready to claim a day in December and write a post about C# for the community: two posts a day, December 1–25.",
+            $"C# Advent {year} sign-ups open {when}: get ready to claim a day and write a post about C#",
+            string.Create(CultureInfo.InvariantCulture, $"{baseUrl.TrimEnd('/')}/?via={platform.ToString().ToLowerInvariant()}&season={year}&in={daysUntil}"),
+            ours);
+    }
+
+    /// <summary>A season post (not about an entry): the message, a link and the platform's hashtags; for Reddit, a title.</summary>
+    private static FormattedAnnouncement FormatSeasonPost(SocialPlatform platform, string message, string redditTitle, string link, SocialAccountsOptions? ours)
+    {
+        string Post(string hashtags) => $"{message}\n\n{link}\n\n{hashtags}";
+        FormattedAnnouncement Made(string text, Func<string, int> measure, int? limit, string? composer) => new(platform, text, link, measure(text), limit, composer, null);
+
+        var submit = ours?.Subreddit is { Length: > 0 } subreddit ? $"https://www.reddit.com/r/{subreddit}/submit" : "https://www.reddit.com/submit";
+        return platform switch
+        {
+            SocialPlatform.Bluesky => Made(Post(Hashtags), Graphemes, BlueskyLimit, $"https://bsky.app/intent/compose?text={Uri.EscapeDataString(Post(Hashtags))}"),
+            SocialPlatform.Mastodon => Made(Post(Hashtags), MastodonLength, MastodonLimit,
+                ours?.MastodonServer is { } server ? $"https://{server}/share?text={Uri.EscapeDataString(Post(Hashtags))}" : null),
+            SocialPlatform.LinkedIn => Made(Post(Hashtags), text => text.Length, LinkedInLimit, null),
+            SocialPlatform.Facebook => Made(Post("#csharp #csadvent"), text => text.Length, null, null),
+            _ => Made(redditTitle, text => text.Length, RedditTitleLimit, $"{submit}?url={Uri.EscapeDataString(link)}&title={Uri.EscapeDataString(redditTitle)}"),
+        };
+    }
+
     /// <summary>Bluesky counts graphemes, so an emoji counts once.</summary>
     public static int Graphemes(string text) => new StringInfo(text).LengthInTextElements;
 

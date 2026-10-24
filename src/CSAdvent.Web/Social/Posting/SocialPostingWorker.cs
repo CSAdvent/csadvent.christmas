@@ -20,6 +20,7 @@ public sealed class SocialPostingWorker(IServiceScopeFactory scopeFactory, TimeP
                 await using var scope = scopeFactory.CreateAsyncScope();
                 await scope.ServiceProvider.GetRequiredService<SocialCredentialCheck>().RunAsync(timeProvider.GetUtcNow(), stoppingToken);
                 await scope.ServiceProvider.GetRequiredService<SocialPostingService>().RunAsync(timeProvider.GetUtcNow(), stoppingToken);
+                await scope.ServiceProvider.GetRequiredService<SeasonSocialService>().RunAsync(timeProvider.GetUtcNow(), cancellationToken: stoppingToken);
             }
             catch (Exception exception) when (!stoppingToken.IsCancellationRequested)
             {

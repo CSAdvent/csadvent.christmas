@@ -1,0 +1,109 @@
+@page "/manage/social/signups"
+@using System.Globalization
+@using CSAdvent.Web.Data
+@using CSAdvent.Web.Reminders
+@using CSAdvent.Web.Social.Posting
+@using Microsoft.Extensions.Options
+@inject SeasonAdminService Seasons
+@inject SeasonSocialService SeasonPosts
+@inject AdventSchedule Schedule
+@inject IOptions<ReminderOptions> Reminders
+
+<PageTitle>Sign-ups posts · Manage · C# Advent</PageTitle>
+
+<ManageNav />
+
+<nav class="mb-4 text-sm font-medium"><a href="manage/social" class="text-advent-700 hover:underline">← Announcements</a></nav>
+
+@if (_posts is { } posts)
+{
+    <h1 class="text-3xl font-bold tracking-tight text-slate-900">Sign-ups posts for C# Advent @posts.Year</h1>
+    <p class="mt-2 max-w-3xl text-slate-600">
+        @if (posts.AreOpen)
+        {
+            <text>Sign-ups are open.</text>
+        }
+        else if (posts.OpensAt is { } opensAt)
+        {
+            <text>Sign-ups open at midnight Eastern on @OpensOn(opensAt), @(posts.DaysUntil == 1 ? "tomorrow" : $"in {posts.DaysUntil} days").</text>
+        }
+        else
+        {
+            <text>Sign-ups aren't scheduled yet: set them at <a href="manage/seasons" class="text-advent-700 underline">Seasons</a>.</text>
+        }
+        Links go to the home page, tagged with the platform.
+    </p>
+
+    @if (Error == "not-posted")
+    {
+        <p class="mt-4 max-w-3xl rounded-xl bg-red-50 p-4 font-medium text-red-800 ring-1 ring-red-200" role="alert">
+            That didn't go out. The post shows the platform's error, if it gave one; or it can't be posted right now.
+        </p>
+    }
+
+    @if (posts.Soon.Count > 0)
+    {
+        <section class="mt-10">
+            <h2 class="text-xl font-semibold text-slate-900">Sign-ups open soon</h2>
+            <p class="mt-1 max-w-3xl text-sm text-slate-600">
+                Post it whenever you like before sign-ups open, as often as you like. It counts down to the day, so today it
+                says "@(posts.DaysUntil == 1 ? "tomorrow" : $"in {posts.DaysUntil} days")". Nothing posts it automatically.
+            </p>
+            <div class="mt-4 grid gap-4 lg:grid-cols-2">
+                @foreach (var platform in posts.Soon)
+                {
+                    <SeasonPostCard Year="posts.Year" Kind="SeasonPostKind.SignUpsSoon" Post="platform" CanPost="true" />
+                }
+            </div>
+        </section>
+    }
+
+    <section class="mt-12">
+        <h2 class="text-xl font-semibold text-slate-900">Sign-ups are open</h2>
+        <p class="mt-1 max-w-3xl text-sm text-slate-600">
+            @(posts.AreOpen ? "" : "Preview until sign-ups open. ")
+            Platforms set to Automatic post it by themselves at @Time(Reminders.Value.SendAt) Eastern on the day sign-ups open, once,
+            alongside the email to the announcements list. Copy it for the rest. Facebook shows the preview it cached for the
+            home page, so before posting there by hand, press <strong>Scrape Again</strong> for https://csadvent.christmas in the
+            <a href="https://developers.facebook.com/tools/debug/" target="_blank" rel="noopener" class="text-advent-700 underline">Sharing Debugger</a>.
+        </p>
+        <div class="mt-4 grid gap-4 lg:grid-cols-2">
+            @foreach (var platform in posts.Open)
+            {
+                <SeasonPostCard Year="posts.Year" Kind="SeasonPostKind.SignUpsOpen" Post="platform" CanPost="posts.AreOpen"
+                                AutomaticNote="@(posts.OpensAt is { } opens ? $"Posts automatically at {Time(Reminders.Value.SendAt)} Eastern on {OpensOn(opens)}." : null)" />
+            }
+        </div>
+    </section>
+}
+else if (_loaded)
+{
+    <h1 class="text-3xl font-bold tracking-tight text-slate-900">Sign-ups posts</h1>
+    <NoCurrentSeason />
+}
+
+@code {
+    private SeasonPosts? _posts;
+    private bool _loaded;
+
+    [SupplyParameterFromQuery]
+    public int? Year { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? Error { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if ((Year ?? await Seasons.GetCurrentYearAsync()) is { } year)
+        {
+            _posts = await SeasonPosts.GetAsync(year);
+        }
+
+        _loaded = true;
+    }
+
+    private string OpensOn(DateTimeOffset opensAt) => Schedule.ToLocalTime(opensAt).ToString("MMMM d", CultureInfo.InvariantCulture);
+
+    private static string Time(TimeOnly time) =>
+        time.ToString(time.Minute == 0 ? "h tt" : "h:mm tt", CultureInfo.InvariantCulture);
+}

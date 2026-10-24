@@ -18,7 +18,10 @@
 
 @if (_day is { } day)
 {
-    <h1 class="text-3xl font-bold tracking-tight text-slate-900">Announcements for December @day.Day, @day.Year</h1>
+    <div class="flex flex-wrap items-baseline justify-between gap-4">
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900">Announcements for December @day.Day, @day.Year</h1>
+        <a href="manage/social/signups" class="text-sm font-medium text-advent-700 underline">Sign-ups posts →</a>
+    </div>
     <PastSeasonNotice Year="day.Year" />
     <p class="mt-2 max-w-3xl text-slate-600">
         One post per entry on each platform, with the same content everywhere. Copy each one (or open the composer where
@@ -44,7 +47,9 @@
     @if (!day.IsRevealed)
     {
         <p class="mt-6 rounded-xl bg-amber-50 p-4 text-amber-900 ring-1 ring-amber-200">
-            Preview only: December @day.Day is revealed at <LocalTime Value="day.RevealsAt" /> Eastern. Nothing can be posted before then.
+            Preview only: December @day.Day's posts are revealed at midnight Eastern (<LocalTime Value="day.RevealsAt" />), so
+            nothing can be posted before then. Platforms set to Automatic then post them at @Time(1) (post 1) and @Time(2) (post 2);
+            you can post by hand any time after the reveal.
         </p>
     }
 
@@ -168,7 +173,10 @@
 }
 else if (_loaded)
 {
-    <h1 class="text-3xl font-bold tracking-tight text-slate-900">Announcements</h1>
+    <div class="flex flex-wrap items-baseline justify-between gap-4">
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900">Announcements</h1>
+        <a href="manage/social/signups" class="text-sm font-medium text-advent-700 underline">Sign-ups posts →</a>
+    </div>
     @if (ErrorMessage is { } error)
     {
         <p class="mt-4 rounded-xl bg-red-50 p-4 font-medium text-red-800 ring-1 ring-red-200" role="alert">@error</p>

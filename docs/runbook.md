@@ -14,7 +14,7 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 |---|---|---|
 | September | The home page starts counting down to sign-ups | Automatic |
 | September–October | Create the season, refresh copy, run a test round, check social posting | Organizers |
-| November 1 | Sign-ups open, and the announcements list hears about it | Automatic, once the season is scheduled |
+| November 1 | Sign-ups open; the announcements list and the Automatic social platforms hear about it at 9 AM | Automatic, once the season is scheduled; LinkedIn and Reddit by hand from `/manage/social/signups` |
 | November | Approve requests, watch the backup list | Organizers |
 | From 7 days before each day | "Your post is due" reminders, then a last call on the day | Automatic |
 | December 1–25 | Reveals at midnight, announcements at 10 AM and 2 PM, the daily email at 9 AM | Automatic, plus LinkedIn and Reddit by hand |
@@ -55,6 +55,8 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 9. **Check the announcements list** at `/manage/announcements`. The "sign-ups are open" email goes to every confirmed
    subscriber by itself at 9 AM on the day sign-ups open, 40 an hour. Write any other news there: save a draft, send a
    test to the organizers' inbox, then send it.
+10. **Post "sign-ups open soon"** from `/manage/social/signups` as the day approaches (a week out, the day before). It counts
+    down by itself; post it with **Post now**, or copy it for LinkedIn and Reddit.
 
 ---
 

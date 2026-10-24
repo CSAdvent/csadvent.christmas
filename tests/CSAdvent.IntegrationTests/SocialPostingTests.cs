@@ -96,6 +96,72 @@ public sealed partial class SocialPostingTests(AppHostFixture fixture)
     }
 
     [Fact]
+    public async Task TheSignUpsPostGoesOutAutomaticallyOnceOnTheDay()
+    {
+        // Season 2126's sign-ups opened yesterday.
+        await TestSeasons.EnsureAsync(fixture, 2126, claimsOpen: true);
+        using var organizer = await fixture.SignInAsync("organizer", AppHostFixture.OrganizerGitHubId);
+        await SetModeAsync(organizer, SocialPlatform.Facebook, SocialPostingMode.Automatic);
+        try
+        {
+            Assert.Equal(1, await RunSignUpsAsync(2126));
+            Assert.Equal(0, await RunSignUpsAsync(2126));
+
+            // LinkedIn is copy and paste, then marked.
+            await PostSeasonFormAsync(organizer, "mark", 2126, SeasonPostKind.SignUpsOpen, SocialPlatform.LinkedIn);
+
+            await using (var db = await fixture.CreateDbContextAsync())
+            {
+                var posts = await db.SeasonSocialPosts.Where(p => p.SeasonYear == 2126).OrderBy(p => p.Platform).ToListAsync(CancellationToken);
+                Assert.Equal(
+                    [(SocialPlatform.LinkedIn, "organizer"), (SocialPlatform.Facebook, "automation")],
+                    posts.Where(p => p.Status == SocialPostStatus.Posted).OrderByDescending(p => p.MarkedBy).Select(p => (p.Platform, p.MarkedBy)));
+            }
+
+            var page = await organizer.GetStringAsync("/manage/social/signups?year=2126", CancellationToken);
+            Assert.Contains("Sign-ups are open.", page);
+            Assert.Contains("Posted automatically", page);
+            Assert.Contains("Posted by organizer", page);
+        }
+        finally
+        {
+            await SetModeAsync(organizer, SocialPlatform.Facebook, SocialPostingMode.Manual);
+        }
+    }
+
+    [Fact]
+    public async Task TheComingSoonPostCountsDownAndCanGoOutAgain()
+    {
+        // Season 2127's sign-ups open at midnight Eastern, 8 days from today.
+        var eastern = TimeZoneInfo.FindSystemTimeZoneById("America/New_York");
+        var opens = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, eastern).Date.AddDays(8);
+        await TestSeasons.EnsureAsync(fixture, 2127, claimsOpen: false, season => season.ClaimsOpenAt = new DateTimeOffset(opens, eastern.GetUtcOffset(opens)).ToUniversalTime());
+        using var organizer = await fixture.SignInAsync("organizer", AppHostFixture.OrganizerGitHubId);
+
+        var page = await organizer.GetStringAsync("/manage/social/signups?year=2127", CancellationToken);
+        Assert.Contains("C# Advent 2127 sign-ups open in 8 days", page);
+
+        await SetModeAsync(organizer, SocialPlatform.Facebook, SocialPostingMode.Automatic);
+        try
+        {
+            await PostSeasonFormAsync(organizer, "post", 2127, SeasonPostKind.SignUpsSoon, SocialPlatform.Facebook);
+            await PostSeasonFormAsync(organizer, "post", 2127, SeasonPostKind.SignUpsSoon, SocialPlatform.Facebook);
+
+            // The "open" post can't go out before sign-ups open.
+            var early = await PostSeasonFormAsync(organizer, "post", 2127, SeasonPostKind.SignUpsOpen, SocialPlatform.Facebook);
+            Assert.EndsWith("&error=not-posted", TestBrowser.PathOf(early.Headers.Location!));
+
+            await using var db = await fixture.CreateDbContextAsync();
+            Assert.Equal(2, await db.SeasonSocialPosts.CountAsync(p => p.SeasonYear == 2127 && p.Kind == SeasonPostKind.SignUpsSoon && p.Status == SocialPostStatus.Posted, CancellationToken));
+            Assert.False(await db.SeasonSocialPosts.AnyAsync(p => p.SeasonYear == 2127 && p.Kind == SeasonPostKind.SignUpsOpen, CancellationToken));
+        }
+        finally
+        {
+            await SetModeAsync(organizer, SocialPlatform.Facebook, SocialPostingMode.Manual);
+        }
+    }
+
+    [Fact]
     public async Task OnlyPlatformsThatCanPostAutomaticallyCanBeAutomatic()
     {
         using var organizer = await fixture.SignInAsync("organizer", AppHostFixture.OrganizerGitHubId);
@@ -143,6 +209,31 @@ public sealed partial class SocialPostingTests(AppHostFixture fixture)
             .ToArrayAsync(CancellationToken);
     }
 
+    /// <summary>Runs the "sign-ups are open" posts at noon Eastern today, after the morning send time.</summary>
+    private async Task<int> RunSignUpsAsync(int year)
+    {
+        var eastern = TimeZoneInfo.FindSystemTimeZoneById("America/New_York");
+        var today = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, eastern).Date;
+        var noon = new DateTimeOffset(today.AddHours(12), eastern.GetUtcOffset(today.AddHours(12))).ToUniversalTime();
+        using var client = fixture.CreateWebClient();
+        var response = await client.PostAsync($"/dev/social/signups/run?at={Uri.EscapeDataString(noon.ToString("O", CultureInfo.InvariantCulture))}&year={year}", null, CancellationToken);
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<SignUpsRun>(CancellationToken))!.Posted;
+    }
+
+    private async Task<HttpResponseMessage> PostSeasonFormAsync(HttpClient organizer, string action, int year, SeasonPostKind kind, SocialPlatform platform)
+    {
+        var html = await organizer.GetStringAsync($"/manage/social/signups?year={year}", CancellationToken);
+        var fields = new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = System.Net.WebUtility.HtmlDecode(AntiforgeryToken().Match(html).Groups["token"].Value),
+            ["Year"] = year.ToString(CultureInfo.InvariantCulture),
+            ["Kind"] = kind.ToString(),
+            ["Platform"] = platform.ToString(),
+        };
+        return await organizer.PostAsync($"/manage/social/signups/{action}", new FormUrlEncodedContent(fields), CancellationToken);
+    }
+
     private Task<HttpResponseMessage> SetModeAsync(HttpClient organizer, SocialPlatform platform, SocialPostingMode mode) =>
         PostPlatformFormAsync(organizer, "/manage/social/mode", platform, mode);
 
@@ -167,4 +258,6 @@ public sealed partial class SocialPostingTests(AppHostFixture fixture)
     private static partial Regex AntiforgeryToken();
 
     private sealed record RunResult(int Posted, int Failed);
+
+    private sealed record SignUpsRun(int Posted);
 }

@@ -19,6 +19,21 @@ public sealed class SocialMarkForm
     public string? ReturnUrl { get; set; }
 }
 
+/// <summary>What the season posts' buttons post (<c>/manage/social/signups</c>): one per platform and kind, so plain forms.</summary>
+public sealed class SeasonPostForm
+{
+    public int Year { get; set; }
+
+    public SeasonPostKind Kind { get; set; }
+
+    public SocialPlatform Platform { get; set; }
+
+    public string? PostUrl { get; set; }
+
+    /// <summary>For Undo: the post to forget.</summary>
+    public int PostId { get; set; }
+}
+
 /// <summary>What a platform's mode and Check buttons on the social page post. Plain forms, because there's one per platform.</summary>
 public sealed class SocialPlatformForm
 {
@@ -75,15 +90,40 @@ public static class SocialEndpoints
             return Results.LocalRedirect(Back(form.ReturnUrl, error is null ? null : "test-failed"));
         });
 
+        // The season posts: "sign-ups open soon" and "sign-ups are open".
+        group.MapPost("/signups/post", async ([FromForm] SeasonPostForm form, HttpContext context, SeasonSocialService season, CancellationToken cancellationToken) =>
+        {
+            var outcome = await season.PostAsync(form.Year, form.Kind, form.Platform, context.User.Identity?.Name ?? "organizer", cancellationToken);
+            return Results.LocalRedirect(SignUpsPage(form.Year, outcome is null or PostOutcome.Failed ? "not-posted" : null));
+        });
+
+        group.MapPost("/signups/mark", async ([FromForm] SeasonPostForm form, HttpContext context, SeasonSocialService season, CancellationToken cancellationToken) =>
+        {
+            var postUrl = new HttpUrlAttribute().IsValid(form.PostUrl) && !string.IsNullOrWhiteSpace(form.PostUrl) ? form.PostUrl.Trim() : null;
+            await season.MarkAsync(form.Year, form.Kind, form.Platform, postUrl, context.User.Identity?.Name ?? "organizer", cancellationToken);
+            return Results.LocalRedirect(SignUpsPage(form.Year, null));
+        });
+
+        group.MapPost("/signups/unmark", async ([FromForm] SeasonPostForm form, SeasonSocialService season, CancellationToken cancellationToken) =>
+        {
+            await season.UnmarkAsync(form.PostId, cancellationToken);
+            return Results.LocalRedirect(SignUpsPage(form.Year, null));
+        });
+
         // Development only: run automatic posting as if it were the given time. With dry-run mode, nothing reaches a real account.
         if (app.Environment.IsDevelopment())
         {
             app.MapPost("/dev/social/run", async (DateTimeOffset at, SocialPostingService posting, CancellationToken cancellationToken) =>
                 Results.Ok(await posting.RunAsync(at.ToUniversalTime(), cancellationToken)));
+            app.MapPost("/dev/social/signups/run", async (DateTimeOffset at, int? year, SeasonSocialService season, CancellationToken cancellationToken) =>
+                Results.Ok(new { posted = await season.RunAsync(at.ToUniversalTime(), year, cancellationToken) }));
         }
 
         return app;
     }
+
+    private static string SignUpsPage(int year, string? error) =>
+        string.Create(System.Globalization.CultureInfo.InvariantCulture, $"/manage/social/signups?year={year}{(error is null ? "" : $"&error={error}")}");
 
     // Only back to the social page itself, so the form can't be used to redirect anywhere else.
     private static string Back(string? returnUrl, string? error)
