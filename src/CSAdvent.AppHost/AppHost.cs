@@ -165,6 +165,9 @@ if (isTesting)
     web.WithEnvironment("Reminders__SendInBackground", "false");
     web.WithEnvironment("SocialPosting__PostInBackground", "false");
 
+    // Every test signs up from the same address, so the announcements form's rate limit would trip.
+    web.WithEnvironment("Announcements__SubscribeLimit", "1000");
+
     // The tests never reach out to the Other Advents calendars' real sites.
     web.WithEnvironment("OtherAdvents__FetchLogosInBackground", "false");
 }

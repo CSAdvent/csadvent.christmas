@@ -238,6 +238,13 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 - `Reminders:PauseBetweenEmails` (2 seconds) keeps sends under Azure Communication Services' limit for a new custom domain (30 a minute). Development sets it to zero.
 - **Trying it:** in Development, `POST /dev/reminders/run?at=2026-12-03T15:00:00Z` runs the reminders as if it were that time, and everything lands in MailPit. `ReminderTests` drive runs that way against season 2106, because the AppHost turns the worker off in the Testing environment (`Reminders:SendInBackground`).
 
+## Announcements List
+
+- **Subscribing** (#49, `Announcements/AnnouncementSubscriptions`): anyone can enter an email at `/announcements` or on the between-seasons home page (`SubscribeBox`, a plain form to `/announcements/subscribe`). It's stored unconfirmed in `announcement_subscribers` and sent a confirmation link. Only confirmed subscribers get announcements.
+  - **Abuse:** the form is rate limited per IP (`Announcements:SubscribeLimit`, 5 per 10 minutes; the AppHost raises it in Testing). A confirmed address, or one sent a confirmation in the last day, gets nothing, and the response never says which, so the form can't flood an inbox or reveal who's subscribed. A hidden `Website` field traps bots.
+  - **Links:** confirm (`/emails/announcements/confirm`, data protection with a 7-day limit) and unsubscribe (`/emails/announcements/stop`, also the one-click `List-Unsubscribe`) carry the subscriber ID protected with data protection. A GET only shows a page with a button, and the POST acts, so mail scanners opening links change nothing.
+  - **Retention:** kept until they unsubscribe, which deletes the row. Unconfirmed addresses are deleted after 7 days by the retention worker (`DeleteUnconfirmedAsync`). The privacy page says both.
+
 ## Privacy
 
 - `/privacy` and `/terms` are Razor pages. The contact address is `Site:ContactEmail` (`SiteOptions`), set to `hello@csadvent.christmas` in `appsettings.json`. It's required and validated on start, so the app won't start without it.

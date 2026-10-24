@@ -1,0 +1,23 @@
+@page "/announcements"
+@using CSAdvent.Web.Components.Announcements
+
+<PageTitle>Announcements by email · C# Advent</PageTitle>
+<SocialMeta Title="C# Advent announcements by email" Description="Get an email when each season's sign-ups open, and the organizers' occasional news." />
+
+<div class="max-w-2xl">
+    <h1 class="text-3xl font-bold tracking-tight text-slate-900">Announcements by email</h1>
+    <p class="mt-2 text-slate-600">
+        Never miss a season: C# Advent's sign-ups open each November, and spots go quickly.
+    </p>
+    <div class="mt-6">
+        <SubscribeBox Heading="Email me when sign-ups open" ReturnTo="announcements" Done="@Done" Error="@Error" />
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public string? Done { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? Error { get; set; }
+}

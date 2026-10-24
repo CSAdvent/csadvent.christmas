@@ -16,7 +16,7 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261023232927_AddSocialTestPosts";
+    public override string LastMigrationId => "20261024143815_AddAnnouncementSubscribers";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -26,6 +26,43 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
             .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
         NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+        modelBuilder.Entity("CSAdvent.Web.Data.AnnouncementSubscriber", b =>
+            {
+                var id = b.Property<int>("Id")
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("integer")
+                    .HasColumnName("id");
+
+                NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(id);
+
+                b.Property<DateTimeOffset>("ConfirmationSentAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("confirmation_sent_at");
+
+                b.Property<DateTimeOffset?>("ConfirmedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("confirmed_at");
+
+                b.Property<DateTimeOffset>("CreatedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("created_at");
+
+                b.Property<string>("Email")
+                    .IsRequired()
+                    .HasMaxLength(254)
+                    .HasColumnType("character varying(254)")
+                    .HasColumnName("email");
+
+                b.HasKey("Id")
+                    .HasName("pk_announcement_subscribers");
+
+                b.HasIndex("Email")
+                    .IsUnique()
+                    .HasDatabaseName("ix_announcement_subscribers_email");
+
+                b.ToTable("announcement_subscribers");
+            });
 
         modelBuilder.Entity("CSAdvent.Web.Data.BackupOffer", b =>
             {
