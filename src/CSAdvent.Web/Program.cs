@@ -128,6 +128,9 @@ builder.Services.AddRazorComponents()
 
 var app = builder.Build();
 
+// Container Apps' probes ask /health and /alive. First, so nothing redirects them.
+app.UseDefaultHealthChecks();
+
 // Basic security headers on every response, static files included. HSTS comes from UseHsts, and the frame protection
 // (X-Frame-Options and frame-ancestors) from Blazor. Links out to authors' posts still tell them the visit came from here.
 app.Use(async (context, next) =>
@@ -170,7 +173,5 @@ app.MapSeasonTesting();
 app.MapAuthors();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
-
-app.MapDefaultEndpoints();
 
 app.Run();
