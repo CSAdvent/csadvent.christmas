@@ -14,11 +14,20 @@
 else if (_home is not null)
 {
     <OffSeason LastSeason="_home.LastSeason" NextSeason="_home.NextSeason" Message="@_message" />
+    <div class="mt-10 max-w-2xl">
+        <CSAdvent.Web.Components.Announcements.SubscribeBox Heading="Get an email when sign-ups open" ReturnTo="home" Done="@Done" Error="@Error" />
+    </div>
 }
 
 @code {
     private HomePage? _home;
     private string? _message;
+
+    [SupplyParameterFromQuery]
+    public string? Done { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? Error { get; set; }
 
     protected override async Task OnInitializedAsync()
     {

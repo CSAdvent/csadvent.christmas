@@ -18,6 +18,7 @@ public sealed class ContactRetentionWorker(IServiceScopeFactory scopeFactory, Ti
             {
                 await using var scope = scopeFactory.CreateAsyncScope();
                 await scope.ServiceProvider.GetRequiredService<ContactRetention>().DeleteExpiredAsync(stoppingToken);
+                await scope.ServiceProvider.GetRequiredService<Announcements.AnnouncementSubscriptions>().DeleteUnconfirmedAsync(stoppingToken);
             }
             catch (Exception exception) when (!stoppingToken.IsCancellationRequested)
             {

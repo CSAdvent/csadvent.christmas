@@ -129,6 +129,12 @@ public static class EmailCatalog
             site => CSAdvent.Web.Social.Posting.SocialCredentialCheck.CredentialsFailing(
                 CSAdvent.Web.Claims.SocialPlatform.Facebook, "401 Unauthorized: Error validating access token: The session has been invalidated.", site)),
         new(
+            "announcements-confirm",
+            "Confirm announcements",
+            "When someone enters an address for announcements, unless it's already on the list or was sent one in the last day.",
+            "The address entered.",
+            site => CSAdvent.Web.Announcements.AnnouncementSubscriptions.Confirmation($"{site.BaseUrl.TrimEnd('/')}/emails/announcements/confirm?token=sample", site)),
+        new(
             "daily-share",
             "Today's posts",
             "At 9 AM Eastern each day from December 1 to 25, once at least one of the day's posts has its title and link.",

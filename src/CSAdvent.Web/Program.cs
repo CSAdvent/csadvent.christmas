@@ -1,3 +1,5 @@
+using System.Threading.RateLimiting;
+using CSAdvent.Web.Announcements;
 using CSAdvent.Web.Auth;
 using CSAdvent.Web.Backups;
 using CSAdvent.Web.Calendar;
@@ -108,6 +110,22 @@ if (builder.Configuration.GetValue("Reminders:SendInBackground", defaultValue: t
     builder.Services.AddHostedService<ReminderWorker>();
 }
 
+// The announcements list (#49). Signing up is rate limited per visitor, so the form can't be used to send confirmation
+// emails to a lot of addresses (and use up the email service's hourly limit).
+builder.Services.AddScoped<AnnouncementSubscriptions>();
+var subscribeLimit = builder.Configuration.GetValue("Announcements:SubscribeLimit", defaultValue: 5);
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddPolicy(AnnouncementEndpoints.RateLimitPolicy, context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = subscribeLimit, Window = TimeSpan.FromMinutes(10) }));
+    options.OnRejected = (context, _) =>
+    {
+        context.HttpContext.Response.Redirect($"{AnnouncementEndpoints.Page}?error=busy");
+        return ValueTask.CompletedTask;
+    };
+});
+
 // Deletes each season's contact details on February 1 after it, as the privacy page promises.
 builder.Services.AddScoped<ContactRetention>();
 if (builder.Configuration.GetValue("Retention:DeleteInBackground", defaultValue: true))
@@ -154,6 +172,8 @@ if (!app.Environment.IsDevelopment())
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseHttpsRedirection();
 
+app.UseRateLimiter();
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
@@ -167,6 +187,7 @@ app.MapEntries();
 app.MapCards();
 app.MapFeeds();
 app.MapSearch();
+app.MapAnnouncements();
 app.MapSocial();
 app.MapLegacyRedirects();
 app.MapContentAdmin();
