@@ -34,9 +34,18 @@
         {
             <button type="button" data-copy="@($"{id}-link")" class="rounded-lg px-3 py-1.5 font-medium text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50">Copy link</button>
         }
-        @if (CanPost && Post.Announcement.ComposerUrl is { } composer)
+        @if (Post.Announcement.ComposerUrl is { } composer)
         {
-            <a href="@composer" target="_blank" rel="noopener" class="rounded-lg px-3 py-1.5 font-medium text-advent-700 ring-1 ring-advent-300 hover:bg-advent-50">Open composer</a>
+            @if (CanPost)
+            {
+                <a href="@composer" target="_blank" rel="noopener" class="rounded-lg px-3 py-1.5 font-medium text-advent-700 ring-1 ring-advent-300 hover:bg-advent-50">Open composer</a>
+            }
+            else
+            {
+                @* Shown, but not a link, so it doesn't look missing before sign-ups open. *@
+                <span aria-disabled="true" title="Opens once sign-ups open" class="cursor-not-allowed rounded-lg px-3 py-1.5 font-medium text-advent-700 opacity-50 ring-1 ring-advent-300">Open composer</span>
+                <span class="text-xs text-slate-500">Opens once sign-ups open</span>
+            }
         }
     </div>
 

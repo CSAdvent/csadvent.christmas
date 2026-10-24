@@ -41,6 +41,10 @@ public sealed class AnnouncementTests
         Assert.EndsWith("#csharp #csadvent", facebook.Text);
         Assert.Equal("Sign-ups for C# Advent 2026 are open: claim a day in December and write a post about C#", reddit.Text);
         Assert.StartsWith("https://www.reddit.com/r/csadvent/submit?url=", reddit.ComposerUrl);
+
+        var linkedIn = AnnouncementFormatter.FormatSignUpsOpen(2026, SocialPlatform.LinkedIn, "https://csadvent.christmas", Ours);
+        Assert.Equal($"https://www.linkedin.com/feed/?shareActive=true&text={Uri.EscapeDataString(linkedIn.Text)}", linkedIn.ComposerUrl);
+        Assert.Contains("csadvent.christmas%2F%3Fvia%3Dlinkedin%26season%3D2026", linkedIn.ComposerUrl);
     }
 
     [Theory]
@@ -92,7 +96,7 @@ public sealed class AnnouncementTests
 
         // Pasted text can't tag on LinkedIn, Facebook or Reddit, so the page says who to tag.
         var linkedIn = AnnouncementFormatter.Format(Entry(), SocialPlatform.LinkedIn);
-        Assert.Null(linkedIn.ComposerUrl);
+        Assert.Equal($"https://www.linkedin.com/feed/?shareActive=true&text={Uri.EscapeDataString(linkedIn.Text)}", linkedIn.ComposerUrl);
         Assert.Equal("Tag the author: https://www.linkedin.com/in/ada", linkedIn.TagHint);
         Assert.EndsWith("#csharp #csadvent", AnnouncementFormatter.Format(Entry(), SocialPlatform.Facebook).Text);
 
