@@ -83,7 +83,7 @@ public static partial class AnnouncementFormatter
                 text => (platform, link, null, mastodonInstance is null ? null : $"https://{mastodonInstance}/share?text={Uri.EscapeDataString(text)}")),
             SocialPlatform.LinkedIn => Fit(announcement, LinkedInLimit, text => text.Length, title =>
                 Compose(announcement.When, title, announcement.Author, null, link, Hashtags),
-                _ => (platform, link, Hint(announcement.Accounts.LinkedIn), null)),
+                text => (platform, link, Hint(announcement.Accounts.LinkedIn), LinkedInComposer(text))),
             SocialPlatform.Facebook => Fit(announcement, null, text => text.Length, title =>
                 Compose(announcement.When, title, announcement.Author, null, link, "#csharp #csadvent"),
                 _ => (platform, link, Hint(announcement.Accounts.Facebook), null)),
@@ -136,7 +136,7 @@ public static partial class AnnouncementFormatter
             SocialPlatform.Bluesky => Made(Post(Hashtags), Graphemes, BlueskyLimit, $"https://bsky.app/intent/compose?text={Uri.EscapeDataString(Post(Hashtags))}"),
             SocialPlatform.Mastodon => Made(Post(Hashtags), MastodonLength, MastodonLimit,
                 ours?.MastodonServer is { } server ? $"https://{server}/share?text={Uri.EscapeDataString(Post(Hashtags))}" : null),
-            SocialPlatform.LinkedIn => Made(Post(Hashtags), text => text.Length, LinkedInLimit, null),
+            SocialPlatform.LinkedIn => Made(Post(Hashtags), text => text.Length, LinkedInLimit, LinkedInComposer(Post(Hashtags))),
             SocialPlatform.Facebook => Made(Post("#csharp #csadvent"), text => text.Length, null, null),
             _ => Made(redditTitle, text => text.Length, RedditTitleLimit, $"{submit}?url={Uri.EscapeDataString(link)}&title={Uri.EscapeDataString(redditTitle)}"),
         };
@@ -157,6 +157,12 @@ public static partial class AnnouncementFormatter
     private static string? Mention(string? blueskyHandle) => blueskyHandle is null ? null : $"@{blueskyHandle}";
 
     private static string? Hint(string? account) => account is null ? null : $"Tag the author: {account}";
+
+    /// <summary>
+    /// Opens LinkedIn's composer with the text filled in. LinkedIn doesn't document it (its documented share link only takes a
+    /// URL), so it may stop filling the text in one day; the Copy button is the fallback.
+    /// </summary>
+    private static string LinkedInComposer(string text) => $"https://www.linkedin.com/feed/?shareActive=true&text={Uri.EscapeDataString(text)}";
 
     /// <summary>Builds the text, shortening the title with an ellipsis until it fits the limit.</summary>
     private static FormattedAnnouncement Fit(
