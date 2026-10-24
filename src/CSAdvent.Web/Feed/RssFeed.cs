@@ -5,22 +5,39 @@ using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Content;
 using CSAdvent.Web.Data;
 using CSAdvent.Web.Entries;
+using CSAdvent.Web.Retrospectives;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 namespace CSAdvent.Web.Feed;
 
-/// <summary>A revealed entry, as a feed item.</summary>
+/// <summary>A revealed entry, or a season's published retrospective, as a feed item.</summary>
+/// <param name="RevealedAt">When the entry was revealed, or the retrospective published: the item's date.</param>
 public sealed record FeedItem(int Year, int Day, int Part, int SlotsPerDay, string Title, string Author, DateTimeOffset RevealedAt)
 {
+    /// <summary>A retrospective's page, relative to the base URL, instead of an entry's.</summary>
+    public string? Path { get; init; }
+
+    /// <summary>A retrospective's description, instead of the entry's <see cref="Summary"/>.</summary>
+    public string? Description { get; init; }
+
     /// <summary>For example "Day 6, post 2 of C# Advent 2025, by Ada Lovelace."</summary>
-    public string Summary => SlotsPerDay > 1
+    public string Summary => Description ?? (SlotsPerDay > 1
         ? $"Day {Day}, post {Part} of C# Advent {Year}, by {Author}."
-        : $"Day {Day} of C# Advent {Year}, by {Author}.";
+        : $"Day {Day} of C# Advent {Year}, by {Author}.");
+
+    /// <summary>Stable, so editing an item never makes it look new: <c>csadvent-2025-6-2</c>, or <c>csadvent-2025-retrospective</c>.</summary>
+    public string Guid => Path is null
+        ? string.Create(CultureInfo.InvariantCulture, $"csadvent-{Year}-{Day}-{Part}")
+        : string.Create(CultureInfo.InvariantCulture, $"csadvent-{Year}-retrospective");
+
+    public static FeedItem Retrospective(int year, string title, string description, DateTimeOffset publishedAt) =>
+        new(year, 0, 0, 0, title, "The C# Advent organizers", publishedAt) { Path = RetrospectiveLinks.Page(year), Description = description };
 }
 
 /// <summary>
-/// The RSS 2.0 feeds: every revealed entry from every season at <c>/rss</c>, or one season at <c>/archive/{year}/rss</c>.
+/// The RSS 2.0 feeds: every revealed entry and published retrospective from every season at <c>/rss</c>, or one season's at
+/// <c>/archive/{year}/rss</c>.
 /// Items are newest first (by reveal time, then post order within a day), dated with their reveal time, and link to the
 /// entry's page on our site tagged <c>?via=rss</c>, never straight to the post. GUIDs come from the season, day and post,
 /// so editing a title or URL never makes an item look new.
@@ -36,10 +53,16 @@ public sealed class RssFeed(AdventDbContext db, AdventSchedule schedule, IOption
             .Select(s => new { s.SeasonYear, s.Day, s.Part, s.Season.SlotsPerDay, s.PostTitle, s.AuthorName })
             .ToListAsync(cancellationToken);
 
+        var retrospectives = await db.Retrospectives
+            .AsNoTracking()
+            .Where(r => (year == null || r.SeasonYear == year) && r.PublishedAt != null)
+            .ToListAsync(cancellationToken);
+
         // Only what's been revealed: the reveal time depends on the time zone, so it's checked here rather than in SQL (#5).
         return [.. slots
             .Where(s => schedule.IsRevealed(s.SeasonYear, s.Day))
             .Select(s => new FeedItem(s.SeasonYear, s.Day, s.Part, s.SlotsPerDay, s.PostTitle!, s.AuthorName!, schedule.GetRevealTime(s.SeasonYear, s.Day)))
+            .Concat(retrospectives.Select(r => FeedItem.Retrospective(r.SeasonYear, r.Title, RetrospectiveDraft.Summary(r.Stats), r.PublishedAt!.Value)))
             .OrderByDescending(item => item.RevealedAt)
             .ThenBy(item => item.Part)];
     }
@@ -85,13 +108,13 @@ public sealed class RssFeed(AdventDbContext db, AdventSchedule schedule, IOption
             {
                 writer.WriteStartElement("item");
                 writer.WriteElementString("title", item.Title);
-                writer.WriteElementString("link", EntryLinks.Absolute(root, EntryLinks.Page(item.Year, item.Day, item.Part, "rss")));
+                writer.WriteElementString("link", EntryLinks.Absolute(root, item.Path is { } path ? $"{path}?via=rss" : EntryLinks.Page(item.Year, item.Day, item.Part, "rss")));
                 writer.WriteElementString("description", item.Summary);
                 writer.WriteElementString("dc", "creator", "http://purl.org/dc/elements/1.1/", item.Author);
                 writer.WriteElementString("pubDate", Rfc822(item.RevealedAt));
                 writer.WriteStartElement("guid");
                 writer.WriteAttributeString("isPermaLink", "false");
-                writer.WriteString(string.Create(CultureInfo.InvariantCulture, $"csadvent-{item.Year}-{item.Day}-{item.Part}"));
+                writer.WriteString(item.Guid);
                 writer.WriteEndElement();
                 writer.WriteEndElement();
             }

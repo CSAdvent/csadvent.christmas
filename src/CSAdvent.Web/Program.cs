@@ -18,6 +18,7 @@ using CSAdvent.Web.Reminders;
 using CSAdvent.Web.Social;
 using CSAdvent.Web.Social.Posting;
 using CSAdvent.Web.Retention;
+using CSAdvent.Web.Retrospectives;
 using CSAdvent.Web.SeasonTesting;
 using Microsoft.AspNetCore.DataProtection;
 
@@ -60,6 +61,7 @@ builder.Services.AddScoped<ProfileService>();
 builder.Services.AddScoped<EntryService>();
 builder.Services.AddSingleton<CardRenderer>();
 builder.Services.AddScoped<RssFeed>();
+builder.Services.AddScoped<RetrospectiveService>();
 builder.Services.AddScoped<SocialService>();
 builder.Services.AddScoped<ContentService>();
 builder.Services.AddScoped<OtherAdventsService>();

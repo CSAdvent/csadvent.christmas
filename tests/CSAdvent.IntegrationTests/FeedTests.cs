@@ -27,7 +27,8 @@ public sealed class FeedTests(AppHostFixture fixture)
         Assert.True(items.Count > 400, $"Only {items.Count} items.");
         Assert.DoesNotContain(items, i => i.Element("title")!.Value.Contains("2114", StringComparison.Ordinal));
         Assert.Contains(items, i => i.Element("guid")!.Value.StartsWith("csadvent-2017-", StringComparison.Ordinal));
-        Assert.StartsWith("csadvent-2025-25-", items[0].Element("guid")!.Value);
+        // Published retrospectives are dated when they were published, so the newest entry may come after them.
+        Assert.StartsWith("csadvent-2025-25-", items.First(i => !i.Element("guid")!.Value.EndsWith("-retrospective", StringComparison.Ordinal)).Element("guid")!.Value);
 
         var dates = items.Select(i => DateTimeOffset.Parse(i.Element("pubDate")!.Value, System.Globalization.CultureInfo.InvariantCulture)).ToList();
         Assert.Equal(dates.OrderByDescending(d => d), dates);

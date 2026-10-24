@@ -19,6 +19,7 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 | From 7 days before each day | "Your post is due" reminders, then a last call on the day | Automatic |
 | December 1–25 | Reveals at midnight, announcements at 10 AM and 2 PM, the daily email at 9 AM | Automatic, plus LinkedIn and Reddit by hand |
 | December 31 | The calendar moves to the archive, and the home page thanks everyone | Automatic |
+| Late December–January | Write, publish and share the season's retrospective | Organizers |
 | February 1 | The season's contact details are deleted | Automatic |
 
 ---
@@ -102,6 +103,13 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 
 - **December 31:** the calendar leaves the home page for the archive, and the between-seasons page thanks everyone
   and links to it.
+- **The retrospective (late December or early January, before February 1):** at `/manage/retrospectives`, open the
+  season and press **Generate the draft**. It's a whole post written from the season's numbers: posts, first-time and
+  returning authors, clicks, the ten most-read posts. Rewrite it as you like, check the preview, and **Publish**. It goes
+  up at `/archive/{year}/retrospective`, linked from the season's archive page and in the RSS feed. Then share it from
+  the same page (Post now on Automatic platforms, Copy for the rest), and send it to the announcements list from
+  `/manage/announcements` if you like. Generate it before February 1, because the season's requests and backup list
+  (two of its numbers) are deleted then.
 - **February 1:** the season's contact details are deleted automatically: spot emails, claim requests, the backup
   list, and contributor emails that haven't been verified again since. The calendar, GitHub logins and social
   accounts stay. Nothing to do.

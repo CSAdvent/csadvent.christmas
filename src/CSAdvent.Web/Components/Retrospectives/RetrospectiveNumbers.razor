@@ -1,0 +1,144 @@
+@* A retrospective's "By the numbers": the season's totals and charts, from the numbers kept with it. Only totals, never who
+   read what. Seasons before 2026 have no visit or click data, so they get the author and post charts only. *@
+@using System.Globalization
+@using CSAdvent.Web.Data
+@using CSAdvent.Web.Retrospectives
+
+<section class="mt-14 border-t border-slate-200 pt-10" aria-labelledby="by-the-numbers">
+    <h2 id="by-the-numbers" class="text-xl font-semibold text-slate-900">By the numbers</h2>
+
+    <dl class="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div class="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
+            <dt class="text-sm text-slate-600">Posts</dt>
+            <dd class="mt-1 text-3xl font-semibold text-slate-900">@Number(Stats.Posts)</dd>
+        </div>
+        <div class="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
+            <dt class="text-sm text-slate-600">Authors</dt>
+            <dd class="mt-1 text-3xl font-semibold text-slate-900">@Number(Stats.Authors)</dd>
+        </div>
+        @if (HasEarlierSeasons)
+        {
+            <div class="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
+                <dt class="text-sm text-slate-600">First-time authors</dt>
+                <dd class="mt-1 text-3xl font-semibold text-slate-900">@Number(Stats.FirstTimeAuthors)</dd>
+            </div>
+        }
+        @if (Stats.HasTraffic)
+        {
+            <div class="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
+                <dt class="text-sm text-slate-600">Clicks through to posts</dt>
+                <dd class="mt-1 text-3xl font-semibold text-slate-900">@Number(Stats.Clicks)</dd>
+            </div>
+        }
+        else if (HasEarlierSeasons)
+        {
+            <div class="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
+                <dt class="text-sm text-slate-600">Authors since @Season.FirstYear</dt>
+                <dd class="mt-1 text-3xl font-semibold text-slate-900">@Number(Stats.AllTimeAuthors)</dd>
+            </div>
+        }
+    </dl>
+
+    @if (Stats.HasTraffic && Stats.ClicksPerDay.Count > 0)
+    {
+        <ColumnChart Title="Clicks each day in December"
+                     Description="Clicks through to the season's posts, from the calendar and the posts' pages."
+                     Columns="ClicksPerDay" Series="@(["Clicks"])" LabelHeader="Day" Unit="clicks" Emphasis="true" />
+    }
+
+    @if (Stats.ClicksBySource.Count > 0)
+    {
+        <BarList Title="Where the clicks came from"
+                 Description="From the link each reader followed: our posts on each platform, the calendar, the daily email or the RSS feed."
+                 Items="@([.. Stats.ClicksBySource.Select(s => new BarListItem(s.Label, s.Clicks))])" Unit="clicks" />
+    }
+
+    @if (Stats.History.Count >= 2)
+    {
+        <ColumnChart Title="First-time and returning authors each season"
+                     Description="@($"{Number(Stats.AllTimeAuthors)} different authors have written for C# Advent since {Season.FirstYear}.")"
+                     Columns="AuthorsEachSeason" Series="@(["Returning authors", "First-time authors"])" LabelHeader="Season" />
+    }
+
+    @if (Stats.AuthorsBySeasonsWritten.Count >= 2)
+    {
+        <ColumnChart Title="@($"How many seasons {Stats.Year}'s authors have written for")"
+                     Description="Counting this one."
+                     Columns="SeasonsWritten" Series="@(["Authors"])" LabelHeader="Seasons written" Unit="authors" Emphasis="true" />
+    }
+
+    @if (Stats.History.Count >= 2)
+    {
+        <ColumnChart Title="Posts each season"
+                     Description="@($"{Number(Stats.AllTimePosts)} posts since {Season.FirstYear}.")"
+                     Columns="PostsEachSeason" Series="@(["Posts"])" LabelHeader="Season" Unit="posts" Emphasis="true" />
+    }
+
+    <p class="mt-10 text-sm text-slate-500">
+        @if (Stats.HasTraffic)
+        {
+            <text>Clicks are counted from December 1 to 31, as of @AsOf. Link previews, search engines and other bots aren't counted, and nothing about readers is recorded.</text>
+        }
+        else
+        {
+            <text>Visits and clicks were first counted in 2026, so earlier seasons have only their posts and authors.</text>
+        }
+    </p>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public RetrospectiveStats Stats { get; set; } = null!;
+
+    /// <summary>When the numbers were taken, in the reveal time zone.</summary>
+    [Parameter, EditorRequired]
+    public DateTimeOffset StatsAt { get; set; }
+
+    private bool HasEarlierSeasons => Stats.Year > Season.FirstYear && Stats.History.Count >= 2;
+
+    private string AsOf => StatsAt.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture);
+
+    private IReadOnlyList<ChartColumn> ClicksPerDay
+    {
+        get
+        {
+            var busiest = Stats.ClicksPerDay.Max();
+            return [.. Stats.ClicksPerDay.Select((clicks, index) => new ChartColumn(
+                (index + 1).ToString(CultureInfo.InvariantCulture),
+                $"December {index + 1}",
+                [clicks],
+                ShowLabel: index is 0 or 4 or 9 or 14 or 19 or 24 or 30,
+                Highlight: clicks == busiest && busiest > 0,
+                ValueLabel: clicks == busiest && busiest > 0 && Stats.ClicksPerDay.ToList().IndexOf(busiest) == index))];
+        }
+    }
+
+    private IReadOnlyList<ChartColumn> AuthorsEachSeason =>
+        [.. Stats.History.Select(season => new ChartColumn(
+            Short(season.Year),
+            season.Year.ToString(CultureInfo.InvariantCulture),
+            [season.ReturningAuthors, season.FirstTimeAuthors],
+            ShowLabel: Stats.History.Count <= 12 || season.Year % 2 == Stats.Year % 2,
+            ValueLabel: season.Year == Stats.Year))];
+
+    private IReadOnlyList<ChartColumn> SeasonsWritten =>
+        [.. Stats.AuthorsBySeasonsWritten.Select(group => new ChartColumn(
+            group.Seasons.ToString(CultureInfo.InvariantCulture),
+            group.Seasons == 1 ? "1 season" : $"{group.Seasons} seasons",
+            [group.Authors],
+            Highlight: true))];
+
+    private IReadOnlyList<ChartColumn> PostsEachSeason =>
+        [.. Stats.History.Select(season => new ChartColumn(
+            Short(season.Year),
+            season.Year.ToString(CultureInfo.InvariantCulture),
+            [season.Posts],
+            ShowLabel: Stats.History.Count <= 12 || season.Year % 2 == Stats.Year % 2,
+            Highlight: season.Year == Stats.Year,
+            ValueLabel: season.Year == Stats.Year))];
+
+    /// <summary>"’24": a full year per column doesn't fit a phone's width.</summary>
+    private static string Short(int year) => string.Create(CultureInfo.InvariantCulture, $"’{year % 100:00}");
+
+    private static string Number(int value) => value.ToString("N0", CultureInfo.InvariantCulture);
+}

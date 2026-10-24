@@ -1,0 +1,44 @@
+@* A short ranked list with a bar per row and its value at the tip, for comparing a handful of categories. *@
+@using System.Globalization
+@using CSAdvent.Web.Retrospectives
+
+<figure class="mt-12">
+    <figcaption>
+        <span class="block font-semibold text-slate-900">@Title</span>
+        @if (Description is not null)
+        {
+            <span class="mt-1 block text-sm text-slate-600">@Description</span>
+        }
+    </figcaption>
+    <ul class="mt-4 flex flex-col gap-2 text-sm">
+        @foreach (var item in Items)
+        {
+            <li class="grid grid-cols-[minmax(0,11rem)_1fr] items-center gap-3">
+                <span class="text-slate-700">@item.Label</span>
+                <span class="flex items-center gap-2">
+                    <span class="h-3 min-w-0.5 rounded-r bg-advent-600" style="width: calc((100% - 4rem) * @ChartScale.Fraction(item.Value, _max))" aria-hidden="true"></span>
+                    <span class="tabular-nums text-slate-700">@item.Value.ToString("N0", CultureInfo.InvariantCulture)<span class="sr-only"> @Unit</span></span>
+                </span>
+            </li>
+        }
+    </ul>
+</figure>
+
+@code {
+    private int _max;
+
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = "";
+
+    [Parameter]
+    public string? Description { get; set; }
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<BarListItem> Items { get; set; } = [];
+
+    /// <summary>What the values count, for screen readers: "clicks".</summary>
+    [Parameter]
+    public string Unit { get; set; } = "";
+
+    protected override void OnParametersSet() => _max = Items.Count == 0 ? 0 : Items.Max(i => i.Value);
+}

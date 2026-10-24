@@ -7,6 +7,7 @@ using CSAdvent.Web.Content;
 using CSAdvent.Web.Data;
 using CSAdvent.Web.Manage;
 using CSAdvent.Web.Reminders;
+using CSAdvent.Web.Retrospectives;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Npgsql;
@@ -30,7 +31,8 @@ public sealed record SeasonPosts(
 /// <summary>
 /// Posts about a season rather than an entry (<c>/manage/social/signups</c>): "sign-ups open in 8 days", which organizers
 /// post whenever they like, and "sign-ups are open", which the platforms in Automatic mode post by themselves at the
-/// morning send time on the day sign-ups open, once. Never for the test season.
+/// morning send time on the day sign-ups open, once. Also the season's retrospective, once it's published, which organizers
+/// post from its page once per platform. Never for the test season.
 /// </summary>
 public sealed partial class SeasonSocialService(
     AdventDbContext db,
@@ -73,9 +75,27 @@ public sealed partial class SeasonSocialService(
             For(SeasonPostKind.SignUpsOpen, platform => AnnouncementFormatter.FormatSignUpsOpen(year, platform, site.Value.BaseUrl, accounts.Value)));
     }
 
+    /// <summary>The retrospective's post on each platform that isn't off, or null until the retrospective is published.</summary>
+    public async Task<IReadOnlyList<SeasonPostPlatform>?> GetRetrospectiveAsync(int year, CancellationToken cancellationToken = default)
+    {
+        if (await PublishedRetrospectiveAsync(year, cancellationToken) is not { } retrospective)
+        {
+            return null;
+        }
+
+        var platforms = (await modes.GetAsync(cancellationToken)).Where(p => p.Mode is not SocialPostingMode.Off).ToList();
+        var posts = await db.SeasonSocialPosts.AsNoTracking()
+            .Where(p => p.SeasonYear == year && p.Kind == SeasonPostKind.Retrospective)
+            .ToListAsync(cancellationToken);
+        return [.. platforms.Select(p => new SeasonPostPlatform(
+            AnnouncementFormatter.FormatRetrospective(retrospective.Title, retrospective.Stats, p.Platform, site.Value.BaseUrl, accounts.Value),
+            p,
+            [.. posts.Where(post => post.Platform == p.Platform)]))];
+    }
+
     /// <summary>
     /// Posts it now on a platform that can post automatically: "soon" while sign-ups are still to come, "open" once they're
-    /// open (and only once). Returns null when it can't be posted.
+    /// open, and the retrospective once it's published (those two only once). Returns null when it can't be posted.
     /// </summary>
     public async Task<PostOutcome?> PostAsync(int year, SeasonPostKind kind, SocialPlatform platform, string postedBy, CancellationToken cancellationToken = default)
     {
@@ -100,6 +120,12 @@ public sealed partial class SeasonSocialService(
             description = "Sign-ups are open: two C# posts a day, December 1–25, written by the community.";
             card = cards.RenderSeason(year, null);
         }
+        else if (kind is SeasonPostKind.Retrospective && await PublishedRetrospectiveAsync(year, cancellationToken) is { } retrospective)
+        {
+            announcement = AnnouncementFormatter.FormatRetrospective(retrospective.Title, retrospective.Stats, platform, site.Value.BaseUrl, accounts.Value);
+            description = RetrospectiveDraft.Summary(retrospective.Stats);
+            card = cards.RenderSeason(year, retrospective.Stats.Posts);
+        }
         else
         {
             return null;
@@ -111,7 +137,7 @@ public sealed partial class SeasonSocialService(
             return PostOutcome.Skipped;
         }
 
-        var publication = new SocialPublication(year, 0, 0, $"C# Advent {year}", description, announcement, card)
+        var publication = new SocialPublication(year, 0, 0, kind is SeasonPostKind.Retrospective ? $"C# Advent {year}: a look back" : $"C# Advent {year}", description, announcement, card)
         {
             Key = string.Create(CultureInfo.InvariantCulture, $"csadvent-{year}-{kind}-{daysUntil}-{platform}").ToLowerInvariant(),
         };
@@ -131,7 +157,7 @@ public sealed partial class SeasonSocialService(
         }
     }
 
-    /// <summary>Records a post an organizer made by hand. "Soon" can be marked as often as it's posted; "open" once.</summary>
+    /// <summary>Records a post an organizer made by hand. "Soon" can be marked as often as it's posted; the others once.</summary>
     public async Task<bool> MarkAsync(int year, SeasonPostKind kind, SocialPlatform platform, string? postUrl, string markedBy, CancellationToken cancellationToken = default)
     {
         if (year == Season.TestYear || !await db.Seasons.AnyAsync(s => s.Year == year, cancellationToken))
@@ -139,7 +165,7 @@ public sealed partial class SeasonSocialService(
             return false;
         }
 
-        var existing = kind is SeasonPostKind.SignUpsOpen
+        var existing = IsOnce(kind)
             ? await db.SeasonSocialPosts.SingleOrDefaultAsync(p => p.SeasonYear == year && p.Kind == kind && p.Platform == platform, cancellationToken)
             : null;
         var post = existing ?? new SeasonSocialPost { SeasonYear = year, Kind = kind, Platform = platform, MarkedBy = markedBy };
@@ -205,12 +231,12 @@ public sealed partial class SeasonSocialService(
     }
 
     /// <summary>
-    /// Claims the post: a new row, except that "sign-ups are open" reuses a failed one and is skipped once it's posted (or
-    /// being posted).
+    /// Claims the post: a new row, except that "sign-ups are open" and the retrospective reuse a failed one and are skipped
+    /// once posted (or being posted).
     /// </summary>
     private async Task<int?> ClaimAsync(int year, SeasonPostKind kind, SocialPlatform platform, string postedBy, DateTimeOffset now, CancellationToken cancellationToken)
     {
-        if (kind is SeasonPostKind.SignUpsOpen
+        if (IsOnce(kind)
             && await db.SeasonSocialPosts.SingleOrDefaultAsync(p => p.SeasonYear == year && p.Kind == kind && p.Platform == platform, cancellationToken) is { } existing)
         {
             var retried = await db.SeasonSocialPosts
@@ -242,6 +268,12 @@ public sealed partial class SeasonSocialService(
                 .SetProperty(p => p.PostUrl, postUrl)
                 .SetProperty(p => p.Error, error)
                 .SetProperty(p => p.At, timeProvider.GetUtcNow()), cancellationToken);
+
+    /// <summary>"Sign-ups are open" and the retrospective go out once per platform; "soon" as often as organizers like.</summary>
+    public static bool IsOnce(SeasonPostKind kind) => kind is not SeasonPostKind.SignUpsSoon;
+
+    private Task<Retrospective?> PublishedRetrospectiveAsync(int year, CancellationToken cancellationToken) =>
+        db.Retrospectives.AsNoTracking().SingleOrDefaultAsync(r => r.SeasonYear == year && r.PublishedAt != null, cancellationToken);
 
     private DateOnly LocalDate(DateTimeOffset moment) => DateOnly.FromDateTime(schedule.ToLocalTime(moment).DateTime);
 

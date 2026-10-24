@@ -1,4 +1,4 @@
-@* One platform's season post on /manage/social/signups: the text to copy, what's gone out, and the buttons. *@
+@* One platform's season post (sign-ups, or the retrospective): the text to copy, what's gone out, and the buttons. *@
 @using CSAdvent.Web.Claims
 @using CSAdvent.Web.Data
 @using CSAdvent.Web.Social.Posting
@@ -6,7 +6,8 @@
 @{
     var id = $"season-{Kind}-{Post.Announcement.Platform}";
     var platform = Post.Announcement.Platform;
-    var openDone = Kind is SeasonPostKind.SignUpsOpen && Post.Posts.Any(p => p.Status is SocialPostStatus.Posted or SocialPostStatus.Posting);
+    // "Sign-ups are open" and the retrospective go out once; "soon" can go out again.
+    var openDone = SeasonSocialService.IsOnce(Kind) && Post.Posts.Any(p => p.Status is SocialPostStatus.Posted or SocialPostStatus.Posting);
 }
 <article class="flex flex-col rounded-xl p-4 ring-1 @(openDone ? "bg-green-50 ring-green-200" : "bg-white ring-slate-200")">
     <header class="flex items-center justify-between gap-2">
@@ -65,6 +66,7 @@
                 <form method="post" action="manage/social/signups/unmark" class="flex flex-wrap items-center gap-2 text-green-900">
                     <AntiforgeryToken />
                     <input type="hidden" name="Year" value="@Year" />
+                    <input type="hidden" name="Kind" value="@Kind" />
                     <input type="hidden" name="PostId" value="@posted.Id" />
                     <span>
                         @(posted.MarkedBy == SocialPostingService.Automation ? "Posted automatically" : $"Posted by {posted.MarkedBy}"), <LocalTime Value="posted.At" />
@@ -121,7 +123,7 @@
     [Parameter, EditorRequired]
     public required SeasonPostPlatform Post { get; set; }
 
-    /// <summary>Whether it can be posted now: "soon" while there's a countdown, "open" once sign-ups are open.</summary>
+    /// <summary>Whether it can be posted now: "soon" while there's a countdown, "open" once sign-ups are open, the retrospective once it's published.</summary>
     [Parameter]
     public bool CanPost { get; set; }
 
