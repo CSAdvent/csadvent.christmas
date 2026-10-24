@@ -113,6 +113,15 @@ if (builder.Configuration.GetValue("Reminders:SendInBackground", defaultValue: t
 // The announcements list (#49). Signing up is rate limited per visitor, so the form can't be used to send confirmation
 // emails to a lot of addresses (and use up the email service's hourly limit).
 builder.Services.AddScoped<AnnouncementSubscriptions>();
+builder.Services.AddOptions<AnnouncementOptions>()
+    .BindConfiguration(AnnouncementOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddScoped<AnnouncementService>();
+if (builder.Configuration.GetValue("Announcements:SendInBackground", defaultValue: true))
+{
+    builder.Services.AddHostedService<AnnouncementWorker>();
+}
 var subscribeLimit = builder.Configuration.GetValue("Announcements:SubscribeLimit", defaultValue: 5);
 builder.Services.AddRateLimiter(options =>
 {

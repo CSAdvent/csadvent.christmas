@@ -135,6 +135,35 @@ public static class EmailCatalog
             "The address entered.",
             site => CSAdvent.Web.Announcements.AnnouncementSubscriptions.Confirmation($"{site.BaseUrl.TrimEnd('/')}/emails/announcements/confirm?token=sample", site)),
         new(
+            "announcement",
+            "Announcement",
+            "When an organizer sends an announcement from /manage/announcements, a few at a time.",
+            "Everyone on the announcements list who's confirmed their address. It has a one-click unsubscribe.",
+            site => CSAdvent.Web.Announcements.AnnouncementService.Email(
+                new CSAdvent.Web.Data.Announcement
+                {
+                    Subject = "The C# Advent 2026 calendar is full",
+                    Message = "Every spot in C# Advent 2026 is taken. Thank you!\n\nYou can still join the backup list, and fill in if an author drops out.",
+                    ButtonLabel = "Join the backup list",
+                    ButtonUrl = $"{site.BaseUrl.TrimEnd('/')}/backups/2026",
+                    CreatedBy = "CalvinAllen",
+                },
+                $"{site.BaseUrl.TrimEnd('/')}/emails/announcements/stop?token=sample",
+                site)),
+        new(
+            "announcement-signups-open",
+            "Sign-ups are open",
+            "At 9 AM Eastern on the day the current season's sign-ups open, by itself, a few at a time.",
+            "Everyone on the announcements list who's confirmed their address. It has a one-click unsubscribe.",
+            site =>
+            {
+                var form = CSAdvent.Web.Announcements.AnnouncementService.SignUpsOpen(2026, site.BaseUrl);
+                return CSAdvent.Web.Announcements.AnnouncementService.Email(
+                    new CSAdvent.Web.Data.Announcement { Subject = form.Subject, Message = form.Message, ButtonLabel = form.ButtonLabel, ButtonUrl = form.ButtonUrl, CreatedBy = "automation" },
+                    $"{site.BaseUrl.TrimEnd('/')}/emails/announcements/stop?token=sample",
+                    site);
+            }),
+        new(
             "daily-share",
             "Today's posts",
             "At 9 AM Eastern each day from December 1 to 25, once at least one of the day's posts has its title and link.",

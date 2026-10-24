@@ -1,0 +1,21 @@
+@* What an announcement looks like in the inbox: its subject, paragraphs and button. *@
+@using CSAdvent.Web.Announcements
+
+<section class="mt-8 max-w-3xl rounded-xl p-5 ring-1 ring-slate-200">
+    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Preview</p>
+    <h2 class="mt-2 text-xl font-semibold text-slate-900">@Announcement.Subject</h2>
+    @foreach (var paragraph in AnnouncementService.Paragraphs(Announcement.Message))
+    {
+        <p class="mt-3 text-slate-700">@paragraph</p>
+    }
+    @if (Announcement.ButtonLabel is { } label && Announcement.ButtonUrl is { } url)
+    {
+        <p class="mt-4"><a href="@url" target="_blank" rel="noopener" class="inline-block rounded-lg bg-advent-600 px-4 py-2 font-semibold text-white">@label</a></p>
+    }
+    <p class="mt-4 text-sm text-slate-500">Every copy ends with the organizers' sign-off and the subscriber's own unsubscribe link.</p>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public required CSAdvent.Web.Data.Announcement Announcement { get; set; }
+}
