@@ -133,6 +133,9 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        // Static rendering starts at the first await, so the forms need their models first.
+        var posted = Form is not null;
+        Form ??= new AnnouncementForm();
         Test ??= new();
         Send ??= new();
         Delete ??= new();
@@ -144,9 +147,10 @@ else
         }
 
         // A posted form keeps what was typed; a fresh page starts from the draft.
-        Form ??= _announcement is { } existing
-            ? new AnnouncementForm { Subject = existing.Subject, Message = existing.Message, ButtonLabel = existing.ButtonLabel, ButtonUrl = existing.ButtonUrl }
-            : new AnnouncementForm();
+        if (!posted && _announcement is { } existing)
+        {
+            Form = new AnnouncementForm { Subject = existing.Subject, Message = existing.Message, ButtonLabel = existing.ButtonLabel, ButtonUrl = existing.ButtonUrl };
+        }
     }
 
     private async Task SaveAsync()
