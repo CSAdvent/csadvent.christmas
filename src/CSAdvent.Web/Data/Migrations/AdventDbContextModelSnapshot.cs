@@ -16,7 +16,7 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261024143815_AddAnnouncementSubscribers";
+    public override string LastMigrationId => "20261024144848_AddAnnouncements";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -26,6 +26,116 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
             .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
         NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+        modelBuilder.Entity("CSAdvent.Web.Data.Announcement", b =>
+            {
+                var id = b.Property<int>("Id")
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("integer")
+                    .HasColumnName("id");
+
+                NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(id);
+
+                b.Property<string>("ButtonLabel")
+                    .HasMaxLength(60)
+                    .HasColumnType("character varying(60)")
+                    .HasColumnName("button_label");
+
+                b.Property<string>("ButtonUrl")
+                    .HasMaxLength(500)
+                    .HasColumnType("character varying(500)")
+                    .HasColumnName("button_url");
+
+                b.Property<DateTimeOffset>("CreatedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("created_at");
+
+                b.Property<string>("CreatedBy")
+                    .IsRequired()
+                    .HasMaxLength(39)
+                    .HasColumnType("character varying(39)")
+                    .HasColumnName("created_by");
+
+                b.Property<DateTimeOffset?>("FinishedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("finished_at");
+
+                b.Property<string>("Kind")
+                    .IsRequired()
+                    .HasMaxLength(20)
+                    .HasColumnType("character varying(20)")
+                    .HasColumnName("kind");
+
+                b.Property<string>("Message")
+                    .IsRequired()
+                    .HasMaxLength(5000)
+                    .HasColumnType("character varying(5000)")
+                    .HasColumnName("message");
+
+                b.Property<int?>("SeasonYear")
+                    .HasColumnType("integer")
+                    .HasColumnName("season_year");
+
+                b.Property<DateTimeOffset?>("SentAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("sent_at");
+
+                b.Property<string>("Subject")
+                    .IsRequired()
+                    .HasMaxLength(150)
+                    .HasColumnType("character varying(150)")
+                    .HasColumnName("subject");
+
+                b.HasKey("Id")
+                    .HasName("pk_announcements");
+
+                b.HasIndex("Kind", "SeasonYear")
+                    .IsUnique()
+                    .HasDatabaseName("ix_announcements_kind_season_year")
+                    .HasFilter("season_year IS NOT NULL");
+
+                b.ToTable("announcements", t =>
+                    {
+                        t.HasCheckConstraint("ck_announcements_button_url", "button_url IS NULL OR button_url ~* '^https?://'");
+                    });
+            });
+
+        modelBuilder.Entity("CSAdvent.Web.Data.AnnouncementDelivery", b =>
+            {
+                var id = b.Property<int>("Id")
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("integer")
+                    .HasColumnName("id");
+
+                NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(id);
+
+                b.Property<int>("AnnouncementId")
+                    .HasColumnType("integer")
+                    .HasColumnName("announcement_id");
+
+                b.Property<DateTimeOffset>("SentAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("sent_at");
+
+                b.Property<int>("SubscriberId")
+                    .HasColumnType("integer")
+                    .HasColumnName("subscriber_id");
+
+                b.HasKey("Id")
+                    .HasName("pk_announcement_deliveries");
+
+                b.HasIndex("SentAt")
+                    .HasDatabaseName("ix_announcement_deliveries_sent_at");
+
+                b.HasIndex("SubscriberId")
+                    .HasDatabaseName("ix_announcement_deliveries_subscriber_id");
+
+                b.HasIndex("AnnouncementId", "SubscriberId")
+                    .IsUnique()
+                    .HasDatabaseName("ix_announcement_deliveries_announcement_id_subscriber_id");
+
+                b.ToTable("announcement_deliveries");
+            });
 
         modelBuilder.Entity("CSAdvent.Web.Data.AnnouncementSubscriber", b =>
             {
@@ -921,6 +1031,27 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                     .HasName("pk_data_protection_keys");
 
                 b.ToTable("data_protection_keys");
+            });
+
+        modelBuilder.Entity("CSAdvent.Web.Data.AnnouncementDelivery", b =>
+            {
+                b.HasOne("CSAdvent.Web.Data.Announcement", "Announcement")
+                    .WithMany()
+                    .HasForeignKey("AnnouncementId")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired()
+                    .HasConstraintName("fk_announcement_deliveries_announcements_announcement_id");
+
+                b.HasOne("CSAdvent.Web.Data.AnnouncementSubscriber", "Subscriber")
+                    .WithMany()
+                    .HasForeignKey("SubscriberId")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired()
+                    .HasConstraintName("fk_announcement_deliveries_subscriber_id");
+
+                b.Navigation("Announcement");
+
+                b.Navigation("Subscriber");
             });
 
         modelBuilder.Entity("CSAdvent.Web.Data.BackupOffer", b =>

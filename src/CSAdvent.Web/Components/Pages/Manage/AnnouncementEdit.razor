@@ -1,0 +1,197 @@
+@page "/manage/announcements/new"
+@page "/manage/announcements/{Id:int}"
+@using System.ComponentModel.DataAnnotations
+@using System.Globalization
+@using CSAdvent.Web.Announcements
+@inject AnnouncementService Announcements
+@inject NavigationManager Navigation
+
+<PageTitle>Announcement · Manage · C# Advent</PageTitle>
+
+<ManageNav />
+
+<nav class="mb-4 text-sm font-medium"><a href="manage/announcements" class="text-advent-700 hover:underline">← All announcements</a></nav>
+
+@if (Message is { } message)
+{
+    <p class="mb-6 max-w-3xl rounded-xl bg-green-50 p-4 font-medium text-green-800 ring-1 ring-green-200" role="status">@message</p>
+}
+
+@if (Id is not null && _announcement is null)
+{
+    <p class="text-slate-600">That announcement doesn't exist.</p>
+}
+else if (_announcement is { SentAt: not null } sent)
+{
+    <h1 class="text-3xl font-bold tracking-tight text-slate-900">@sent.Subject</h1>
+    <p class="mt-2 text-slate-600">
+        Sent <LocalTime Value="sent.SentAt.Value" /> by @sent.CreatedBy:
+        @(sent.FinishedAt is null ? "it's still going out, a few at a time." : "every subscriber has it.")
+    </p>
+    <AnnouncementPreview Announcement="sent" />
+}
+else
+{
+    <h1 class="text-3xl font-bold tracking-tight text-slate-900">@(_announcement is null ? "New announcement" : "Draft announcement")</h1>
+    <p class="mt-2 max-w-3xl text-slate-600">
+        It goes to @Plural(_confirmed, "confirmed subscriber"), with a link to unsubscribe. Save it as a draft, send yourself a
+        test, then send it.
+    </p>
+
+    <EditForm Model="Form" FormName="announcement" OnValidSubmit="SaveAsync" class="mt-6 flex max-w-3xl flex-col gap-4">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="rounded-xl bg-red-50 p-4 text-sm ring-1 ring-red-200" />
+        <label class="flex flex-col text-sm font-medium text-slate-700">
+            Subject
+            <InputText @bind-Value="Form!.Subject" maxlength="150" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+        </label>
+        <label class="flex flex-col text-sm font-medium text-slate-700">
+            Message <span class="font-normal text-slate-500">(plain text; a blank line starts a new paragraph)</span>
+            <InputTextArea @bind-Value="Form!.Message" rows="10" maxlength="5000" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+        </label>
+        <div class="grid gap-4 sm:grid-cols-2">
+            <label class="flex flex-col text-sm font-medium text-slate-700">
+                Button label <span class="font-normal text-slate-500">(optional)</span>
+                <InputText @bind-Value="Form!.ButtonLabel" maxlength="60" placeholder="See the calendar" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+            </label>
+            <label class="flex flex-col text-sm font-medium text-slate-700">
+                Button link
+                <InputText @bind-Value="Form!.ButtonUrl" type="url" maxlength="500" placeholder="https://csadvent.christmas/" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+            </label>
+        </div>
+        <div>
+            <button type="submit" class="rounded-lg bg-white px-4 py-2 font-semibold text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50">Save draft</button>
+        </div>
+    </EditForm>
+
+    @if (_announcement is { } draft)
+    {
+        <AnnouncementPreview Announcement="draft" />
+
+        <div class="mt-8 flex max-w-3xl flex-col gap-4">
+            <EditForm Model="Test" FormName="test" OnSubmit="SendTestAsync" class="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
+                <p class="text-sm text-slate-600">See exactly what subscribers will get, in the organizers' inbox, with "[Test]" in the subject.</p>
+                <button type="submit" class="mt-3 rounded-lg bg-white px-4 py-2 font-semibold text-slate-800 ring-1 ring-slate-300 hover:bg-slate-100">Send a test to the organizers' inbox</button>
+            </EditForm>
+
+            <EditForm Model="Send" FormName="send" OnValidSubmit="SendAsync" class="rounded-xl bg-advent-50 p-4 ring-1 ring-advent-200">
+                <DataAnnotationsValidator />
+                <label class="flex items-center gap-2 text-sm font-medium text-slate-800">
+                    <InputCheckbox @bind-Value="Send!.Confirm" />
+                    Send it to @Plural(_confirmed, "subscriber")
+                </label>
+                <ValidationMessage For="() => Send!.Confirm" class="mt-1 text-sm" />
+                <button type="submit" class="mt-3 rounded-lg bg-advent-600 px-4 py-2 font-semibold text-white hover:bg-advent-700">Send</button>
+            </EditForm>
+
+            <EditForm Model="Delete" FormName="delete" OnValidSubmit="DeleteAsync">
+                <DataAnnotationsValidator />
+                <label class="flex items-center gap-2 text-sm text-slate-600">
+                    <InputCheckbox @bind-Value="Delete!.Confirm" />
+                    Delete this draft
+                </label>
+                <ValidationMessage For="() => Delete!.Confirm" class="mt-1 text-sm" />
+                <button type="submit" class="mt-2 rounded-md px-3 py-1.5 text-sm font-medium text-red-700 ring-1 ring-red-200 hover:bg-red-50">Delete draft</button>
+            </EditForm>
+        </div>
+    }
+}
+
+@code {
+    private CSAdvent.Web.Data.Announcement? _announcement;
+    private int _confirmed;
+
+    [Parameter]
+    public int? Id { get; set; }
+
+    [SupplyParameterFromQuery(Name = "done")]
+    public string? Done { get; set; }
+
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationState { get; set; } = null!;
+
+    [SupplyParameterFromForm(FormName = "announcement")]
+    private AnnouncementForm? Form { get; set; }
+
+    [SupplyParameterFromForm(FormName = "test")]
+    private TestForm? Test { get; set; }
+
+    [SupplyParameterFromForm(FormName = "send")]
+    private ConfirmForm? Send { get; set; }
+
+    [SupplyParameterFromForm(FormName = "delete")]
+    private ConfirmForm? Delete { get; set; }
+
+    private string? Message => Done switch
+    {
+        "saved" => "Saved.",
+        "tested" => "Test sent to the organizers' inbox.",
+        "test-failed" => "The test didn't send. Check the email settings.",
+        "sent" => "Sent. It goes out a few at a time, so the last subscribers may get it a few hours from now.",
+        _ => null,
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Static rendering starts at the first await, so the forms need their models first.
+        var posted = Form is not null;
+        Form ??= new AnnouncementForm();
+        Test ??= new();
+        Send ??= new();
+        Delete ??= new();
+
+        _confirmed = (await Announcements.CountSubscribersAsync()).Confirmed;
+        if (Id is { } id)
+        {
+            _announcement = await Announcements.GetAsync(id);
+        }
+
+        // A posted form keeps what was typed; a fresh page starts from the draft.
+        if (!posted && _announcement is { } existing)
+        {
+            Form = new AnnouncementForm { Subject = existing.Subject, Message = existing.Message, ButtonLabel = existing.ButtonLabel, ButtonUrl = existing.ButtonUrl };
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        var by = (await AuthenticationState).User.Identity?.Name ?? "organizer";
+        if (await Announcements.SaveDraftAsync(Id, Form!, by) is { } id)
+        {
+            Navigation.NavigateTo($"manage/announcements/{id}?done=saved");
+        }
+    }
+
+    private async Task SendTestAsync() =>
+        Navigation.NavigateTo($"manage/announcements/{Id}?done={(Id is { } id && await Announcements.SendTestAsync(id) ? "tested" : "test-failed")}");
+
+    private async Task SendAsync()
+    {
+        if (Id is { } id)
+        {
+            await Announcements.SendAsync(id);
+        }
+
+        Navigation.NavigateTo($"manage/announcements/{Id}?done=sent");
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (Id is { } id)
+        {
+            await Announcements.DeleteDraftAsync(id);
+        }
+
+        Navigation.NavigateTo("manage/announcements");
+    }
+
+    private static string Plural(int count, string noun) => string.Create(CultureInfo.InvariantCulture, $"{count} {noun}{(count == 1 ? "" : "s")}");
+
+    private sealed class TestForm;
+
+    private sealed class ConfirmForm
+    {
+        [Range(typeof(bool), "true", "true", ErrorMessage = "Tick the box to confirm.")]
+        public bool Confirm { get; set; }
+    }
+}

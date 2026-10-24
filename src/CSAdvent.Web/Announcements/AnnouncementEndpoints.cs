@@ -60,6 +60,13 @@ public static class AnnouncementEndpoints
             })
             .DisableAntiforgery();
 
+        if (app.Environment.IsDevelopment())
+        {
+            // Development only: queue and deliver announcements as if it were the given time. Everything goes to MailPit.
+            app.MapPost("/dev/announcements/run", async (DateTimeOffset at, int? year, AnnouncementService announcements, CancellationToken cancellationToken) =>
+                Results.Ok(new { sent = await announcements.RunAsync(at.ToUniversalTime(), year, cancellationToken) }));
+        }
+
         return app;
     }
 }

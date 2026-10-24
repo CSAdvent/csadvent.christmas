@@ -52,6 +52,9 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 7. **Check email:** send yourself a sample from `/manage/emails`, and send a test email to hello@csadvent.christmas from
    another address (it forwards through ImprovMX).
 8. **Keep the stack current:** dependency updates, and a deploy (every merge to `main` deploys).
+9. **Check the announcements list** at `/manage/announcements`. The "sign-ups are open" email goes to every confirmed
+   subscriber by itself at 9 AM on the day sign-ups open, 40 an hour. Write any other news there: save a draft, send a
+   test to the organizers' inbox, then send it.
 
 ---
 

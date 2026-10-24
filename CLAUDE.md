@@ -246,6 +246,12 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
   - **Abuse:** the form is rate limited per IP (`Announcements:SubscribeLimit`, 5 per 10 minutes; the AppHost raises it in Testing). A confirmed address, or one sent a confirmation in the last day, gets nothing, and the response never says which, so the form can't flood an inbox or reveal who's subscribed. A hidden `Website` field traps bots.
   - **Links:** confirm (`/emails/announcements/confirm`, data protection with a 7-day limit) and unsubscribe (`/emails/announcements/stop`, also the one-click `List-Unsubscribe`) carry the subscriber ID protected with data protection. A GET only shows a page with a button, and the POST acts, so mail scanners opening links change nothing.
   - **Retention:** kept until they unsubscribe, which deletes the row. Unconfirmed addresses are deleted after 7 days by the retention worker (`DeleteUnconfirmedAsync`). The privacy page says both.
+- **Sending** (`AnnouncementService`, `announcements` and `announcement_deliveries`):
+  - Organizers write them at `/manage/announcements`: a subject, a plain-text message (blank lines separate paragraphs) and an optional button. Save a draft, **send a test** to the organizers' inbox (`[Test]` subject), then **send** (confirmed). A sent announcement can't be edited.
+  - **Who gets it:** subscribers confirmed by the time it was sent.
+  - **Delivery:** `AnnouncementWorker` runs every 5 minutes and sends up to `Announcements:PerHour` (40) an hour, counting the last hour's deliveries, to stay under the email service's 100 an hour. Each copy is recorded in `announcement_deliveries` (unique per announcement and subscriber) before it's sent, so nobody gets one twice; a failed send removes its record so a later run retries. Every copy has the subscriber's own unsubscribe link, also the one-click `List-Unsubscribe` header.
+  - **Sign-ups are open:** the current season's email (`AnnouncementKind.SignUpsOpen`, unique per season) is queued by itself at `Reminders:SendAt` (9 AM) on the day its sign-ups open, within 2 days of opening, never for the test season.
+  - **Trying it:** `POST /dev/announcements/run?at=…&year=…` (Development only); `AnnouncementTests` use season 2125. The AppHost turns the worker off in Testing (`Announcements:SendInBackground`).
 
 ## Privacy
 

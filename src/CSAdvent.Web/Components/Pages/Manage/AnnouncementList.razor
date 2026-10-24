@@ -1,0 +1,76 @@
+@page "/manage/announcements"
+@using System.Globalization
+@using CSAdvent.Web.Announcements
+@using Microsoft.Extensions.Options
+@inject AnnouncementService Announcements
+@inject IOptions<AnnouncementOptions> Options
+
+<PageTitle>Announcements · Manage · C# Advent</PageTitle>
+
+<ManageNav />
+
+<div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900">Announcements</h1>
+        <p class="mt-2 max-w-3xl text-slate-600">
+            Emails to everyone who signed up at <a href="announcements" class="text-advent-700 underline">/announcements</a>
+            and confirmed their address: @Plural(_counts.Confirmed, "subscriber"), plus @_counts.Unconfirmed waiting to confirm.
+            The "sign-ups are open" email goes out by itself at 9 AM Eastern on the day each season's sign-ups open.
+            Announcements go out @Options.Value.PerHour an hour, to stay under the email service's limit.
+        </p>
+    </div>
+    <a href="manage/announcements/new" class="rounded-lg bg-advent-600 px-4 py-2 font-semibold text-white hover:bg-advent-700">New announcement</a>
+</div>
+
+@if (_rows.Count == 0)
+{
+    <p class="mt-8 text-slate-500">No announcements yet.</p>
+}
+else
+{
+    <table class="mt-8 w-full text-left text-sm">
+        <thead class="border-b border-slate-200 text-slate-500">
+            <tr>
+                <th class="py-2 pr-4 font-medium">Subject</th>
+                <th class="py-2 pr-4 font-medium">From</th>
+                <th class="py-2 font-medium">Status</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+            @foreach (var row in _rows)
+            {
+                <tr class="align-top">
+                    <td class="py-3 pr-4"><a href="manage/announcements/@row.Id" class="font-semibold text-slate-900 hover:text-advent-700 hover:underline">@row.Subject</a></td>
+                    <td class="py-3 pr-4 text-slate-600">@(row.Kind is CSAdvent.Web.Data.AnnouncementKind.SignUpsOpen ? "Automatic" : row.CreatedBy)</td>
+                    <td class="py-3 text-slate-600">
+                        @if (row.IsDraft)
+                        {
+                            <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">Draft</span>
+                        }
+                        else if (row.FinishedAt is { } finished)
+                        {
+                            <span>Sent to @Plural(row.Delivered, "subscriber"), finished <LocalTime Value="finished" /></span>
+                        }
+                        else
+                        {
+                            <span>Sending: @row.Delivered of @row.Recipients so far</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IReadOnlyList<AnnouncementRow> _rows = [];
+    private SubscriberCounts _counts = new(0, 0);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _counts = await Announcements.CountSubscribersAsync();
+        _rows = await Announcements.ListAsync();
+    }
+
+    private static string Plural(int count, string noun) => string.Create(CultureInfo.InvariantCulture, $"{count} {noun}{(count == 1 ? "" : "s")}");
+}
