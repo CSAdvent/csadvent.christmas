@@ -81,7 +81,7 @@ public sealed partial class SocialPostingTests(AppHostFixture fixture)
 
         Assert.Contains("<meta property=\"og:title\" content=\"C# Advent test post\" />", page);
         Assert.Contains("<link rel=\"canonical\" href=\"https://localhost:7092/test-post/abc123def456\" />", page);
-        Assert.Contains("<meta name=\"robots\" content=\"noindex\" />", page);
+        Assert.Matches(@"<meta name=""robots"" content=""noindex""\s*/?>", page);
         Assert.Equal(System.Net.HttpStatusCode.NotFound, (await client.GetAsync("/test-post/Not-An-Id", CancellationToken)).StatusCode);
     }
 
