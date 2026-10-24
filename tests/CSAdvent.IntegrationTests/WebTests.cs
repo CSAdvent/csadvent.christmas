@@ -81,6 +81,26 @@ public sealed class WebTests(AppHostFixture fixture)
     }
 
     [Fact]
+    public async Task SearchEnginesGetRobotsAndASitemapOfThePublicPages()
+    {
+        using var client = fixture.CreateWebClient();
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        var robots = await client.GetStringAsync("/robots.txt", cancellationToken);
+        Assert.Contains("Disallow: /manage", robots);
+        Assert.Contains("Sitemap: https://localhost:7092/sitemap.xml", robots);
+
+        var sitemap = await client.GetStringAsync("/sitemap.xml", cancellationToken);
+        Assert.Contains("<loc>https://localhost:7092/archive/2017</loc>", sitemap);
+        Assert.Contains("<loc>https://localhost:7092/2017/day/1/1</loc>", sitemap);
+        Assert.Contains("<loc>https://localhost:7092/about</loc>", sitemap);
+
+        // Never the test season, and never a season that isn't over (the tests' far-future ones).
+        Assert.DoesNotContain("/9000", sitemap);
+        Assert.DoesNotContain("archive/21", sitemap);
+    }
+
+    [Fact]
     public async Task LegacyAddressesStillWork()
     {
         using var browser = fixture.CreateBrowser();

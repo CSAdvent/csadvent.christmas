@@ -162,6 +162,7 @@ app.MapBackups();
 app.MapEntries();
 app.MapCards();
 app.MapFeeds();
+app.MapSearch();
 app.MapSocial();
 app.MapLegacyRedirects();
 app.MapContentAdmin();
