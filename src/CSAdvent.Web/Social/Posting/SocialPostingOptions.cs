@@ -14,6 +14,12 @@ public sealed class SocialPostingOptions
     [MinLength(1, ErrorMessage = "SocialPosting:PostAt needs at least one time.")]
     public TimeOnly[] PostAt { get; set; } = [];
 
+    /// <summary>
+    /// When the daily check of the Automatic platforms' credentials runs, in the reveal time zone
+    /// (<see cref="SocialCredentialCheck"/>), early enough for an organizer to fix a failed one before the day's posts.
+    /// </summary>
+    public TimeOnly CheckAt { get; set; } = new(8, 0);
+
     /// <summary>How many times an announcement is tried before it waits for an organizer to retry it.</summary>
     [Range(1, 10)]
     public int MaxAttempts { get; set; } = 3;

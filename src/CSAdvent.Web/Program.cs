@@ -82,6 +82,7 @@ builder.Services.AddKeyedSingleton(SocialPublishers.ClientKey, (_, _) => SocialP
 builder.Services.AddScoped<SocialPublishers>();
 builder.Services.AddScoped<SocialPlatformModes>();
 builder.Services.AddScoped<SocialPostingService>();
+builder.Services.AddScoped<SocialCredentialCheck>();
 if (builder.Configuration.GetValue("SocialPosting:PostInBackground", defaultValue: true))
 {
     builder.Services.AddHostedService<SocialPostingWorker>();

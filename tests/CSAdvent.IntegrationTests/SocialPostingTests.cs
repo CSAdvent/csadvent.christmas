@@ -86,6 +86,16 @@ public sealed partial class SocialPostingTests(AppHostFixture fixture)
     }
 
     [Fact]
+    public async Task TheCredentialAlertIsInTheEmailCatalog()
+    {
+        using var client = fixture.CreateWebClient();
+
+        var preview = await client.GetStringAsync("/dev/emails/social-credentials-failing", CancellationToken);
+
+        Assert.Contains("Facebook needs new credentials", preview);
+    }
+
+    [Fact]
     public async Task OnlyPlatformsThatCanPostAutomaticallyCanBeAutomatic()
     {
         using var organizer = await fixture.SignInAsync("organizer", AppHostFixture.OrganizerGitHubId);

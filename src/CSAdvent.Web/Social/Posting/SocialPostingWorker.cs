@@ -1,8 +1,9 @@
 namespace CSAdvent.Web.Social.Posting;
 
 /// <summary>
-/// Runs <see cref="SocialPostingService"/> every five minutes, so an announcement goes out within a few minutes of its time.
-/// Runs with no platform in Automatic mode, or nothing due, are cheap.
+/// Runs <see cref="SocialPostingService"/> every five minutes, so an announcement goes out within a few minutes of its time,
+/// and <see cref="SocialCredentialCheck"/>, which checks each Automatic platform's credentials once a day. Runs with no
+/// platform in Automatic mode, or nothing due, are cheap.
 /// </summary>
 public sealed class SocialPostingWorker(IServiceScopeFactory scopeFactory, TimeProvider timeProvider, ILogger<SocialPostingWorker> logger)
     : BackgroundService
@@ -17,6 +18,7 @@ public sealed class SocialPostingWorker(IServiceScopeFactory scopeFactory, TimeP
             try
             {
                 await using var scope = scopeFactory.CreateAsyncScope();
+                await scope.ServiceProvider.GetRequiredService<SocialCredentialCheck>().RunAsync(timeProvider.GetUtcNow(), stoppingToken);
                 await scope.ServiceProvider.GetRequiredService<SocialPostingService>().RunAsync(timeProvider.GetUtcNow(), stoppingToken);
             }
             catch (Exception exception) when (!stoppingToken.IsCancellationRequested)
