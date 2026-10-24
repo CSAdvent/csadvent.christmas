@@ -1,4 +1,5 @@
 using Aspire.Hosting.Azure;
+using Azure.Provisioning.AppContainers;
 using Azure.Provisioning.Expressions;
 using Azure.Provisioning.PostgreSql;
 using Microsoft.Extensions.Configuration;
@@ -76,6 +77,14 @@ var web = builder.AddProject<Projects.CSAdvent_Web>("web", launchProfileName: is
         // Always one replica running (a managed certificate needs the app up to renew), and room to scale in December.
         app.Template.Scale.MinReplicas = 1;
         app.Template.Scale.MaxReplicas = 3;
+
+        // A new revision only takes traffic once it's started and can reach the database (startup and readiness ask
+        // /health, every check), and a replica that's stopped answering is restarted (liveness asks /alive, only the app
+        // itself, so a database outage doesn't restart every replica). Port 8080 is the container's HTTP_PORTS.
+        var container = app.Template.Containers.Single().Value!;
+        container.Probes.Add(Probe(ContainerAppProbeType.Startup, "/health", periodSeconds: 10, failureThreshold: 10));
+        container.Probes.Add(Probe(ContainerAppProbeType.Readiness, "/health", periodSeconds: 10, failureThreshold: 3));
+        container.Probes.Add(Probe(ContainerAppProbeType.Liveness, "/alive", periodSeconds: 30, failureThreshold: 3));
 
         foreach (var (name, certificate) in customDomains)
         {
@@ -185,6 +194,16 @@ var migrations = web.AddEFMigrations(
 web.WaitForCompletion(migrations);
 
 builder.Build().Run();
+
+// An HTTP probe on the web container. Container Apps allows at most 10 failures, so startup gets 10 tries 10 seconds apart.
+static ContainerAppProbe Probe(ContainerAppProbeType type, string path, int periodSeconds, int failureThreshold) => new()
+{
+    ProbeType = type,
+    HttpGet = new ContainerAppHttpRequestInfo { Path = path, Port = 8080 },
+    PeriodSeconds = periodSeconds,
+    FailureThreshold = failureThreshold,
+    TimeoutSeconds = 5,
+};
 
 /// <summary>A custom domain for the site, and the name of its managed certificate once Azure has issued one.</summary>
 internal sealed record CustomDomain(string Name, string? Certificate);

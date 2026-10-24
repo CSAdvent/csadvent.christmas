@@ -107,21 +107,19 @@ public static class Extensions
         return builder;
     }
 
-    public static WebApplication MapDefaultEndpoints(this WebApplication app)
+    /// <summary>
+    /// Answers <c>/health</c> (every check, the database included) and <c>/alive</c> (only the "live" ones) in every
+    /// environment, for Container Apps' probes. Call it first in the pipeline: a redirect (to HTTPS, or to the canonical
+    /// host) counts as healthy to a probe, so the checks must answer before anything can redirect. They answer only
+    /// Healthy, Degraded or Unhealthy, with no details, so they're safe to expose.
+    /// </summary>
+    public static WebApplication UseDefaultHealthChecks(this WebApplication app)
     {
-        // Adding health checks endpoints to applications in non-development environments has security implications.
-        // See https://aka.ms/aspire/healthchecks for details before enabling these endpoints in non-development environments.
-        if (app.Environment.IsDevelopment())
+        app.UseHealthChecks(HealthEndpointPath);
+        app.UseHealthChecks(AlivenessEndpointPath, new HealthCheckOptions
         {
-            // All health checks must pass for app to be considered ready to accept traffic after starting
-            app.MapHealthChecks(HealthEndpointPath);
-
-            // Only health checks tagged with the "live" tag must pass for app to be considered alive
-            app.MapHealthChecks(AlivenessEndpointPath, new HealthCheckOptions
-            {
-                Predicate = r => r.Tags.Contains("live")
-            });
-        }
+            Predicate = r => r.Tags.Contains("live")
+        });
 
         return app;
     }

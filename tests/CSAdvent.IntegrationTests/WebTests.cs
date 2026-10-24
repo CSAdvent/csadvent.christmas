@@ -80,6 +80,22 @@ public sealed class WebTests(AppHostFixture fixture)
         Assert.Equal("https://localhost/archive/2017?via=bluesky", response.Headers.Location!.OriginalString);
     }
 
+    [Theory]
+    [InlineData("/health")]
+    [InlineData("/alive")]
+    public async Task HealthChecksAnswerBeforeAnythingCanRedirectThem(string path)
+    {
+        // On the www host every other page redirects, which a probe would count as healthy.
+        using var browser = fixture.CreateBrowser();
+        using var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.Host = "www.localhost";
+
+        var response = await browser.SendAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("Healthy", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+    }
+
     [Fact]
     public async Task LegacyAddressesStillWork()
     {
