@@ -22,6 +22,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
+- **The yearly cycle** is in `docs/runbook.md`. Keep it current when a change affects what organizers do, or when something happens, during the season.
+
 The new C# Advent site (csadvent.christmas), replacing the legacy site Matt Groves built. The pinned tracker issue (#52) lists every piece of work. The legacy code is a feature spec only; nothing is ported from it directly.
 
 - **.NET 11** Blazor Web App (RC with a go-live license until GA in November 2026)

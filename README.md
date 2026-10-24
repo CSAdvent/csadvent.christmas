@@ -158,6 +158,10 @@ A hidden test season lets invited testers try everything for real on the live si
 - 🚨 **A last call on the day:** an author whose link still hasn't arrived gets an email 3 hours before their post is announced (7 AM Eastern for post 1, 11 AM for post 2), with the announcement as the deadline
 - 🧪 **Try a reminder run** without waiting for December: `POST https://localhost:7092/dev/reminders/run?at=2026-12-03T15:00:00Z` (Development only). The emails land in MailPit.
 
+## 📖 Running a Season
+
+- 🗓️ The **[yearly runbook](docs/runbook.md)** says what happens each year, when, and who does it: creating the season, sign-ups, reminders, Advent, and what gets deleted afterwards
+
 ## ☁️ Deploying to Azure
 
 Production runs on **Azure Container Apps** with **Azure Database for PostgreSQL** (Flexible Server, PostgreSQL 18, Burstable B1ms, 14-day backups), **Application Insights**, the **Azure DNS** zone for csadvent.christmas, and **Azure Communication Services** for email. All of it is modeled in the AppHost, so one `aspire deploy` creates everything.
