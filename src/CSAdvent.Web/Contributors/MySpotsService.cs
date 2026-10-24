@@ -12,7 +12,8 @@ using Microsoft.Extensions.Options;
 
 namespace CSAdvent.Web.Contributors;
 
-public sealed record MySpot(int SlotId, int Year, int Day, int Part, int SlotsPerDay, string? PostTitle, string? PostUrl, EntryStatus Status, bool IsDayOver)
+/// <param name="IsRevealed">Whether its day is revealed, so its visits and clicks count.</param>
+public sealed record MySpot(int SlotId, int Year, int Day, int Part, int SlotsPerDay, string? PostTitle, string? PostUrl, EntryStatus Status, bool IsDayOver, bool IsRevealed, PostTraffic Traffic)
 {
     public string Spot => SlotsPerDay > 1 ? $"December {Day}, {Year} · Post {Part}" : $"December {Day}, {Year}";
 }
@@ -24,8 +25,19 @@ public sealed record MyRequest(int Year, int Day, int Part, int SlotsPerDay, Dat
 
 public sealed record MySpotsOverview(IReadOnlyList<MySpot> Spots, IReadOnlyList<MyRequest> PendingRequests);
 
+/// <summary>
+/// How a post did: visits to its entry page and clicks through to the post, counted since 2026 without bots or link previews.
+/// Only its author sees these for their own posts; the public only sees season totals and the most-read posts.
+/// </summary>
+public sealed record PostTraffic(int Views, int Clicks)
+{
+    public static readonly PostTraffic None = new(0, 0);
+
+    public bool Any => Views + Clicks > 0;
+}
+
 /// <summary>A post the contributor published in a finished season, linked to their entry page.</summary>
-public sealed record PastPost(int Year, int Day, int Part, int SlotsPerDay, string Title)
+public sealed record PastPost(int Year, int Day, int Part, int SlotsPerDay, string Title, PostTraffic Traffic)
 {
     public string Spot => SlotsPerDay > 1 ? $"December {Day} · Post {Part}" : $"December {Day}";
 
@@ -73,6 +85,7 @@ public sealed partial class MySpotsService(
             .Select(s => new { s.Id, s.SeasonYear, s.Day, s.Part, s.Season.SlotsPerDay, s.AuthorName, s.PostTitle, s.PostUrl })
             .ToListAsync(cancellationToken);
 
+        var traffic = await TrafficAsync([.. spots.Select(s => s.Id)], cancellationToken);
         var requests = await db.ClaimRequests
             .AsNoTracking()
             .Where(r => r.ContributorId == contributorId && r.Status == ClaimRequestStatus.Pending)
@@ -92,7 +105,9 @@ public sealed partial class MySpotsService(
                     s.PostTitle,
                     s.PostUrl,
                     EntryAdminService.StatusOf(s.AuthorName, s.PostTitle, s.PostUrl),
-                    schedule.IsDayOver(s.SeasonYear, s.Day)))],
+                    schedule.IsDayOver(s.SeasonYear, s.Day),
+                    schedule.IsRevealed(s.SeasonYear, s.Day),
+                    traffic.GetValueOrDefault(s.Id, PostTraffic.None)))],
             [.. requests.Where(r => !schedule.IsSeasonOver(r.Year))]);
     }
 
@@ -105,13 +120,14 @@ public sealed partial class MySpotsService(
         var posts = await db.Slots
             .AsNoTracking()
             .Where(s => s.ContributorId == contributorId && s.SeasonYear != Season.TestYear && s.PostUrl != null && s.AuthorName != null)
-            .Select(s => new { s.SeasonYear, s.Day, s.Part, s.Season.SlotsPerDay, s.PostTitle })
+            .Select(s => new { s.Id, s.SeasonYear, s.Day, s.Part, s.Season.SlotsPerDay, s.PostTitle })
             .ToListAsync(cancellationToken);
+        var traffic = await TrafficAsync([.. posts.Select(p => p.Id)], cancellationToken);
 
         return [.. posts
             .Where(p => schedule.IsSeasonOver(p.SeasonYear))
             .OrderByDescending(p => p.SeasonYear).ThenBy(p => p.Day).ThenBy(p => p.Part)
-            .Select(p => new PastPost(p.SeasonYear, p.Day, p.Part, p.SlotsPerDay, p.PostTitle ?? "Untitled"))];
+            .Select(p => new PastPost(p.SeasonYear, p.Day, p.Part, p.SlotsPerDay, p.PostTitle ?? "Untitled", traffic.GetValueOrDefault(p.Id, PostTraffic.None)))];
     }
 
     public async Task<MySpotDetails?> GetAsync(int contributorId, int slotId, CancellationToken cancellationToken = default)
@@ -204,6 +220,27 @@ public sealed partial class MySpotsService(
         }
 
         return outcome;
+    }
+
+    /// <summary>Each spot's visits and clicks, for its author.</summary>
+    private async Task<Dictionary<int, PostTraffic>> TrafficAsync(List<int> slotIds, CancellationToken cancellationToken)
+    {
+        if (slotIds.Count == 0)
+        {
+            return [];
+        }
+
+        var counts = await db.EntryHits
+            .Where(h => slotIds.Contains(h.SlotId))
+            .GroupBy(h => new { h.SlotId, h.Kind })
+            .Select(g => new { g.Key.SlotId, g.Key.Kind, Count = g.Count() })
+            .ToListAsync(cancellationToken);
+
+        return counts
+            .GroupBy(c => c.SlotId)
+            .ToDictionary(
+                g => g.Key,
+                g => new PostTraffic(g.Where(c => c.Kind == EntryHitKind.View).Sum(c => c.Count), g.Where(c => c.Kind == EntryHitKind.Click).Sum(c => c.Count)));
     }
 
     private IQueryable<Slot> Mine(int contributorId, string? verifiedEmail) =>

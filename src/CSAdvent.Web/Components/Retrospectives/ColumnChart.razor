@@ -1,0 +1,167 @@
+@* A column chart drawn in HTML, so it needs no script and its text stays readable at any width. One series, or two stacked
+   (bottom first). Each column's tooltip and the "Show the numbers" table carry every value; the chart labels only a few. *@
+@using System.Globalization
+@using CSAdvent.Web.Retrospectives
+
+<figure class="mt-12">
+    <figcaption>
+        <span class="block font-semibold text-slate-900">@Title</span>
+        @if (Description is not null)
+        {
+            <span class="mt-1 block text-sm text-slate-600">@Description</span>
+        }
+    </figcaption>
+
+    @if (Series.Count > 1)
+    {
+        <ul class="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm text-slate-600" aria-hidden="true">
+            @for (var i = 0; i < Series.Count; i++)
+            {
+                <li class="flex items-center gap-2"><span class="size-3 rounded-sm @SeriesClass(i)"></span>@Series[i]</li>
+            }
+        </ul>
+    }
+
+    <div class="mt-8 flex gap-2" aria-hidden="true">
+        <div class="relative h-48 w-9 shrink-0 text-right text-xs tabular-nums text-slate-500">
+            @foreach (var tick in _ticks)
+            {
+                <span class="absolute right-0 translate-y-1/2" style="bottom: @ChartScale.Percent(tick, _top)">@ChartScale.Compact(tick)</span>
+            }
+        </div>
+        <div class="min-w-0 flex-1">
+            <div class="relative h-48 border-b border-slate-300">
+                @foreach (var tick in _ticks.Skip(1))
+                {
+                    <div class="absolute inset-x-0 border-t border-slate-100" style="bottom: @ChartScale.Percent(tick, _top)"></div>
+                }
+                <div class="absolute inset-0 flex items-end">
+                    @foreach (var column in Columns)
+                    {
+                        <div class="group flex h-full min-w-0 flex-1 items-end justify-center px-px" title="@Tooltip(column)">
+                            @if (column.Total > 0)
+                            {
+                                var top = LastIndex(column);
+                                <div class="relative flex min-h-0.5 w-full max-w-6 flex-col-reverse gap-0.5" style="height: @ChartScale.Percent(column.Total, _top)">
+                                    @if (column.ValueLabel)
+                                    {
+                                        <span class="absolute bottom-full left-1/2 mb-1 -translate-x-1/2 whitespace-nowrap text-xs font-semibold text-slate-700">@Number(column.Total)</span>
+                                    }
+                                    @for (var i = 0; i < column.Values.Count; i++)
+                                    {
+                                        if (column.Values[i] > 0)
+                                        {
+                                            <div class="@SegmentClass(column, i) @(i == top ? "rounded-t" : "") group-hover:opacity-80" style="flex: @column.Values[i].ToString(CultureInfo.InvariantCulture) 1 0%"></div>
+                                        }
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+            <div class="mt-1 flex text-xs text-slate-500">
+                @foreach (var column in Columns)
+                {
+                    <div class="min-w-0 flex-1 whitespace-nowrap text-center">@(column.ShowLabel ? column.Label : "")</div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <details class="mt-4 text-sm">
+        <summary class="cursor-pointer font-medium text-advent-700">Show the numbers</summary>
+        <table class="mt-2 w-full max-w-md text-left tabular-nums">
+            <thead class="text-slate-500">
+                <tr>
+                    <th scope="col" class="py-1 font-medium">@LabelHeader</th>
+                    @foreach (var series in Series)
+                    {
+                        <th scope="col" class="py-1 text-right font-medium">@series</th>
+                    }
+                    @if (Series.Count > 1)
+                    {
+                        <th scope="col" class="py-1 text-right font-medium">Total</th>
+                    }
+                </tr>
+            </thead>
+            <tbody class="text-slate-700">
+                @foreach (var column in Columns)
+                {
+                    <tr class="border-t border-slate-100">
+                        <th scope="row" class="py-1 font-normal">@column.Name</th>
+                        @foreach (var value in column.Values)
+                        {
+                            <td class="py-1 text-right">@Number(value)</td>
+                        }
+                        @if (Series.Count > 1)
+                        {
+                            <td class="py-1 text-right">@Number(column.Total)</td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </details>
+</figure>
+
+@code {
+    private IReadOnlyList<int> _ticks = [];
+    private int _top;
+
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = "";
+
+    [Parameter]
+    public string? Description { get; set; }
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<ChartColumn> Columns { get; set; } = [];
+
+    /// <summary>The series' names, bottom first. Two or more get a legend.</summary>
+    [Parameter, EditorRequired]
+    public IReadOnlyList<string> Series { get; set; } = [];
+
+    /// <summary>The table's first column: "Day", "Season".</summary>
+    [Parameter, EditorRequired]
+    public string LabelHeader { get; set; } = "";
+
+    /// <summary>What a single series counts, for the tooltips: "clicks".</summary>
+    [Parameter]
+    public string Unit { get; set; } = "";
+
+    /// <summary>One series with its highlighted columns in the full color and the rest lighter.</summary>
+    [Parameter]
+    public bool Emphasis { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        _ticks = ChartScale.Ticks(Columns.Count == 0 ? 0 : Columns.Max(c => c.Total));
+        _top = _ticks[^1];
+    }
+
+    // Written out in full so Tailwind generates them. Two series: the brand blue and the snowflake blue.
+    private static string SeriesClass(int series) => series == 0 ? "bg-advent-600" : "bg-advent-400";
+
+    private string SegmentClass(ChartColumn column, int series) =>
+        Emphasis ? (column.Highlight ? "bg-advent-600" : "bg-advent-300") : SeriesClass(series);
+
+    private static int LastIndex(ChartColumn column)
+    {
+        for (var i = column.Values.Count - 1; i >= 0; i--)
+        {
+            if (column.Values[i] > 0)
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    private string Tooltip(ChartColumn column) => Series.Count > 1
+        ? $"{column.Name}: {string.Join(", ", column.Values.Select((value, i) => $"{Number(value)} {Series[i].ToLowerInvariant()}"))}"
+        : $"{column.Name}: {Number(column.Total)} {Unit}".TrimEnd();
+
+    private static string Number(int value) => value.ToString("N0", CultureInfo.InvariantCulture);
+}

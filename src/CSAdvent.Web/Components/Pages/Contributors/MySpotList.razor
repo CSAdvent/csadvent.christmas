@@ -47,6 +47,10 @@
                                 <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">Needs your post's title and URL</span>
                             }
                         </p>
+                        @if (spot.IsRevealed && spot.Status is EntryStatus.Ready)
+                        {
+                            <p class="mt-1 text-sm text-slate-500">@(spot.Traffic.Any ? Traffic(spot.Traffic) : "No visits or clicks counted yet.")</p>
+                        }
                     </div>
                     @if (!spot.IsDayOver || spot.Status is EntryStatus.Ready)
                     {
@@ -86,6 +90,10 @@
                                 <li class="text-slate-700">
                                     <span class="text-sm text-slate-500">@post.Spot:</span>
                                     <a href="@post.EntryPage" class="text-advent-700 underline">@post.Title</a>
+                                    @if (post.Traffic.Any)
+                                    {
+                                        <span class="text-sm text-slate-500">· @Traffic(post.Traffic)</span>
+                                    }
                                 </li>
                             }
                         </ul>
@@ -93,6 +101,16 @@
                 }
             </ul>
         </section>
+    }
+
+    @if (overview.Spots.Any(s => s.IsRevealed && s.Status is EntryStatus.Ready) || _history.Any(p => p.Traffic.Any))
+    {
+        <p class="mt-10 max-w-3xl text-sm text-slate-500">
+            Visits are people opening your post's page on our site, and clicks are readers following a link through to your post,
+            from the calendar or that page. They're counted from 2026 on, without search engines, link previews or other bots, and
+            nothing about the readers is recorded. Only you see these for your posts; the season's retrospective shows its totals
+            and its ten most-read posts.
+        </p>
     }
 }
 
@@ -112,6 +130,10 @@
 
     [CascadingParameter]
     private Task<AuthenticationState> AuthenticationState { get; set; } = null!;
+
+    private static string Traffic(PostTraffic traffic) => string.Create(
+        System.Globalization.CultureInfo.InvariantCulture,
+        $"{traffic.Views:N0} {(traffic.Views == 1 ? "visit" : "visits")}, {traffic.Clicks:N0} {(traffic.Clicks == 1 ? "click" : "clicks")} through to your post");
 
     protected override async Task OnInitializedAsync()
     {

@@ -1,3 +1,4 @@
+using CSAdvent.UnitTests.Retrospectives;
 using CSAdvent.Web.Claims;
 using CSAdvent.Web.Social;
 
@@ -45,6 +46,21 @@ public sealed class AnnouncementTests
         var linkedIn = AnnouncementFormatter.FormatSignUpsOpen(2026, SocialPlatform.LinkedIn, "https://csadvent.christmas", Ours);
         Assert.Equal($"https://www.linkedin.com/feed/?shareActive=true&text={Uri.EscapeDataString(linkedIn.Text)}", linkedIn.ComposerUrl);
         Assert.Contains("csadvent.christmas%2F%3Fvia%3Dlinkedin%26season%3D2026", linkedIn.ComposerUrl);
+    }
+
+    [Fact]
+    public void TheRetrospectivePostLinksToItsPageWithTheSeasonsNumbers()
+    {
+        var bluesky = AnnouncementFormatter.FormatRetrospective("C# Advent 2026: a look back", RetrospectiveDraftTests.Stats(), SocialPlatform.Bluesky, "https://csadvent.christmas", Ours);
+        var reddit = AnnouncementFormatter.FormatRetrospective("C# Advent 2026: a look back", RetrospectiveDraftTests.Stats(), SocialPlatform.Reddit, "https://csadvent.christmas", Ours);
+        var older = AnnouncementFormatter.FormatRetrospective("C# Advent 2019: a look back", RetrospectiveDraftTests.Stats(2019, traffic: false), SocialPlatform.Mastodon, "https://csadvent.christmas", Ours);
+
+        Assert.StartsWith("Looking back at C# Advent 2026: 48 posts by 45 authors, read 12,345 times. Thank you to everyone who wrote and read them!", bluesky.Text);
+        Assert.Equal("https://csadvent.christmas/archive/2026/retrospective?via=bluesky", bluesky.Link);
+        Assert.True(bluesky.Length <= AnnouncementFormatter.BlueskyLimit);
+        Assert.Equal("C# Advent 2026: a look back", reddit.Text);
+        Assert.StartsWith("https://www.reddit.com/r/csadvent/submit?url=https%3A%2F%2Fcsadvent.christmas%2Farchive%2F2026%2Fretrospective%3Fvia%3Dreddit", reddit.ComposerUrl);
+        Assert.StartsWith("Looking back at C# Advent 2019: 48 posts by 45 authors. Thank you", older.Text);
     }
 
     [Theory]

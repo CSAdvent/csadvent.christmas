@@ -104,6 +104,7 @@ dotnet test
 - 📝 **Contributors add their own post's title and URL** at `/my-spots` after signing in. That's how posts get onto the calendar.
 - 🚪 **Dropping out** there frees the spot straight away, without naming the author, emails the organizers, and offers the day to the backup posters
 - 📜 **Your C# Advent history:** returning authors see every post they've written, season by season, once an organizer has linked their archive posts to their GitHub account at `/manage/authors`. Organizers see them as returning on their requests
+- 📈 **How your posts did:** each revealed post shows its visits and clicks, to its author only
 - 🪪 **Profiles:** contributors set the name, website and social accounts they're credited with at `/profile`, and can put them on every spot they've had. It fills in their next claim
 - 🐙 **Accounts from GitHub:** the first sign-in fills in any Bluesky, Mastodon, LinkedIn, Facebook or Reddit account linked on the contributor's GitHub profile, and **Fill in from GitHub** on their profile does it again
 - 🔗 **Author links:** an author's name links to their website or blog, or to their GitHub profile if they didn't give one. Social media profiles go in their own fields, and each entry's page links the author's website, GitHub and social accounts
@@ -143,6 +144,13 @@ dotnet test
 - 🖼️ **Shared links get a generated card** showing the post's title, author and day (seasons get one too), drawn with SkiaSharp and the embedded Inter font
 - 📡 **RSS:** `/rss` has every revealed post from every season, newest first, and `/archive/{year}/rss` has one season
 - 📈 **Read the post** goes through `/go/...`, which counts the click (people only, nothing personal) and redirects to the post. Links we publish carry `?via=` (bluesky, rss, email, calendar...), so the stats show where readers came from
+
+## 🎁 Retrospectives
+
+- 📝 **A look back at every season** at `/archive/{year}/retrospective`, linked from the season's archive page, in the RSS feeds, and shared on social media from the organizers' page
+- ✍️ **Organizers generate a draft** at `/manage/retrospectives`, written from the season's numbers, then rewrite it in Markdown, preview it and publish it. **Generate drafts** backfills every past season at once
+- 📊 **By the numbers:** posts, authors, first-time and returning authors, how many seasons this year's authors have written for, posts and authors every season since 2017, and, from 2026 on, clicks per day, where they came from and the ten most-read posts. The charts are plain HTML, with a table of every value
+- 🔒 **Only totals are public:** authors see their own posts' numbers on My spots, and nothing about readers is recorded
 
 ## 🧪 Testing a Season
 

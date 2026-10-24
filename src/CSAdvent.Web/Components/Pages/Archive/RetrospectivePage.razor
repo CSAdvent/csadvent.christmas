@@ -1,0 +1,41 @@
+@page "/archive/{Year:int}/retrospective"
+@using CSAdvent.Web.Components.Retrospectives
+@using CSAdvent.Web.Retrospectives
+@inject RetrospectiveService Retrospectives
+@inject NavigationManager Navigation
+
+@if (_retrospective is { } retrospective)
+{
+    <PageTitle>@retrospective.Title · C# Advent</PageTitle>
+    <SocialMeta Title="@retrospective.Title"
+                Description="@RetrospectiveDraft.Summary(retrospective.Stats)"
+                Type="article"
+                Image="@CSAdvent.Web.Cards.CardLinks.Season(retrospective.SeasonYear, retrospective.Stats.Posts)"
+                ImageAlt="@($"C# Advent {retrospective.SeasonYear}: {retrospective.Stats.Posts} C# posts")" />
+
+    <nav aria-label="Season" class="mb-6 text-sm font-medium">
+        <a href="archive/@retrospective.SeasonYear" class="text-advent-700 hover:underline">← C# Advent @retrospective.SeasonYear</a>
+    </nav>
+
+    <RetrospectiveArticle Retrospective="retrospective" />
+
+    <p class="mt-12">
+        <a href="archive/@retrospective.SeasonYear" class="rounded-lg bg-advent-600 px-4 py-2 font-semibold text-white hover:bg-advent-700">See every post from @retrospective.SeasonYear</a>
+    </p>
+}
+
+@code {
+    private CSAdvent.Web.Data.Retrospective? _retrospective;
+
+    [Parameter]
+    public int Year { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _retrospective = await Retrospectives.GetPublishedAsync(Year);
+        if (_retrospective is null)
+        {
+            Navigation.NotFound();
+        }
+    }
+}

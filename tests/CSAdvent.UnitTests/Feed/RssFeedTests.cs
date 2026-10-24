@@ -54,6 +54,21 @@ public sealed class RssFeedTests
     }
 
     [Fact]
+    public void ARetrospectiveLinksToItsPageAndIsDatedWhenItWasPublished()
+    {
+        var item = FeedItem.Retrospective(2025, "C# Advent 2025: a look back", "A look back at C# Advent 2025: 50 posts by 47 authors.", new DateTimeOffset(2026, 1, 3, 15, 0, 0, TimeSpan.Zero));
+
+        var written = Assert.Single(XDocument.Parse(CreateFeed().Write([item])).Root!.Element("channel")!.Elements("item"));
+
+        Assert.Equal("C# Advent 2025: a look back", written.Element("title")!.Value);
+        Assert.Equal("https://csadvent.christmas/archive/2025/retrospective?via=rss", written.Element("link")!.Value);
+        Assert.Equal("A look back at C# Advent 2025: 50 posts by 47 authors.", written.Element("description")!.Value);
+        Assert.Equal("The C# Advent organizers", written.Element(Dc + "creator")!.Value);
+        Assert.Equal("Sat, 03 Jan 2026 15:00:00 GMT", written.Element("pubDate")!.Value);
+        Assert.Equal("csadvent-2025-retrospective", written.Element("guid")!.Value);
+    }
+
+    [Fact]
     public void ASeasonsFeedLinksToItsArchivePage()
     {
         var channel = XDocument.Parse(CreateFeed().Write(Items[2..], 2017)).Root!.Element("channel")!;

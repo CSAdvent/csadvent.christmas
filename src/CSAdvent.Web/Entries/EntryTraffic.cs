@@ -3,10 +3,10 @@ namespace CSAdvent.Web.Entries;
 /// <summary>Where a link to an entry came from, from its <c>?via=</c> tag.</summary>
 public static class EntryVia
 {
-    /// <summary>Everywhere we put links: the platforms we post to, our own emails, feed and pages.</summary>
+    /// <summary>Everywhere we put links: the platforms we post to, our own emails, feed and pages, and the retrospectives.</summary>
     public static readonly IReadOnlySet<string> Known = new HashSet<string>(StringComparer.Ordinal)
     {
-        "bluesky", "mastodon", "facebook", "linkedin", "reddit", "rss", "email", "calendar", "site",
+        "bluesky", "mastodon", "facebook", "linkedin", "reddit", "rss", "email", "calendar", "site", "retrospective",
     };
 
     /// <summary>A known tag, <c>other</c> for anything else, or nothing when there's no tag.</summary>

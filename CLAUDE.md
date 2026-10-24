@@ -94,6 +94,7 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 - **Dropping out** (until the day is over) clears the author, link, post, contributor and contact, so they're never named, sets `slots.dropped_out_at`, and emails the organizers. An organizer releasing a spot in the entry editor sets `dropped_out_at` too. A dropped-out spot that's still open is what the backup posters get asked about (#36).
 - Emails link to `ClaimEmails.MySpots(site)`.
 - **History:** My spots also lists every post linked to the contributor (`slots.contributor_id`) in seasons that are over, as "Your C# Advent history" (`MySpotsService.GetHistoryAsync`). Organizers see "Returning · N posts" on that person's requests.
+- **How their posts did:** each revealed spot and history post shows its visits and clicks (`PostTraffic`, from `entry_hits`, all time). Only the author sees their own; the public only sees a season's totals and its ten most-read posts in the retrospective.
 - **Profile** (`/profile`, `ProfileService`, linked from the account menu): the name and link a contributor wants on the calendar, and their social accounts, with the same limits as the claim form (`ProfileForm`). It fills in their next claim, and a claim updates it. "Also show this on my spots" puts the name and link on every spot of theirs, past seasons included. Their GitHub login and verified email are shown read-only, because they come from GitHub.
 - **Social accounts from GitHub:** on a contributor's first GitHub sign-in, `GitHubSignIn` calls `ProfileService.FillInFromGitHubOnceAsync`, which reads the social links on their public GitHub profile (`GitHubUsers.SocialAccountsAsync`) and fills in their **empty** account fields (`SocialAccounts.FromGitHub`: Mastodon by GitHub's provider, the rest by address; X and LinkedIn company pages are skipped). `contributors.github_social_checked_at` makes it once, so an account they remove doesn't come back; **Fill in from GitHub** on `/profile` runs it again on request. GitHub gets 5 seconds (`ProfileService.GitHubTimeout`), and if it fails the sign-in carries on and it's tried next time. Dev sign-in never calls GitHub, so the tests don't either.
 - **Authors** (`/manage/authors`, `AuthorService`): every author in every season. Linked people are one row each, whatever names they've used; archive authors who aren't linked yet are grouped by name whatever its case or spacing (`AuthorService.Key`). Each season links to the post.
@@ -109,6 +110,7 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
   - Social posts and RSS link to the entry page (for the preview card).
   - The calendar (`via=calendar`) and the daily email (`via=email`) link straight to `/go`.
   - The entry page's button passes on the tag the visit arrived with (`site` if none).
+  - Retrospectives link to their most-read posts' pages with `via=retrospective`.
   - Tags are normalized by `EntryVia` (unknown becomes `other`).
 - **Counting:** `entry_hits` records a `View` or `Click` with the slot, time and tag. There's no IP, cookie or user agent, so nothing personal, and the hits are kept for the stats (#62). `EntryTraffic.IsPerson` skips link-preview fetchers (Facebook, LinkedIn, Mastodon, Bluesky, Discord...), crawlers, scripts, prefetches and non-GET requests. The organizers' entries list shows clicks per spot.
 - **Preview tags:** `SocialMeta` puts Open Graph tags, `twitter:card` (large image), a canonical URL without the query string, and `fediverse:creator` (`Social:Mastodon`) on every public page.
@@ -164,9 +166,28 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
   - **Season posts** (`/manage/social/signups`, `SeasonSocialService`, `season_social_posts`): **"sign-ups open soon"**, counting down ("in 8 days", `AnnouncementFormatter.FormatSignUpsSoon`), posted by hand whenever and as often as organizers like (Post now on automatic platforms, or copy and Mark as posted), and **"sign-ups are open"** (`FormatSignUpsOpen`), which Automatic platforms post by themselves at `Reminders:SendAt` (9 AM) on the day the current season's sign-ups open, once per platform (a unique index filtered to that kind), within 2 days of opening, never for the test season. Their links go to the home page with `?via=…&season=…` (and `&in=` for the countdown): addresses never posted before, so Mastodon fetches a fresh preview rather than its cached one of the home page. Before sign-ups open, the "sign-ups are open" cards show their composer button disabled ("Opens once sign-ups open"). `POST /dev/social/signups/run?at=…&year=…` runs the automatic post.
   - **Dry run:** `SocialPosting:DryRun` (Development, so locally and in the tests) stands in for missing credentials and only logs. `POST /dev/social/run?at=…` runs a pass at any time; `SocialPostingTests` use it on a December 2025 day. The AppHost turns the worker off in the Testing environment (`SocialPosting:PostInBackground`).
 
+## Retrospectives
+
+- **Each finished season gets a look back** (#62) at `/archive/{year}/retrospective` (`RetrospectiveService`, `retrospectives`), linked from its archive page once published, in both RSS feeds, in the sitemap, and shared from its organizer page. Never for the test season (a check constraint).
+- **Organizers** work at `/manage/retrospectives` and `/manage/retrospectives/{year}`:
+  - **Generate** a draft. `RetrospectiveDraft` writes a whole post in Markdown from the numbers. It's the organizers' to rewrite, and nothing regenerates it behind their back. A new draft replaces the text and the numbers, and isn't allowed once it's published.
+  - **Edit, save and preview.** Saves post `xmin` back, so a stale edit is refused. **Show the charts** turns the "By the numbers" section off.
+  - **Publish and unpublish.** Publishing sets `published_at`.
+  - **Backfill:** "Generate drafts" writes one for every finished season without one, and "Publish every draft" (confirmed) publishes them all.
+- **The numbers** (`RetrospectiveStats`, from `RetrospectiveCalculator`) are taken when the draft is generated and stored with it as JSON, so the charts always agree with the text.
+  - **Posts and authors.** Authors are told apart by contributor where a post is linked, otherwise by `AuthorService.Key`. First-time means no earlier season has them by either; the rest are returning.
+  - **Authors by seasons written,** and every season's posts, authors and first-time authors.
+  - **Clicks and visits from the first reveal to the end of December:** per day (December 1–31, reveal time zone), by `via` source (`site` and untagged are "direct"), and the ten most-clicked posts.
+  - **Social posts per platform,** and requests and backup posters. Those last two are contact details, deleted on February 1 (`ContactRetention`), so generate before then.
+  - Seasons before 2026 have no traffic, so they show only what's known.
+- **Charts** (`Components/Retrospectives`: `ColumnChart`, `BarList`, `RetrospectiveNumbers`) are plain HTML and CSS, with heights as inline styles, so they need no script and their text stays readable on a phone.
+  - **Colors:** one series is `advent-600`, with the rest `advent-300` when one column is highlighted. Two stacked series (returning, then first-time) are `advent-600` and `advent-400`, validated with the dataviz palette checks, and get a legend.
+  - **Values:** every chart labels only one or two values, carries the rest in each column's `title`, and has a "Show the numbers" table.
+- **Sharing:** `SeasonPostKind.Retrospective` posts (`AnnouncementFormatter.FormatRetrospective`) go out once per platform from the retrospective's page. They link to `/archive/{year}/retrospective?via={platform}` and use the season card.
+
 ## RSS
 
-- **`/rss`** carries every revealed entry from every season, and **`/archive/{year}/rss`** carries one season (`RssFeed`, hand-written RSS 2.0 with `atom:link` and `dc:creator`). Items are newest first by reveal time (posts in order within a day), and only revealed entries are included: the reveal is checked in C#, not SQL (#5).
+- **`/rss`** carries every revealed entry and published retrospective from every season, and **`/archive/{year}/rss`** carries one season's (`RssFeed`, hand-written RSS 2.0 with `atom:link` and `dc:creator`). Items are newest first by reveal time (posts in order within a day), and only revealed entries are included: the reveal is checked in C#, not SQL (#5). A retrospective is dated when it was published, with the GUID `csadvent-{year}-retrospective`.
 - **Each item:**
   - `pubDate` is the reveal time.
   - The GUID is `csadvent-{year}-{day}-{part}` (`isPermaLink="false"`), so edits never duplicate an item.
@@ -177,7 +198,7 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 
 ## Search Engines
 
-- **`/robots.txt` and `/sitemap.xml`** (`Content/SearchEndpoints.cs`, #38): robots keeps crawlers out of signed-in, organizer and personal pages and the tracked `/go` redirects (`SearchEndpoints.Disallowed`), and points at the sitemap. The sitemap lists the public pages, every finished season's archive and every revealed entry's page (checked in C#, #5), with the reveal date as `lastmod`, and never the test season. Both are cached for an hour.
+- **`/robots.txt` and `/sitemap.xml`** (`Content/SearchEndpoints.cs`, #38): robots keeps crawlers out of signed-in, organizer and personal pages and the tracked `/go` redirects (`SearchEndpoints.Disallowed`), and points at the sitemap. The sitemap lists the public pages, every finished season's archive and published retrospective, and every revealed entry's page (checked in C#, #5), with the reveal date as `lastmod`, and never the test season. Both are cached for an hour.
 - **No analytics** (decided 2026-10-23): the entry visit and click counts are enough, and the privacy page promises no tracking.
 
 ## Backup Posters

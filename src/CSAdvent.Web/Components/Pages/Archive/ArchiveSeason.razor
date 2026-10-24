@@ -1,5 +1,6 @@
 @page "/archive/{Year:int}"
 @inject ArchiveService Archive
+@inject CSAdvent.Web.Retrospectives.RetrospectiveService Retrospectives
 @inject NavigationManager Navigation
 
 @if (_calendar is not null)
@@ -33,6 +34,12 @@
         {
             <div class="mt-2 text-slate-600 [&_a]:text-advent-700 [&_a]:underline">@Markdown.ToHtml(_calendar.Notes)</div>
         }
+        @if (_hasRetrospective)
+        {
+            <a href="@CSAdvent.Web.Retrospectives.RetrospectiveLinks.Page(_calendar.Year)" class="mt-4 inline-flex items-center gap-2 rounded-lg bg-advent-50 px-4 py-2 font-semibold text-advent-800 ring-1 ring-advent-200 hover:bg-advent-100">
+                Read the look back at @_calendar.Year <span aria-hidden="true">→</span>
+            </a>
+        }
     </header>
 
     <CalendarGrid Calendar="_calendar" />
@@ -42,6 +49,7 @@
     private SeasonCalendar? _calendar;
     private int? _previousYear;
     private int? _nextYear;
+    private bool _hasRetrospective;
 
     [Parameter]
     public int Year { get; set; }
@@ -59,5 +67,6 @@
         var years = (await Archive.GetSeasonsAsync()).Select(s => (int?)s.Year).ToList();
         _previousYear = years.Where(y => y < Year).Max();
         _nextYear = years.Where(y => y > Year).Min();
+        _hasRetrospective = await Retrospectives.IsPublishedAsync(Year);
     }
 }

@@ -1,0 +1,32 @@
+@* A season's retrospective as readers see it: the organizers' post and, unless they've turned them off, the charts. The public
+   page and the organizers' preview both render this. *@
+@using System.Globalization
+@using CSAdvent.Web.Data
+@inject AdventSchedule Schedule
+
+<article>
+    <header>
+        <p class="text-sm font-semibold uppercase tracking-wide text-advent-700">C# Advent @Retrospective.SeasonYear</p>
+        <h1 class="mt-1 text-3xl font-bold tracking-tight text-slate-900">@Retrospective.Title</h1>
+        @if (Retrospective.PublishedAt is { } publishedAt)
+        {
+            <p class="mt-2 text-sm text-slate-500">Published @Date(publishedAt)</p>
+        }
+    </header>
+
+    <div class="mt-8 max-w-3xl">
+        <MarkdownBlock Text="@Retrospective.Body" />
+    </div>
+
+    @if (Retrospective.ShowCharts)
+    {
+        <RetrospectiveNumbers Stats="Retrospective.Stats" StatsAt="Schedule.ToLocalTime(Retrospective.StatsAt)" />
+    }
+</article>
+
+@code {
+    [Parameter, EditorRequired]
+    public Retrospective Retrospective { get; set; } = null!;
+
+    private string Date(DateTimeOffset moment) => Schedule.ToLocalTime(moment).ToString("MMMM d, yyyy", CultureInfo.InvariantCulture);
+}

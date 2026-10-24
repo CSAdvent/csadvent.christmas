@@ -16,7 +16,7 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261024153015_AddSeasonSocialPosts";
+    public override string LastMigrationId => "20261024160227_AddRetrospectives";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -621,6 +621,66 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                 b.ToTable("other_advent_logos");
             });
 
+        modelBuilder.Entity("CSAdvent.Web.Data.Retrospective", b =>
+            {
+                b.Property<int>("SeasonYear")
+                    .HasColumnType("integer")
+                    .HasColumnName("season_year");
+
+                b.Property<string>("Body")
+                    .IsRequired()
+                    .HasMaxLength(20000)
+                    .HasColumnType("character varying(20000)")
+                    .HasColumnName("body");
+
+                b.Property<DateTimeOffset?>("PublishedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("published_at");
+
+                b.Property<bool>("ShowCharts")
+                    .HasColumnType("boolean")
+                    .HasColumnName("show_charts");
+
+                b.Property<string>("Stats")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("stats");
+
+                b.Property<DateTimeOffset>("StatsAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("stats_at");
+
+                b.Property<string>("Title")
+                    .IsRequired()
+                    .HasMaxLength(150)
+                    .HasColumnType("character varying(150)")
+                    .HasColumnName("title");
+
+                b.Property<DateTimeOffset>("UpdatedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("updated_at");
+
+                b.Property<string>("UpdatedBy")
+                    .IsRequired()
+                    .HasMaxLength(39)
+                    .HasColumnType("character varying(39)")
+                    .HasColumnName("updated_by");
+
+                b.Property<uint>("Version")
+                    .IsConcurrencyToken()
+                    .ValueGeneratedOnAddOrUpdate()
+                    .HasColumnType("xid")
+                    .HasColumnName("xmin");
+
+                b.HasKey("SeasonYear")
+                    .HasName("pk_retrospectives");
+
+                b.ToTable("retrospectives", t =>
+                    {
+                        t.HasCheckConstraint("ck_retrospectives_not_test", "season_year <> 9000");
+                    });
+            });
+
         modelBuilder.Entity("CSAdvent.Web.Data.Season", b =>
             {
                 b.Property<int>("Year")
@@ -721,10 +781,10 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                 b.HasIndex("SeasonYear", "Kind")
                     .HasDatabaseName("ix_season_social_posts_season_year_kind");
 
-                b.HasIndex("SeasonYear", "Platform")
+                b.HasIndex("SeasonYear", "Kind", "Platform")
                     .IsUnique()
-                    .HasDatabaseName("ix_season_social_posts_season_year_platform")
-                    .HasFilter("kind = 'SignUpsOpen'");
+                    .HasDatabaseName("ix_season_social_posts_season_year_kind_platform")
+                    .HasFilter("kind <> 'SignUpsSoon'");
 
                 b.ToTable("season_social_posts", t =>
                     {
@@ -1213,6 +1273,18 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                     .OnDelete(DeleteBehavior.Cascade)
                     .IsRequired()
                     .HasConstraintName("fk_other_advents_seasons_season_year");
+
+                b.Navigation("Season");
+            });
+
+        modelBuilder.Entity("CSAdvent.Web.Data.Retrospective", b =>
+            {
+                b.HasOne("CSAdvent.Web.Data.Season", "Season")
+                    .WithMany()
+                    .HasForeignKey("SeasonYear")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired()
+                    .HasConstraintName("fk_retrospectives_seasons_season_year");
 
                 b.Navigation("Season");
             });

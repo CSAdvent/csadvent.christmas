@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.RegularExpressions;
 using CSAdvent.Web.Claims;
 using CSAdvent.Web.Entries;
+using CSAdvent.Web.Retrospectives;
 
 namespace CSAdvent.Web.Social;
 
@@ -121,6 +122,26 @@ public static partial class AnnouncementFormatter
             $"C# Advent {year} sign-ups open {when}! Get ready to claim a day in December and write a post about C# for the community: two posts a day, December 1–25.",
             $"C# Advent {year} sign-ups open {when}: get ready to claim a day and write a post about C#",
             string.Create(CultureInfo.InvariantCulture, $"{baseUrl.TrimEnd('/')}/?via={platform.ToString().ToLowerInvariant()}&season={year}&in={daysUntil}"),
+            ours);
+    }
+
+    /// <summary>
+    /// The season's retrospective, once it's published: its numbers in a line, and a link to its page tagged with the
+    /// platform. For Reddit, its title.
+    /// </summary>
+    public static FormattedAnnouncement FormatRetrospective(string title, RetrospectiveStats stats, SocialPlatform platform, string baseUrl, SocialAccountsOptions? ours = null)
+    {
+        var numbers = string.Create(CultureInfo.InvariantCulture, $"{stats.Posts:N0} posts by {stats.Authors:N0} authors");
+        if (stats.HasTraffic)
+        {
+            numbers += string.Create(CultureInfo.InvariantCulture, $", read {stats.Clicks:N0} times");
+        }
+
+        return FormatSeasonPost(
+            platform,
+            $"Looking back at C# Advent {stats.Year}: {numbers}. Thank you to everyone who wrote and read them!",
+            title,
+            string.Create(CultureInfo.InvariantCulture, $"{baseUrl.TrimEnd('/')}/{RetrospectiveLinks.Page(stats.Year)}?via={platform.ToString().ToLowerInvariant()}"),
             ours);
     }
 

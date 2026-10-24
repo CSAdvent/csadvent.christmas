@@ -90,24 +90,24 @@ public static class SocialEndpoints
             return Results.LocalRedirect(Back(form.ReturnUrl, error is null ? null : "test-failed"));
         });
 
-        // The season posts: "sign-ups open soon" and "sign-ups are open".
+        // The season posts: "sign-ups open soon", "sign-ups are open" and the retrospective.
         group.MapPost("/signups/post", async ([FromForm] SeasonPostForm form, HttpContext context, SeasonSocialService season, CancellationToken cancellationToken) =>
         {
             var outcome = await season.PostAsync(form.Year, form.Kind, form.Platform, context.User.Identity?.Name ?? "organizer", cancellationToken);
-            return Results.LocalRedirect(SignUpsPage(form.Year, outcome is null or PostOutcome.Failed ? "not-posted" : null));
+            return Results.LocalRedirect(SeasonPostPage(form.Kind, form.Year, outcome is null or PostOutcome.Failed ? "not-posted" : null));
         });
 
         group.MapPost("/signups/mark", async ([FromForm] SeasonPostForm form, HttpContext context, SeasonSocialService season, CancellationToken cancellationToken) =>
         {
             var postUrl = new HttpUrlAttribute().IsValid(form.PostUrl) && !string.IsNullOrWhiteSpace(form.PostUrl) ? form.PostUrl.Trim() : null;
             await season.MarkAsync(form.Year, form.Kind, form.Platform, postUrl, context.User.Identity?.Name ?? "organizer", cancellationToken);
-            return Results.LocalRedirect(SignUpsPage(form.Year, null));
+            return Results.LocalRedirect(SeasonPostPage(form.Kind, form.Year, null));
         });
 
         group.MapPost("/signups/unmark", async ([FromForm] SeasonPostForm form, SeasonSocialService season, CancellationToken cancellationToken) =>
         {
             await season.UnmarkAsync(form.PostId, cancellationToken);
-            return Results.LocalRedirect(SignUpsPage(form.Year, null));
+            return Results.LocalRedirect(SeasonPostPage(form.Kind, form.Year, null));
         });
 
         // Development only: run automatic posting as if it were the given time. With dry-run mode, nothing reaches a real account.
@@ -122,8 +122,11 @@ public static class SocialEndpoints
         return app;
     }
 
-    private static string SignUpsPage(int year, string? error) =>
-        string.Create(System.Globalization.CultureInfo.InvariantCulture, $"/manage/social/signups?year={year}{(error is null ? "" : $"&error={error}")}");
+    /// <summary>Back to where the post was made: the sign-ups posts, or the retrospective's page.</summary>
+    private static string SeasonPostPage(SeasonPostKind kind, int year, string? error) =>
+        kind is SeasonPostKind.Retrospective
+            ? string.Create(System.Globalization.CultureInfo.InvariantCulture, $"/manage/retrospectives/{year}{(error is null ? "" : $"?error={error}")}")
+            : string.Create(System.Globalization.CultureInfo.InvariantCulture, $"/manage/social/signups?year={year}{(error is null ? "" : $"&error={error}")}");
 
     // Only back to the social page itself, so the form can't be used to redirect anywhere else.
     private static string Back(string? returnUrl, string? error)
