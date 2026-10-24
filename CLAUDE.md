@@ -172,6 +172,11 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 - **Caching:** responses carry an ETag (a hash of the XML) and `Cache-Control: public, max-age=600`, and a matching `If-None-Match` gets a 304.
 - **Discovery:** every page has `<link rel="alternate">` for `/rss` in `App.razor`, and season pages add their own feed through `SocialMeta`'s child content.
 
+## Search Engines
+
+- **`/robots.txt` and `/sitemap.xml`** (`Content/SearchEndpoints.cs`, #38): robots keeps crawlers out of signed-in, organizer and personal pages and the tracked `/go` redirects (`SearchEndpoints.Disallowed`), and points at the sitemap. The sitemap lists the public pages, every finished season's archive and every revealed entry's page (checked in C#, #5), with the reveal date as `lastmod`, and never the test season. Both are cached for an hour.
+- **No analytics** (decided 2026-10-23): the entry visit and click counts are enough, and the privacy page promises no tracking.
+
 ## Backup Posters
 
 - **Joining:** anyone signed in with a verified GitHub email can join a season's backup list at `/backups/{year}` while sign-ups are open (`BackupListService`), including people with a spot. The list (`substitutes`) is in sign-up order, and organizers see it at `/manage/backups`.
