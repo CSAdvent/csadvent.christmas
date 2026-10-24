@@ -43,6 +43,8 @@ public sealed class AdventDbContext(DbContextOptions<AdventDbContext> options) :
 
     public DbSet<AnnouncementDelivery> AnnouncementDeliveries => Set<AnnouncementDelivery>();
 
+    public DbSet<SeasonSocialPost> SeasonSocialPosts => Set<SeasonSocialPost>();
+
     /// <summary>
     /// ASP.NET Core's data protection keys, which protect sign-in cookies and antiforgery tokens. Kept in the database so
     /// they survive container restarts and are shared by every replica.

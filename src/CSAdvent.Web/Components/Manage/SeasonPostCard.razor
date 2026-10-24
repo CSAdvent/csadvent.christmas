@@ -1,0 +1,122 @@
+@* One platform's season post on /manage/social/signups: the text to copy, what's gone out, and the buttons. *@
+@using CSAdvent.Web.Claims
+@using CSAdvent.Web.Data
+@using CSAdvent.Web.Social.Posting
+
+@{
+    var id = $"season-{Kind}-{Post.Announcement.Platform}";
+    var platform = Post.Announcement.Platform;
+    var openDone = Kind is SeasonPostKind.SignUpsOpen && Post.Posts.Any(p => p.Status is SocialPostStatus.Posted or SocialPostStatus.Posting);
+}
+<article class="flex flex-col rounded-xl p-4 ring-1 @(openDone ? "bg-green-50 ring-green-200" : "bg-white ring-slate-200")">
+    <header class="flex items-center justify-between gap-2">
+        <h3 class="font-semibold text-slate-900">@platform</h3>
+        @if (Post.Announcement.Limit is { } limit)
+        {
+            <span class="text-xs tabular-nums @(Post.Announcement.Length > limit ? "font-semibold text-red-700" : "text-slate-500")">@Post.Announcement.Length / @limit</span>
+        }
+    </header>
+
+    @if (platform is SocialPlatform.Reddit)
+    {
+        <p class="mt-2 text-xs font-medium uppercase tracking-wide text-slate-500">Title</p>
+    }
+    <pre id="@id" class="mt-1 whitespace-pre-wrap break-words rounded-lg bg-slate-50 p-3 font-sans text-sm text-slate-800 ring-1 ring-slate-100">@Post.Announcement.Text</pre>
+    @if (platform is SocialPlatform.Reddit)
+    {
+        <p class="mt-2 text-xs font-medium uppercase tracking-wide text-slate-500">Link</p>
+        <pre id="@($"{id}-link")" class="mt-1 whitespace-pre-wrap break-all rounded-lg bg-slate-50 p-3 font-sans text-sm text-slate-800 ring-1 ring-slate-100">@Post.Announcement.Link</pre>
+    }
+
+    <div class="mt-3 flex flex-wrap items-center gap-2 text-sm">
+        <button type="button" data-copy="@id" class="rounded-lg bg-advent-600 px-3 py-1.5 font-semibold text-white hover:bg-advent-700">Copy@(platform is SocialPlatform.Reddit ? " title" : "")</button>
+        @if (platform is SocialPlatform.Reddit)
+        {
+            <button type="button" data-copy="@($"{id}-link")" class="rounded-lg px-3 py-1.5 font-medium text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50">Copy link</button>
+        }
+        @if (CanPost && Post.Announcement.ComposerUrl is { } composer)
+        {
+            <a href="@composer" target="_blank" rel="noopener" class="rounded-lg px-3 py-1.5 font-medium text-advent-700 ring-1 ring-advent-300 hover:bg-advent-50">Open composer</a>
+        }
+    </div>
+
+    <div class="mt-auto flex flex-col gap-2 pt-4 text-sm">
+        @foreach (var posted in Post.Posts)
+        {
+            @if (posted.Status is SocialPostStatus.Posting)
+            {
+                <p class="font-medium text-slate-700">Posting now…</p>
+            }
+            else if (posted.Status is SocialPostStatus.Failed)
+            {
+                <p class="text-red-700">Posting failed: @posted.Error</p>
+            }
+            else
+            {
+                <form method="post" action="manage/social/signups/unmark" class="flex flex-wrap items-center gap-2 text-green-900">
+                    <AntiforgeryToken />
+                    <input type="hidden" name="Year" value="@Year" />
+                    <input type="hidden" name="PostId" value="@posted.Id" />
+                    <span>
+                        @(posted.MarkedBy == SocialPostingService.Automation ? "Posted automatically" : $"Posted by {posted.MarkedBy}"), <LocalTime Value="posted.At" />
+                        @if (posted.PostUrl is { } postUrl)
+                        {
+                            <a href="@postUrl" target="_blank" rel="noopener" class="ml-1 underline">view</a>
+                        }
+                    </span>
+                    @if (posted.MarkedBy != SocialPostingService.Automation)
+                    {
+                        <button type="submit" class="ml-auto rounded-md px-2 py-1 text-slate-600 ring-1 ring-slate-300 hover:bg-white">Undo</button>
+                    }
+                </form>
+            }
+        }
+
+        @if (!openDone)
+        {
+            @if (Kind is SeasonPostKind.SignUpsOpen && Post.Posting.IsAutomatic && AutomaticNote is { } note)
+            {
+                <p class="text-slate-600">@note</p>
+            }
+
+            @if (CanPost && Post.Posting.CanPostAutomatically)
+            {
+                <form method="post" action="manage/social/signups/post">
+                    <AntiforgeryToken />
+                    <input type="hidden" name="Year" value="@Year" />
+                    <input type="hidden" name="Kind" value="@Kind" />
+                    <input type="hidden" name="Platform" value="@platform" />
+                    <button type="submit" class="rounded-lg bg-white px-3 py-1.5 font-semibold text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50">Post now@(Post.Posting.IsDryRun ? " (dry run)" : "")</button>
+                </form>
+            }
+
+            <form method="post" action="manage/social/signups/mark" class="flex flex-wrap items-center gap-2">
+                <AntiforgeryToken />
+                <input type="hidden" name="Year" value="@Year" />
+                <input type="hidden" name="Kind" value="@Kind" />
+                <input type="hidden" name="Platform" value="@platform" />
+                <input type="url" name="PostUrl" placeholder="Link to the post (optional)" maxlength="500" class="min-w-0 flex-1 rounded-lg border border-slate-300 px-2 py-1" />
+                <button type="submit" disabled="@(!CanPost)" class="rounded-lg px-3 py-1.5 font-semibold text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">Mark as posted</button>
+            </form>
+        }
+    </div>
+</article>
+
+@code {
+    [Parameter, EditorRequired]
+    public required int Year { get; set; }
+
+    [Parameter, EditorRequired]
+    public required SeasonPostKind Kind { get; set; }
+
+    [Parameter, EditorRequired]
+    public required SeasonPostPlatform Post { get; set; }
+
+    /// <summary>Whether it can be posted now: "soon" while there's a countdown, "open" once sign-ups are open.</summary>
+    [Parameter]
+    public bool CanPost { get; set; }
+
+    /// <summary>For an Automatic platform's "sign-ups are open" post, when it goes out by itself.</summary>
+    [Parameter]
+    public string? AutomaticNote { get; set; }
+}

@@ -28,6 +28,35 @@ public sealed class AnnouncementTests
     }
 
     [Fact]
+    public void TheSignUpsPostLinksToAFreshAddressForTheCalendar()
+    {
+        var bluesky = AnnouncementFormatter.FormatSignUpsOpen(2026, SocialPlatform.Bluesky, "https://csadvent.christmas", Ours);
+        var facebook = AnnouncementFormatter.FormatSignUpsOpen(2026, SocialPlatform.Facebook, "https://csadvent.christmas", Ours);
+        var reddit = AnnouncementFormatter.FormatSignUpsOpen(2026, SocialPlatform.Reddit, "https://csadvent.christmas", Ours);
+
+        Assert.StartsWith("Sign-ups for C# Advent 2026 are open! Claim a day in December", bluesky.Text);
+        Assert.Equal("https://csadvent.christmas/?via=bluesky&season=2026", bluesky.Link);
+        Assert.Contains(bluesky.Link, bluesky.Text);
+        Assert.True(bluesky.Length <= AnnouncementFormatter.BlueskyLimit);
+        Assert.EndsWith("#csharp #csadvent", facebook.Text);
+        Assert.Equal("Sign-ups for C# Advent 2026 are open: claim a day in December and write a post about C#", reddit.Text);
+        Assert.StartsWith("https://www.reddit.com/r/csadvent/submit?url=", reddit.ComposerUrl);
+    }
+
+    [Theory]
+    [InlineData(8, "C# Advent 2026 sign-ups open in 8 days, on November 1!", "&in=8")]
+    [InlineData(1, "C# Advent 2026 sign-ups open tomorrow, November 1!", "&in=1")]
+    public void TheComingSoonPostCountsDown(int days, string start, string linkEnd)
+    {
+        var mastodon = AnnouncementFormatter.FormatSignUpsSoon(2026, new DateOnly(2026, 11, 1), days, SocialPlatform.Mastodon, "https://csadvent.christmas", Ours);
+
+        Assert.StartsWith(start, mastodon.Text);
+        Assert.EndsWith(linkEnd, mastodon.Link);
+        Assert.True(mastodon.Length <= AnnouncementFormatter.MastodonLimit);
+        Assert.StartsWith("https://mastodon.social/share?text=", mastodon.ComposerUrl);
+    }
+
+    [Fact]
     public void EveryPlatformSaysTheSameThingAndLinksThroughUs()
     {
         foreach (var platform in Enum.GetValues<SocialPlatform>())

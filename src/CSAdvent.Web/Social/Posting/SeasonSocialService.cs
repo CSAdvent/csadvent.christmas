@@ -1,0 +1,250 @@
+using System.Globalization;
+using System.Text.Json;
+using CSAdvent.Web.Calendar;
+using CSAdvent.Web.Cards;
+using CSAdvent.Web.Claims;
+using CSAdvent.Web.Content;
+using CSAdvent.Web.Data;
+using CSAdvent.Web.Manage;
+using CSAdvent.Web.Reminders;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Npgsql;
+
+namespace CSAdvent.Web.Social.Posting;
+
+/// <summary>One platform's season post: what it says, how the platform posts, and what's gone out.</summary>
+/// <param name="Posts">What's gone out, newest first. "Sign-ups are open" has at most one.</param>
+public sealed record SeasonPostPlatform(FormattedAnnouncement Announcement, PlatformPosting Posting, IReadOnlyList<SeasonSocialPost> Posts);
+
+/// <param name="DaysUntil">Days until sign-ups open, while they're still to come; null once they're open or unscheduled.</param>
+/// <param name="Soon">The "sign-ups open soon" post, while there's a countdown.</param>
+public sealed record SeasonPosts(
+    int Year,
+    DateTimeOffset? OpensAt,
+    bool AreOpen,
+    int? DaysUntil,
+    IReadOnlyList<SeasonPostPlatform> Soon,
+    IReadOnlyList<SeasonPostPlatform> Open);
+
+/// <summary>
+/// Posts about a season rather than an entry (<c>/manage/social/signups</c>): "sign-ups open in 8 days", which organizers
+/// post whenever they like, and "sign-ups are open", which the platforms in Automatic mode post by themselves at the
+/// morning send time on the day sign-ups open, once. Never for the test season.
+/// </summary>
+public sealed partial class SeasonSocialService(
+    AdventDbContext db,
+    AdventSchedule schedule,
+    SeasonAdminService seasons,
+    SocialPlatformModes modes,
+    SocialPublishers publishers,
+    CardRenderer cards,
+    IOptions<SiteOptions> site,
+    IOptions<SocialAccountsOptions> accounts,
+    IOptions<ReminderOptions> reminders,
+    TimeProvider timeProvider,
+    ILogger<SeasonSocialService> logger)
+{
+    /// <summary>The "sign-ups are open" post only goes out automatically this soon after they open, so a late season doesn't post a stale one.</summary>
+    public static readonly TimeSpan PostedWithin = TimeSpan.FromDays(2);
+
+    public async Task<SeasonPosts?> GetAsync(int year, CancellationToken cancellationToken = default)
+    {
+        if (year == Season.TestYear || !await db.Seasons.AnyAsync(s => s.Year == year, cancellationToken))
+        {
+            return null;
+        }
+
+        var (opensAt, areOpen, daysUntil) = await TimingAsync(year, cancellationToken);
+        var platforms = (await modes.GetAsync(cancellationToken)).Where(p => p.Mode is not SocialPostingMode.Off).ToList();
+        var posts = await db.SeasonSocialPosts.AsNoTracking().Where(p => p.SeasonYear == year).OrderByDescending(p => p.At).ToListAsync(cancellationToken);
+
+        IReadOnlyList<SeasonPostPlatform> For(SeasonPostKind kind, Func<SocialPlatform, FormattedAnnouncement> format) =>
+            [.. platforms.Select(p => new SeasonPostPlatform(format(p.Platform), p, [.. posts.Where(post => post.Kind == kind && post.Platform == p.Platform)]))];
+
+        return new SeasonPosts(
+            year,
+            opensAt,
+            areOpen,
+            daysUntil,
+            daysUntil is { } days && opensAt is { } opens
+                ? For(SeasonPostKind.SignUpsSoon, platform => AnnouncementFormatter.FormatSignUpsSoon(year, LocalDate(opens), days, platform, site.Value.BaseUrl, accounts.Value))
+                : [],
+            For(SeasonPostKind.SignUpsOpen, platform => AnnouncementFormatter.FormatSignUpsOpen(year, platform, site.Value.BaseUrl, accounts.Value)));
+    }
+
+    /// <summary>
+    /// Posts it now on a platform that can post automatically: "soon" while sign-ups are still to come, "open" once they're
+    /// open (and only once). Returns null when it can't be posted.
+    /// </summary>
+    public async Task<PostOutcome?> PostAsync(int year, SeasonPostKind kind, SocialPlatform platform, string postedBy, CancellationToken cancellationToken = default)
+    {
+        if (year == Season.TestYear || publishers.For(platform) is not { } publisher)
+        {
+            return null;
+        }
+
+        var (opensAt, areOpen, daysUntil) = await TimingAsync(year, cancellationToken);
+        FormattedAnnouncement announcement;
+        string description;
+        byte[] card;
+        if (kind is SeasonPostKind.SignUpsSoon && daysUntil is { } days && opensAt is { } opens)
+        {
+            announcement = AnnouncementFormatter.FormatSignUpsSoon(year, LocalDate(opens), days, platform, site.Value.BaseUrl, accounts.Value);
+            description = $"Sign-ups open {LocalDate(opens).ToString("MMMM d", CultureInfo.InvariantCulture)}: two C# posts a day, December 1–25, written by the community.";
+            card = cards.RenderSeason(year, null, LocalDate(opens));
+        }
+        else if (kind is SeasonPostKind.SignUpsOpen && areOpen)
+        {
+            announcement = AnnouncementFormatter.FormatSignUpsOpen(year, platform, site.Value.BaseUrl, accounts.Value);
+            description = "Sign-ups are open: two C# posts a day, December 1–25, written by the community.";
+            card = cards.RenderSeason(year, null);
+        }
+        else
+        {
+            return null;
+        }
+
+        var now = timeProvider.GetUtcNow();
+        if (await ClaimAsync(year, kind, platform, postedBy, now, cancellationToken) is not { } claimId)
+        {
+            return PostOutcome.Skipped;
+        }
+
+        var publication = new SocialPublication(year, 0, 0, $"C# Advent {year}", description, announcement, card)
+        {
+            Key = string.Create(CultureInfo.InvariantCulture, $"csadvent-{year}-{kind}-{daysUntil}-{platform}").ToLowerInvariant(),
+        };
+        try
+        {
+            var postUrl = await publisher.PublishAsync(publication, cancellationToken);
+            await RecordAsync(claimId, SocialPostStatus.Posted, Uri.TryCreate(postUrl, UriKind.Absolute, out var uri) && uri.Scheme is "https" or "http" ? postUrl : null, null, cancellationToken);
+            return PostOutcome.Posted;
+        }
+        catch (Exception exception) when (exception is SocialPublishException or HttpRequestException or JsonException
+            || (exception is TaskCanceledException && !cancellationToken.IsCancellationRequested))
+        {
+            var error = exception is TaskCanceledException ? $"{platform} didn't answer in time." : exception.Message;
+            LogFailed(exception, kind, platform, year);
+            await RecordAsync(claimId, SocialPostStatus.Failed, null, error[..Math.Min(error.Length, 1000)], cancellationToken);
+            return PostOutcome.Failed;
+        }
+    }
+
+    /// <summary>Records a post an organizer made by hand. "Soon" can be marked as often as it's posted; "open" once.</summary>
+    public async Task<bool> MarkAsync(int year, SeasonPostKind kind, SocialPlatform platform, string? postUrl, string markedBy, CancellationToken cancellationToken = default)
+    {
+        if (year == Season.TestYear || !await db.Seasons.AnyAsync(s => s.Year == year, cancellationToken))
+        {
+            return false;
+        }
+
+        var existing = kind is SeasonPostKind.SignUpsOpen
+            ? await db.SeasonSocialPosts.SingleOrDefaultAsync(p => p.SeasonYear == year && p.Kind == kind && p.Platform == platform, cancellationToken)
+            : null;
+        var post = existing ?? new SeasonSocialPost { SeasonYear = year, Kind = kind, Platform = platform, MarkedBy = markedBy };
+        post.Status = SocialPostStatus.Posted;
+        post.At = timeProvider.GetUtcNow();
+        post.PostUrl = postUrl;
+        post.MarkedBy = markedBy;
+        post.Error = null;
+        if (existing is null)
+        {
+            db.SeasonSocialPosts.Add(post);
+        }
+
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        {
+            // Posted automatically at the same moment: it's marked either way.
+        }
+
+        return true;
+    }
+
+    public Task UnmarkAsync(int postId, CancellationToken cancellationToken = default) =>
+        db.SeasonSocialPosts.Where(p => p.Id == postId).ExecuteDeleteAsync(cancellationToken);
+
+    /// <summary>
+    /// Posts "sign-ups are open" on every Automatic platform that hasn't had it, at the morning send time on the day the
+    /// current season's sign-ups open. Returns how many went out.
+    /// </summary>
+    /// <param name="year">The season, instead of the current one (for the tests).</param>
+    public async Task<int> RunAsync(DateTimeOffset now, int? year = null, CancellationToken cancellationToken = default)
+    {
+        if ((year ?? await seasons.GetCurrentYearAsync(cancellationToken)) is not { } season || season == Season.TestYear
+            || await db.Seasons.Where(s => s.Year == season).Select(s => s.ClaimsOpenAt).SingleOrDefaultAsync(cancellationToken) is not { } opensAt
+            || now < opensAt || now - opensAt > PostedWithin
+            || TimeOnly.FromDateTime(schedule.ToLocalTime(now).DateTime) < reminders.Value.SendAt)
+        {
+            return 0;
+        }
+
+        var posted = await db.SeasonSocialPosts.Where(p => p.SeasonYear == season && p.Kind == SeasonPostKind.SignUpsOpen).Select(p => p.Platform).ToListAsync(cancellationToken);
+        var sent = 0;
+        foreach (var platform in (await modes.GetAsync(cancellationToken)).Where(p => p.IsAutomatic && !posted.Contains(p.Platform)))
+        {
+            if (await PostAsync(season, SeasonPostKind.SignUpsOpen, platform.Platform, SocialPostingService.Automation, cancellationToken) is PostOutcome.Posted)
+            {
+                sent++;
+            }
+        }
+
+        return sent;
+    }
+
+    private async Task<(DateTimeOffset? OpensAt, bool AreOpen, int? DaysUntil)> TimingAsync(int year, CancellationToken cancellationToken)
+    {
+        var opensAt = await db.Seasons.Where(s => s.Year == year).Select(s => s.ClaimsOpenAt).SingleOrDefaultAsync(cancellationToken);
+        var areOpen = schedule.AreClaimsOpen(opensAt);
+        int? daysUntil = !areOpen && opensAt is { } opens && LocalDate(opens).DayNumber - schedule.Today.DayNumber is var days and >= 1 ? days : null;
+        return (opensAt, areOpen, daysUntil);
+    }
+
+    /// <summary>
+    /// Claims the post: a new row, except that "sign-ups are open" reuses a failed one and is skipped once it's posted (or
+    /// being posted).
+    /// </summary>
+    private async Task<int?> ClaimAsync(int year, SeasonPostKind kind, SocialPlatform platform, string postedBy, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        if (kind is SeasonPostKind.SignUpsOpen
+            && await db.SeasonSocialPosts.SingleOrDefaultAsync(p => p.SeasonYear == year && p.Kind == kind && p.Platform == platform, cancellationToken) is { } existing)
+        {
+            var retried = await db.SeasonSocialPosts
+                .Where(p => p.Id == existing.Id && p.Status == SocialPostStatus.Failed)
+                .ExecuteUpdateAsync(s => s.SetProperty(p => p.Status, SocialPostStatus.Posting).SetProperty(p => p.At, now).SetProperty(p => p.MarkedBy, postedBy), cancellationToken);
+            return retried == 1 ? existing.Id : null;
+        }
+
+        var claim = new SeasonSocialPost { SeasonYear = year, Kind = kind, Platform = platform, Status = SocialPostStatus.Posting, At = now, MarkedBy = postedBy };
+        db.SeasonSocialPosts.Add(claim);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+            return claim.Id;
+        }
+        catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        {
+            // Another run, or an organizer, got there first.
+            db.Entry(claim).State = EntityState.Detached;
+            return null;
+        }
+    }
+
+    private Task RecordAsync(int postId, SocialPostStatus status, string? postUrl, string? error, CancellationToken cancellationToken) =>
+        db.SeasonSocialPosts
+            .Where(p => p.Id == postId && p.Status == SocialPostStatus.Posting)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(p => p.Status, status)
+                .SetProperty(p => p.PostUrl, postUrl)
+                .SetProperty(p => p.Error, error)
+                .SetProperty(p => p.At, timeProvider.GetUtcNow()), cancellationToken);
+
+    private DateOnly LocalDate(DateTimeOffset moment) => DateOnly.FromDateTime(schedule.ToLocalTime(moment).DateTime);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Posting the {Kind} post for season {Year} to {Platform} failed; it's shown to the organizers")]
+    private partial void LogFailed(Exception exception, SeasonPostKind kind, SocialPlatform platform, int year);
+}
