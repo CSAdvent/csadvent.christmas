@@ -49,8 +49,28 @@ internal static partial class TestBrowser
             .Select(input => ValueAttribute().Match(input).Groups["value"].Value)
             .Single();
 
+    /// <summary>
+    /// GETs a page like <see cref="HttpClient.GetStringAsync(string)"/>, but a failure says what the server threw (from the
+    /// development exception page), not only its status code.
+    /// </summary>
+    public static async Task<string> GetPageAsync(this HttpClient browser, string path)
+    {
+        using var response = await browser.GetAsync(path, CancellationToken);
+        var body = await response.Content.ReadAsStringAsync(CancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = StackError().Match(body) is { Success: true } match ? System.Net.WebUtility.HtmlDecode(match.Groups["error"].Value) : body[..Math.Min(body.Length, 500)];
+            Assert.Fail($"GET {path} returned {(int)response.StatusCode}: {error}");
+        }
+
+        return body;
+    }
+
     public static string PathOf(Uri location) =>
         location.IsAbsoluteUri ? location.PathAndQuery : "/" + location.OriginalString.TrimStart('/');
+
+    [GeneratedRegex("<h2 class=\"stackerror\">(?<error>.*?)</h2>", RegexOptions.Singleline)]
+    private static partial Regex StackError();
 
     [GeneratedRegex("<input[^>]*type=\"hidden\"[^>]*>")]
     private static partial Regex HiddenInput();

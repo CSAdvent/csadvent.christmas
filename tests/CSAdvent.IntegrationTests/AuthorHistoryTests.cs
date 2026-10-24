@@ -67,7 +67,7 @@ public sealed partial class AuthorHistoryTests(AppHostFixture fixture)
         await LinkAsync(organizer, "quinn combine", "quinn-combine");
         var contributorId = await ContributorIdAsync(8403);
         var profile = $"{Page}/{contributorId}";
-        Assert.Matches(@"<option value=""q\. combine"">Q\. Combine \(2024\)[^<]*suggested</option>", await organizer.GetStringAsync(profile, CancellationToken));
+        Assert.Matches(@"<option value=""q\. combine"">Q\. Combine \(2024\)[^<]*suggested</option>", await organizer.GetPageAsync(profile));
 
         var combined = await organizer.PostFormAsync(profile, "combine", new() { ["Combine.Key"] = "q. combine" });
         Assert.Equal($"{profile}?done=combined", TestBrowser.PathOf(combined.Headers.Location!));

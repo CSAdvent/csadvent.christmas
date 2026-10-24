@@ -17,7 +17,7 @@ public sealed record Announcement(int Year, int Day, int Part, int SlotsPerDay, 
     /// <summary>What a test post says instead of the entry's day.</summary>
     public string? Label { get; init; }
 
-    /// <summary>Where a test post links instead of an entry's page, relative to the base URL: "" is the home page.</summary>
+    /// <summary>Where a test post links instead of an entry's page, relative to the base URL.</summary>
     public string? Path { get; init; }
 
     /// <summary>For example "C# Advent 2026, December 6, part 2".</summary>
@@ -31,13 +31,14 @@ public sealed record Announcement(int Year, int Day, int Part, int SlotsPerDay, 
     }
 
     /// <summary>
-    /// A test post: formatted exactly as an announcement is, but plainly a test, about no entry, linking to the home page.
+    /// A test post: formatted exactly as an announcement is, but plainly a test, about no entry. It links to a page of its
+    /// own (<c>/test-post/{id}</c>), so platforms fetch a fresh preview for it, as they will for a real entry's new page.
     /// </summary>
-    public static Announcement Test(int year, string baseUrl) =>
+    public static Announcement Test(int year, string baseUrl, string id) =>
         new(year, 1, 1, 2, "Checking that C# Advent can post here automatically", "the C# Advent organizers", AuthorAccounts.None, baseUrl)
         {
             Label = "C# Advent test post (please ignore)",
-            Path = "",
+            Path = $"test-post/{id}",
         };
 }
 
