@@ -122,6 +122,13 @@ public static class EmailCatalog
             "The author. Replies go to the organizers.",
             site => ReminderEmails.PostLinkDueToday(new DayOfReminder("Ada Lovelace", 2026, 10, 1, 2, new TimeOnly(10, 0)), site)),
         new(
+            "social-credentials-failing",
+            "Automatic posting has stopped working",
+            "At 8 AM Eastern, when a platform in Automatic mode fails the daily check of its credentials (once a day per platform).",
+            "The organizers.",
+            site => CSAdvent.Web.Social.Posting.SocialCredentialCheck.CredentialsFailing(
+                CSAdvent.Web.Claims.SocialPlatform.Facebook, "401 Unauthorized: Error validating access token: The session has been invalidated.", site)),
+        new(
             "daily-share",
             "Today's posts",
             "At 9 AM Eastern each day from December 1 to 25, once at least one of the day's posts has its title and link.",
