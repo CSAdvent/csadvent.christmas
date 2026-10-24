@@ -1,0 +1,128 @@
+# 📖 C# Advent Yearly Runbook
+
+What happens each year, when, and who does it. The site automates most of the season, so this is mostly what to check
+and the few things that need a person. Times are Eastern, the reveal time zone.
+
+**Owners:** the organizers, [Matt Groves](https://github.com/mgroves) (founder and host) and
+[Calvin Allen](https://github.com/CalvinAllen) (also the site and its Azure hosting). "Organizers" below means either of them.
+
+---
+
+## 🗓️ The Year at a Glance
+
+| When | What | Who |
+|---|---|---|
+| September | The home page starts counting down to sign-ups | Automatic |
+| September–October | Create the season, refresh copy, run a test round, check social posting | Organizers |
+| November 1 | Sign-ups open, and the announcements list hears about it | Automatic, once the season is scheduled |
+| November | Approve requests, watch the backup list | Organizers |
+| From 7 days before each day | "Your post is due" reminders, then a last call on the day | Automatic |
+| December 1–25 | Reveals at midnight, announcements at 10 AM and 2 PM, the daily email at 9 AM | Automatic, plus LinkedIn and Reddit by hand |
+| December 31 | The calendar moves to the archive, and the home page thanks everyone | Automatic |
+| February 1 | The season's contact details are deleted | Automatic |
+
+---
+
+## 🍂 September–October: Get Ready
+
+1. **Create the season** at `/manage/seasons`, with sign-ups scheduled for November 1 (entered in Eastern time). Every
+   spot starts open. Once it's scheduled:
+   - the between-seasons home page says when sign-ups open, and counts down from September 1;
+   - the home page's share card says "Sign-ups open November 1".
+
+   Creating next year's season early never replaces this year's calendar.
+2. **Refresh the copy** at `/manage/content`: the between-seasons message, the About page and the Other Advents
+   introduction. Every save is a revision you can go back to.
+3. **Start this year's Other Advents** at `/manage/other-advents` from last year's list. Remove calendars that have
+   stopped, and refresh or upload any missing logos.
+4. **Link returning authors** at `/manage/authors`, so they see their history on My spots. New authors are linked when
+   their claim is approved.
+5. **Run a test round** at `/manage/testing`:
+   1. Create the test season and invite testers by GitHub login.
+   2. Have them claim, add posts, drop out and join the backup list.
+   3. Move "today" through the rehearsal and send what's due.
+   4. **End testing** when you're done.
+
+   Only testers and organizers ever see it, and it never posts to social media.
+6. **Check social posting** at `/manage/social`:
+   1. Press **Check** on Mastodon, Bluesky and Facebook, and **Send a test post** on each (then delete the test posts).
+   2. Set each to **Automatic**.
+
+   LinkedIn and Reddit are always copy and paste.
+7. **Check email:** send yourself a sample from `/manage/emails`, and send a test email to hello@csadvent.christmas from
+   another address (it forwards through ImprovMX).
+8. **Keep the stack current:** dependency updates, and a deploy (every merge to `main` deploys).
+
+---
+
+## ✍️ November: Sign-Ups
+
+- **Requests** come in at `/manage/requests`, oldest first. A request doesn't reserve a spot, so approve promptly,
+  first come, first served. Approving can put someone in any open spot when theirs has gone. Archive duplicates and
+  requests you won't take. Approving emails the author.
+- **Entries** at `/manage/entries` show every spot's status. You can fix a name or link, put someone from the backup
+  list into an open spot, or release a spot.
+- **Backup posters** sign up at `/backups/{year}`, and you can see them at `/manage/backups`. Point people there once
+  the calendar fills up.
+- **Authors** add their post's title and URL themselves on My spots. Nobody sends them by email.
+
+---
+
+## ⏰ From Late November: Reminders (Automatic)
+
+- **"Your post is due"** emails go at 9 AM, 7, 5, 3, 2 and 1 days before an author's day, while their spot has no
+  post link. The last two warn that a backup poster may take the spot.
+- **Backup posters** are asked one at a time from 6 PM the evening before a day whose link is still missing. Each has
+  4 hours to answer. You get an email if nobody's left, and then the spot needs you at `/manage/entries`.
+- **The last call** goes out on the day, 3 hours before the post is announced (7 AM for post 1, 11 AM for post 2),
+  if the link still hasn't arrived.
+- **An author who drops out** frees their spot straight away, and the backups are asked immediately.
+
+---
+
+## 🎄 December 1–25: Advent
+
+- **Reveals** happen at midnight. The day revealed next counts down on the calendar.
+- **Automatic posts** go to Mastodon, Bluesky and Facebook at 10 AM (post 1) and 2 PM (post 2), or as soon as a late
+  link arrives that day.
+  - Post **LinkedIn and Reddit by hand** from `/manage/social`, then **Mark as posted**.
+  - Reddit posts go to r/csadvent only, never r/csharp or r/dotnet.
+  - A failed automatic post shows its error and a **Retry now** button.
+- **The daily email** goes at 9 AM to everyone with a spot, once the day has posts.
+- **A spot that ends up empty** can be filled from the backup list, or released, at `/manage/entries`.
+
+---
+
+## 🎁 After Advent
+
+- **December 31:** the calendar leaves the home page for the archive, and the between-seasons page thanks everyone
+  and links to it.
+- **February 1:** the season's contact details are deleted automatically: spot emails, claim requests, the backup
+  list, and contributor emails that haven't been verified again since. The calendar, GitHub logins and social
+  accounts stay. Nothing to do.
+
+---
+
+## 🔑 Every November: Credentials and Limits
+
+- **Social posting:** each Automatic platform's credentials are checked every morning at 8 AM, and you get an email
+  when one fails.
+  - The **Facebook Page token** is invalidated by a password change or losing the Page role.
+  - The **Mastodon token** and the **Bluesky app password** last until revoked.
+
+  The README's deploy setup says how to get each one. Replace the secret in the repository's `production`
+  environment, run the Deploy workflow, and press **Check**.
+- **Email:** a sample from `/manage/emails` proves the sending domain is still connected. A new custom domain is
+  limited to 30 emails a minute and 100 an hour. If a season needs more, ask Azure support to raise it.
+- **Database restore:** practise a point-in-time restore once a year, before December (#90).
+- **Domains:** the managed certificates for csadvent.christmas and www renew themselves while the app is running.
+
+---
+
+## 🧭 If Something Breaks
+
+- **The site:** every deploy runs the database migrations job and checks the site. A new revision that can't reach the
+  database never takes traffic, because the health probes keep the old one serving.
+- **Logs and telemetry:** Application Insights, in the `rg-csadvent` resource group.
+- **Emails not arriving:** check `/manage/emails` (send a sample) and the Communication Service in Azure.
+- **A wrong post on the calendar:** fix it at `/manage/entries`. An edited title gets a fresh share card.
