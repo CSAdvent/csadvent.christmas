@@ -187,15 +187,20 @@ default subscription.
 3. **Get the data back.**
    - **Usually only what was lost:** copy those rows out of the restored server, with `psql`'s `\copy`, and into
      production.
-   - **The whole database** (untested): stop the site, so nothing writes in between, by deactivating the `web` app's
-     revision in the portal. Then copy the database in and turn the site back on:
+   - **The whole database** (untested):
+     1. Stop the site by deactivating the `web` app's revision in the portal, so nothing writes in between.
+     2. Add the same firewall rule to production for the copy.
+     3. Copy the database in. Production's admin login and password are the `pg-admin-username` and `pg-admin-password`
+        values given to the deploy.
 
-     ```bash
-     pg_dump -Fc --no-owner <restored>
-     pg_restore --clean --if-exists --no-owner -d csadvent <production>
-     ```
+        ```bash
+        pg_dump -Fc --no-owner -f csadvent.dump "host=csadvent-restore-YYYYMMDD.postgres.database.azure.com dbname=csadvent user=<admin login> sslmode=require"
+        pg_restore --clean --if-exists --no-owner -d "host=postgres-54yzcow3wctne.postgres.database.azure.com dbname=csadvent user=<admin login> sslmode=require" csadvent.dump
+        ```
 
-     Production's admin login and password are the `pg-admin-username` and `pg-admin-password` values given to the deploy.
+     4. Remove production's firewall rule, and turn the site back on.
+
+     The dump has the schema and the migration history too, so there's no need to run the migrations job.
    - **Don't point the site at the restored server.** The AppHost owns the server's name and connection string, so the
      next deploy would point it back, and the new server would be missing from the deploy's model.
 
