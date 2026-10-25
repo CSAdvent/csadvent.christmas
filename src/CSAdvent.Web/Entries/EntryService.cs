@@ -163,7 +163,6 @@ public sealed class EntryService(AdventDbContext db, AdventSchedule schedule, Ti
             revealed.FirstOrDefault(p => p.Day > day || (p.Day == day && p.Part > part)));
     }
 
-
     /// <summary>The post a click should go to: only a revealed entry's own post, so the redirect can't be pointed anywhere else.</summary>
     public async Task<(int SlotId, string PostUrl)?> FindPostAsync(int year, int day, int part, CancellationToken cancellationToken = default)
     {
