@@ -160,7 +160,9 @@ default subscription.
 1. **Restore to a new server**, at a time (UTC) just before the problem:
 
    ```bash
-   az postgres flexible-server restore --resource-group rg-csadvent      --name csadvent-restore-YYYYMMDD --source-server postgres-54yzcow3wctne      --restore-time 2026-12-05T14:30:00Z --subscription 4fab8317-7755-44bc-9063-1e8cc1c6867d
+   az postgres flexible-server restore --resource-group rg-csadvent \
+     --name csadvent-restore-YYYYMMDD --source-server postgres-54yzcow3wctne \
+     --restore-time 2026-12-05T14:30:00Z --subscription 4fab8317-7755-44bc-9063-1e8cc1c6867d
    ```
 
    It copies the source's admin login and password. In the portal, it's the server's **Restore** button.
@@ -170,7 +172,8 @@ default subscription.
 
    ```bash
    az postgres flexible-server update -g rg-csadvent -n csadvent-restore-YYYYMMDD --admin-password '<new password>' --subscription …
-   az postgres flexible-server firewall-rule create -g rg-csadvent -n csadvent-restore-YYYYMMDD --rule-name restore-check      --start-ip-address <your IP> --end-ip-address <your IP> --subscription …
+   az postgres flexible-server firewall-rule create -g rg-csadvent -n csadvent-restore-YYYYMMDD --rule-name restore-check \
+     --start-ip-address <your IP> --end-ip-address <your IP> --subscription …
    docker run --rm -it postgres:18-alpine psql "host=csadvent-restore-YYYYMMDD.postgres.database.azure.com dbname=csadvent user=<admin login> sslmode=require"
    ```
 
