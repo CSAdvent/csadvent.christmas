@@ -317,7 +317,7 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
     - **Who:** the authors of spots in **finished** seasons, at the addresses we keep: the linked account's verified email, and the spot's contact email. One invitation per lowercased address, named from their profile or else the name on their latest post, with their post count since their first season (`Plan`, unit-tested).
     - **Skipped:** confirmed announcement subscribers (they get the announcement), anyone with a spot or pending request in the new season, the already invited, and the unsubscribed.
     - **Once each:** recorded in `past_author_invitations` by the address's fingerprint (unique per season) before sending; a failed send removes the record. Deleted with the season's requests on February 1.
-    - **Throttle:** it runs inside `AnnouncementService.RunAsync` after the announcements, with what's left of `Announcements:PerHour`, which now counts both. `/manage/announcements` (or `?year=`) shows how many past authors will be or have been invited. `PastAuthorInvitationTests` use season 2131.
+    - **Throttle:** it runs inside `AnnouncementService.RunAsync` after the announcements, with what's left of `Announcements:PerHour`, which now counts both. `/manage/announcements` (or `?year=`) shows how many past authors will be or have been invited. `PastAuthorInvitationTests` use season 2141.
   - **Trying it:** `POST /dev/announcements/run?at=…&year=…` (Development only); `AnnouncementTests` use season 2125. The AppHost turns the worker off in Testing (`Announcements:SendInBackground`).
 
 ## Privacy

@@ -136,10 +136,10 @@ public sealed class RetentionTests(AppHostFixture fixture)
     public async Task DeletesASeasonsPastAuthorInvitationsOnFebruary1()
     {
         // A season of this test's own: the class's other seasons are set up by the first test to ask for them.
-        const int UpcomingYear = 2132;
+        const int UpcomingYear = 2142;
         await TestSeasons.EnsureAsync(fixture, UpcomingYear, claimsOpen: false);
         var expired = CSAdvent.Web.Email.EmailOptOutLinks.Fingerprint("invited-2019@example.com");
-        var upcoming = CSAdvent.Web.Email.EmailOptOutLinks.Fingerprint("invited-2132@example.com");
+        var upcoming = CSAdvent.Web.Email.EmailOptOutLinks.Fingerprint("invited-2142@example.com");
         await using (var db = await fixture.CreateDbContextAsync())
         {
             db.PastAuthorInvitations.AddRange(

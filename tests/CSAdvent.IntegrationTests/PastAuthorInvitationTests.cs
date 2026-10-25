@@ -7,20 +7,20 @@ using Microsoft.EntityFrameworkCore;
 namespace CSAdvent.IntegrationTests;
 
 /// <summary>
-/// Past authors are invited back when a season's sign-ups open (#133). Season 2131's sign-ups open on November 1, 2131;
+/// Past authors are invited back when a season's sign-ups open (#133). Season 2141's sign-ups open on November 1, 2141;
 /// the past authors are on a few late-December 2023 archive posts (no other test reads their contacts):
 /// <list type="bullet">
 /// <item>Ann wrote two of them, with her address in two spellings: one invitation.</item>
 /// <item>Cy's post is linked to his account, with his profile name.</item>
-/// <item>Sue is on the announcements list, Tia already has a 2131 spot, and Oli unsubscribed: none for them.</item>
+/// <item>Sue is on the announcements list, Tia already has a 2141 spot, and Oli unsubscribed: none for them.</item>
 /// </list>
 /// </summary>
 public sealed class PastAuthorInvitationTests(AppHostFixture fixture)
 {
-    private const int Year = 2131;
-    private const string Subject = "C# Advent 2131 sign-ups are open: you wrote for us before";
+    private const int Year = 2141;
+    private const string Subject = "C# Advent 2141 sign-ups are open: you wrote for us before";
 
-    private static readonly DateTimeOffset OpensAt = new(2131, 11, 1, 5, 0, 0, TimeSpan.Zero);
+    private static readonly DateTimeOffset OpensAt = new(2141, 11, 1, 5, 0, 0, TimeSpan.Zero);
 
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
@@ -42,7 +42,7 @@ public sealed class PastAuthorInvitationTests(AppHostFixture fixture)
         Assert.Contains("you've written 2 posts for C# Advent since 2023", ann.Text);
         Assert.Contains("Unsubscribe: https://localhost:7092/emails/stop?token=", ann.Text);
         var cy = await fixture.WaitForEmailAsync("invite-cy@example.com", Subject);
-        Assert.Contains("Come back for C# Advent 2131, Cy Profile!", WebUtility.HtmlDecode(cy.Html));
+        Assert.Contains("Come back for C# Advent 2141, Cy Profile!", WebUtility.HtmlDecode(cy.Html));
 
         // A later run sends nobody a second one, and the skipped never get one.
         await RunAsync(OpensAt.AddHours(11));
