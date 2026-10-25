@@ -147,8 +147,8 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 
   The README's deploy setup says how to get each one. Replace the secret in the repository's `production`
   environment, run the Deploy workflow, and press **Check**.
-- **Email:** a sample from `/manage/emails` proves the sending domain is still connected. A new custom domain is
-  limited to 30 emails a minute and 100 an hour. If a season needs more, ask Azure support to raise it.
+- **Email:** a sample from `/manage/emails` proves the sending domain is still connected. The site can send 30 emails
+  a minute and 100 an hour unless Azure has raised that (see Email Sending Limits, below).
 - **Database restore:** practise a point-in-time restore once a year, before December (#90).
 - **The blurb check's Anthropic API key** lasts until it's revoked. Check its workspace's spend limit in the Anthropic
   Console, and replace the `ANTHROPIC_API_KEY` secret the same way as the social ones if it's ever rotated.
@@ -310,6 +310,59 @@ Lines marked ✏️ **To fill in** are for the organizers: they aren't written d
   identities.
 - **The managed certificates** renew themselves while the app runs.
 - **LinkedIn and Reddit** have no credentials: they're always copy and paste.
+
+---
+
+## 📬 Email Sending Limits
+
+**The limits now:** Azure Communication Services lets C# Advent send **30 emails a minute and 100 an hour**, the default
+for a custom domain. They're **per subscription**, so everything the site sends shares them:
+
+- claim emails (two per claim: one to the contributor, one to the organizers);
+- announcements and past-author invitations;
+- post link reminders and the last call;
+- the daily email;
+- backup asks;
+- blurb emails;
+- the organizers' notices.
+
+Over the limit, Azure refuses with 429 (Too Many Requests). Claim emails aren't retried: they're logged, which trips the
+error alert. Only announcements and invitations are budgeted (`Announcements:PerHour`, 40), and
+`Reminders:PauseBetweenEmails` (2 seconds) only paces one loop on one replica. So on sign-up day, about 30 claims in the
+first hour plus the announcement can reach the limit.
+
+The current limits are in the portal: the Email Communication Service `csadvent-email` → **Provision domains** →
+`mail.csadvent.christmas` shows **Email send quota per minute** and **per hour**.
+
+**Asking for more** (#136): it's free, reviewed by hand, and can take up to 72 hours, so ask well before November.
+
+1. Copy the questionnaire from [Quota increase for email domains](https://learn.microsoft.com/azure/communication-services/concepts/email/email-quota-increase)
+   into a `.txt` file and answer it. It asks for company details: C# Advent is a personal, volunteer-run community
+   project, so describe it as that, with csadvent.christmas as the website. The rest is:
+   - the C# Advent subscription ID;
+   - the Communication Service `csadvent-acs`;
+   - the sending domain `mail.csadvent.christmas`, already in use;
+   - transactional emails, plus announcements people sign up for;
+   - the peak rates you need;
+   - where the addresses come from (authors who signed up on the site with their GitHub account, and people who confirmed
+     a subscription) and how unsubscribes are handled (a one-click link that's honored straight away).
+2. In the portal, go to **Help + support → Create a support request**. Choose the issue type **Service and subscription
+   limits (quotas)**, the C# Advent subscription, and the quota type **Azure Communication Services Email: Sending
+   Limits**.
+3. On **Additional details**, enter the resource group, the email domain and the new limit, attach the questionnaire, and
+   create the request. An automated email confirms it within minutes.
+4. **Ask for December's peak**, not November's. The daily email, reminders and backup asks all go out around 9 AM
+   Eastern, and sign-up day brings about 60 claim emails in the first hour on top of the announcement.
+5. **Approval depends on sender reputation.** Keep the failure rate under 2% (Microsoft's bar). The docs also recommend an
+   MX record on the sending domain; `mail.csadvent.christmas` doesn't have one (`dns.bicep` only has the apex's ImprovMX
+   records).
+6. **If it's refused**, sending emails through an outbox that respects the limit becomes urgent.
+7. **Once it's granted**, record the new limits here and in CLAUDE.md, and raise `Announcements:PerHour` and lower
+   `Reminders:PauseBetweenEmails` to match.
+
+- ✏️ **To fill in:** when it was requested, the support request's number, and the outcome.
+
+**Until it's granted**, watch `/manage/requests` on sign-up day rather than waiting for the email notices.
 
 ---
 

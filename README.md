@@ -193,6 +193,7 @@ A hidden test season lets invited testers try everything for real on the live si
 ## 📖 Running a Season
 
 - 🗓️ The **[yearly runbook](docs/runbook.md)** says what happens each year, when, and who does it: creating the season, sign-ups, reminders, Advent, and what gets deleted afterwards
+- 🔐 It also covers keeping the site running: what each alert means, every credential and account (where it lives and how to replace it), the email sending limit, and GitHub Actions minutes
 
 ## ☁️ Deploying to Azure
 
