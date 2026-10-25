@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using System.Xml.Linq;
+using CSAdvent.Web.Authors;
 using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Data;
 using CSAdvent.Web.Entries;
@@ -12,8 +13,8 @@ namespace CSAdvent.Web.Content;
 
 /// <summary>
 /// What search engines read (#38): <c>robots.txt</c>, which keeps them out of signed-in pages and tracked redirects, and
-/// <c>sitemap.xml</c>, which lists the public pages, every finished season's archive and published retrospective, and every
-/// revealed entry's page. The test season is never listed.
+/// <c>sitemap.xml</c>, which lists the public pages, every finished season's archive and published retrospective, every
+/// revealed entry's page, and every author's page. The test season is never listed.
 /// </summary>
 public static class SearchEndpoints
 {
@@ -24,7 +25,7 @@ public static class SearchEndpoints
         ["/manage", "/my-spots", "/profile", "/claim/", "/backups/", "/go/", "/random", "/test-post/", "/test-mode/", "/signin", "/emails/", "/announcements/", "/dev/"];
 
     /// <summary>The public pages that are always there, relative to the base URL.</summary>
-    public static readonly IReadOnlyList<string> PublicPages = ["", "archive", "about", "others", "announcements", "privacy", "terms"];
+    public static readonly IReadOnlyList<string> PublicPages = ["", "archive", "authors", "about", "others", "announcements", "privacy", "terms"];
 
     public static WebApplication MapSearch(this WebApplication app)
     {
@@ -34,7 +35,7 @@ public static class SearchEndpoints
             return Results.Text(Robots(site.Value.BaseUrl), "text/plain", Encoding.UTF8);
         });
 
-        app.MapGet("/sitemap.xml", async (AdventDbContext db, AdventSchedule schedule, IOptions<SiteOptions> site, HttpResponse response, CancellationToken cancellationToken) =>
+        app.MapGet("/sitemap.xml", async (AdventDbContext db, AdventSchedule schedule, AuthorPageService authors, IOptions<SiteOptions> site, HttpResponse response, CancellationToken cancellationToken) =>
         {
             var seasons = await db.Seasons.AsNoTracking().Where(s => s.Year != Season.TestYear).Select(s => s.Year).ToListAsync(cancellationToken);
             var entries = await db.Slots
@@ -57,7 +58,10 @@ public static class SearchEndpoints
                     DateOnly.FromDateTime(schedule.ToLocalTime(r.UpdatedAt > r.PublishedAt!.Value ? r.UpdatedAt : r.PublishedAt.Value).DateTime))))
                 // The reveal is checked here, not in SQL (#5).
                 .Concat(entries.Where(e => schedule.IsRevealed(e.SeasonYear, e.Day))
-                    .Select(e => new SitemapPage(EntryLinks.Page(e.SeasonYear, e.Day, e.Part), schedule.GetDate(e.SeasonYear, e.Day))));
+                    .Select(e => new SitemapPage(EntryLinks.Page(e.SeasonYear, e.Day, e.Part), schedule.GetDate(e.SeasonYear, e.Day))))
+                // Author pages (#203) only list revealed posts, so they're dated by their latest one.
+                .Concat((await authors.ListAsync(cancellationToken))
+                    .Select(a => new SitemapPage(a.Page, schedule.GetDate(a.Latest.Year, a.Latest.Day))));
 
             response.Headers.CacheControl = CacheControl;
             return Results.Text(Sitemap(site.Value.BaseUrl, pages), "application/xml", Encoding.UTF8);

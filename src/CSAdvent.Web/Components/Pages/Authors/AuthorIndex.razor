@@ -1,0 +1,31 @@
+@page "/authors"
+@using CSAdvent.Web.Authors
+@inject AuthorPageService Authors
+
+<PageTitle>Authors · C# Advent</PageTitle>
+<SocialMeta Title="C# Advent authors" Description="Everyone who's written for C# Advent since 2017, with every post they've written." />
+
+<nav class="mb-6 text-sm font-medium">
+    <a href="archive" class="text-advent-700 hover:underline">← The archive</a>
+</nav>
+
+<h1 class="text-3xl font-bold tracking-tight text-slate-900">C# Advent authors</h1>
+<p class="mt-2 max-w-2xl text-slate-600">
+    @_authors.Count people have written for C# Advent since the first one in 2017. Pick anyone to see every post they've written.
+</p>
+
+<ul class="mt-8 grid gap-x-8 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
+    @foreach (var author in _authors)
+    {
+        <li>
+            <a href="@author.Page" class="font-medium text-advent-700 underline decoration-advent-200 underline-offset-2 hover:decoration-advent-700">@author.Name</a>
+            <span class="text-sm text-slate-500">@author.Years@(author.Posts > 1 ? $" · {author.Posts} posts" : "")</span>
+        </li>
+    }
+</ul>
+
+@code {
+    private IReadOnlyList<AuthorSummary> _authors = [];
+
+    protected override async Task OnInitializedAsync() => _authors = await Authors.ListAsync();
+}

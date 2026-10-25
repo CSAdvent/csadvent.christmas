@@ -1,3 +1,4 @@
+using CSAdvent.Web.Authors;
 using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Data;
 using CSAdvent.Web.SeasonTesting;
@@ -57,6 +58,9 @@ public sealed record EntryView(
 
     /// <summary>The season's next post, once it's revealed.</summary>
     public AdjacentEntry? Next { get; init; }
+
+    /// <summary>The author's public page, with all of their posts (#203). None for the test season.</summary>
+    public string? AuthorPage { get; init; }
 }
 
 /// <summary>Entry pages, the tracked redirect to each post, and their visit and click counts.</summary>
@@ -143,6 +147,7 @@ public sealed class EntryService(AdventDbContext db, AdventSchedule schedule, Ti
             PostSummary = slot.PostSummary,
             Previous = previous,
             Next = next,
+            AuthorPage = year == Season.TestYear ? null : AuthorPageLinks.For(slot.GithubLogin, slot.AuthorName),
         };
     }
 

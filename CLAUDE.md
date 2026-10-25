@@ -141,6 +141,14 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
   - Before an entry's reveal there's no card for it (404).
   - Fonts and images: Inter Bold and Regular (SIL Open Font License, `Cards/Assets/Inter-LICENSE.txt`), the card background and the logo are embedded resources. Linux uses `SkiaSharp.NativeAssets.Linux.NoDependencies`, so containers need no fontconfig or system fonts. `CardRenderer.Printable` drops characters Inter can't draw (emoji, for example) rather than draw boxes.
 
+## Author Pages
+
+- **Every author with a revealed post has a public page** (#203, `AuthorPageService`, `Components/Pages/Authors`), listing their posts by season, newest first, with each post's summary and their links (`AuthorLinks.All`). It's built on `RevealedPosts`, so it never shows the test season or a post before its reveal, and an author whose only posts aren't revealed yet has no page (404).
+  - **Addresses** (`AuthorPageLinks`): an author linked to a GitHub account is `/authors/{login}` (any case), and an archive author who isn't is `/authors/name/{key}`, by `AuthorService.Key`, the same grouping as the organizers' authors list. A path, not a query, because the canonical URL drops the query string.
+  - **Names and links** come from their latest revealed post: its name is the page's heading, and its website (the latest one given) leads the links. A linked author also gets GitHub and the social accounts on their profile.
+  - **Linked since:** a name page whose posts are all on one account now redirects to that account's page, so old links and search results still find them.
+  - **`/authors`** lists everyone, sorted by name ignoring case and accents, with their seasons and post counts. The archive links it, every entry page outside the test season links its author's page ("Every C# Advent post by …"), and the sitemap lists them all, dated by their latest post.
+
 ## Content Pages
 
 - **Content blocks** (`ContentService`, `content_blocks` plus `content_block_revisions`): copy organizers edit at `/manage/content` without a redeploy, in Markdown rendered by `Markdown.ToHtml` (raw HTML escaped, unsafe links dropped) inside `MarkdownBlock`.
@@ -221,7 +229,7 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 
 ## Search Engines
 
-- **`/robots.txt` and `/sitemap.xml`** (`Content/SearchEndpoints.cs`, #38): robots keeps crawlers out of signed-in, organizer and personal pages and the tracked `/go` redirects (`SearchEndpoints.Disallowed`), and points at the sitemap. The sitemap lists the public pages, every finished season's archive and published retrospective, and every revealed entry's page (checked in C#, #5), with the reveal date as `lastmod`, and never the test season. Both are cached for an hour.
+- **`/robots.txt` and `/sitemap.xml`** (`Content/SearchEndpoints.cs`, #38): robots keeps crawlers out of signed-in, organizer and personal pages and the tracked `/go` redirects (`SearchEndpoints.Disallowed`), and points at the sitemap. The sitemap lists the public pages, every finished season's archive and published retrospective, every revealed entry's page (checked in C#, #5), with the reveal date as `lastmod`, and every author's page, and never the test season. Both are cached for an hour.
 - **No analytics** (decided 2026-10-23): the entry visit and click counts are enough, and the privacy page promises no tracking.
 
 ## Backup Posters
