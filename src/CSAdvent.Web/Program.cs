@@ -55,6 +55,7 @@ builder.Services.AddScoped<SeasonTestingService>();
 builder.Services.AddSingleton<AdventSchedule>();
 builder.Services.AddScoped<ArchiveService>();
 builder.Services.AddScoped<HomeService>();
+builder.Services.AddScoped<CalendarFileService>();
 builder.Services.AddScoped<ClaimService>();
 builder.Services.AddOptions<ClaimOptions>()
     .BindConfiguration(ClaimOptions.SectionName)
@@ -234,6 +235,7 @@ app.MapBlurbs();
 app.MapEntries();
 app.MapCards();
 app.MapFeeds();
+app.MapCalendarFiles();
 app.MapSearch();
 app.MapAnnouncements();
 app.MapSocial();

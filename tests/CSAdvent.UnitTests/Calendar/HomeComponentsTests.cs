@@ -57,7 +57,29 @@ public sealed class HomeComponentsTests : BunitContext
         Assert.Contains("50 posts from 47 authors", page.Markup);
         Assert.Equal("Sign-ups for C# Advent 2026 open on November 1.", page.Find("[role=status]").TextContent);
         Assert.Contains("<strong>next December</strong>", page.Markup);
-        Assert.Equal(["archive/2025", "archive", "rss", "others"], page.FindAll("a").Select(a => a.GetAttribute("href")));
+        Assert.Equal(
+            ["calendar/2026/sign-ups.ics", "calendar/2026/starts.ics", "archive/2025", "archive", "rss", "others"],
+            page.FindAll("a").Select(a => a.GetAttribute("href")));
+    }
+
+    [Fact]
+    public void BeforeSignUpsAreScheduledOnlyTheStartGoesInACalendar()
+    {
+        var page = Render<OffSeason>(p => p
+            .Add(c => c.LastSeason, new FinishedSeason(2025, 50, 47))
+            .Add(c => c.NextSeason, new UpcomingSeason(2026, SignUpsOpenOn: null, DaysUntilSignUps: null)));
+
+        var links = page.FindAll("a[href^='calendar/']");
+        Assert.Equal(["calendar/2026/starts.ics"], links.Select(a => a.GetAttribute("href")));
+        Assert.Equal("C# Advent 2026 starts", links[0].TextContent);
+    }
+
+    [Fact]
+    public void TheTestSeasonNeverGoesInACalendar()
+    {
+        var page = Render<OffSeason>(p => p.Add(c => c.NextSeason, new UpcomingSeason(CSAdvent.Web.Data.Season.TestYear, new DateOnly(2026, 11, 1), null)));
+
+        Assert.Empty(page.FindAll("a[href^='calendar/']"));
     }
 
     [Theory]
