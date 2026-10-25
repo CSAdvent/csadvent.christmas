@@ -45,7 +45,7 @@ public sealed class DailyEmailOptOut(AdventDbContext db, IDataProtectionProvider
 
     /// <summary>
     /// Opts the slot's author out for the whole season: every spot they have with the same email. Returns false when the
-    /// slot's contact details no longer exist (for example after the season's details were deleted).
+    /// slot's contact details no longer exist (for example after its author dropped out).
     /// </summary>
     public async Task<bool> OptOutAsync(int slotId, CancellationToken cancellationToken = default)
     {

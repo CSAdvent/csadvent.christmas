@@ -139,7 +139,7 @@ builder.Services.AddRateLimiter(options =>
     };
 });
 
-// Deletes each season's contact details on February 1 after it, as the privacy page promises.
+// Deletes each season's requests, backup list and non-authors' emails on February 1 after it, as the privacy page promises.
 builder.Services.AddScoped<ContactRetention>();
 if (builder.Configuration.GetValue("Retention:DeleteInBackground", defaultValue: true))
 {

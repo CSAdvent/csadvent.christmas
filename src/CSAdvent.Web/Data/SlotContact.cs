@@ -4,8 +4,9 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CSAdvent.Web.Data;
 
 /// <summary>
-/// The private half of a slot: how to reach its author. Kept apart from <see cref="Slot"/> so contact details can be
-/// deleted after the season while the public calendar stays intact.
+/// The private half of a slot: how to reach its author. Kept apart from <see cref="Slot"/> so it never shows on the public
+/// calendar. It stays after the season, so authors (including those an organizer added by hand) hear about the next one;
+/// dropping out, an organizer releasing the spot, or asking us deletes it.
 /// </summary>
 public sealed class SlotContact
 {
