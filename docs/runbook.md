@@ -56,7 +56,7 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
    the app until you answer a request in its developer portal (the README's Facebook setup has the rest).
 7. **Check email:** send yourself a sample from `/manage/emails`, and send a test email to hello@csadvent.christmas from
    another address (it forwards through ImprovMX).
-8. **Keep the stack current:** dependency updates, and a deploy (every merge to `main` deploys).
+8. **Keep the stack current:** dependency updates, and a deploy (every merge to `main` deploys, unless it only changes documentation).
 9. **Check the announcements list** at `/manage/announcements`. The "sign-ups are open" email goes to every confirmed
    subscriber by itself at 9 AM on the day sign-ups open, 40 an hour. Write any other news there: save a draft, send a
    test to the organizers' inbox, then send it.
@@ -152,6 +152,51 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 - **The blurb check's Anthropic API key** lasts until it's revoked. Check its workspace's spend limit in the Anthropic
   Console, and replace the `ANTHROPIC_API_KEY` secret the same way as the social ones if it's ever rotated.
 - **Domains:** the managed certificates for csadvent.christmas and www renew themselves while the app is running.
+- **GitHub Actions minutes:** check the organization's usage before November (see below).
+
+---
+
+## 💸 GitHub Actions Minutes
+
+The repository is private, and the CodingWithCalvin organization is on GitHub's Free plan: **2,000 Linux minutes a month**,
+shared with the organization's other private repositories. Each job is billed in whole minutes, rounded up. When they run
+out, CI stops, and so do deploys, because they wait for CI.
+
+**What a change costs** (October 2026): about 4 minutes of CI for each push to a pull request, plus 2 for the commit
+lint (two jobs of a minute each), then 4 more for CI on `main` after the merge and about 7 for the deploy. So a pull request
+merged after one push is about 17 minutes. October 25 had 8 deploys, and recent use was about 180 minutes a day: at that
+pace November's allowance runs out mid-month.
+
+**Already cut** (#140):
+
+- A new push to a pull request cancels the CI run and the commit lint it replaces.
+- A pull request that only changes `README.md`, `CLAUDE.md` or `docs/` skips the build and the tests. Its "Build and test"
+  check still passes, so it can never hold up a required check.
+- A push to `main` that only changes those doesn't run CI or deploy at all. Run the Deploy workflow by hand if you want
+  one anyway.
+
+**The decision (organizers):** pick one before November.
+
+1. **Make the repository public.** Actions minutes on GitHub's standard runners are free for public repositories. Before
+   switching:
+   - Scan the whole history for secrets with a scanner such as [gitleaks](https://github.com/gitleaks/gitleaks). The real
+     secrets live in the `production` environment, not the repository, but check anyway.
+   - Read what becomes public: the docs name the subscription ID, the resource names and the deploy identity's federated
+     subject (none of them secret), and every commit shows its author's email address.
+   - Afterwards, only `main` can deploy (the `production` environment's rule), so pull requests from forks never see the
+     secrets, and GitHub asks before running workflows for first-time contributors. Branch protection becomes available
+     too (a private repository on the Free plan can't have it): requiring "Build and test" is safe with the documentation
+     skip above.
+   - Switch it in **Settings → General → Danger Zone → Change visibility**.
+2. **Or set an Actions budget**, so CI keeps running past the free minutes: the organization's **Settings → Billing and
+   licensing → Budgets and alerts → New budget**, for Actions, with email alerts. The issue suggested $10–20 a month. At
+   October's pace that's 3,000 or more extra minutes a month, so check what that costs at GitHub's current price for Linux
+   minutes before picking the amount, and whether the budget should stop usage (which stops CI again) or only warn.
+
+Either way, check the organization's **Settings → Billing and licensing → Usage** (filtered to Actions) before November,
+and again in early December.
+
+- ✏️ **To fill in:** which option, when, and the budget amount if there is one.
 
 ---
 

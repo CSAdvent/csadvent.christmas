@@ -1,7 +1,7 @@
 name: Deploy
 
 on:
-  # Every push to main deploys once CI has passed on it.
+  # Every push to main deploys once CI has passed on it. CI skips documentation-only pushes, so they don't deploy.
   workflow_run:
     workflows: [CI]
     types: [completed]

@@ -202,7 +202,7 @@ Email can't be sent until the sending domain is verified, which happens after th
 
 ### 🤖 Deploying from GitHub Actions
 
-[`deploy.yml`](.github/workflows/deploy.yml) deploys every push to `main` once CI has passed on it, and **Run workflow** in the Actions tab redeploys `main` by hand. It signs in to Azure with GitHub's OIDC token (no Azure password is stored), runs `aspire deploy`, starts the migrations job and waits for it, then checks the site. Deploys never overlap.
+[`deploy.yml`](.github/workflows/deploy.yml) deploys every push to `main` once CI has passed on it (a push that only changes documentation runs neither), and **Run workflow** in the Actions tab redeploys `main` by hand. It signs in to Azure with GitHub's OIDC token (no Azure password is stored), runs `aspire deploy`, starts the migrations job and waits for it, then checks the site. Deploys never overlap.
 
 One-time setup (`<sub>` is the subscription ID):
 
@@ -294,4 +294,4 @@ Keep `CustomDomains` and DNS records in the AppHost, not set by hand in the port
 
 1. Create a branch from an up-to-date `main`, named `type/scope/short-description`
 2. Use [conventional commits](https://www.conventionalcommits.org/) for commits and pull request titles
-3. Open a pull request. CI builds and runs every test.
+3. Open a pull request. CI builds and runs every test, unless it only changes `README.md`, `CLAUDE.md` or `docs/`. A newer push cancels the run it replaces.
