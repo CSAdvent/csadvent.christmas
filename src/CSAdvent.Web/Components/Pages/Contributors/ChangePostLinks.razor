@@ -1,0 +1,198 @@
+@page "/my-spots/links"
+@attribute [Authorize]
+@using CSAdvent.Web.Auth
+@using CSAdvent.Web.Components.Manage
+@using CSAdvent.Web.Contributors
+@inject PostLinkService PostLinks
+@inject NavigationManager Navigation
+@inject Microsoft.Extensions.Options.IOptions<SiteOptions> Site
+
+<PageTitle>Change your posts' links · C# Advent</PageTitle>
+
+<nav class="mb-6 text-sm font-medium"><a href="my-spots" class="text-advent-700 hover:underline">← My spots</a></nav>
+
+<h1 class="text-3xl font-bold tracking-tight text-slate-900">Change your posts' links</h1>
+<p class="mt-2 max-w-2xl text-slate-600">
+    Moved your blog, or one of your posts? Give us the new address of any of your posts from earlier seasons. An organizer checks
+    that each one opens the same post, then the archive and your posts' pages send readers there. Posts in a season that's still
+    running are changed on <a href="my-spots" class="text-advent-700 underline">My spots</a> straight away.
+</p>
+
+@if (Message is { } message)
+{
+    <p class="mt-6 max-w-2xl rounded-xl bg-green-50 p-4 font-medium text-green-800 ring-1 ring-green-200" role="status">@message</p>
+}
+
+@if (_error is { } error)
+{
+    <p class="mt-6 max-w-2xl rounded-xl bg-red-50 p-4 font-medium text-red-800 ring-1 ring-red-200" role="alert">@error</p>
+}
+
+@if (_pending is { } pending)
+{
+    <section class="mt-8 max-w-3xl rounded-xl bg-slate-50 p-5 ring-1 ring-slate-200">
+        <h2 class="font-semibold text-slate-900">Waiting for an organizer</h2>
+        <p class="mt-1 text-sm text-slate-600">
+            You asked for these on <LocalTime Value="pending.SubmittedAt" />. We'll email you at your verified GitHub email once an
+            organizer has checked them.
+        </p>
+        <ul class="mt-4 flex flex-col gap-3">
+            @foreach (var change in pending.Changes)
+            {
+                <li class="text-sm">
+                    <p class="text-slate-500">C# Advent · @change.Spot</p>
+                    <p><a href="@change.EntryPage" class="font-medium text-advent-700 underline">@change.Title</a></p>
+                    <p class="break-all text-slate-600">From @change.OldUrl</p>
+                    <p class="break-all text-slate-900">To @change.NewUrl</p>
+                </li>
+            }
+        </ul>
+    </section>
+}
+
+@* Rendered (hidden) after a withdrawal too, so a repeat reaches its handler instead of a 400. *@
+@if (_pending is not null || _withdrawPosted)
+{
+    <EditForm Model="Withdraw" FormName="withdraw" OnSubmit="WithdrawAsync" hidden="@(_pending is null)" class="mt-4 flex max-w-3xl flex-wrap items-center gap-3">
+        <input type="hidden" name="Withdraw.Version" value="@_pending?.Version" />
+        <button type="submit" class="rounded-lg bg-white px-4 py-2 font-semibold text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50">Withdraw it</button>
+        <span class="text-sm text-slate-600">Need to fix something? Withdraw it, then ask again.</span>
+    </EditForm>
+}
+
+@if (_pending is null && _posts.Count == 0 && _loaded)
+{
+    <div class="mt-8 max-w-2xl rounded-xl bg-slate-50 p-5 ring-1 ring-slate-200">
+        <p class="font-medium text-slate-900">You don't have any posts from earlier seasons on your account yet.</p>
+        <p class="mt-2 text-slate-600">
+            Wrote for C# Advent before? <a href="my-spots#older-posts" class="text-advent-700 underline">Find your posts</a> and ask
+            for them to be added to your account first.
+        </p>
+    </div>
+}
+
+@* Rendered (hidden) after a request too, so a repeat reaches its handler and says it's waiting. *@
+@if ((_pending is null && _posts.Count > 0) || _requestPosted)
+{
+    <EditForm Model="Form" FormName="post-links" OnValidSubmit="RequestAsync" hidden="@(_pending is not null || _posts.Count == 0)" class="mt-8 flex max-w-3xl flex-col gap-6">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="rounded-xl bg-red-50 p-4 text-sm ring-1 ring-red-200" />
+
+        <ul class="flex flex-col gap-4">
+            @for (var i = 0; i < Form!.Posts.Count; i++)
+            {
+                var index = i;
+                @if (_posts.FirstOrDefault(p => p.SlotId == Form.Posts[index].SlotId) is { } post)
+                {
+                    <li class="rounded-xl p-4 ring-1 ring-slate-200">
+                        <p class="text-sm text-slate-500">C# Advent · @post.Spot</p>
+                        <p class="font-medium text-slate-900"><a href="@post.EntryPage" class="hover:text-advent-700 hover:underline">@post.Title</a></p>
+                        <input type="hidden" name="Form.Posts[@index].SlotId" value="@post.SlotId" />
+                        <label class="mt-2 flex flex-col text-sm font-medium text-slate-700">
+                            Link
+                            <InputText @bind-Value="Form!.Posts[index].Url" type="url" maxlength="500" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                        </label>
+                    </li>
+                }
+            }
+        </ul>
+
+        <label class="flex flex-col text-sm font-medium text-slate-700">
+            A note for the organizers <span class="font-normal text-slate-500">(optional: anything that helps us check, such as where your blog moved from and to)</span>
+            <InputTextArea @bind-Value="Form!.Note" rows="3" maxlength="1000" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+        </label>
+
+        <div>
+            <button type="submit" class="rounded-lg bg-advent-600 px-4 py-2 font-semibold text-white hover:bg-advent-700">Ask for the new links</button>
+        </div>
+    </EditForm>
+
+    <p class="mt-8 max-w-2xl text-sm text-slate-500">
+        Change only the links that moved. We'll email you at your verified GitHub email once an organizer has checked them. Your
+        request and note are deleted 30 days after that.
+    </p>
+}
+
+@code {
+    private IReadOnlyList<LinkedPost> _posts = [];
+    private PostLinkReview? _pending;
+    private bool _loaded;
+    private bool _requestPosted;
+    private bool _withdrawPosted;
+    private string? _error;
+
+    [SupplyParameterFromQuery(Name = "done")]
+    public string? Done { get; set; }
+
+    [SupplyParameterFromForm(FormName = "post-links")]
+    private PostLinksForm? Form { get; set; }
+
+    [SupplyParameterFromForm(FormName = "withdraw")]
+    private PostLinkDecisionForm? Withdraw { get; set; }
+
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationState { get; set; } = null!;
+
+    private string? Message => Done switch
+    {
+        "requested" => "Thanks! An organizer will check the new links and email you.",
+        "withdrawn" => "Withdrawn. Your links are as they were; change them and ask again whenever you like.",
+        _ => null,
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Static rendering starts at the first wait, so the forms need their models first.
+        _requestPosted = Form is not null;
+        _withdrawPosted = Withdraw is not null;
+        Form ??= new();
+        Withdraw ??= new();
+
+        var contributorId = await ContributorIdAsync();
+        _posts = await PostLinks.GetPostsAsync(contributorId);
+        _pending = await PostLinks.GetPendingAsync(contributorId);
+        _loaded = true;
+
+        // A posted form keeps what was typed; a fresh page starts from the posts' links.
+        if (!_requestPosted)
+        {
+            Form = PostLinksForm.For(_posts);
+        }
+    }
+
+    private async Task RequestAsync()
+    {
+        switch (await PostLinks.RequestAsync(await ContributorIdAsync(), Form!))
+        {
+            case PostLinkOutcome.Requested:
+            case PostLinkOutcome.AlreadyRequested:
+                Navigation.NavigateTo($"{PostLinkLinks.Request}?done=requested");
+                break;
+            case PostLinkOutcome.NothingChanged:
+                _error = "All of those links are the same as they were. Change the ones that moved, then ask again.";
+                break;
+            case PostLinkOutcome.TooMany:
+                _error = $"You've asked a few times in the last hour. Try again later, or email {Site.Value.ContactEmail} with the new links.";
+                break;
+            case PostLinkOutcome.NoVerifiedEmail:
+                _error = "Your GitHub account needs a verified primary email, so we can tell you what the organizers decide. Add one on GitHub, sign out and sign in again.";
+                break;
+            default:
+                Navigation.NotFound();
+                break;
+        }
+    }
+
+    private async Task WithdrawAsync()
+    {
+        if (await PostLinks.WithdrawAsync(await ContributorIdAsync(), Withdraw!.Version) is PostLinkOutcome.Withdrawn)
+        {
+            Navigation.NavigateTo($"{PostLinkLinks.Request}?done=withdrawn");
+            return;
+        }
+
+        _error = "There's nothing waiting to withdraw: an organizer may have just decided it. Reload the page to see where it stands.";
+    }
+
+    private async Task<int> ContributorIdAsync() => (await AuthenticationState).User.GetContributorId() ?? 0;
+}

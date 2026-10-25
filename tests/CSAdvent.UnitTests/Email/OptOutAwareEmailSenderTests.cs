@@ -85,6 +85,7 @@ public sealed class OptOutAwareEmailSenderTests
         var claim = new ClaimEmailDetails(42, "Ada", "ada@example.com", "ada", null, null, 2026, 3, 1, 2);
         var spot = new BackupSpot(2026, 12, 2, 2);
         var postClaim = new PostClaimEmailDetails(7, "ada", "Ada", null, 2019, 12, 2, 2, "Title", "Ada");
+        var postLinks = new PostLinkEmailDetails(9, "ada", "Ada", null, [new PostLinkEmailChange(2019, 12, 2, 2, "Title", "https://old.example.com", "https://new.example.com")]);
 
         Assert.All(
             [
@@ -97,6 +98,8 @@ public sealed class OptOutAwareEmailSenderTests
                 BackupEmails.Replaced("Ada", spot, Site),
                 PostClaimEmails.Approved(postClaim, Site),
                 PostClaimEmails.Declined(postClaim, Site),
+                PostLinkEmails.Approved(postLinks, Site),
+                PostLinkEmails.Declined(postLinks, Site),
                 ReminderEmails.PostLinkMissing(new PostLinkReminder("Ada", 2026, 10, 1, 2, 3), Site),
                 ReminderEmails.PostLinkDueToday(new DayOfReminder("Ada", 2026, 10, 1, 2, new TimeOnly(10, 0)), Site),
             ],

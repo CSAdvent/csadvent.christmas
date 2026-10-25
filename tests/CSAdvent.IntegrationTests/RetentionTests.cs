@@ -172,6 +172,48 @@ public sealed class RetentionTests(AppHostFixture fixture)
         }
     }
 
+    [Fact]
+    public async Task DeletesRequestsForNewLinks30DaysAfterTheyreDecidedOrWithdrawn()
+    {
+        int oldId, withdrawnId, recentId, pendingId;
+        await using (var db = await fixture.CreateDbContextAsync())
+        {
+            var asker = new Contributor { GithubUserId = 8105, GithubLogin = "moved-poster", CreatedAt = Now };
+            db.Contributors.Add(asker);
+            await db.SaveChangesAsync(CancellationToken);
+            var slot = await db.Slots.Where(s => s.SeasonYear == 2020 && s.PostUrl != null).OrderBy(s => s.Id).FirstAsync(CancellationToken);
+
+            PostLinkRequest Request(PostLinkRequestStatus status, int? decidedDaysAgo) => new()
+            {
+                ContributorId = asker.Id,
+                Note = "I moved my blog.",
+                SubmittedAt = Now.AddDays(-(decidedDaysAgo ?? 0) - 1),
+                Status = status,
+                DecidedAt = decidedDaysAgo is { } days ? Now.AddDays(-days) : null,
+                DecidedBy = status is PostLinkRequestStatus.Approved or PostLinkRequestStatus.Declined ? "organizer" : null,
+                Changes = [new PostLinkChange { SlotId = slot.Id, OldUrl = slot.PostUrl!, NewUrl = "https://moved.example.dev/post" }],
+            };
+            var old = Request(PostLinkRequestStatus.Approved, 31);
+            var withdrawn = Request(PostLinkRequestStatus.Withdrawn, 31);
+            var recent = Request(PostLinkRequestStatus.Declined, 29);
+            var pending = Request(PostLinkRequestStatus.Pending, null);
+            db.PostLinkRequests.AddRange(old, withdrawn, recent, pending);
+            await db.SaveChangesAsync(CancellationToken);
+            (oldId, withdrawnId, recentId, pendingId) = (old.Id, withdrawn.Id, recent.Id, pending.Id);
+        }
+
+        await using (var db = await fixture.CreateDbContextAsync())
+        {
+            var deletion = await CreateRetention(db, Now).DeleteExpiredAsync(CancellationToken);
+
+            Assert.True(deletion.PostLinkRequests >= 2);
+            Assert.Equal(
+                [recentId, pendingId],
+                await db.PostLinkRequests.Where(r => r.Contributor.GithubLogin == "moved-poster").OrderBy(r => r.Id).Select(r => r.Id).ToListAsync(CancellationToken));
+            Assert.False(await db.PostLinkChanges.AnyAsync(c => c.RequestId == oldId || c.RequestId == withdrawnId, CancellationToken));
+        }
+    }
+
     private static ContactRetention CreateRetention(AdventDbContext db, DateTimeOffset now)
     {
         var clock = new FakeTimeProvider(now);

@@ -1,0 +1,159 @@
+@page "/manage/authors/link-changes/{Id:int}"
+@using CSAdvent.Web.Contributors
+@inject PostLinkService PostLinks
+@inject NavigationManager Navigation
+
+<PageTitle>Request for new post links · Manage · C# Advent</PageTitle>
+
+<ManageNav />
+
+<nav class="mb-4 text-sm font-medium"><a href="@PostLinkLinks.Requests" class="text-advent-700 hover:underline">← Requests for new post links</a></nav>
+
+@if (_error is { } error)
+{
+    <p class="mb-6 max-w-3xl rounded-xl bg-red-50 p-4 font-medium text-red-800 ring-1 ring-red-200" role="alert">@error</p>
+}
+
+@if (_review is { } review)
+{
+    <h1 class="text-3xl font-bold tracking-tight text-slate-900">New links for @(review.RequesterLogin)'s posts?</h1>
+
+    <dl class="mt-6 grid max-w-3xl gap-x-6 gap-y-3 text-sm sm:grid-cols-[10rem_1fr]">
+        <dt class="font-medium text-slate-500">Asked by</dt>
+        <dd class="text-slate-800">
+            @if (review.RequesterName is { Length: > 0 } name)
+            {
+                <text>@name · </text>
+            }
+            <a href="@($"https://github.com/{review.RequesterLogin}")" class="text-advent-700 underline" rel="noopener" target="_blank">@review.RequesterLogin on GitHub</a>
+            · <a href="manage/authors/@review.RequesterId" class="text-advent-700 underline">their author page</a>
+        </dd>
+        <dt class="font-medium text-slate-500">Asked</dt>
+        <dd class="text-slate-800"><LocalTime Value="review.SubmittedAt" /></dd>
+        <dt class="font-medium text-slate-500">Their note</dt>
+        <dd class="whitespace-pre-line text-slate-800">@(review.Note ?? "None")</dd>
+    </dl>
+
+    <ul class="mt-8 flex max-w-3xl flex-col gap-4">
+        @foreach (var change in review.Changes)
+        {
+            <li class="rounded-xl p-4 ring-1 ring-slate-200">
+                <p class="text-sm text-slate-500">C# Advent · @change.Spot</p>
+                <p class="font-semibold text-slate-900"><a href="@change.EntryPage" class="hover:text-advent-700 hover:underline">@change.Title</a></p>
+                <dl class="mt-2 grid gap-x-4 gap-y-1 text-sm sm:grid-cols-[4rem_1fr]">
+                    <dt class="font-medium text-slate-500">From</dt>
+                    <dd class="break-all"><a href="@change.OldUrl" class="text-advent-700 underline" rel="noopener" target="_blank">@change.OldUrl</a></dd>
+                    <dt class="font-medium text-slate-500">To</dt>
+                    <dd class="break-all"><a href="@change.NewUrl" class="font-medium text-advent-700 underline" rel="noopener" target="_blank">@change.NewUrl</a></dd>
+                </dl>
+                @if (review.Status is PostLinkRequestStatus.Pending && change.ChangedSince)
+                {
+                    <p class="mt-2 text-sm font-medium text-amber-800">Its link has changed since they asked: it's <span class="break-all">@change.CurrentUrl</span> now. Approving replaces it.</p>
+                }
+            </li>
+        }
+    </ul>
+
+    @if (review.Status is not PostLinkRequestStatus.Pending)
+    {
+        <p class="mt-8 max-w-3xl rounded-xl bg-slate-50 p-4 text-slate-700 ring-1 ring-slate-200">
+            @(review.Status switch { PostLinkRequestStatus.Approved => $"Approved by {review.DecidedBy}", PostLinkRequestStatus.Declined => $"Declined by {review.DecidedBy}", _ => "Withdrawn by them" })
+            @if (review.DecidedAt is { } decidedAt)
+            {
+                <text>, <LocalTime Value="decidedAt" /></text>
+            }.
+        </p>
+    }
+
+    @* A posted form stays rendered (hidden) even if the request was decided meanwhile, so its handler runs and says so. *@
+    @if (review.Status is PostLinkRequestStatus.Pending || _posted)
+    {
+        @if (review.Status is PostLinkRequestStatus.Pending && review.LinkedElsewhere > 0)
+        {
+            <p class="mt-8 max-w-3xl rounded-xl bg-amber-50 p-4 font-medium text-amber-900 ring-1 ring-amber-200">
+                @(review.LinkedElsewhere == 1 ? "One of these posts isn't" : $"{review.LinkedElsewhere} of these posts aren't") on their
+                account any more, so this can't be approved. Decline it; they can ask again for the posts that are theirs.
+            </p>
+        }
+
+        <div class="mt-8 flex max-w-3xl flex-col gap-4" hidden="@(review.Status is not PostLinkRequestStatus.Pending)">
+            <EditForm Model="Approve" FormName="approve" OnSubmit="ApproveAsync" class="rounded-xl bg-advent-50 p-4 ring-1 ring-advent-200">
+                <input type="hidden" name="Approve.Version" value="@review.Version" />
+                <p class="text-sm text-slate-600">
+                    Approving changes @(review.Changes.Count == 1 ? "the post's link" : $"all {review.Changes.Count} links") and emails
+                    them. To change only some, decline and change those yourself on their author page.
+                </p>
+                <button type="submit" class="mt-3 rounded-lg bg-advent-600 px-4 py-2 font-semibold text-white hover:bg-advent-700">Approve</button>
+            </EditForm>
+
+            <EditForm Model="Decline" FormName="decline" OnSubmit="DeclineAsync" class="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
+                <input type="hidden" name="Decline.Version" value="@review.Version" />
+                <p class="text-sm text-slate-600">Declining leaves the links as they are, and emails them that we couldn't confirm the new ones. They can reply, or ask again.</p>
+                <button type="submit" class="mt-3 rounded-lg bg-white px-4 py-2 font-semibold text-slate-800 ring-1 ring-slate-300 hover:bg-slate-100">Decline</button>
+            </EditForm>
+        </div>
+    }
+}
+
+@code {
+    private PostLinkReview? _review;
+    private string? _error;
+    private bool _posted;
+
+    [Parameter]
+    public int Id { get; set; }
+
+    [SupplyParameterFromForm(FormName = "approve")]
+    private PostLinkDecisionForm? Approve { get; set; }
+
+    [SupplyParameterFromForm(FormName = "decline")]
+    private PostLinkDecisionForm? Decline { get; set; }
+
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationState { get; set; } = null!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Static rendering starts at the first wait, so the forms need their models first.
+        _posted = Approve is not null || Decline is not null;
+        Approve ??= new();
+        Decline ??= new();
+
+        _review = await PostLinks.GetReviewAsync(Id);
+        if (_review is null)
+        {
+            Navigation.NotFound();
+        }
+    }
+
+    private async Task ApproveAsync() =>
+        Decided(await PostLinks.ApproveAsync(Id, Approve!.Version, await UserAsync()));
+
+    private async Task DeclineAsync() =>
+        Decided(await PostLinks.DeclineAsync(Id, Decline!.Version, await UserAsync()));
+
+    private void Decided(PostLinkDecision decision)
+    {
+        switch (decision)
+        {
+            case PostLinkDecision.Approved:
+                Navigation.NavigateTo($"{PostLinkLinks.Requests}?done=approved");
+                break;
+            case PostLinkDecision.Declined:
+                Navigation.NavigateTo($"{PostLinkLinks.Requests}?done=declined");
+                break;
+            case PostLinkDecision.NotTheirs:
+                _error = "A post in this request isn't on their account any more, so it wasn't approved.";
+                break;
+            case PostLinkDecision.AlreadyDecided:
+            case PostLinkDecision.ChangedByOthers:
+                _error = "Another organizer decided this request, or they withdrew it, while you were looking. Reload the page to see where it stands.";
+                break;
+            default:
+                Navigation.NotFound();
+                break;
+        }
+    }
+
+    private async Task<string> UserAsync() => (await AuthenticationState).User.Identity?.Name ?? "organizer";
+}

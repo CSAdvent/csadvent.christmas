@@ -1,6 +1,7 @@
 @page "/manage/authors"
 @inject AuthorService Authors
 @inject CSAdvent.Web.Contributors.PostClaimService PostClaims
+@inject CSAdvent.Web.Contributors.PostLinkService PostLinks
 
 <PageTitle>Authors · Manage · C# Advent</PageTitle>
 
@@ -19,11 +20,18 @@
     <p class="mt-4 max-w-3xl rounded-xl bg-slate-50 p-4 text-sm font-medium text-slate-800 ring-1 ring-slate-200" role="status">@message</p>
 }
 
-<p class="mt-4 max-w-3xl text-sm">
-    <a href="manage/authors/requests" class="font-semibold text-advent-700 hover:underline">
-        @(_pendingClaims switch { 0 => "Requests to add older posts", 1 => "1 request to add an older post is waiting", _ => $"{_pendingClaims} requests to add older posts are waiting" }) →
-    </a>
-</p>
+<ul class="mt-4 flex max-w-3xl flex-col gap-1 text-sm">
+    <li>
+        <a href="manage/authors/requests" class="font-semibold text-advent-700 hover:underline">
+            @(_pendingClaims switch { 0 => "Requests to add older posts", 1 => "1 request to add an older post is waiting", _ => $"{_pendingClaims} requests to add older posts are waiting" }) →
+        </a>
+    </li>
+    <li>
+        <a href="@CSAdvent.Web.Contributors.PostLinkLinks.Requests" class="font-semibold text-advent-700 hover:underline">
+            @(_pendingLinks switch { 0 => "Requests for new post links", 1 => "1 request for new post links is waiting", _ => $"{_pendingLinks} requests for new post links are waiting" }) →
+        </a>
+    </li>
+</ul>
 
 <form method="get" action="manage/authors" class="mt-6 flex flex-wrap items-end gap-3">
     <label class="flex flex-col text-sm font-medium text-slate-700">
@@ -96,6 +104,7 @@
     private List<AuthorRow> _shown = [];
     private int _linked;
     private int _pendingClaims;
+    private int _pendingLinks;
     private int _unlinked;
 
     [SupplyParameterFromQuery]
@@ -121,6 +130,7 @@
     {
         var authors = await Authors.ListAsync();
         _pendingClaims = await PostClaims.CountPendingAsync();
+        _pendingLinks = await PostLinks.CountPendingAsync();
         _linked = authors.Count(a => a.ContributorId is not null);
         _unlinked = authors.Count - _linked;
         _shown = [.. authors.Where(a =>

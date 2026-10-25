@@ -128,7 +128,13 @@
     }
 
     <section class="mt-12">
-        <h2 class="text-xl font-semibold text-slate-900">Spots</h2>
+        <div class="flex flex-wrap items-baseline justify-between gap-3">
+            <h2 class="text-xl font-semibold text-slate-900">Spots</h2>
+            @if (author.Published > 0)
+            {
+                <a href="manage/authors/@author.ContributorId/links" class="text-sm font-medium text-advent-700 hover:underline">Change their posts' links</a>
+            }
+        </div>
         @if (author.Posts.Count == 0)
         {
             <p class="mt-2 text-slate-600">No spots yet.</p>
