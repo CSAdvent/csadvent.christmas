@@ -21,7 +21,7 @@ public static class SearchEndpoints
 
     /// <summary>Pages that are signed in, personal, redirects or for organizers: nothing a search result should lead to.</summary>
     public static readonly IReadOnlyList<string> Disallowed =
-        ["/manage", "/my-spots", "/profile", "/claim/", "/backups/", "/go/", "/test-post/", "/test-mode/", "/signin", "/emails/", "/announcements/", "/dev/"];
+        ["/manage", "/my-spots", "/profile", "/claim/", "/backups/", "/go/", "/random", "/test-post/", "/test-mode/", "/signin", "/emails/", "/announcements/", "/dev/"];
 
     /// <summary>The public pages that are always there, relative to the base URL.</summary>
     public static readonly IReadOnlyList<string> PublicPages = ["", "archive", "about", "others", "announcements", "privacy", "terms"];

@@ -23,6 +23,9 @@ public static class EntryLinks
 /// <summary>A revealed post on the same day, for the entry page.</summary>
 public sealed record SiblingEntry(int Part, string PostTitle, string AuthorName);
 
+/// <summary>A post in the same season, for the entry page's previous and next links (#205).</summary>
+public sealed record AdjacentEntry(int Day, int Part, string PostTitle, string AuthorName);
+
 /// <summary>
 /// An entry's page. Before its reveal it carries nothing about the post or its author (#5), only when it's revealed.
 /// </summary>
@@ -48,6 +51,12 @@ public sealed record EntryView(
 
     /// <summary>The post in one line, if its author gave one (#208). Only once it's revealed, like the title.</summary>
     public string? PostSummary { get; init; }
+
+    /// <summary>The season's revealed post before this one, in calendar order (#205).</summary>
+    public AdjacentEntry? Previous { get; init; }
+
+    /// <summary>The season's next post, once it's revealed.</summary>
+    public AdjacentEntry? Next { get; init; }
 }
 
 /// <summary>Entry pages, the tracked redirect to each post, and their visit and click counts.</summary>
@@ -105,6 +114,13 @@ public sealed class EntryService(AdventDbContext db, AdventSchedule schedule, Ti
             return null;
         }
 
+        var season = await db.Slots
+            .AsNoTracking()
+            .Where(s => s.SeasonYear == year && s.AuthorName != null && s.PostTitle != null && s.PostUrl != null)
+            .Select(s => new AdjacentEntry(s.Day, s.Part, s.PostTitle!, s.AuthorName!))
+            .ToListAsync(cancellationToken);
+        var (previous, next) = Neighbors(season, day, part, revealedDay => schedule.IsRevealed(year, revealedDay));
+
         return new EntryView(
             slot.Id,
             year,
@@ -125,8 +141,23 @@ public sealed class EntryService(AdventDbContext db, AdventSchedule schedule, Ti
             slot.GithubLogin is not null)
         {
             PostSummary = slot.PostSummary,
+            Previous = previous,
+            Next = next,
         };
     }
+
+    /// <summary>
+    /// The revealed posts either side of a spot in its season, in calendar order (day, then part). The reveal is checked here,
+    /// not in SQL (#5), so the last revealed post has no next one until the following day is revealed.
+    /// </summary>
+    public static (AdjacentEntry? Previous, AdjacentEntry? Next) Neighbors(IEnumerable<AdjacentEntry> posts, int day, int part, Func<int, bool> isDayRevealed)
+    {
+        var revealed = posts.Where(p => isDayRevealed(p.Day)).OrderBy(p => p.Day).ThenBy(p => p.Part).ToList();
+        return (
+            revealed.LastOrDefault(p => p.Day < day || (p.Day == day && p.Part < part)),
+            revealed.FirstOrDefault(p => p.Day > day || (p.Day == day && p.Part > part)));
+    }
+
 
     /// <summary>The post a click should go to: only a revealed entry's own post, so the redirect can't be pointed anywhere else.</summary>
     public async Task<(int SlotId, string PostUrl)?> FindPostAsync(int year, int day, int part, CancellationToken cancellationToken = default)

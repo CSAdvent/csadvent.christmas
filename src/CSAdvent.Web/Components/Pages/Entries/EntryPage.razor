@@ -68,6 +68,28 @@
             </section>
         }
 
+        @if (entry.Previous is not null || entry.Next is not null)
+        {
+            <nav aria-label="Previous and next posts" class="mt-12 grid gap-4 sm:grid-cols-2">
+                @if (entry.Previous is { } previous)
+                {
+                    <a href="@EntryLinks.Page(entry.Year, previous.Day, previous.Part)" rel="prev" class="group flex flex-col rounded-xl p-4 ring-1 ring-slate-200 hover:ring-advent-400">
+                        <span class="text-sm font-medium text-slate-500">← Previous · @Label(entry, previous)</span>
+                        <span class="mt-1 font-semibold text-advent-700 group-hover:underline">@previous.PostTitle</span>
+                        <span class="text-sm text-slate-600">by @previous.AuthorName</span>
+                    </a>
+                }
+                @if (entry.Next is { } next)
+                {
+                    <a href="@EntryLinks.Page(entry.Year, next.Day, next.Part)" rel="next" class="group flex flex-col rounded-xl p-4 ring-1 ring-slate-200 hover:ring-advent-400 sm:col-start-2 sm:text-right">
+                        <span class="text-sm font-medium text-slate-500">Next · @Label(entry, next) →</span>
+                        <span class="mt-1 font-semibold text-advent-700 group-hover:underline">@next.PostTitle</span>
+                        <span class="text-sm text-slate-600">by @next.AuthorName</span>
+                    </a>
+                }
+            </nav>
+        }
+
         <p class="mt-12 text-slate-600">
             C# Advent: two C# posts a day, December 1 to 25, written by the community.
             <a href="@CalendarLink(entry)" class="text-advent-700 underline">See the whole calendar</a>
@@ -141,6 +163,10 @@ else if (_entry is { } upcoming)
         var byline = $"By {entry.AuthorName}, for C# Advent {entry.Year}: {entry.Spot.Replace(" · ", ", ")}.";
         return entry.PostSummary is { } summary ? $"{PostSummaries.AsSentence(summary)} {byline}" : byline;
     }
+
+    /// <summary>"December 7, post 1": where another post of the season is.</summary>
+    private static string Label(EntryView entry, AdjacentEntry other) =>
+        string.Create(CultureInfo.InvariantCulture, $"December {other.Day}{(entry.SlotsPerDay > 1 ? $", post {other.Part}" : "")}");
 
     // A season's calendar is on the home page until it's over, then in the archive.
     private static string CalendarLink(EntryView entry) =>

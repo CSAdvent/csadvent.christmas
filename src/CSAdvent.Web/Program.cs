@@ -67,6 +67,7 @@ builder.Services.AddScoped<PostClaimService>();
 builder.Services.AddScoped<PostLinkService>();
 builder.Services.AddScoped<ProfileService>();
 builder.Services.AddScoped<EntryService>();
+builder.Services.AddScoped<RevealedPosts>();
 builder.Services.AddSingleton<CardRenderer>();
 builder.Services.AddScoped<RssFeed>();
 builder.Services.AddScoped<RetrospectiveService>();

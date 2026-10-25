@@ -23,6 +23,15 @@ public static class EntryEndpoints
             return Results.Redirect(post.PostUrl);
         });
 
+        // "A random post" (#205): the page of any post readers can see, from any season but the test season. Never cached, so
+        // every visit gets another.
+        app.MapGet("/random", async (RevealedPosts revealed, HttpResponse response, CancellationToken cancellationToken) =>
+        {
+            response.Headers.CacheControl = "no-store";
+            var posts = await revealed.GetAsync(cancellationToken);
+            return Results.Redirect(posts.Count == 0 ? "/archive" : $"/{posts[Random.Shared.Next(posts.Count)].Page}");
+        });
+
         return app;
     }
 }
