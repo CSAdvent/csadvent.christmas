@@ -56,19 +56,22 @@ public sealed partial class SocialPostingTests(AppHostFixture fixture)
     public async Task ATestPostGoesOutWithoutMarkingAnything()
     {
         using var organizer = await fixture.SignInAsync("organizer", AppHostFixture.OrganizerGitHubId);
+
+        // Only Facebook's marks are counted: the other test classes mark Bluesky and Mastodon while this runs (#122), and
+        // every Facebook mark comes from this class, whose tests run one at a time.
         int before;
         await using (var db = await fixture.CreateDbContextAsync())
         {
-            before = await db.SocialPosts.CountAsync(CancellationToken);
+            before = await db.SocialPosts.CountAsync(p => p.Platform == SocialPlatform.Facebook, CancellationToken);
         }
 
-        var sent = await PostPlatformFormAsync(organizer, "/manage/social/test", SocialPlatform.Bluesky, mode: null);
+        var sent = await PostPlatformFormAsync(organizer, "/manage/social/test", SocialPlatform.Facebook, mode: null);
 
         Assert.Equal(Page, TestBrowser.PathOf(sent.Headers.Location!));
         Assert.Contains("(only logged: dry run)", await organizer.GetStringAsync(Page, CancellationToken));
         await using (var db = await fixture.CreateDbContextAsync())
         {
-            Assert.Equal(before, await db.SocialPosts.CountAsync(CancellationToken));
+            Assert.Equal(before, await db.SocialPosts.CountAsync(p => p.Platform == SocialPlatform.Facebook, CancellationToken));
         }
     }
 
