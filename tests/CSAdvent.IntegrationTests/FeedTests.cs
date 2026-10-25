@@ -40,15 +40,21 @@ public sealed class FeedTests(AppHostFixture fixture)
     public async Task UnchangedFeedsCostA304()
     {
         using var client = fixture.CreateWebClient();
-        var first = await client.GetAsync("/rss", CancellationToken);
-        var etag = first.Headers.ETag!;
-        Assert.Equal("public, max-age=600", first.Headers.CacheControl!.ToString());
 
-        using var conditional = new HttpRequestMessage(HttpMethod.Get, "/rss");
-        conditional.Headers.IfNoneMatch.Add(etag);
-        var second = await client.SendAsync(conditional, CancellationToken);
+        // Other tests change the archive (authors' names, retrospectives) while this runs, so a changed feed between the two
+        // requests is tried again: it only has to be unchanged once.
+        var status = HttpStatusCode.OK;
+        for (var attempt = 0; attempt < 5 && status != HttpStatusCode.NotModified; attempt++)
+        {
+            var first = await client.GetAsync("/rss", CancellationToken);
+            Assert.Equal("public, max-age=600", first.Headers.CacheControl!.ToString());
 
-        Assert.Equal(HttpStatusCode.NotModified, second.StatusCode);
+            using var conditional = new HttpRequestMessage(HttpMethod.Get, "/rss");
+            conditional.Headers.IfNoneMatch.Add(first.Headers.ETag!);
+            status = (await client.SendAsync(conditional, CancellationToken)).StatusCode;
+        }
+
+        Assert.Equal(HttpStatusCode.NotModified, status);
     }
 
     [Fact]

@@ -1,0 +1,61 @@
+@page "/manage/authors/requests"
+@using CSAdvent.Web.Contributors
+@inject PostClaimService PostClaims
+
+<PageTitle>Requests to add older posts · Manage · C# Advent</PageTitle>
+
+<ManageNav />
+
+<nav class="mb-4 text-sm font-medium"><a href="manage/authors" class="text-advent-700 hover:underline">← Authors</a></nav>
+
+<h1 class="text-3xl font-bold tracking-tight text-slate-900">Requests to add older posts</h1>
+<p class="mt-2 max-w-3xl text-slate-600">
+    Signed-in people asking for a post from a finished season to be added to their account, oldest first. Check each one is
+    really theirs, for example from the post's own site or their GitHub profile, before approving. They're told by email
+    either way.
+</p>
+
+@if (Message is { } message)
+{
+    <p class="mt-4 max-w-3xl rounded-xl bg-green-50 p-4 font-medium text-green-800 ring-1 ring-green-200" role="status">@message</p>
+}
+
+@if (_requests.Count == 0)
+{
+    <p class="mt-8 text-slate-600">Nothing's waiting.</p>
+}
+else
+{
+    <ul class="mt-8 flex max-w-3xl flex-col gap-3">
+        @foreach (var request in _requests)
+        {
+            <li class="flex flex-wrap items-center justify-between gap-3 rounded-xl p-4 ring-1 ring-slate-200">
+                <div>
+                    <p class="font-semibold text-slate-900">@request.Title</p>
+                    <p class="mt-1 text-sm text-slate-600">
+                        @request.Spot · by @request.Author · asked by
+                        <span class="font-medium text-slate-800">@request.RequesterLogin</span>
+                        <span class="text-slate-500">(<LocalTime Value="request.SubmittedAt" />)</span>
+                    </p>
+                </div>
+                <a href="manage/authors/requests/@request.Id" class="rounded-lg px-3 py-1.5 text-sm font-semibold text-advent-700 ring-1 ring-advent-300 hover:bg-advent-50">Review</a>
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private IReadOnlyList<PostClaimReview> _requests = [];
+
+    [SupplyParameterFromQuery(Name = "done")]
+    public string? Done { get; set; }
+
+    private string? Message => Done switch
+    {
+        "approved" => "Approved: the post is on their account, and they've been told.",
+        "declined" => "Declined, and they've been told.",
+        _ => null,
+    };
+
+    protected override async Task OnInitializedAsync() => _requests = await PostClaims.ListPendingAsync();
+}

@@ -16,7 +16,7 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261024160227_AddRetrospectives";
+    public override string LastMigrationId => "20261025003144_AddPostClaimRequests";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -619,6 +619,70 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                     .HasDatabaseName("ix_other_advent_logos_url");
 
                 b.ToTable("other_advent_logos");
+            });
+
+        modelBuilder.Entity("CSAdvent.Web.Data.PostClaimRequest", b =>
+            {
+                var id = b.Property<int>("Id")
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("integer")
+                    .HasColumnName("id");
+
+                NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(id);
+
+                b.Property<int>("ContributorId")
+                    .HasColumnType("integer")
+                    .HasColumnName("contributor_id");
+
+                b.Property<DateTimeOffset?>("DecidedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("decided_at");
+
+                b.Property<string>("DecidedBy")
+                    .HasMaxLength(39)
+                    .HasColumnType("character varying(39)")
+                    .HasColumnName("decided_by");
+
+                b.Property<string>("Note")
+                    .HasMaxLength(1000)
+                    .HasColumnType("character varying(1000)")
+                    .HasColumnName("note");
+
+                b.Property<int>("SlotId")
+                    .HasColumnType("integer")
+                    .HasColumnName("slot_id");
+
+                b.Property<string>("Status")
+                    .IsRequired()
+                    .HasMaxLength(10)
+                    .HasColumnType("character varying(10)")
+                    .HasColumnName("status");
+
+                b.Property<DateTimeOffset>("SubmittedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("submitted_at");
+
+                b.Property<uint>("Version")
+                    .IsConcurrencyToken()
+                    .ValueGeneratedOnAddOrUpdate()
+                    .HasColumnType("xid")
+                    .HasColumnName("xmin");
+
+                b.HasKey("Id")
+                    .HasName("pk_post_claim_requests");
+
+                b.HasIndex("ContributorId")
+                    .HasDatabaseName("ix_post_claim_requests_contributor_id");
+
+                b.HasIndex("SlotId", "ContributorId")
+                    .IsUnique()
+                    .HasDatabaseName("ix_post_claim_requests_slot_id_contributor_id")
+                    .HasFilter("status = 'Pending'");
+
+                b.HasIndex("Status", "SubmittedAt")
+                    .HasDatabaseName("ix_post_claim_requests_status_submitted_at");
+
+                b.ToTable("post_claim_requests");
             });
 
         modelBuilder.Entity("CSAdvent.Web.Data.Retrospective", b =>
@@ -1275,6 +1339,27 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                     .HasConstraintName("fk_other_advents_seasons_season_year");
 
                 b.Navigation("Season");
+            });
+
+        modelBuilder.Entity("CSAdvent.Web.Data.PostClaimRequest", b =>
+            {
+                b.HasOne("CSAdvent.Web.Data.Contributor", "Contributor")
+                    .WithMany()
+                    .HasForeignKey("ContributorId")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired()
+                    .HasConstraintName("fk_post_claim_requests_contributors_contributor_id");
+
+                b.HasOne("CSAdvent.Web.Data.Slot", "Slot")
+                    .WithMany()
+                    .HasForeignKey("SlotId")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired()
+                    .HasConstraintName("fk_post_claim_requests_slots_slot_id");
+
+                b.Navigation("Contributor");
+
+                b.Navigation("Slot");
             });
 
         modelBuilder.Entity("CSAdvent.Web.Data.Retrospective", b =>
