@@ -78,6 +78,8 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
   first come, first served. When someone's spot has gone, choose another open spot for them (their comments often name a
   second choice), or decline. Decline duplicates and requests you won't take too. Every approval and decline emails the
   author: a decline points them to the open days, or to the backup list once the calendar's full.
+- **Quick approvals:** a request nobody else wants its spot for has **Approve the requested spot** right on the list.
+  After deciding one on its own page, **Next pending request** takes you to the next.
 - **Settle the rest:** after approving a spot that others asked for too, its request's page lists them under **Settle
   the other requests**. Approve each into another open spot, or decline it; **Decline all** does the lot.
 - **Contributors withdraw** their own requests on My spots, which frees the request up for another day.

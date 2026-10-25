@@ -16,6 +16,14 @@
             <p class="font-medium">
                 @(Done is not null ? $"Request {Done}. We've emailed {request.DisplayName}." : $"{(Settled == "approved" ? "Approved into the spot you chose" : "Declined")}. We've emailed them.")
             </p>
+            @if (request.NextPendingId is { } next)
+            {
+                <a href="manage/requests/@next" class="rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-green-900 ring-1 ring-green-300 hover:bg-green-100">Next pending request →</a>
+            }
+            else
+            {
+                <span class="text-sm">That was the last pending request.</span>
+            }
         </div>
     }
 

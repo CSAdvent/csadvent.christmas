@@ -263,6 +263,44 @@ public sealed partial class SignUpDayTests(AppHostFixture fixture)
         Assert.Equal(HttpStatusCode.Redirect, (await PostClaimAsync(contributor, year, 6, 1, "With Drawer")).StatusCode);
     }
 
+    [Fact]
+    public async Task UncontestedRequestsAreApprovedFromTheListAndTheNextOneIsAClickAway()
+    {
+        const int year = 2317;
+        await TestSeasons.EnsureAsync(fixture, year, claimsOpen: true);
+        var alone = await RequestAsync(year, "sud-alone", 231701, day: 7, part: 1, "Al One");
+        var contested = await RequestAsync(year, "sud-contest", 231702, day: 8, part: 2, "Con Test");
+        var rival = await RequestAsync(year, "sud-rival", 231703, day: 8, part: 2, "Ri Val");
+        using var organizer = await SignInAsOrganizerAsync();
+
+        var list = await organizer.GetPageAsync($"/manage/requests?year={year}");
+        Assert.Contains($"name=\"RequestId\" value=\"{alone}\"", list);
+        Assert.DoesNotContain($"name=\"RequestId\" value=\"{contested}\"", list);
+        Assert.DoesNotContain($"name=\"RequestId\" value=\"{rival}\"", list);
+
+        var fields = new Dictionary<string, string>
+        {
+            ["RequestId"] = $"{alone}",
+            ["SlotId"] = $"{await SlotIdAsync(year, 7, 1)}",
+            ["Year"] = $"{year}",
+        };
+        var approved = await PostPlainFormAsync(organizer, $"/manage/requests?year={year}", "/manage/requests/approve", new(fields));
+
+        Assert.Equal($"/manage/requests?year={year}&approved={alone}", TestBrowser.PathOf(approved.Headers.Location!));
+        Assert.Matches(@"Approved Al One for December 7, post 1\.\s+We've emailed them\.", await organizer.GetPageAsync(TestBrowser.PathOf(approved.Headers.Location!)));
+        await fixture.WaitForEmailAsync("sud-alone@example.com", "You're on the C# Advent calendar: December 7");
+
+        // A double click changes nothing more.
+        var again = await PostPlainFormAsync(organizer, $"/manage/requests?year={year}", "/manage/requests/approve", new(fields));
+        Assert.Equal($"/manage/requests?year={year}&error=already-decided&request={alone}", TestBrowser.PathOf(again.Headers.Location!));
+        Assert.Contains("That request has already been approved, declined or withdrawn.", await organizer.GetPageAsync(TestBrowser.PathOf(again.Headers.Location!)));
+
+        // After approving on a request's page, the next one waiting is a click away.
+        await organizer.PostFormAsync($"/manage/requests/{contested}", "approve", new() { ["Approve.SlotId"] = $"{await SlotIdAsync(year, 8, 2)}" });
+        var done = await organizer.GetPageAsync($"/manage/requests/{contested}?done=approved");
+        Assert.Matches($"href=\"manage/requests/{rival}\"[^>]*>Next pending request", done);
+    }
+
     private Task<HttpClient> SignInAsOrganizerAsync() => fixture.SignInAsync("organizer", AppHostFixture.OrganizerGitHubId);
 
     /// <summary>A contributor requests a spot through the claim form, as they would on the site. Returns the request's ID.</summary>

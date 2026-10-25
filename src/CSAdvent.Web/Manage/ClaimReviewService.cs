@@ -43,7 +43,8 @@ public sealed record RequestDetails(
     ClaimantSocials Socials,
     IReadOnlyList<SpotStatus> SameDay,
     IReadOnlyList<RequestListItem> OtherRequestsForSpot,
-    IReadOnlyList<SpotStatus> OpenSpots)
+    IReadOnlyList<SpotStatus> OpenSpots,
+    int? NextPendingId)
 {
     /// <summary>The other requests still waiting for this one's spot: once it's approved, they need settling (#143).</summary>
     public IReadOnlyList<RequestListItem> Competing => [.. OtherRequestsForSpot.Where(r => r.Status is ClaimRequestStatus.Pending)];
@@ -138,8 +139,17 @@ public sealed class ClaimReviewService(AdventDbContext db, AdventSchedule schedu
             new ClaimantSocials(contributor.BlueskyHandle, contributor.MastodonHandle, contributor.LinkedInUrl, contributor.FacebookUrl, contributor.RedditUsername, contributor.XUsername),
             [.. spots.Where(s => s.Day == request.Slot.Day)],
             others,
-            [.. spots.Where(s => s.AuthorName is null)]);
+            [.. spots.Where(s => s.AuthorName is null)],
+            await NextPendingAsync(year, request.Id, cancellationToken));
     }
+
+    /// <summary>The oldest request still waiting in the season, other than <paramref name="exceptId"/>: "Next pending request" (#202).</summary>
+    public Task<int?> NextPendingAsync(int year, int exceptId, CancellationToken cancellationToken = default) =>
+        db.ClaimRequests
+            .Where(r => r.Slot.SeasonYear == year && r.Status == ClaimRequestStatus.Pending && r.Id != exceptId)
+            .OrderBy(r => r.SubmittedAt)
+            .Select(r => (int?)r.Id)
+            .FirstOrDefaultAsync(cancellationToken);
 
     /// <summary>Whether other requests are still waiting for the spot this one has.</summary>
     public Task<bool> HasCompetingAsync(int requestId, CancellationToken cancellationToken = default) =>
