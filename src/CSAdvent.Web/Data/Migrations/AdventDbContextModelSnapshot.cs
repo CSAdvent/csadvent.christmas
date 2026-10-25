@@ -16,7 +16,7 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261025215907_DeclineArchivedClaimRequests";
+    public override string LastMigrationId => "20261025223440_AddReaderDailyPosts";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -157,6 +157,10 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                 b.Property<DateTimeOffset>("CreatedAt")
                     .HasColumnType("timestamp with time zone")
                     .HasColumnName("created_at");
+
+                b.Property<DateTimeOffset?>("DailyPostsSince")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("daily_posts_since");
 
                 b.Property<string>("Email")
                     .IsRequired()
@@ -624,6 +628,50 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                     .HasDatabaseName("ix_contributors_github_user_id");
 
                 b.ToTable("contributors");
+            });
+
+        modelBuilder.Entity("CSAdvent.Web.Data.DailyPostDelivery", b =>
+            {
+                var id = b.Property<int>("Id")
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("integer")
+                    .HasColumnName("id");
+
+                NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(id);
+
+                b.Property<int>("Day")
+                    .HasColumnType("integer")
+                    .HasColumnName("day");
+
+                b.Property<int>("SeasonYear")
+                    .HasColumnType("integer")
+                    .HasColumnName("season_year");
+
+                b.Property<DateTimeOffset>("SentAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("sent_at");
+
+                b.Property<int>("SubscriberId")
+                    .HasColumnType("integer")
+                    .HasColumnName("subscriber_id");
+
+                b.HasKey("Id")
+                    .HasName("pk_daily_post_deliveries");
+
+                b.HasIndex("SentAt")
+                    .HasDatabaseName("ix_daily_post_deliveries_sent_at");
+
+                b.HasIndex("SubscriberId")
+                    .HasDatabaseName("ix_daily_post_deliveries_subscriber_id");
+
+                b.HasIndex("SeasonYear", "Day", "SubscriberId")
+                    .IsUnique()
+                    .HasDatabaseName("ix_daily_post_deliveries_season_year_day_subscriber_id");
+
+                b.ToTable("daily_post_deliveries", t =>
+                    {
+                        t.HasCheckConstraint("ck_daily_post_deliveries_day", "day BETWEEN 1 AND 25");
+                    });
             });
 
         modelBuilder.Entity("CSAdvent.Web.Data.EmailOptOut", b =>
@@ -1640,6 +1688,27 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                     .HasConstraintName("fk_content_block_revisions_contributors_created_by_id");
 
                 b.Navigation("CreatedBy");
+            });
+
+        modelBuilder.Entity("CSAdvent.Web.Data.DailyPostDelivery", b =>
+            {
+                b.HasOne("CSAdvent.Web.Data.Season", "Season")
+                    .WithMany()
+                    .HasForeignKey("SeasonYear")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired()
+                    .HasConstraintName("fk_daily_post_deliveries_seasons_season_year");
+
+                b.HasOne("CSAdvent.Web.Data.AnnouncementSubscriber", "Subscriber")
+                    .WithMany()
+                    .HasForeignKey("SubscriberId")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired()
+                    .HasConstraintName("fk_daily_post_deliveries_subscriber_id");
+
+                b.Navigation("Season");
+
+                b.Navigation("Subscriber");
             });
 
         modelBuilder.Entity("CSAdvent.Web.Data.EntryHit", b =>

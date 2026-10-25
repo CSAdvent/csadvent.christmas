@@ -9,14 +9,22 @@
     {
         <h1 class="text-3xl font-bold tracking-tight text-slate-900">You're on the list</h1>
         <p class="mt-4 text-slate-700">
-            We'll email you when C# Advent's sign-ups open, and now and then with news. Every email has a link to unsubscribe.
+            @if (_dailyPosts)
+            {
+                <text>We'll email you each day's new posts from December 1 to 25, when C# Advent's sign-ups open, and now and then with news.</text>
+            }
+            else
+            {
+                <text>We'll email you when C# Advent's sign-ups open, and now and then with news.</text>
+            }
+            Every email has a link to unsubscribe.
         </p>
         <p class="mt-6"><a href="" class="font-medium text-advent-700 underline">Back to C# Advent</a></p>
     }
     else if (_valid)
     {
         <h1 class="text-3xl font-bold tracking-tight text-slate-900">Confirm your email</h1>
-        <p class="mt-4 text-slate-700">One more click, and you'll get C# Advent's announcements by email.</p>
+        <p class="mt-4 text-slate-700">One more click, and you'll get C# Advent's @(_dailyPosts ? "daily posts and announcements" : "announcements") by email.</p>
         @* A plain form posting the protected token: opening the link alone (as mail scanners do) confirms nothing. *@
         <form method="post" action="@($"{AnnouncementSubscriptions.ConfirmPath.TrimStart('/')}?token={Uri.EscapeDataString(Token!)}")" class="mt-6">
             <button type="submit" class="rounded-lg bg-advent-600 px-5 py-2.5 font-semibold text-white hover:bg-advent-700">Confirm my email</button>
@@ -34,6 +42,7 @@
 
 @code {
     private bool _valid;
+    private bool _dailyPosts;
 
     [SupplyParameterFromQuery]
     public string? Token { get; set; }
@@ -42,5 +51,5 @@
     public bool? Done { get; set; }
 
     protected override async Task OnInitializedAsync() =>
-        _valid = Subscriptions.TryReadConfirmToken(Token, out var subscriberId) && await Subscriptions.ExistsAsync(subscriberId);
+        _valid = Subscriptions.TryReadConfirmToken(Token, out var subscriberId, out _dailyPosts) && await Subscriptions.ExistsAsync(subscriberId);
 }

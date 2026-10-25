@@ -1,0 +1,57 @@
+@page "/announcements/daily-posts/unsubscribe"
+@using CSAdvent.Web.Announcements
+@inject AnnouncementSubscriptions Subscriptions
+
+<PageTitle>Daily posts · C# Advent</PageTitle>
+
+<div class="max-w-2xl">
+    @if ((Done == true || _getsDailyPosts == false) && _subscriberId is { } subscriber)
+    {
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900">You won't get the daily posts anymore</h1>
+        <p class="mt-4 text-slate-700">
+            You're still on the announcements list, so we'll email you when C# Advent's sign-ups open, and now and then with news.
+            <a href="@Subscriptions.StopLink(subscriber)" class="font-medium text-advent-700 underline">Unsubscribe from those too</a>.
+        </p>
+        <p class="mt-6"><a href="" class="font-medium text-advent-700 underline">Back to the calendar</a></p>
+    }
+    else if (_getsDailyPosts is not null)
+    {
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900">Stop the daily posts?</h1>
+        <p class="mt-4 text-slate-700">
+            From December 1 to 25 we email you each day's new C# Advent posts. You can turn that off and still get our
+            announcements.
+        </p>
+        @* A plain form (not an EditForm): it posts to the same endpoint mail providers use for one-click unsubscribe. *@
+        <form method="post" action="@($"{AnnouncementSubscriptions.DailyPostsStopPath.TrimStart('/')}?token={Uri.EscapeDataString(Token!)}")" class="mt-6">
+            <button type="submit" class="rounded-lg bg-advent-600 px-5 py-2.5 font-semibold text-white hover:bg-advent-700">Stop the daily posts</button>
+        </form>
+    }
+    else
+    {
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900">This link doesn't work anymore</h1>
+        <p class="mt-4 text-slate-700">
+            You may have unsubscribed already. If you're still getting emails you don't want, reply to one of them and we'll sort
+            it out.
+        </p>
+    }
+</div>
+
+@code {
+    private int? _subscriberId;
+    private bool? _getsDailyPosts;
+
+    [SupplyParameterFromQuery]
+    public string? Token { get; set; }
+
+    [SupplyParameterFromQuery]
+    public bool? Done { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Subscriptions.TryReadDailyPostsStopToken(Token, out var subscriberId))
+        {
+            _getsDailyPosts = await Subscriptions.GetsDailyPostsAsync(subscriberId);
+            _subscriberId = _getsDailyPosts is null ? null : subscriberId;
+        }
+    }
+}

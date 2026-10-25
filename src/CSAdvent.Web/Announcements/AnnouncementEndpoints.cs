@@ -9,6 +9,7 @@ public static class AnnouncementEndpoints
     public const string Page = "/announcements";
     public const string ConfirmPage = "/announcements/confirm";
     public const string UnsubscribePage = "/announcements/unsubscribe";
+    public const string DailyPostsUnsubscribePage = "/announcements/daily-posts/unsubscribe";
 
     private static int _rateLimitKeyChecked;
 
@@ -57,7 +58,7 @@ public static class AnnouncementEndpoints
                     return Results.LocalRedirect($"{back}?error=email{anchor}");
                 }
 
-                await subscriptions.SubscribeAsync(form.Email!, cancellationToken);
+                await subscriptions.SubscribeAsync(form.Email!, form.DailyPosts, cancellationToken);
                 return Results.LocalRedirect($"{back}?done=check-inbox{anchor}");
             })
             .RequireRateLimiting(RateLimitPolicy);
@@ -68,7 +69,8 @@ public static class AnnouncementEndpoints
         app.MapGet(AnnouncementSubscriptions.ConfirmPath, (string? token) => Results.Redirect($"{ConfirmPage}?token={Uri.EscapeDataString(token ?? "")}"));
         app.MapPost(AnnouncementSubscriptions.ConfirmPath, async (string? token, AnnouncementSubscriptions subscriptions, CancellationToken cancellationToken) =>
             {
-                var done = subscriptions.TryReadConfirmToken(token, out var subscriberId) && await subscriptions.ConfirmAsync(subscriberId, cancellationToken);
+                var done = subscriptions.TryReadConfirmToken(token, out var subscriberId, out var dailyPosts)
+                    && await subscriptions.ConfirmAsync(subscriberId, dailyPosts, cancellationToken);
                 return Results.Redirect($"{ConfirmPage}?token={Uri.EscapeDataString(token ?? "")}&done={(done ? "true" : "false")}");
             })
             .DisableAntiforgery();
@@ -84,6 +86,17 @@ public static class AnnouncementEndpoints
 
                 await subscriptions.UnsubscribeAsync(subscriberId, cancellationToken);
                 return Results.Redirect($"{UnsubscribePage}?done=true");
+            })
+            .DisableAntiforgery();
+
+        // The link in the daily posts emails (#206) turns off only those, and keeps the address on the list. The token stays on
+        // the page afterwards, so it can offer to unsubscribe from everything too.
+        app.MapGet(AnnouncementSubscriptions.DailyPostsStopPath, (string? token) =>
+            Results.Redirect($"{DailyPostsUnsubscribePage}?token={Uri.EscapeDataString(token ?? "")}"));
+        app.MapPost(AnnouncementSubscriptions.DailyPostsStopPath, async (string? token, AnnouncementSubscriptions subscriptions, CancellationToken cancellationToken) =>
+            {
+                var done = subscriptions.TryReadDailyPostsStopToken(token, out var subscriberId) && await subscriptions.StopDailyPostsAsync(subscriberId, cancellationToken);
+                return Results.Redirect($"{DailyPostsUnsubscribePage}?token={Uri.EscapeDataString(token ?? "")}&done={(done ? "true" : "false")}");
             })
             .DisableAntiforgery();
 

@@ -19,15 +19,16 @@ public sealed record AnnouncementRow(int Id, AnnouncementKind Kind, string Subje
     public bool IsDraft => SentAt is null;
 }
 
-public sealed record SubscriberCounts(int Confirmed, int Unconfirmed);
+/// <param name="DailyPosts">Confirmed subscribers who get each December day's posts too (#206).</param>
+public sealed record SubscriberCounts(int Confirmed, int Unconfirmed, int DailyPosts = 0);
 
 public sealed class AnnouncementOptions
 {
     public const string SectionName = "Announcements";
 
     /// <summary>
-    /// How many announcement emails go out an hour, leaving room under the email service's limit (100 an hour for a new
-    /// custom domain) for reminders and the rest.
+    /// How many emails to the list go out an hour (announcements, past authors' invitations and readers' daily posts together),
+    /// leaving room under the email service's limit (100 an hour for a new custom domain) for reminders and the rest.
     /// </summary>
     [Range(1, 10000)]
     public int PerHour { get; set; } = 40;
@@ -36,8 +37,9 @@ public sealed class AnnouncementOptions
 /// <summary>
 /// Announcements to the list (#49): organizers write them at <c>/manage/announcements</c>, and the season's "sign-ups are
 /// open" email is queued automatically, when past authors start being invited too (<see cref="PastAuthorInvitationService"/>).
-/// <see cref="AnnouncementWorker"/> delivers them a few at a time, within <see cref="AnnouncementOptions.PerHour"/> for both
-/// kinds together, recording each copy before sending it, so nobody gets one twice even across replicas.
+/// <see cref="AnnouncementWorker"/> delivers them a few at a time, within <see cref="AnnouncementOptions.PerHour"/> for every
+/// email to the list together (readers' daily posts too, <see cref="ReaderDailyEmailService"/>), recording each copy before
+/// sending it, so nobody gets one twice even across replicas.
 /// </summary>
 public sealed partial class AnnouncementService(
     AdventDbContext db,
@@ -45,6 +47,7 @@ public sealed partial class AnnouncementService(
     SeasonAdminService seasons,
     AnnouncementSubscriptions subscriptions,
     PastAuthorInvitationService invitations,
+    ReaderDailyEmailService readers,
     EmailComposer composer,
     IEmailSender sender,
     IOptions<AnnouncementOptions> options,
@@ -83,7 +86,8 @@ public sealed partial class AnnouncementService(
 
     public async Task<SubscriberCounts> CountSubscribersAsync(CancellationToken cancellationToken = default) => new(
         await db.AnnouncementSubscribers.CountAsync(s => s.ConfirmedAt != null, cancellationToken),
-        await db.AnnouncementSubscribers.CountAsync(s => s.ConfirmedAt == null, cancellationToken));
+        await db.AnnouncementSubscribers.CountAsync(s => s.ConfirmedAt == null, cancellationToken),
+        await readers.CountReadersAsync(cancellationToken));
 
     /// <summary>Saves a draft, new or existing. Returns its ID, or null if it's been sent and can't change.</summary>
     public async Task<int?> SaveDraftAsync(int? id, AnnouncementForm form, string savedBy, CancellationToken cancellationToken = default)
@@ -147,8 +151,9 @@ public sealed partial class AnnouncementService(
         await db.Announcements.Where(a => a.Id == id && a.SentAt == null).ExecuteDeleteAsync(cancellationToken) == 1;
 
     /// <summary>
-    /// Queues the "sign-ups are open" email when it's due, then delivers what it can within the hour's allowance, and then
-    /// past authors' invitations with what's left, while the season's sign-ups are open. Returns how many emails went out.
+    /// Queues the "sign-ups are open" email when it's due, then sends what it can within the hour's allowance: the day's posts
+    /// to readers first (they're only news that day), then announcements, then past authors' invitations while the season's
+    /// sign-ups are open. Returns how many emails went out.
     /// </summary>
     /// <param name="signUpsYear">The season whose sign-ups to announce, instead of the current one (for the tests).</param>
     public async Task<int> RunAsync(DateTimeOffset now, int? signUpsYear = null, CancellationToken cancellationToken = default)
@@ -159,11 +164,14 @@ public sealed partial class AnnouncementService(
             await QueueSignUpsOpenAsync(openingYear, now, cancellationToken);
         }
 
+        // Only the hour up to now counts, so a run at another time (the tests' runs in other years) never uses it up.
         var hourAgo = now - TimeSpan.FromHours(1);
         var budget = options.Value.PerHour
-            - await db.AnnouncementDeliveries.CountAsync(d => d.SentAt > hourAgo, cancellationToken)
-            - await invitations.CountSentSinceAsync(hourAgo, cancellationToken);
-        var sent = 0;
+            - await db.AnnouncementDeliveries.CountAsync(d => d.SentAt > hourAgo && d.SentAt <= now, cancellationToken)
+            - await invitations.CountSentAsync(hourAgo, now, cancellationToken)
+            - await readers.CountSentAsync(hourAgo, now, cancellationToken);
+        var sent = await readers.RunAsync(now, budget, cancellationToken);
+        budget -= sent;
         foreach (var announcement in await db.Announcements.AsNoTracking().Where(a => a.SentAt != null && a.FinishedAt == null).OrderBy(a => a.SentAt).ToListAsync(cancellationToken))
         {
             if (budget <= 0)

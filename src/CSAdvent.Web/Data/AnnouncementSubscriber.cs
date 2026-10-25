@@ -21,6 +21,12 @@ public sealed class AnnouncementSubscriber
 
     /// <summary>When the last confirmation email went out, so entering the same address again can't flood its inbox.</summary>
     public DateTimeOffset ConfirmationSentAt { get; set; }
+
+    /// <summary>
+    /// When they confirmed they'd like each December day's posts by email too (#206), or null if they haven't. Turning them
+    /// off clears it and keeps them on the list.
+    /// </summary>
+    public DateTimeOffset? DailyPostsSince { get; set; }
 }
 
 internal sealed class AnnouncementSubscriberConfiguration : IEntityTypeConfiguration<AnnouncementSubscriber>

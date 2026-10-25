@@ -21,6 +21,12 @@
             The "sign-ups are open" email goes out by itself at 9 AM Eastern on the day each season's sign-ups open.
             Announcements go out @Options.Value.PerHour an hour, to stay under the email service's limit.
         </p>
+        <p class="mt-2 max-w-3xl text-slate-600">
+            @Plural(_counts.DailyPosts, "subscriber") also @(_counts.DailyPosts == 1 ? "gets" : "get") each December day's posts. They go
+            first, from when the day's email goes to authors (once both posts are in, from 9 AM Eastern, 2 PM at the latest),
+            within the same @Options.Value.PerHour an hour, so reaching everyone takes @Hours(_counts.DailyPosts) a day. Anyone not reached
+            by midnight misses that day's.
+        </p>
     </div>
     <a href="manage/announcements/new" class="rounded-lg bg-advent-600 px-4 py-2 font-semibold text-white hover:bg-advent-700">New announcement</a>
 </div>

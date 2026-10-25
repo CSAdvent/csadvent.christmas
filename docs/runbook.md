@@ -119,7 +119,9 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
   - Reddit posts go to r/csadvent only, never r/csharp or r/dotnet.
   - A failed automatic post shows its error and a **Retry now** button.
 - **The daily email** goes to everyone with a spot as soon as both of the day's posts are in, from 9 AM, or at 2 PM with
-  whichever are, leaving out any without the blurb.
+  whichever are, leaving out any without the blurb. Announcement subscribers who asked for the daily posts get the same
+  email at the same time, 40 an hour (before any announcement), until midnight (see Email Sending Limits).
+  `/manage/announcements` shows how many readers there are and how long a day's send takes.
 - **The blurb check** runs every 15 minutes, and only posts that pass are announced automatically.
   - **A missing blurb** emails its author (once) and asks the backups from midnight, an hour each. A backup who accepts takes
     the spot at the post's announcement unless the author adds the blurb first. If nobody has by then, you get an email: the
@@ -334,7 +336,7 @@ for a custom domain. They're **per subscription**, so everything the site sends 
 
 - claim emails (two per claim: one to the contributor, one to the organizers; then one more when it's approved or
   declined). One person can have 3 requests waiting and make 5 an hour, so nobody can use the limit up alone (#137);
-- announcements and past-author invitations;
+- announcements, past-author invitations and readers' daily posts;
 - post link reminders and the last call;
 - the daily email;
 - backup asks;
@@ -342,7 +344,8 @@ for a custom domain. They're **per subscription**, so everything the site sends 
 - the organizers' notices.
 
 Over the limit, Azure refuses with 429 (Too Many Requests). Claim emails aren't retried: they're logged, which trips the
-error alert. Only announcements and invitations are budgeted (`Announcements:PerHour`, 40), and
+error alert. Only announcements, invitations and readers' daily posts are budgeted (`Announcements:PerHour`, 40, shared
+by all three; a day's daily posts reach at most about 400 readers between 2 PM and midnight, or 600 from 9 AM), and
 `Reminders:PauseBetweenEmails` (2 seconds) only paces one loop on one replica. So on sign-up day, about 30 claims in the
 first hour plus the announcement can reach the limit.
 

@@ -147,9 +147,9 @@ public sealed partial class PastAuthorInvitationService(
         return sent;
     }
 
-    /// <summary>Invitations sent since <paramref name="since"/>, for the shared hourly allowance.</summary>
-    public Task<int> CountSentSinceAsync(DateTimeOffset since, CancellationToken cancellationToken = default) =>
-        db.PastAuthorInvitations.CountAsync(i => i.SentAt > since, cancellationToken);
+    /// <summary>Invitations sent after <paramref name="since"/> and up to <paramref name="until"/>, for the shared hourly allowance.</summary>
+    public Task<int> CountSentAsync(DateTimeOffset since, DateTimeOffset until, CancellationToken cancellationToken = default) =>
+        db.PastAuthorInvitations.CountAsync(i => i.SentAt > since && i.SentAt <= until, cancellationToken);
 
     /// <summary>
     /// Who to invite from the finished seasons' spots: one per address (lowercased), named from their profile or else the

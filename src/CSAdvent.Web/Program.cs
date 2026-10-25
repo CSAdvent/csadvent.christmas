@@ -149,6 +149,7 @@ builder.Services.AddOptions<AnnouncementOptions>()
     .ValidateDataAnnotations()
     .ValidateOnStart();
 builder.Services.AddScoped<PastAuthorInvitationService>();
+builder.Services.AddScoped<ReaderDailyEmailService>();
 builder.Services.AddScoped<AnnouncementService>();
 if (builder.Configuration.GetValue("Announcements:SendInBackground", defaultValue: true))
 {

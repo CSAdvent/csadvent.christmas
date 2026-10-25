@@ -13,10 +13,10 @@ namespace CSAdvent.Web.Reminders;
 public sealed record DailyEdition(int Year, int Day, DateOnly RunDate, IReadOnlyList<SharedPost> Posts);
 
 /// <summary>
-/// When a day's posts go out in the daily email to the season's authors (#209, <see cref="ReminderService"/>): from
-/// <see cref="ReminderOptions.SendAt"/> as soon as every post of the day is ready, or from the cutoff
-/// (<see cref="ReminderOptions.DailyEmailCutoff"/>) with whichever are, so a post that arrives during the morning isn't left
-/// out. Either way each email still goes once.
+/// When a day's posts go out by email (#209), to the season's authors (<see cref="ReminderService"/>) and to readers who asked
+/// for them (<see cref="Announcements.ReaderDailyEmailService"/>): from <see cref="ReminderOptions.SendAt"/> as soon as every
+/// post of the day is ready, or from the cutoff (<see cref="ReminderOptions.DailyEmailCutoff"/>) with whichever are, so a post
+/// that arrives during the morning isn't left out. Either way each email still goes once.
 /// </summary>
 public sealed class DailyPosts(
     AdventDbContext db,

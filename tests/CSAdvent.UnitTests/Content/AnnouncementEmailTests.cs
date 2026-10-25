@@ -23,6 +23,19 @@ public sealed class AnnouncementEmailTests
     }
 
     [Fact]
+    public void AskingForTheDailyPostsSaysSoInTheConfirmation()
+    {
+        var email = AnnouncementSubscriptions.Confirmation("https://csadvent.christmas/emails/announcements/confirm?token=abc", Site, dailyPosts: true);
+        var text = EmailText.Render(email, Site.BaseUrl);
+
+        Assert.Equal("Confirm C# Advent's daily posts", email.Subject);
+        Assert.Contains("each day's new posts from December 1 to 25", text);
+        Assert.Contains("nothing changes without confirming", text);
+        Assert.Equal("https://csadvent.christmas/emails/announcements/confirm?token=abc", Assert.Single(email.Body.OfType<ButtonBlock>()).Url);
+        Assert.Null(email.UnsubscribeUrl);
+    }
+
+    [Fact]
     public void AnAnnouncementHasItsParagraphsButtonAndTheSubscribersOwnUnsubscribeLink()
     {
         var announcement = new Announcement

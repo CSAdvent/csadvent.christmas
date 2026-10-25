@@ -266,6 +266,12 @@ public static class EmailCatalog
             "The address entered.",
             site => CSAdvent.Web.Announcements.AnnouncementSubscriptions.Confirmation($"{site.BaseUrl.TrimEnd('/')}/emails/announcements/confirm?token=sample", site)),
         new(
+            "announcements-confirm-daily",
+            "Confirm the daily posts",
+            "When someone enters an address for announcements and ticks the daily posts, unless it already gets them or was sent a confirmation in the last day. Subscribers asking for the daily posts get it too.",
+            "The address entered.",
+            site => CSAdvent.Web.Announcements.AnnouncementSubscriptions.Confirmation($"{site.BaseUrl.TrimEnd('/')}/emails/announcements/confirm?token=sample", site, dailyPosts: true)),
+        new(
             "announcement",
             "Announcement",
             "When an organizer sends an announcement from /manage/announcements, a few at a time.",
@@ -317,6 +323,19 @@ public static class EmailCatalog
                     RecipientIsAuthorToday: true),
                 site,
                 $"{site.BaseUrl.TrimEnd('/')}/emails/daily/stop?token=sample")),
+        new(
+            "daily-posts-readers",
+            "Today's posts, for readers",
+            "Each day from December 1 to 25, when the authors' daily email goes (once both posts are in, from 9 AM Eastern, 2 PM at the latest), a few at a time within the announcements' hourly allowance, until midnight.",
+            "Announcement subscribers who asked for the daily posts, once each. It has a one-click link that turns off only the daily posts.",
+            site => ReminderEmails.DailyForReaders(
+                3,
+                [
+                    new SharedPost("Ten things I wish I knew about Span<T>", "https://example.com/span", "Ada Lovelace"),
+                    new SharedPost("Source generators from scratch", "https://example.com/generators", "Grace Hopper"),
+                ],
+                site,
+                $"{site.BaseUrl.TrimEnd('/')}/emails/announcements/daily-posts/stop?token=sample")),
     ];
 
     private static string SampleOffer(SiteOptions site) => $"{site.BaseUrl.TrimEnd('/')}/backups/offers/7";

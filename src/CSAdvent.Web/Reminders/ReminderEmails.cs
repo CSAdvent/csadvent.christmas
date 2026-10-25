@@ -88,14 +88,42 @@ public static class ReminderEmails
         Transactional = true,
     };
 
-    public static EmailContent Daily(DailyShare share, SiteOptions site, string unsubscribeUrl)
+    public static EmailContent Daily(DailyShare share, SiteOptions site, string unsubscribeUrl) => DailyEmail(
+        share.Day,
+        share.Posts,
+        $"Hi {share.RecipientName}!",
+        share.RecipientIsAuthorToday,
+        site,
+        $"You're getting this because you have a spot in C# Advent {share.Year}. We send it each day of Advent.",
+        unsubscribeUrl);
+
+    /// <summary>
+    /// The same email for readers who asked for each day's posts (#206), with the link that turns off only the daily posts.
+    /// </summary>
+    public static EmailContent DailyForReaders(int day, IReadOnlyList<SharedPost> posts, SiteOptions site, string unsubscribeUrl) => DailyEmail(
+        day,
+        posts,
+        "Hi!",
+        recipientIsAuthorToday: false,
+        site,
+        "You're getting this because you asked for C# Advent's daily posts by email. We send it each day of Advent.",
+        unsubscribeUrl);
+
+    private static EmailContent DailyEmail(
+        int day,
+        IReadOnlyList<SharedPost> posts,
+        string greeting,
+        bool recipientIsAuthorToday,
+        SiteOptions site,
+        string reason,
+        string unsubscribeUrl)
     {
         List<EmailBlock> body =
         [
-            Paragraph($"Hi {share.RecipientName}! Here's what's new on the C# Advent calendar today:"),
-            new ListBlock([.. share.Posts.Select(post => (IReadOnlyList<EmailSpan>)[Link(post.Title, post.Url), $" by {post.AuthorName}"])]),
+            Paragraph($"{greeting} Here's what's new on the C# Advent calendar today:"),
+            new ListBlock([.. posts.Select(post => (IReadOnlyList<EmailSpan>)[Link(post.Title, post.Url), $" by {post.AuthorName}"])]),
         ];
-        if (share.RecipientIsAuthorToday)
+        if (recipientIsAuthorToday)
         {
             body.Add(Paragraph("One of today's posts is yours. Thank you for taking part!"));
         }
@@ -107,13 +135,13 @@ public static class ReminderEmails
 
         return new EmailContent
         {
-            Subject = share.Posts.Count == 1
-                ? $"Day {share.Day} of C# Advent: {share.Posts[0].Title}"
-                : $"Day {share.Day} of C# Advent: {share.Posts.Count} new posts to share",
+            Subject = posts.Count == 1
+                ? $"Day {day} of C# Advent: {posts[0].Title}"
+                : $"Day {day} of C# Advent: {posts.Count} new posts to share",
             Preview = "Today's posts are live. Help spread the word!",
-            Heading = $"December {share.Day}: today's posts are live",
+            Heading = $"December {day}: today's posts are live",
             Body = body,
-            Reason = $"You're getting this because you have a spot in C# Advent {share.Year}. We send it each day of Advent.",
+            Reason = reason,
             UnsubscribeUrl = unsubscribeUrl,
         };
     }
