@@ -102,6 +102,49 @@ public sealed class PublisherTests
     }
 
     [Fact]
+    public async Task XPostsAsTheAccountWithAnOAuthSignature()
+    {
+        var x = new FakePlatform(_ => (HttpStatusCode.Created, """{ "data": { "id": "1850000000000000001", "text": "…" } }"""));
+        var credentials = new XCredentials { ApiKey = "api-key", ApiKeySecret = "api-secret", AccessToken = "access-token", AccessTokenSecret = "access-secret" };
+        var clock = new FakeTimeProvider(new DateTimeOffset(2026, 12, 6, 15, 0, 0, TimeSpan.Zero));
+
+        var url = await new XPublisher(new HttpClient(x), "csadvent", credentials, clock).PublishAsync(Publication(SocialPlatform.X), CancellationToken);
+
+        Assert.Equal("https://x.com/csadvent/status/1850000000000000001", url);
+        var request = Assert.Single(x.Requests);
+        Assert.Equal((HttpMethod.Post, "https://api.x.com/2/tweets"), (request.Method, request.Url));
+        Assert.Equal(Text, (string?)JsonNode.Parse(request.Body)!["text"]);
+        Assert.StartsWith("OAuth oauth_consumer_key=\"api-key\", oauth_nonce=\"", request.Authorization);
+        Assert.Contains("oauth_timestamp=\"1796569200\", oauth_token=\"access-token\", oauth_version=\"1.0\"", request.Authorization);
+        Assert.DoesNotContain("secret", request.Authorization);
+    }
+
+    [Theory]
+    // X's own worked example, from its OAuth 1.0a docs ("Creating a signature"), before and after it moved to api.x.com.
+    [InlineData("https://api.twitter.com/1.1/statuses/update.json?include_entities=true", "hCtSmYh%2BiHYCEqBWrE7C7hYmtUk%3D")]
+    [InlineData("https://api.x.com/1.1/statuses/update.json?include_entities=true", "Ls93hJiZbQ3akF3HF3x1Bz8%2FzU4%3D")]
+    public void XRequestsAreSignedTheOAuthWay(string url, string signature)
+    {
+        var credentials = new XCredentials
+        {
+            ApiKey = "xvz1evFS4wEEPTGEFPHBog",
+            ApiKeySecret = "kAcSOqF21Fu85e7zjz7ZN2U4ZRhfV3WpwPAoE3Z7kBw",
+            AccessToken = "370773112-GmHxMAgYyLbNEtIKZeRNFsMKPR9EyMZeS9weJAEb",
+            AccessTokenSecret = "LswwdoUaIvS8ltyTt5jkRh4J50vUPVVHtR2YPi5kE",
+        };
+
+        var authorization = XPublisher.Authorization(
+            HttpMethod.Post,
+            new Uri(url),
+            [KeyValuePair.Create("status", "Hello Ladies + Gentlemen, a signed OAuth request!")],
+            credentials,
+            DateTimeOffset.FromUnixTimeSeconds(1318622958),
+            "kYjzVBB8Y0ZFabxSWbWovY3uYSQ2pTgmZeNu2VS4cg");
+
+        Assert.Contains($"oauth_signature=\"{signature}\"", authorization);
+    }
+
+    [Fact]
     public void FacetsAreCountedInUtf8Bytes()
     {
         var bytes = Encoding.UTF8.GetBytes(Text);
@@ -123,6 +166,8 @@ public sealed class PublisherTests
     [InlineData("""{ "error": "The access token is invalid" }""", "The access token is invalid")]
     [InlineData("""{ "error": "AuthenticationRequired", "message": "Invalid identifier or password" }""", "Invalid identifier or password")]
     [InlineData("""{ "error": { "message": "Invalid OAuth access token.", "type": "OAuthException", "code": 190 } }""", "Invalid OAuth access token.")]
+    [InlineData("""{ "title": "Forbidden", "detail": "You are not allowed to create a Tweet with duplicate content.", "type": "about:blank", "status": 403 }""", "You are not allowed to create a Tweet with duplicate content.")]
+    [InlineData("""{ "errors": [{ "message": "Could not authenticate you", "code": 32 }] }""", "Could not authenticate you")]
     [InlineData("<html>Bad gateway</html>", null)]
     public void ReadsEachPlatformsErrors(string body, string? message) =>
         Assert.Equal(message, SocialPublishException.ErrorMessage(body));
@@ -130,11 +175,24 @@ public sealed class PublisherTests
     [Fact]
     public void OnlyPlatformsWithCredentialsPostForReal()
     {
-        var publishers = Publishers(new SocialPostingOptions { Mastodon = { AccessToken = "token" } });
+        var publishers = Publishers(new SocialPostingOptions
+        {
+            Mastodon = { AccessToken = "token" },
+            X = { ApiKey = "key", ApiKeySecret = "secret", AccessToken = "token", AccessTokenSecret = "token-secret" },
+        });
 
         Assert.IsType<MastodonPublisher>(publishers.For(SocialPlatform.Mastodon));
+        Assert.IsType<XPublisher>(publishers.For(SocialPlatform.X));
         Assert.Null(publishers.For(SocialPlatform.Bluesky));
         Assert.Null(publishers.For(SocialPlatform.LinkedIn));
+    }
+
+    [Fact]
+    public void XNeedsAllFourOfItsKeys()
+    {
+        var publishers = Publishers(new SocialPostingOptions { X = { ApiKey = "key", ApiKeySecret = "secret", AccessToken = "token" } });
+
+        Assert.Null(publishers.For(SocialPlatform.X));
     }
 
     [Fact]
@@ -144,6 +202,7 @@ public sealed class PublisherTests
 
         Assert.IsType<FacebookPublisher>(publishers.For(SocialPlatform.Facebook));
         Assert.IsType<DryRunPublisher>(publishers.For(SocialPlatform.Bluesky));
+        Assert.IsType<DryRunPublisher>(publishers.For(SocialPlatform.X));
         Assert.Null(publishers.For(SocialPlatform.Reddit));
     }
 

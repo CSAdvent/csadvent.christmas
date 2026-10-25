@@ -22,6 +22,12 @@ public sealed class SocialAccountsTests
     [InlineData(SocialPlatform.Reddit, "u/alice_dev", "alice_dev")]
     [InlineData(SocialPlatform.Reddit, "/u/alice_dev", "alice_dev")]
     [InlineData(SocialPlatform.Reddit, "https://www.reddit.com/user/alice_dev/", "alice_dev")]
+    [InlineData(SocialPlatform.X, "@Alice_Dev", "Alice_Dev")]
+    [InlineData(SocialPlatform.X, "alice_dev", "alice_dev")]
+    [InlineData(SocialPlatform.X, "https://x.com/alice_dev", "alice_dev")]
+    [InlineData(SocialPlatform.X, "https://twitter.com/alice_dev/", "alice_dev")]
+    [InlineData(SocialPlatform.X, "mobile.twitter.com/alice_dev", "alice_dev")]
+    [InlineData(SocialPlatform.X, "https://x.com/alice_dev?s=21&t=abc", "alice_dev")]
     public void NormalizesWhatPeoplePaste(SocialPlatform platform, string input, string expected)
     {
         Assert.True(SocialAccounts.TryNormalize(platform, input, out var normalized));
@@ -34,6 +40,7 @@ public sealed class SocialAccountsTests
     [InlineData(SocialPlatform.LinkedIn, "https://www.linkedin.com/in/alice-dev", "https://www.linkedin.com/in/alice-dev")]
     [InlineData(SocialPlatform.Facebook, "https://www.facebook.com/alice.dev", "https://www.facebook.com/alice.dev")]
     [InlineData(SocialPlatform.Reddit, "alice_dev", "https://www.reddit.com/user/alice_dev")]
+    [InlineData(SocialPlatform.X, "alice_dev", "https://x.com/alice_dev")]
     public void AccountsLinkToTheirProfiles(SocialPlatform platform, string normalized, string url) =>
         Assert.Equal(url, SocialAccounts.ProfileUrl(platform, normalized));
 
@@ -43,7 +50,8 @@ public sealed class SocialAccountsTests
     [InlineData("mastodon", "https://hachyderm.io/@alice", SocialPlatform.Mastodon, "@alice@hachyderm.io")]
     [InlineData("facebook", "https://www.facebook.com/alice.dev", SocialPlatform.Facebook, "https://www.facebook.com/alice.dev")]
     [InlineData("reddit", "https://www.reddit.com/user/alice_dev", SocialPlatform.Reddit, "alice_dev")]
-    [InlineData("twitter", "https://x.com/mgroves", null, null)]
+    [InlineData("twitter", "https://x.com/mgroves", SocialPlatform.X, "mgroves")]
+    [InlineData("twitter", "https://twitter.com/CalvinAllen", SocialPlatform.X, "CalvinAllen")]
     [InlineData("linkedin", "https://www.linkedin.com/company/csadvent", null, null)]
     [InlineData("generic", "https://medium.com/@alice", null, null)]
     [InlineData("generic", "https://www.threads.net/@alice", null, null)]
@@ -80,6 +88,11 @@ public sealed class SocialAccountsTests
     [InlineData(SocialPlatform.LinkedIn, "https://www.linkedin.com/company/acme")]
     [InlineData(SocialPlatform.Facebook, "https://twitter.com/alice")]
     [InlineData(SocialPlatform.Reddit, "u/a")]
+    [InlineData(SocialPlatform.X, "alice.bsky.social")]
+    [InlineData(SocialPlatform.X, "@alice@hachyderm.io")]
+    [InlineData(SocialPlatform.X, "a_name_much_too_long")]
+    [InlineData(SocialPlatform.X, "https://x.com/alice/status/123")]
+    [InlineData(SocialPlatform.X, "https://notx.com/alice")]
     public void RejectsWhatIsntAnAccount(SocialPlatform platform, string input)
     {
         Assert.False(SocialAccounts.TryNormalize(platform, input, out _));

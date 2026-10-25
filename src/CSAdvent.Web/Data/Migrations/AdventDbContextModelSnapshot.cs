@@ -16,7 +16,7 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261025191116_AddPastAuthorInvitations";
+    public override string LastMigrationId => "20261025200241_AddContributorXUsername";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -576,6 +576,11 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                     .HasMaxLength(500)
                     .HasColumnType("character varying(500)")
                     .HasColumnName("website_url");
+
+                b.Property<string>("XUsername")
+                    .HasMaxLength(15)
+                    .HasColumnType("character varying(15)")
+                    .HasColumnName("x_username");
 
                 b.HasKey("Id")
                     .HasName("pk_contributors");

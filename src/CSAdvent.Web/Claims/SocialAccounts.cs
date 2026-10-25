@@ -10,6 +10,7 @@ public enum SocialPlatform
     LinkedIn,
     Facebook,
     Reddit,
+    X,
 }
 
 /// <summary>
@@ -38,6 +39,7 @@ public static partial class SocialAccounts
             SocialPlatform.LinkedIn => Match(LinkedInPattern(), text, m => $"https://www.linkedin.com/in/{m.Groups["slug"].Value}"),
             SocialPlatform.Facebook => Match(FacebookPattern(), text, m => $"https://www.facebook.com/{m.Groups["path"].Value}"),
             SocialPlatform.Reddit => Match(RedditPattern(), text, m => m.Groups["user"].Value),
+            SocialPlatform.X => Match(XPattern(), text, m => m.Groups["user"].Value),
             _ => null,
         };
 
@@ -50,13 +52,14 @@ public static partial class SocialAccounts
         SocialPlatform.Bluesky => $"https://bsky.app/profile/{normalized}",
         SocialPlatform.Mastodon when normalized.Split('@', StringSplitOptions.RemoveEmptyEntries) is [var user, var host] => $"https://{host}/@{user}",
         SocialPlatform.Reddit => $"https://www.reddit.com/user/{normalized}",
+        SocialPlatform.X => $"https://x.com/{normalized}",
         _ => normalized,
     };
 
     /// <summary>
     /// One of the social links on a GitHub profile as an account we tag, if it's on one of our platforms. GitHub names the
     /// Mastodon links it recognizes; the rest are known by their address, because GitHub calls some of them (Bluesky, for
-    /// one) "generic". Anything else, such as X or a LinkedIn company page, is skipped.
+    /// one) "generic". Anything else, such as a LinkedIn company page, is skipped.
     /// </summary>
     public static (SocialPlatform Platform, string Account)? FromGitHub(string provider, string url)
     {
@@ -73,6 +76,7 @@ public static partial class SocialAccounts
             _ when IsHostOrSubdomain(host, "linkedin.com") => SocialPlatform.LinkedIn,
             _ when IsHostOrSubdomain(host, "facebook.com") || IsHostOrSubdomain(host, "fb.com") => SocialPlatform.Facebook,
             _ when IsHostOrSubdomain(host, "reddit.com") => SocialPlatform.Reddit,
+            _ when IsHostOrSubdomain(host, "x.com") || IsHostOrSubdomain(host, "twitter.com") => SocialPlatform.X,
             _ => null,
         };
 
@@ -141,6 +145,10 @@ public static partial class SocialAccounts
     // "alice", "u/alice", "/u/alice", "https://www.reddit.com/user/alice"
     [GeneratedRegex(@"^(?:(?:https?://)?(?:www\.|old\.)?reddit\.com/(?:u|user)/|/?u/)?(?<user>[a-z0-9_-]{3,20})/?$", RegexOptions.IgnoreCase)]
     private static partial Regex RedditPattern();
+
+    // "alice", "@alice", "https://x.com/alice", "twitter.com/alice", "https://x.com/alice?s=21" (the app's share link)
+    [GeneratedRegex(@"^(?:(?:https?://)?(?:www\.|mobile\.)?(?:x|twitter)\.com/|@)?(?<user>[a-z0-9_]{1,15})/?(?:\?[^\s/]*)?$", RegexOptions.IgnoreCase)]
+    private static partial Regex XPattern();
 }
 
 /// <summary>A link that isn't a social media profile (<see cref="SocialAccounts.IsSocialProfile"/>). Empty is allowed.</summary>

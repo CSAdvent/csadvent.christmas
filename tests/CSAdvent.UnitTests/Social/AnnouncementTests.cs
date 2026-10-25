@@ -6,7 +6,7 @@ namespace CSAdvent.UnitTests.Social;
 
 public sealed class AnnouncementTests
 {
-    private static readonly AuthorAccounts Accounts = new("ada.bsky.social", "@ada@hachyderm.io", "https://www.linkedin.com/in/ada", "https://www.facebook.com/ada.dev", "ada_codes");
+    private static readonly AuthorAccounts Accounts = new("ada.bsky.social", "@ada@hachyderm.io", "https://www.linkedin.com/in/ada", "https://www.facebook.com/ada.dev", "ada_codes", "AdaCodes");
 
     private static readonly SocialAccountsOptions Ours = new() { Mastodon = "@csadvent@mastodon.social", Subreddit = "csadvent" };
 
@@ -17,6 +17,7 @@ public sealed class AnnouncementTests
     [InlineData(SocialPlatform.Bluesky, "#csharp #dotnet #csadvent")]
     [InlineData(SocialPlatform.Mastodon, "#csharp #dotnet #csadvent")]
     [InlineData(SocialPlatform.Facebook, "#csharp #csadvent")]
+    [InlineData(SocialPlatform.X, "#csharp #dotnet #csadvent")]
     public void ATestPostIsFormattedLikeAnAnnouncementButAboutNoEntry(SocialPlatform platform, string hashtags)
     {
         var formatted = AnnouncementFormatter.Format(Announcement.Test(2026, "https://csadvent.christmas", "abc123def456"), platform, Ours);
@@ -46,6 +47,24 @@ public sealed class AnnouncementTests
         var linkedIn = AnnouncementFormatter.FormatSignUpsOpen(2026, SocialPlatform.LinkedIn, "https://csadvent.christmas", Ours);
         Assert.Equal($"https://www.linkedin.com/feed/?shareActive=true&text={Uri.EscapeDataString(linkedIn.Text)}", linkedIn.ComposerUrl);
         Assert.Contains("csadvent.christmas%2F%3Fvia%3Dlinkedin%26season%3D2026", linkedIn.ComposerUrl);
+
+        var x = AnnouncementFormatter.FormatSignUpsOpen(2026, SocialPlatform.X, "https://csadvent.christmas", Ours);
+        Assert.Equal("https://csadvent.christmas/?via=x&season=2026", x.Link);
+        Assert.EndsWith("#csharp #dotnet #csadvent", x.Text);
+        Assert.Equal($"https://x.com/intent/tweet?text={Uri.EscapeDataString(x.Text)}", x.ComposerUrl);
+        Assert.True(x.Length <= AnnouncementFormatter.XLimit, $"X is {x.Length} long.");
+    }
+
+    [Fact]
+    public void SeasonPostsFitOnX()
+    {
+        var posts = new[]
+        {
+            AnnouncementFormatter.FormatSignUpsSoon(2026, new DateOnly(2026, 11, 1), 30, SocialPlatform.X, "https://csadvent.christmas", Ours),
+            AnnouncementFormatter.FormatRetrospective("C# Advent 2026: a look back", RetrospectiveDraftTests.Stats(), SocialPlatform.X, "https://csadvent.christmas", Ours),
+        };
+
+        Assert.All(posts, post => Assert.True(post.Length <= AnnouncementFormatter.XLimit, $"{post.Text} is {post.Length} long."));
     }
 
     [Fact]
@@ -122,6 +141,13 @@ public sealed class AnnouncementTests
         Assert.DoesNotContain("#", reddit.Text.Replace("C#", ""));
         Assert.Contains("url=https%3A%2F%2Fcsadvent.christmas%2F2026%2Fday%2F6%2F2%3Fvia%3Dreddit", reddit.ComposerUrl);
         Assert.Equal("Tag the author: u/ada_codes", reddit.TagHint);
+
+        var x = AnnouncementFormatter.Format(Entry(), SocialPlatform.X);
+        Assert.Contains("by Ada Lovelace (@AdaCodes)", x.Text);
+        Assert.EndsWith("#csharp #dotnet #csadvent", x.Text);
+        Assert.Equal($"https://x.com/intent/tweet?text={Uri.EscapeDataString(x.Text)}", x.ComposerUrl);
+        Assert.Equal(AnnouncementFormatter.XLimit, x.Limit);
+        Assert.Null(x.TagHint);
     }
 
     [Fact]
@@ -138,7 +164,7 @@ public sealed class AnnouncementTests
     {
         var title = string.Join(' ', Enumerable.Repeat("source generators and interceptors", 20));
 
-        foreach (var platform in new[] { SocialPlatform.Bluesky, SocialPlatform.Mastodon, SocialPlatform.Reddit })
+        foreach (var platform in new[] { SocialPlatform.Bluesky, SocialPlatform.Mastodon, SocialPlatform.Reddit, SocialPlatform.X })
         {
             var formatted = AnnouncementFormatter.Format(Entry(title), platform);
             Assert.True(formatted.Length <= formatted.Limit, $"{platform} is {formatted.Length} long.");
@@ -156,4 +182,17 @@ public sealed class AnnouncementTests
         Assert.Equal(("mastodon.social", "csadvent"), (Ours.MastodonServer, Ours.MastodonUser));
         Assert.Null(new SocialAccountsOptions().MastodonServer);
     }
+
+    [Theory]
+    [InlineData("https://csadvent.christmas/2026/day/6/2?via=x", 23)]
+    [InlineData("Pattern matching, e.g. in C# 14.0", 33)]
+    [InlineData("“Spans” – part 1", 16)]
+    // An emoji or "…" counts twice.
+    [InlineData("🎄", 2)]
+    [InlineData("Interceptors…", 14)]
+    // X links what looks like a domain, so it counts as a link.
+    [InlineData("Minimal APIs in ASP.NET Core", 44)]
+    [InlineData("A very long namespace: Microsoft.Extensions.DependencyInjection", 63)]
+    public void XCountsLinksAndWideCharacters(string text, int length) =>
+        Assert.Equal(length, AnnouncementFormatter.XLength(text));
 }

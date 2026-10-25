@@ -48,10 +48,10 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 
    Only testers and organizers ever see it, and it never posts to social media.
 6. **Check social posting** at `/manage/social`:
-   1. Press **Check** on Mastodon, Bluesky and Facebook, and **Send a test post** on each (then delete the test posts).
+   1. Press **Check** on Mastodon, Bluesky, Facebook and X, and **Send a test post** on each (then delete the test posts).
    2. Set each to **Automatic**.
 
-   LinkedIn and Reddit are always copy and paste.
+   LinkedIn and Reddit are always copy and paste. X is paid per use, so make sure its app has credit for the season.
 7. **Check email:** send yourself a sample from `/manage/emails`, and send a test email to hello@csadvent.christmas from
    another address (it forwards through ImprovMX).
 8. **Keep the stack current:** dependency updates, and a deploy (every merge to `main` deploys).
@@ -98,7 +98,7 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 ## 🎄 December 1–25: Advent
 
 - **Reveals** happen at midnight. The day revealed next counts down on the calendar.
-- **Automatic posts** go to Mastodon, Bluesky and Facebook at 10 AM (post 1) and 2 PM (post 2), or as soon as a late
+- **Automatic posts** go to Mastodon, Bluesky, Facebook and X at 10 AM (post 1) and 2 PM (post 2), or as soon as a late
   link arrives that day.
   - Post **LinkedIn and Reddit by hand** from `/manage/social`, then **Mark as posted**.
   - Reddit posts go to r/csadvent only, never r/csharp or r/dotnet.

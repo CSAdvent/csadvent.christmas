@@ -17,7 +17,7 @@ public sealed class SocialPublishers(
 {
     public const string ClientKey = "social-posting";
 
-    public static readonly IReadOnlyList<SocialPlatform> Automatable = [SocialPlatform.Mastodon, SocialPlatform.Bluesky, SocialPlatform.Facebook];
+    public static readonly IReadOnlyList<SocialPlatform> Automatable = [SocialPlatform.Mastodon, SocialPlatform.Bluesky, SocialPlatform.Facebook, SocialPlatform.X];
 
     public ISocialPublisher? For(SocialPlatform platform)
     {
@@ -30,6 +30,7 @@ public sealed class SocialPublishers(
             SocialPlatform.Bluesky when options.Bluesky.IsConfigured && ours.Bluesky is { Length: > 0 } handle =>
                 new BlueskyPublisher(http, handle, options.Bluesky, timeProvider),
             SocialPlatform.Facebook when options.Facebook.IsConfigured => new FacebookPublisher(http, options.Facebook),
+            SocialPlatform.X when options.X.IsConfigured => new XPublisher(http, ours.X, options.X, timeProvider),
             _ when options.DryRun && Automatable.Contains(platform) => new DryRunPublisher(platform, dryRunLogger),
             _ => null,
         };

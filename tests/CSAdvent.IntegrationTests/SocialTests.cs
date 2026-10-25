@@ -26,6 +26,7 @@ public sealed partial class SocialTests(AppHostFixture fixture)
         Assert.Contains("https://bsky.app/intent/compose?text=", page);
         Assert.Contains("https://mastodon.social/share?text=", page);
         Assert.Contains("https://www.reddit.com/r/csadvent/submit?url=", page);
+        Assert.Contains("https://x.com/intent/tweet?text=", page);
         Assert.DoesNotContain("Preview only", page);
     }
 

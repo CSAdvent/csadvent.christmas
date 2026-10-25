@@ -36,6 +36,8 @@ public sealed class SocialPostingOptions
 
     public FacebookCredentials Facebook { get; set; } = new();
 
+    public XCredentials X { get; set; } = new();
+
     /// <summary>When a part's announcement goes out. A part without a time of its own goes out at the last one.</summary>
     public TimeOnly TimeFor(int part) => PostAt[Math.Clamp(part, 1, PostAt.Length) - 1];
 }
@@ -70,4 +72,23 @@ public sealed class FacebookCredentials
     public string GraphVersion { get; set; } = "v24.0";
 
     public bool IsConfigured => !string.IsNullOrWhiteSpace(PageId) && !string.IsNullOrWhiteSpace(PageToken);
+}
+
+/// <summary>
+/// From the X developer portal: the app's API key and secret, and an access token and secret for C# Advent's X account
+/// (<see cref="SocialAccountsOptions.X"/>), made after giving the app read and write permission.
+/// </summary>
+public sealed class XCredentials
+{
+    public string? ApiKey { get; set; }
+
+    public string? ApiKeySecret { get; set; }
+
+    public string? AccessToken { get; set; }
+
+    public string? AccessTokenSecret { get; set; }
+
+    public bool IsConfigured =>
+        !string.IsNullOrWhiteSpace(ApiKey) && !string.IsNullOrWhiteSpace(ApiKeySecret)
+        && !string.IsNullOrWhiteSpace(AccessToken) && !string.IsNullOrWhiteSpace(AccessTokenSecret);
 }

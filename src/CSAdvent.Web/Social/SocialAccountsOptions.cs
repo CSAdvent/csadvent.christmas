@@ -24,6 +24,9 @@ public sealed class SocialAccountsOptions
     /// <summary>The community announcements go to, without <c>r/</c>. Never r/csharp or r/dotnet (self-promotion rules).</summary>
     public string? Subreddit { get; set; }
 
+    /// <summary>The X username, without <c>@</c>, such as <c>csadvent</c>. Credited with <c>twitter:site</c>.</summary>
+    public string? X { get; set; }
+
     /// <summary>The server of the Mastodon account, such as <c>mastodon.social</c>.</summary>
     public string? MastodonServer => Mastodon?.Split('@', StringSplitOptions.RemoveEmptyEntries) is [_, var server] ? server : null;
 
@@ -55,6 +58,11 @@ public sealed class SocialAccountsOptions
         if (Subreddit is { Length: > 0 } subreddit)
         {
             yield return ("Reddit", $"https://www.reddit.com/r/{subreddit}");
+        }
+
+        if (X is { Length: > 0 } x)
+        {
+            yield return ("X", $"https://x.com/{x}");
         }
     }
 }

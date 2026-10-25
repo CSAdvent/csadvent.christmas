@@ -190,5 +190,6 @@
         if (socials.LinkedIn is { } linkedIn) yield return ("LinkedIn", linkedIn);
         if (socials.Facebook is { } facebook) yield return ("Facebook", facebook);
         if (socials.Reddit is { } reddit) yield return ("Reddit", $"u/{reddit}");
+        if (socials.X is { } x) yield return ("X", $"@{x}");
     }
 }

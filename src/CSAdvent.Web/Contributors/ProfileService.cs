@@ -55,6 +55,7 @@ public sealed class ProfileService(AdventDbContext db, GitHubUsers github, TimeP
             LinkedIn = contributor.LinkedInUrl,
             Facebook = contributor.FacebookUrl,
             Reddit = contributor.RedditUsername,
+            X = contributor.XUsername,
         };
     }
 
@@ -78,6 +79,7 @@ public sealed class ProfileService(AdventDbContext db, GitHubUsers github, TimeP
         contributor.LinkedInUrl = Normalized(SocialPlatform.LinkedIn, form.LinkedIn);
         contributor.FacebookUrl = Normalized(SocialPlatform.Facebook, form.Facebook);
         contributor.RedditUsername = Normalized(SocialPlatform.Reddit, form.Reddit);
+        contributor.XUsername = Normalized(SocialPlatform.X, form.X);
         await db.SaveChangesAsync(cancellationToken);
 
         if (form.UpdatePosts)
@@ -160,6 +162,9 @@ public sealed class ProfileService(AdventDbContext db, GitHubUsers github, TimeP
                 case SocialPlatform.Reddit when contributor.RedditUsername is null:
                     contributor.RedditUsername = account;
                     break;
+                case SocialPlatform.X when contributor.XUsername is null:
+                    contributor.XUsername = account;
+                    break;
                 default:
                     continue;
             }
@@ -226,4 +231,7 @@ public sealed class ProfileForm
 
     [SocialAccount(SocialPlatform.Reddit, ErrorMessage = "Enter a Reddit username, such as u/you.")]
     public string? Reddit { get; set; }
+
+    [SocialAccount(SocialPlatform.X, ErrorMessage = "Enter an X username, such as @you.")]
+    public string? X { get; set; }
 }

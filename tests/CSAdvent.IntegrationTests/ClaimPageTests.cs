@@ -52,6 +52,7 @@ public sealed partial class ClaimPageTests(AppHostFixture fixture)
             ["Form.LinkedIn"] = "linkedin.com/in/sol-social",
             ["Form.Facebook"] = "fb.com/sol.social",
             ["Form.Reddit"] = "u/sol_social",
+            ["Form.X"] = "https://x.com/SolSocial",
             ["Form.AgreeToTiming"] = "true",
             ["Form.AgreeToTerms"] = "true",
         });
@@ -60,12 +61,13 @@ public sealed partial class ClaimPageTests(AppHostFixture fixture)
         await using var db = await fixture.CreateDbContextAsync();
         var contributor = await db.Contributors.SingleAsync(c => c.GithubUserId == 6007, CancellationToken);
         Assert.Equal(
-            ("sol.bsky.social", "@sol@hachyderm.io", "https://www.linkedin.com/in/sol-social", "https://www.facebook.com/sol.social", "sol_social"),
-            (contributor.BlueskyHandle, contributor.MastodonHandle, contributor.LinkedInUrl, contributor.FacebookUrl, contributor.RedditUsername));
+            ("sol.bsky.social", "@sol@hachyderm.io", "https://www.linkedin.com/in/sol-social", "https://www.facebook.com/sol.social", "sol_social", "SolSocial"),
+            (contributor.BlueskyHandle, contributor.MastodonHandle, contributor.LinkedInUrl, contributor.FacebookUrl, contributor.RedditUsername, contributor.XUsername));
 
         var nextForm = await browser.GetStringAsync("/claim/2097/8/1", CancellationToken);
         Assert.Contains("value=\"sol.bsky.social\"", nextForm);
         Assert.Contains("value=\"@sol@hachyderm.io\"", nextForm);
+        Assert.Contains("value=\"SolSocial\"", nextForm);
     }
 
     [Fact]

@@ -141,6 +141,10 @@ if (isPublish)
         ("bluesky-app-password", "SocialPosting__Bluesky__AppPassword", true),
         ("facebook-page-id", "SocialPosting__Facebook__PageId", false),
         ("facebook-page-token", "SocialPosting__Facebook__PageToken", true),
+        ("x-api-key", "SocialPosting__X__ApiKey", true),
+        ("x-api-key-secret", "SocialPosting__X__ApiKeySecret", true),
+        ("x-access-token", "SocialPosting__X__AccessToken", true),
+        ("x-access-token-secret", "SocialPosting__X__AccessTokenSecret", true),
         ("anthropic-api-key", "Blurbs__ApiKey", true),
     })
     {

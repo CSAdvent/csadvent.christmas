@@ -30,6 +30,7 @@ public sealed class WebTests(AppHostFixture fixture)
         Assert.Contains("href=\"https://www.facebook.com/csadvent/\"", html);
         Assert.Contains("href=\"https://www.linkedin.com/company/csadvent\"", html);
         Assert.Contains("href=\"https://www.reddit.com/r/csadvent\"", html);
+        Assert.Contains("href=\"https://x.com/csadvent\"", html);
     }
 
     [Theory]
