@@ -20,9 +20,12 @@ public static class SearchEndpoints
 {
     private const string CacheControl = "public, max-age=3600";
 
-    /// <summary>Pages that are signed in, personal, redirects or for organizers: nothing a search result should lead to.</summary>
+    /// <summary>
+    /// Pages that are signed in, personal, redirects, our own search results or for organizers: nothing a search result
+    /// should lead to.
+    /// </summary>
     public static readonly IReadOnlyList<string> Disallowed =
-        ["/manage", "/my-spots", "/profile", "/claim/", "/backups/", "/go/", "/random", "/test-post/", "/test-mode/", "/signin", "/emails/", "/announcements/", "/dev/"];
+        ["/manage", "/my-spots", "/profile", "/claim/", "/backups/", "/go/", "/random", "/archive/search", "/test-post/", "/test-mode/", "/signin", "/emails/", "/announcements/", "/dev/"];
 
     /// <summary>The public pages that are always there, relative to the base URL.</summary>
     public static readonly IReadOnlyList<string> PublicPages = ["", "archive", "authors", "about", "others", "announcements", "privacy", "terms"];
