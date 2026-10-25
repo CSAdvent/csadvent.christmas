@@ -45,6 +45,8 @@ public sealed class AdventDbContext(DbContextOptions<AdventDbContext> options) :
 
     public DbSet<AnnouncementDelivery> AnnouncementDeliveries => Set<AnnouncementDelivery>();
 
+    public DbSet<DailyPostDelivery> DailyPostDeliveries => Set<DailyPostDelivery>();
+
     public DbSet<SeasonSocialPost> SeasonSocialPosts => Set<SeasonSocialPost>();
 
     public DbSet<Retrospective> Retrospectives => Set<Retrospective>();

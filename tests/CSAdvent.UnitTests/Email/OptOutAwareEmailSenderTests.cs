@@ -116,7 +116,9 @@ public sealed class OptOutAwareEmailSenderTests
         Assert.All(
             [
                 AnnouncementSubscriptions.Confirmation("https://csadvent.christmas/emails/announcements/confirm?token=abc", Site),
+                AnnouncementSubscriptions.Confirmation("https://csadvent.christmas/emails/announcements/confirm?token=abc", Site, dailyPosts: true),
                 ReminderEmails.Daily(new DailyShare(2026, 3, [], "Ada", false), Site, "https://csadvent.christmas/emails/daily/stop?token=abc"),
+                ReminderEmails.DailyForReaders(3, [], Site, "https://csadvent.christmas/emails/announcements/daily-posts/stop?token=abc"),
             ],
             email => Assert.False(email.Transactional, email.Subject));
     }

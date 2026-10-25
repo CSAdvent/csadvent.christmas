@@ -178,14 +178,17 @@ public sealed class SeasonTestingTests(AppHostFixture fixture)
         Assert.Contains("Enter a year from 2017 to 8999.", await response.Content.ReadAsStringAsync(CancellationToken));
     }
 
-    /// <summary>Runs the reminders at noon Eastern today, after they're due, whatever time the tests run.</summary>
+    /// <summary>
+    /// Runs the reminders at 3 PM Eastern today, whatever time the tests run: after they're all due, including a daily email
+    /// that waits until 2 PM for a day's missing post.
+    /// </summary>
     private async Task RunRemindersAsync()
     {
         var eastern = TimeZoneInfo.FindSystemTimeZoneById("America/New_York");
         var today = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, eastern).Date;
-        var noon = new DateTimeOffset(today.AddHours(12), eastern.GetUtcOffset(today.AddHours(12)));
+        var afternoon = new DateTimeOffset(today.AddHours(15), eastern.GetUtcOffset(today.AddHours(15)));
         using var client = fixture.CreateWebClient();
-        var response = await client.PostAsync($"/dev/reminders/run?at={Uri.EscapeDataString(noon.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture))}", null, CancellationToken);
+        var response = await client.PostAsync($"/dev/reminders/run?at={Uri.EscapeDataString(afternoon.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture))}", null, CancellationToken);
         response.EnsureSuccessStatusCode();
     }
 

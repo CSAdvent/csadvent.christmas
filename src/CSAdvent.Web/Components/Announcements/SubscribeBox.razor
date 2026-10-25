@@ -4,14 +4,14 @@
 <div id="announcements" class="rounded-xl bg-slate-50 p-5 ring-1 ring-slate-200">
     <h2 class="text-lg font-semibold text-slate-900">@Heading</h2>
     <p class="mt-1 text-slate-600">
-        We'll email you when each season's sign-ups open, and now and then with news from the organizers. Nothing else, and
-        every email has a one-click unsubscribe.
+        We'll email you when each season's sign-ups open, and now and then with news from the organizers. Nothing else unless
+        you ask for the daily posts too, and every email has a one-click unsubscribe.
     </p>
 
     @if (Done == "check-inbox")
     {
         <p class="mt-3 rounded-lg bg-green-50 p-3 text-sm font-medium text-green-800 ring-1 ring-green-200" role="status">
-            Check your inbox for a link to confirm your address. If you're already on the list, there's nothing more to do.
+            Check your inbox for a link to confirm your address. If you already get everything you asked for, there's nothing more to do.
         </p>
     }
     else if (Error is { } error)
@@ -34,6 +34,10 @@
             <input type="text" name="Website" tabindex="-1" autocomplete="off" />
         </label>
         <button type="submit" class="rounded-lg bg-advent-600 px-5 py-2 font-semibold text-white hover:bg-advent-700">Email me</button>
+        <label class="flex w-full items-center gap-2 text-sm text-slate-700">
+            <input type="checkbox" name="DailyPosts" value="true" class="size-4 rounded border-slate-300" />
+            Also email me each day's new posts, December 1 to 25
+        </label>
     </form>
     <p class="mt-2 text-xs text-slate-500">We'll send a link to confirm your address first. See the <a href="privacy" class="underline">privacy page</a>.</p>
 </div>

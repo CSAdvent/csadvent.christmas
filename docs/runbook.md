@@ -19,7 +19,7 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 | November | Approve requests, watch the backup list | Organizers |
 | Any time | Check requests to add older posts to people's accounts, and for new links to older posts (each one emails the organizers) | Organizers |
 | From 7 days before each day | "Your post is due" reminders, then a last call on the day | Automatic |
-| December 1–25 | Reveals at midnight, announcements at 10 AM and 2 PM, the daily email at 9 AM | Automatic, plus LinkedIn and Reddit by hand |
+| December 1–25 | Reveals at midnight, announcements at 10 AM and 2 PM, the daily email once both posts are in (from 9 AM, 2 PM at the latest) | Automatic, plus LinkedIn and Reddit by hand |
 | December 1–25 | Decide on posts the blurb check can't settle, before their announcement | Organizers, when emailed |
 | December 31 | The calendar moves to the archive, and the home page thanks everyone | Automatic |
 | Late December–January | Write, publish and share the season's retrospective | Organizers |
@@ -90,8 +90,9 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 - **Backup posters** sign up at `/backups/{year}`, and you can see them at `/manage/backups`. Point people there once
   the calendar fills up. The welcome email goes once per person and season, however often they leave and join again.
 - **Authors** add their post's title and URL themselves on My spots. Nobody sends them by email.
-- **Past authors** get an invitation by themselves at 9 AM on the day sign-ups open, a few at a time alongside the
-  announcement. `/manage/announcements` shows how many are going out. Nothing to do.
+- **Past authors** get an invitation by themselves from 9 AM on the day sign-ups open, a few at a time alongside the
+  announcement (40 an hour between them), and it carries on until everyone's had one, for as long as sign-ups are open.
+  `/manage/announcements` shows how many are still to go. Nothing to do.
 
 ---
 
@@ -117,7 +118,10 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
   - Post **LinkedIn and Reddit by hand** from `/manage/social`, then **Mark as posted**.
   - Reddit posts go to r/csadvent only, never r/csharp or r/dotnet.
   - A failed automatic post shows its error and a **Retry now** button.
-- **The daily email** goes at 9 AM to everyone with a spot, once the day has posts, leaving out any without the blurb.
+- **The daily email** goes to everyone with a spot as soon as both of the day's posts are in, from 9 AM, or at 2 PM with
+  whichever are, leaving out any without the blurb. Announcement subscribers who asked for the daily posts get the same
+  email at the same time, 40 an hour (before any announcement), until midnight (see Email Sending Limits).
+  `/manage/announcements` shows how many readers there are and how long a day's send takes.
 - **The blurb check** runs every 15 minutes, and only posts that pass are announced automatically.
   - **A missing blurb** emails its author (once) and asks the backups from midnight, an hour each. A backup who accepts takes
     the spot at the post's announcement unless the author adds the blurb first. If nobody has by then, you get an email: the
@@ -332,7 +336,7 @@ for a custom domain. They're **per subscription**, so everything the site sends 
 
 - claim emails (two per claim: one to the contributor, one to the organizers; then one more when it's approved or
   declined). One person can have 3 requests waiting and make 5 an hour, so nobody can use the limit up alone (#137);
-- announcements and past-author invitations;
+- announcements, past-author invitations and readers' daily posts;
 - post link reminders and the last call;
 - the daily email;
 - backup asks;
@@ -340,7 +344,8 @@ for a custom domain. They're **per subscription**, so everything the site sends 
 - the organizers' notices.
 
 Over the limit, Azure refuses with 429 (Too Many Requests). Claim emails aren't retried: they're logged, which trips the
-error alert. Only announcements and invitations are budgeted (`Announcements:PerHour`, 40), and
+error alert. Only announcements, invitations and readers' daily posts are budgeted (`Announcements:PerHour`, 40, shared
+by all three; a day's daily posts reach at most about 400 readers between 2 PM and midnight, or 600 from 9 AM), and
 `Reminders:PauseBetweenEmails` (2 seconds) only paces one loop on one replica. So on sign-up day, about 30 claims in the
 first hour plus the announcement can reach the limit.
 

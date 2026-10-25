@@ -51,8 +51,8 @@ public sealed partial class EmailOptOutTests(AppHostFixture fixture)
         Assert.DoesNotContain("Unsubscribe", backup.Text);
         Assert.False((await fixture.GetHeadersAsync(backup)).ContainsKey("List-Unsubscribe"));
 
-        // December 3: a reminder about her December 5 spot goes out; the daily email doesn't.
-        await RunRemindersAsync("2129-12-03T15:00:00Z");
+        // December 3, after the daily email's 2 PM cutoff: a reminder about her December 5 spot goes out; the daily email doesn't.
+        await RunRemindersAsync("2129-12-03T19:30:00Z");
         var reminder = await fixture.WaitForEmailAsync(Address, "Your C# Advent post is due in 2 days (December 5)");
         Assert.DoesNotContain("Unsubscribe", reminder.Text);
         Assert.Equal(0, await fixture.CountEmailsAsync(Address, "Day 3 of C# Advent"));
@@ -67,7 +67,7 @@ public sealed partial class EmailOptOutTests(AppHostFixture fixture)
         Assert.Equal("/profile?done=emails-on", TestBrowser.PathOf(resumed.Headers.Location!));
         Assert.False(await IsOptedOutAsync());
 
-        await RunRemindersAsync("2129-12-06T15:00:00Z");
+        await RunRemindersAsync("2129-12-06T19:30:00Z");
         await fixture.WaitForEmailAsync(Address, "Day 6 of C# Advent: Ben's 2129 post");
     }
 

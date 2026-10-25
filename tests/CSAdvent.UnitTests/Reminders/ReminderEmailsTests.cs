@@ -87,5 +87,24 @@ public sealed class ReminderEmailsTests
         Assert.Contains("One of today's posts is yours. Thank you for taking part!", Text(email));
     }
 
+    [Fact]
+    public void ReadersGetTheSamePostsWithTheirOwnReasonAndLink()
+    {
+        var email = ReminderEmails.DailyForReaders(
+            3,
+            [new SharedPost("Span<T> tricks", "https://example.com/span", "Grace Hopper"), new SharedPost("Records", "https://example.com/records", "Alan Turing")],
+            Site,
+            "https://csadvent.christmas/emails/announcements/daily-posts/stop?token=abc");
+        var text = Text(email);
+
+        Assert.Equal("Day 3 of C# Advent: 2 new posts to share", email.Subject);
+        Assert.Contains("Hi! Here's what's new on the C# Advent calendar today:", text);
+        Assert.Contains("- Span<T> tricks (https://example.com/span) by Grace Hopper\n- Records (https://example.com/records) by Alan Turing\n", text);
+        Assert.Contains("you asked for C# Advent's daily posts by email", text);
+        Assert.DoesNotContain("spot", text);
+        Assert.False(email.Transactional);
+        Assert.Equal("https://csadvent.christmas/emails/announcements/daily-posts/stop?token=abc", email.UnsubscribeUrl);
+    }
+
     private static string Text(EmailContent email) => EmailText.Render(email, Site.BaseUrl);
 }

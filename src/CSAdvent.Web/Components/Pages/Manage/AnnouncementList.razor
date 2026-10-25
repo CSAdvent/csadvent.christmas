@@ -21,6 +21,12 @@
             The "sign-ups are open" email goes out by itself at 9 AM Eastern on the day each season's sign-ups open.
             Announcements go out @Options.Value.PerHour an hour, to stay under the email service's limit.
         </p>
+        <p class="mt-2 max-w-3xl text-slate-600">
+            @Plural(_counts.DailyPosts, "subscriber") also @(_counts.DailyPosts == 1 ? "gets" : "get") each December day's posts. They go
+            first, from when the day's email goes to authors (once both posts are in, from 9 AM Eastern, 2 PM at the latest),
+            within the same @Options.Value.PerHour an hour, so reaching everyone takes @Hours(_counts.DailyPosts) a day. Anyone not reached
+            by midnight misses that day's.
+        </p>
     </div>
     <a href="manage/announcements/new" class="rounded-lg bg-advent-600 px-4 py-2 font-semibold text-white hover:bg-advent-700">New announcement</a>
 </div>
@@ -30,17 +36,31 @@
     <section class="mt-8 max-w-3xl rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200" aria-labelledby="past-authors">
         <h2 id="past-authors" class="font-semibold text-slate-900">Past authors, C# Advent @invitations.Year</h2>
         <p class="mt-1 text-sm text-slate-600">
-            @if (invitations.Sent > 0)
+            @if (invitations.Sent == 0 && invitations.StartsAt is null)
             {
-                <text>Invited @Plural(invitations.Sent, "past author") so far@(invitations.Waiting > 0 ? $", with {invitations.Waiting} still to go, a few at a time" : ", and that's everyone").</text>
+                <text>@Plural(invitations.Waiting, "past author") will be invited on the day sign-ups open, once they're scheduled.</text>
             }
-            else if (invitations.OpensAt is { } opensAt)
+            else if (invitations.Sent == 0 && invitations.StartsAt is { } startsAt && Schedule.Now < startsAt)
             {
-                <text>@Plural(invitations.Waiting, "past author") will be invited at 9 AM Eastern on @Schedule.ToLocalTime(opensAt).ToString("MMMM d", CultureInfo.InvariantCulture), when sign-ups open.</text>
+                <text>
+                    @Plural(invitations.Waiting, "past author") will be invited at @TimeOfDay(startsAt) Eastern on @Schedule.ToLocalTime(startsAt).ToString("MMMM d", CultureInfo.InvariantCulture), when sign-ups open.
+                    At up to @Options.Value.PerHour an hour, shared with announcements, that takes @Hours(invitations.Waiting).
+                </text>
+            }
+            else if (invitations.Waiting == 0)
+            {
+                <text>@(invitations.Sent > 0 ? $"Invited {Plural(invitations.Sent, "past author")}, and that's everyone." : "There are no past authors to invite.")</text>
+            }
+            else if (Schedule.Now >= invitations.EndsAt)
+            {
+                <text>Invited @Plural(invitations.Sent, "past author"). Sign-ups closed before the other @invitations.Waiting were reached.</text>
             }
             else
             {
-                <text>@Plural(invitations.Waiting, "past author") will be invited on the day sign-ups open, once they're scheduled.</text>
+                <text>
+                    Invited @Plural(invitations.Sent, "past author") so far, with <strong class="text-slate-900">@invitations.Waiting still to go</strong>:
+                    @Hours(invitations.Waiting) more at up to @Options.Value.PerHour an hour, shared with announcements. It keeps going while sign-ups are open.
+                </text>
             }
             Everyone who's written before gets one, once, unless they're on this list (they get the announcement), already have
             a spot or a request, or unsubscribed.
@@ -108,4 +128,15 @@ else
     }
 
     private static string Plural(int count, string noun) => string.Create(CultureInfo.InvariantCulture, $"{count} {noun}{(count == 1 ? "" : "s")}");
+
+    /// <summary>How long that many emails take at the hourly allowance, if nothing else is using it: "about 3 hours".</summary>
+    private string Hours(int emails) =>
+        (int)Math.Ceiling(emails / (double)Options.Value.PerHour) is var hours and > 1 ? $"about {hours} hours" : "under an hour";
+
+    /// <summary>"9 AM", or "9:30 AM", in the reveal time zone.</summary>
+    private string TimeOfDay(DateTimeOffset moment)
+    {
+        var local = Schedule.ToLocalTime(moment);
+        return local.ToString(local.Minute == 0 ? "h tt" : "h:mm tt", CultureInfo.InvariantCulture);
+    }
 }
