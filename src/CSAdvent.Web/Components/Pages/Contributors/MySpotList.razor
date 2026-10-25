@@ -6,6 +6,7 @@
 @using CSAdvent.Web.Manage
 @inject MySpotsService MySpots
 @inject PostClaimService PostClaims
+@inject PostLinkService PostLinks
 @inject Microsoft.Extensions.Options.IOptions<SiteOptions> Site
 
 <PageTitle>My spots · C# Advent</PageTitle>
@@ -102,6 +103,18 @@
                     </li>
                 }
             </ul>
+            <p class="mt-4 text-sm text-slate-600">
+                @if (_pendingLinks is { } pending)
+                {
+                    <text>You've asked for new links to @(pending.Changes.Count == 1 ? "1 post" : $"{pending.Changes.Count} posts"), and an organizer will check them.</text>
+                    <a href="@PostLinkLinks.Request" class="font-medium text-advent-700 underline">See your request</a>
+                }
+                else
+                {
+                    <text>Moved your blog, or one of these posts?</text>
+                    <a href="@PostLinkLinks.Request" class="font-medium text-advent-700 underline">Change their links</a>
+                }
+            </p>
         </section>
     }
 
@@ -182,6 +195,7 @@
     private IReadOnlyList<PastPost> _history = [];
     private IReadOnlyList<ClaimablePost> _pendingPosts = [];
     private IReadOnlyList<ClaimablePost> _found = [];
+    private PostLinkReview? _pendingLinks;
     private string? _suggestedName;
 
     /// <summary>A search for older posts by author name.</summary>
@@ -212,6 +226,7 @@
         _history = await MySpots.GetHistoryAsync(user.GetContributorId() ?? 0);
         _pendingPosts = await PostClaims.GetPendingAsync(user.GetContributorId() ?? 0);
         _found = await PostClaims.SearchAsync(user.GetContributorId() ?? 0, Find);
+        _pendingLinks = await PostLinks.GetPendingAsync(user.GetContributorId() ?? 0);
 
         // Their name is the likeliest search, until they've searched for something else.
         _suggestedName = user.GetDisplayName();

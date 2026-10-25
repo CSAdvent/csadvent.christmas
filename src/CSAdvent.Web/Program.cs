@@ -58,6 +58,7 @@ builder.Services.AddScoped<ClaimReviewService>();
 builder.Services.AddScoped<EntryAdminService>();
 builder.Services.AddScoped<MySpotsService>();
 builder.Services.AddScoped<PostClaimService>();
+builder.Services.AddScoped<PostLinkService>();
 builder.Services.AddScoped<ProfileService>();
 builder.Services.AddScoped<EntryService>();
 builder.Services.AddSingleton<CardRenderer>();

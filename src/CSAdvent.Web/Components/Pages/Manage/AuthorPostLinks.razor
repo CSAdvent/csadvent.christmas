@@ -1,0 +1,139 @@
+@page "/manage/authors/{ContributorId:int}/links"
+@page "/manage/authors/unlinked/links"
+@using CSAdvent.Web.Contributors
+@inject AuthorService Authors
+@inject PostLinkService PostLinks
+@inject NavigationManager Navigation
+
+@if (_author is { } author)
+{
+    <PageTitle>Post links · @author.Name · Authors · Manage · C# Advent</PageTitle>
+
+    <ManageNav />
+
+    <nav class="mb-4 text-sm font-medium"><a href="@AuthorPage" class="text-advent-700 hover:underline">← @author.Name</a></nav>
+
+    @if (Done == "saved")
+    {
+        <p class="mb-6 max-w-3xl rounded-xl bg-green-50 p-4 font-medium text-green-800 ring-1 ring-green-200" role="status">Saved.</p>
+    }
+
+    @if (_error is not null)
+    {
+        <p class="mb-6 max-w-3xl rounded-xl bg-red-50 p-4 font-medium text-red-800 ring-1 ring-red-200" role="alert">@_error</p>
+    }
+
+    <h1 class="text-3xl font-bold tracking-tight text-slate-900">@(author.Name)'s post links</h1>
+    <p class="mt-2 max-w-3xl text-slate-600">
+        For an author who moved their blog or a post: change any of their posts' links, and readers following our links go to the
+        new address straight away. Check each new link opens the same post first. Signed-in authors can ask for this themselves
+        from My spots; those requests are under
+        <a href="@PostLinkLinks.Requests" class="text-advent-700 underline">requests for new post links</a>.
+    </p>
+
+    @if (_posts.Count == 0)
+    {
+        <p class="mt-8 text-slate-600">They don't have any published posts.</p>
+    }
+    else
+    {
+        <EditForm Model="Form" FormName="author-links" OnValidSubmit="SaveAsync" class="mt-8 flex max-w-3xl flex-col gap-6">
+            <DataAnnotationsValidator />
+            <ValidationSummary class="rounded-xl bg-red-50 p-4 text-sm ring-1 ring-red-200" />
+
+            <ul class="flex flex-col gap-4">
+                @for (var i = 0; i < Form!.Posts.Count; i++)
+                {
+                    var index = i;
+                    @if (_posts.FirstOrDefault(p => p.SlotId == Form.Posts[index].SlotId) is { } post)
+                    {
+                        <li class="rounded-xl p-4 ring-1 ring-slate-200">
+                            <p class="text-sm text-slate-500">@post.Spot</p>
+                            <p class="font-medium text-slate-900"><a href="@post.EntryPage" class="hover:text-advent-700 hover:underline">@post.Title</a></p>
+                            <input type="hidden" name="Form.Posts[@index].SlotId" value="@post.SlotId" />
+                            <input type="hidden" name="Form.Posts[@index].Version" value="@Form.Posts[index].Version" />
+                            <label class="mt-2 flex flex-col text-sm font-medium text-slate-700">
+                                Link
+                                <InputText @bind-Value="Form!.Posts[index].Url" type="url" maxlength="500" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                            </label>
+                        </li>
+                    }
+                }
+            </ul>
+
+            <div>
+                <button type="submit" class="rounded-lg bg-advent-600 px-5 py-2.5 font-semibold text-white hover:bg-advent-700">Save links</button>
+            </div>
+        </EditForm>
+    }
+}
+
+@code {
+    private AuthorProfile? _author;
+    private List<LinkedPost> _posts = [];
+    private string? _error;
+
+    /// <summary>A linked author.</summary>
+    [Parameter]
+    public int? ContributorId { get; set; }
+
+    /// <summary>An archive author who isn't linked yet.</summary>
+    [SupplyParameterFromQuery]
+    public string? Key { get; set; }
+
+    [SupplyParameterFromQuery(Name = "done")]
+    public string? Done { get; set; }
+
+    [SupplyParameterFromForm(FormName = "author-links")]
+    private PostLinksForm? Form { get; set; }
+
+    private string AuthorPage => ContributorId is { } id ? $"manage/authors/{id}" : $"manage/authors/unlinked?key={Uri.EscapeDataString(Key!)}";
+
+    private string LinksPage => ContributorId is { } id ? $"manage/authors/{id}/links" : $"manage/authors/unlinked/links?key={Uri.EscapeDataString(Key!)}";
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Static rendering starts at the first wait, so the form needs its model first.
+        var posted = Form is not null;
+        Form ??= new();
+
+        _author = ContributorId is { } id ? await Authors.GetAsync(id)
+            : string.IsNullOrEmpty(Key) ? null
+            : await Authors.GetUnlinkedAsync(Key);
+        if (_author is null)
+        {
+            Navigation.NotFound();
+            return;
+        }
+
+        await LoadPostsAsync();
+
+        // A posted form keeps what was typed; a fresh page starts from the posts' links.
+        if (!posted)
+        {
+            Form = PostLinksForm.For(_posts);
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        switch (await PostLinks.SaveAsync(_posts, Form!))
+        {
+            case PostLinkSaveOutcome.Saved:
+                Navigation.NavigateTo($"{LinksPage}{(LinksPage.Contains('?') ? '&' : '?')}done=saved");
+                return;
+            case PostLinkSaveOutcome.NothingChanged:
+                _error = "None of the links changed.";
+                return;
+            default:
+                // Show the current links so the organizer can make their change again on top of them.
+                _error = "Someone changed one of these posts since you opened the page. Here are the current links; make your change again.";
+                await LoadPostsAsync();
+                Form = PostLinksForm.For(_posts);
+                return;
+        }
+    }
+
+    private async Task LoadPostsAsync() =>
+        _posts = await PostLinks.GetPostsAsync([.. _author!.Posts.Where(p => p.PostUrl is not null).Select(p => p.SlotId)]);
+}

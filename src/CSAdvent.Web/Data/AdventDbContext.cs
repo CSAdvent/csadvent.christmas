@@ -49,6 +49,10 @@ public sealed class AdventDbContext(DbContextOptions<AdventDbContext> options) :
 
     public DbSet<PostClaimRequest> PostClaimRequests => Set<PostClaimRequest>();
 
+    public DbSet<PostLinkRequest> PostLinkRequests => Set<PostLinkRequest>();
+
+    public DbSet<PostLinkChange> PostLinkChanges => Set<PostLinkChange>();
+
     public DbSet<EmailOptOut> EmailOptOuts => Set<EmailOptOut>();
 
     /// <summary>

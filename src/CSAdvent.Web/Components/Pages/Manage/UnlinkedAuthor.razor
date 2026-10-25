@@ -65,7 +65,10 @@
     </section>
 
     <section class="mt-12">
-        <h2 class="text-xl font-semibold text-slate-900">Posts</h2>
+        <div class="flex flex-wrap items-baseline justify-between gap-3">
+            <h2 class="text-xl font-semibold text-slate-900">Posts</h2>
+            <a href="@($"manage/authors/unlinked/links?key={Uri.EscapeDataString(Key!)}")" class="text-sm font-medium text-advent-700 hover:underline">Change their posts' links</a>
+        </div>
         <table class="mt-4 w-full text-left text-sm">
             <thead class="border-b border-slate-200 text-slate-500">
                 <tr>

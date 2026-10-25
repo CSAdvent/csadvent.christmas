@@ -4,9 +4,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CSAdvent.Web.Retention;
 
-public sealed record ContactDeletion(int ClaimRequests, int Substitutes, int ContributorEmails, int PostClaimRequests = 0)
+public sealed record ContactDeletion(int ClaimRequests, int Substitutes, int ContributorEmails, int PostClaimRequests = 0, int PostLinkRequests = 0)
 {
-    public static readonly ContactDeletion None = new(0, 0, 0, 0);
+    public static readonly ContactDeletion None = new(0, 0, 0, 0, 0);
 
     public bool DeletedAnything => this != None;
 }
@@ -16,13 +16,17 @@ public sealed record ContactDeletion(int ClaimRequests, int Substitutes, int Con
 /// requests (with their comments) and its backup list are deleted, and so is the email of every contributor who has never had
 /// a spot and hasn't signed in since. <b>Authors keep their email addresses</b>, on their account and on their spots, so they
 /// can hear about the next season. The public calendar is left as it is. Requests to add an older post to someone's account
-/// go <see cref="PostClaimsKeptFor"/> after an organizer decides them, whatever the season. Deleting is idempotent, so it's
-/// safe to run often and from every replica.
+/// go <see cref="PostClaimsKeptFor"/> after an organizer decides them, and requests for new links to someone's older posts go
+/// <see cref="PostLinkRequestsKeptFor"/> after they're decided or withdrawn, whatever the season. Deleting is idempotent, so
+/// it's safe to run often and from every replica.
 /// </summary>
 public sealed class ContactRetention(AdventDbContext db, AdventSchedule schedule, TimeProvider timeProvider, ILogger<ContactRetention> logger)
 {
     /// <summary>How long a decided request to add an older post to someone's account is kept.</summary>
     public static readonly TimeSpan PostClaimsKeptFor = TimeSpan.FromDays(30);
+
+    /// <summary>How long a decided or withdrawn request for new links to someone's older posts is kept.</summary>
+    public static readonly TimeSpan PostLinkRequestsKeptFor = TimeSpan.FromDays(30);
 
     public async Task<ContactDeletion> DeleteExpiredAsync(CancellationToken cancellationToken = default)
     {
@@ -33,12 +37,18 @@ public sealed class ContactRetention(AdventDbContext db, AdventSchedule schedule
             .Where(r => r.DecidedAt != null && r.DecidedAt < decidedBefore)
             .ExecuteDeleteAsync(cancellationToken);
 
+        // Their changes go with them (a cascading delete).
+        var linksDecidedBefore = now - PostLinkRequestsKeptFor;
+        var postLinkRequests = await db.PostLinkRequests
+            .Where(r => r.DecidedAt != null && r.DecidedAt < linksDecidedBefore)
+            .ExecuteDeleteAsync(cancellationToken);
+
         // Deletion times depend on the reveal time zone, so they're worked out here rather than in SQL. There's one row per year.
         var years = await db.Seasons.Select(s => s.Year).ToListAsync(cancellationToken);
         var expired = years.Where(year => schedule.GetContactDeletionTime(year) <= now).ToList();
         if (expired.Count == 0)
         {
-            return Logged(ContactDeletion.None with { PostClaimRequests = postClaimRequests });
+            return Logged(ContactDeletion.None with { PostClaimRequests = postClaimRequests, PostLinkRequests = postLinkRequests });
         }
 
         var claimRequests = await db.ClaimRequests
@@ -61,7 +71,7 @@ public sealed class ContactRetention(AdventDbContext db, AdventSchedule schedule
                     .SetProperty(c => c.EmailVerifiedAt, (DateTimeOffset?)null),
                 cancellationToken);
 
-        return Logged(new ContactDeletion(claimRequests, substitutes, contributorEmails, postClaimRequests));
+        return Logged(new ContactDeletion(claimRequests, substitutes, contributorEmails, postClaimRequests, postLinkRequests));
     }
 
     private ContactDeletion Logged(ContactDeletion deletion)
@@ -69,11 +79,12 @@ public sealed class ContactRetention(AdventDbContext db, AdventSchedule schedule
         if (deletion.DeletedAnything)
         {
             logger.LogInformation(
-                "Deleted expired contact details: {ClaimRequests} claim requests, {Substitutes} substitutes, {ContributorEmails} contributor emails and {PostClaimRequests} post claim requests.",
+                "Deleted expired contact details: {ClaimRequests} claim requests, {Substitutes} substitutes, {ContributorEmails} contributor emails, {PostClaimRequests} post claim requests and {PostLinkRequests} post link requests.",
                 deletion.ClaimRequests,
                 deletion.Substitutes,
                 deletion.ContributorEmails,
-                deletion.PostClaimRequests);
+                deletion.PostClaimRequests,
+                deletion.PostLinkRequests);
         }
 
         return deletion;

@@ -45,6 +45,17 @@ public static class EmailCatalog
         Title: "Pattern matching all the way down",
         Author: "A. Byron");
 
+    private static readonly PostLinkEmailDetails SamplePostLinks = new(
+        RequestId: 9,
+        Login: "ada-lovelace",
+        Name: "Ada Lovelace",
+        Note: "I moved my blog from Blogger to my own domain.",
+        Changes:
+        [
+            new(2021, 8, 1, 2, "Records, revisited", "https://ada.blogspot.com/2021/12/records-revisited.html", "https://ada.dev/records-revisited"),
+            new(2019, 12, 2, 2, "Pattern matching all the way down", "https://ada.blogspot.com/2019/12/pattern-matching.html", "https://ada.dev/pattern-matching"),
+        ]);
+
     public static IReadOnlyList<EmailCatalogEntry> Entries { get; } =
     [
         new(
@@ -83,6 +94,24 @@ public static class EmailCatalog
             "When an organizer declines a request to add an older post to someone's account.",
             "The contributor, at their verified GitHub email. Replies go to the organizers.",
             site => PostClaimEmails.Declined(SamplePostClaim, site)),
+        new(
+            "post-links-new-request",
+            "Someone asked for new post links",
+            "Right after a signed-in contributor asks for new links to posts on their account from finished seasons.",
+            "The organizers (Site:ContactEmail). Replies go to the contributor.",
+            site => PostLinkEmails.NewRequest(SamplePostLinks, site)),
+        new(
+            "post-links-approved",
+            "Post links changed",
+            "When an organizer approves a request for new links to someone's older posts.",
+            "The contributor, at their verified GitHub email. Replies go to the organizers.",
+            site => PostLinkEmails.Approved(SamplePostLinks, site)),
+        new(
+            "post-links-declined",
+            "Post links not changed",
+            "When an organizer declines a request for new links to someone's older posts.",
+            "The contributor, at their verified GitHub email. Replies go to the organizers.",
+            site => PostLinkEmails.Declined(SamplePostLinks, site)),
         new(
             "dropped-out",
             "An author dropped out",
