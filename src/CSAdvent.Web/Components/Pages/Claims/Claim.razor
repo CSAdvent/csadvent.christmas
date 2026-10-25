@@ -44,8 +44,13 @@
         {
             <p class="mt-6 rounded-xl bg-red-50 p-4 font-medium text-red-800 ring-1 ring-red-200" role="alert">@_error</p>
         }
+    }
 
-        <EditForm Model="Form" FormName="claim" OnValidSubmit="SubmitAsync" class="mt-8 flex max-w-2xl flex-col gap-6">
+    @* Also rendered (hidden) when it was just posted, so a post that arrives after the spot was taken or revealed reaches its
+       handler and gets the message above, instead of an error page. *@
+    @if (CanRequest || _posted)
+    {
+        <EditForm Model="Form" FormName="claim" OnValidSubmit="SubmitAsync" hidden="@(!CanRequest)" class="mt-8 flex max-w-2xl flex-col gap-6">
             <DataAnnotationsValidator />
             <ValidationSummary class="rounded-xl bg-red-50 p-4 text-sm ring-1 ring-red-200" />
 
@@ -165,25 +170,34 @@
     [SupplyParameterFromForm(FormName = "claim")]
     private ClaimForm? Form { get; set; }
 
+    private bool _posted;
+
+    private bool CanRequest => _slot is { Availability: ClaimAvailability.Open } && _email is not null;
+
     protected override async Task OnInitializedAsync()
     {
+        // Static rendering starts at the first wait, so the form needs its model first. The model is only supplied when the
+        // form was posted.
+        _posted = Form is not null;
+        Form ??= new ClaimForm();
+
         var user = (await AuthenticationState).User;
         _contributorId = user.GetContributorId() ?? 0;
         var claimant = await Claims.GetClaimantAsync(_contributorId);
         _email = claimant?.VerifiedEmail;
 
         // A new form starts with their profile's name, link and accounts (or their GitHub name); a posted form keeps what was typed.
-        Form ??= new ClaimForm
+        if (!_posted)
         {
-            DisplayName = Truncate(claimant?.DisplayName ?? user.GetDisplayName(), 50),
-            Link = claimant?.WebsiteUrl,
-            Bluesky = claimant?.Bluesky,
-            Mastodon = claimant?.Mastodon,
-            LinkedIn = claimant?.LinkedIn,
-            Facebook = claimant?.Facebook,
-            Reddit = claimant?.Reddit,
-            X = claimant?.X,
-        };
+            Form.DisplayName = Truncate(claimant?.DisplayName ?? user.GetDisplayName(), 50);
+            Form.Link = claimant?.WebsiteUrl;
+            Form.Bluesky = claimant?.Bluesky;
+            Form.Mastodon = claimant?.Mastodon;
+            Form.LinkedIn = claimant?.LinkedIn;
+            Form.Facebook = claimant?.Facebook;
+            Form.Reddit = claimant?.Reddit;
+            Form.X = claimant?.X;
+        }
 
         _slot = await Claims.FindAsync(Year, Day, Part);
         if (_slot is null)

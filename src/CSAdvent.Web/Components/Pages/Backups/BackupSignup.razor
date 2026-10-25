@@ -46,8 +46,22 @@ else if (_membership is { } membership)
         </p>
         <p class="mt-1 text-slate-700">We'll email you if a spot needs you.</p>
     </div>
+}
+else if (_email is null)
+{
+    <h2 class="mt-8 text-xl font-semibold text-slate-900">We need a verified email</h2>
+    <p class="mt-2 max-w-2xl text-slate-600">
+        We contact backups at the verified email address on their GitHub account, and yours doesn't have one yet. Verify an email in
+        your <a href="https://github.com/settings/emails" class="text-advent-700 underline">GitHub email settings</a>, then sign out
+        and sign in again.
+    </p>
+}
 
-    <section class="mt-10 max-w-2xl rounded-xl bg-red-50 p-5 ring-1 ring-red-200">
+@* Leaving and joining are each rendered (hidden) after their post too, so a repeated post, like a double click, reaches its
+   handler instead of a 400. *@
+@if ((_availability is BackupSignupAvailability.Open && _membership is not null) || _leavePosted)
+{
+    <section hidden="@(_membership is null)" class="mt-10 max-w-2xl rounded-xl bg-red-50 p-5 ring-1 ring-red-200">
         <h2 class="font-semibold text-red-900">Leave the backup list</h2>
         <EditForm Model="Leave" FormName="leave" OnValidSubmit="LeaveAsync" class="mt-3 flex flex-wrap items-center gap-4">
             <DataAnnotationsValidator />
@@ -60,17 +74,7 @@ else if (_membership is { } membership)
         </EditForm>
     </section>
 }
-else if (_email is null)
-{
-    <h2 class="mt-8 text-xl font-semibold text-slate-900">We need a verified email</h2>
-    <p class="mt-2 max-w-2xl text-slate-600">
-        We contact backups at the verified email address on their GitHub account, and yours doesn't have one yet. Verify an email in
-        your <a href="https://github.com/settings/emails" class="text-advent-700 underline">GitHub email settings</a>, then sign out
-        and sign in again.
-    </p>
-}
 
-@* Rendered (hidden) after a sign-up post too, so a repeated post reaches its handler instead of a 400. *@
 @if ((_availability is BackupSignupAvailability.Open && _membership is null && _email is not null) || _signupPosted)
 {
     <EditForm Model="Form" FormName="backup" OnValidSubmit="SignUpAsync" hidden="@(_membership is not null)" class="mt-8 flex max-w-2xl flex-col gap-6">
@@ -124,6 +128,7 @@ else if (_email is null)
     private string? _email;
     private int _contributorId;
     private bool _signupPosted;
+    private bool _leavePosted;
 
     [Parameter]
     public int Year { get; set; }
@@ -143,6 +148,7 @@ else if (_email is null)
     protected override async Task OnInitializedAsync()
     {
         _signupPosted = Form is not null;
+        _leavePosted = Leave is not null;
         var user = (await AuthenticationState).User;
         Form ??= new BackupSignupForm { Name = user.GetDisplayName() is { Length: > 50 } name ? name[..50] : user.GetDisplayName() };
         Leave ??= new LeaveBackupListForm();

@@ -75,7 +75,11 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Static rendering starts at the first wait, so the form needs its model before any await (#109). A posted form keeps
+        // what was typed; a new one is filled in below.
         _posted = Form is not null;
+        Form ??= new ContentForm();
+
         _block = await Content.GetForEditAsync(Key);
         if (_block is null)
         {
@@ -83,10 +87,10 @@
             return;
         }
 
-        if (Form is null)
+        if (!_posted)
         {
             var earlier = Revision is { } id ? await Content.GetRevisionAsync(Key, id) : null;
-            Form = new ContentForm { Body = earlier ?? _block.Body };
+            Form.Body = earlier ?? _block.Body;
         }
     }
 
