@@ -55,16 +55,16 @@ public sealed class HomeComponentsTests : BunitContext
 
         Assert.Equal("Thanks for C# Advent 2025!", page.Find("h1").TextContent);
         Assert.Contains("50 posts from 47 authors", page.Markup);
-        Assert.Equal("Registration for C# Advent 2026 opens on November 1.", page.Find("[role=status]").TextContent);
+        Assert.Equal("Sign-ups for C# Advent 2026 open on November 1.", page.Find("[role=status]").TextContent);
         Assert.Contains("<strong>next December</strong>", page.Markup);
         Assert.Equal(["archive/2025", "archive", "rss", "others"], page.FindAll("a").Select(a => a.GetAttribute("href")));
     }
 
     [Theory]
-    [InlineData(33, "33 days until registration opens!")]
-    [InlineData(1, "1 day until registration opens!")]
-    [InlineData(0, "Registration opens today!")]
-    public void CountsDownToRegistration(int days, string expected)
+    [InlineData(33, "33 days until sign-ups open!")]
+    [InlineData(1, "1 day until sign-ups open!")]
+    [InlineData(0, "Sign-ups open today!")]
+    public void CountsDownToSignUps(int days, string expected)
     {
         var page = Render<OffSeason>(p => p
             .Add(c => c.LastSeason, new FinishedSeason(2025, 50, 47))
@@ -72,7 +72,7 @@ public sealed class HomeComponentsTests : BunitContext
 
         var status = page.Find("[role=status]");
         Assert.Equal(expected, status.QuerySelector("p")!.TextContent);
-        Assert.Contains("Registration for C# Advent 2026 opens on November 1.", status.TextContent);
+        Assert.Contains("Sign-ups for C# Advent 2026 open on November 1.", status.TextContent);
     }
 
     [Fact]

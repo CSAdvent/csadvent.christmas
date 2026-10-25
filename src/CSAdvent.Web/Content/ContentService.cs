@@ -30,8 +30,9 @@ public static class ContentCatalog
             1. **Request a spot.** You don't need a topic yet.
             2. **Prepare your content**, in English, and don't publish it before your day. Host it anywhere: your own site,
                dev.to, Medium, YouTube, GitHub Pages, or somewhere else.
-            3. **Link to [csadvent.christmas](https://csadvent.christmas)** in your content, so your readers can find the rest of
-               the Advent.
+            3. **Open with the C# Advent blurb.** Start your content by saying it's part of this year's C# Advent calendar,
+               with a link to [csadvent.christmas](https://csadvent.christmas), so your readers can find the rest of the Advent.
+               There's one ready to paste on your My spots page, and we check every post for it.
             4. **Publish on your day.** Your content has to be related to C# in some way; otherwise, it's up to you.
             5. **Share it** with the hashtags #csharp and #csadvent.
 
@@ -42,12 +43,11 @@ public static class ContentCatalog
             C# Advent isn't the only developer advent calendar. Here are some others to enjoy this December. Know one we're
             missing? Email [hello@csadvent.christmas](mailto:hello@csadvent.christmas).
             """),
-        new(BetweenSeasons, "Between seasons", "The home page from January until registration opens, below the thank-you", """
+        new(BetweenSeasons, "Between seasons", "The home page from January until sign-ups open, below the thank-you", """
             Thank you to every author who wrote a post, and to everyone who read and shared them. C# Advent only happens because
             of you.
 
-            See you next December! Until then, catch up on anything you missed in the archive, and follow C# Advent to hear when
-            registration opens.
+            See you in December! Until then, catch up on anything you missed in the archive.
             """),
     ];
 

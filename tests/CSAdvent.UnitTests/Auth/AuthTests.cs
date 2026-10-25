@@ -22,6 +22,16 @@ public sealed class ReturnUrlTests
     [InlineData("https://evil.example/")]
     [InlineData("javascript:alert(1)")]
     public void SendsEverythingElseHome(string? url) => Assert.Equal("/", ReturnUrl.Sanitize(url));
+
+    // Browsers drop tabs and line breaks from URLs, so most of these would become //evil.example.
+    [Theory]
+    [InlineData("/\t/evil.example/")]
+    [InlineData("/\r\n/evil.example/")]
+    [InlineData("/\n/evil.example/")]
+    [InlineData("/\0/evil.example/")]
+    [InlineData("/archive\u007F")]
+    [InlineData("/archive\u0085")]
+    public void SendsUrlsWithControlCharactersHome(string url) => Assert.Equal("/", ReturnUrl.Sanitize(url));
 }
 
 public sealed class GitHubSignInTests

@@ -213,7 +213,7 @@ public sealed partial class AnnouncementService(
             body.Add(Button(label, url));
         }
 
-        body.Add(Paragraph("Thanks,", EmailSpan.LineBreak, "Calvin and Matt, the C# Advent organizers"));
+        body.Add(Paragraph("Thanks,", EmailSpan.LineBreak, "Matt and Calvin, the C# Advent organizers"));
         return new EmailContent
         {
             Subject = announcement.Subject,

@@ -16,15 +16,16 @@
                 </span>
             </a>
             <nav aria-label="Main">
-                <ul class="flex items-center gap-1 text-sm font-medium">
+                @* The menu wraps onto a second row on phones, so every item stays on screen. The links are blocks, so rows don't overlap. *@
+                <ul class="flex flex-wrap items-center gap-1 text-sm font-medium">
                     <li>
-                        <NavLink href="" Match="NavLinkMatch.All" class="rounded-lg px-3 py-2 hover:bg-white/15" ActiveClass="bg-white/20">Home</NavLink>
+                        <NavLink href="" Match="NavLinkMatch.All" class="block rounded-lg px-3 py-2 hover:bg-white/15" ActiveClass="bg-white/20">Home</NavLink>
                     </li>
                     <li>
-                        <NavLink href="archive" class="rounded-lg px-3 py-2 hover:bg-white/15" ActiveClass="bg-white/20">Archive</NavLink>
+                        <NavLink href="archive" class="block rounded-lg px-3 py-2 hover:bg-white/15" ActiveClass="bg-white/20">Archive</NavLink>
                     </li>
                     <li>
-                        <NavLink href="about" class="rounded-lg px-3 py-2 hover:bg-white/15" ActiveClass="bg-white/20">About</NavLink>
+                        <NavLink href="about" class="block rounded-lg px-3 py-2 hover:bg-white/15" ActiveClass="bg-white/20">About</NavLink>
                     </li>
                     <AccountMenu />
                 </ul>

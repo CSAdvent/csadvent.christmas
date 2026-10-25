@@ -192,7 +192,7 @@ public static class BackupEmails
         Transactional = true,
     };
 
-    private static ParagraphBlock SignOff => Paragraph("Thanks,", EmailSpan.LineBreak, "Calvin and Matt, the C# Advent organizers");
+    private static ParagraphBlock SignOff => Paragraph("Thanks,", EmailSpan.LineBreak, "Matt and Calvin, the C# Advent organizers");
 
     private static string Site(SiteOptions site) => site.BaseUrl.TrimEnd('/');
 }

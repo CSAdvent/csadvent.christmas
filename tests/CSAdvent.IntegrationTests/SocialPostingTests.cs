@@ -143,6 +143,7 @@ public sealed partial class SocialPostingTests(AppHostFixture fixture)
 
         var page = await organizer.GetStringAsync("/manage/social/signups?year=2127", CancellationToken);
         Assert.Contains("C# Advent 2127 sign-ups open in 8 days", page);
+        Assert.Contains(string.Create(CultureInfo.InvariantCulture, $"Sign-ups open at midnight Eastern on {opens:MMMM d}, in 8 days."), page);
 
         await SetModeAsync(organizer, SocialPlatform.Facebook, SocialPostingMode.Automatic);
         try
@@ -162,6 +163,20 @@ public sealed partial class SocialPostingTests(AppHostFixture fixture)
         {
             await SetModeAsync(organizer, SocialPlatform.Facebook, SocialPostingMode.Manual);
         }
+    }
+
+    [Fact]
+    public async Task TheSignUpsPageSaysWhenSignUpsOpenWhateverTheTime()
+    {
+        // Season 2300's sign-ups open at 9 AM Eastern, 8 days from today.
+        var eastern = TimeZoneInfo.FindSystemTimeZoneById("America/New_York");
+        var opens = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, eastern).Date.AddDays(8).AddHours(9);
+        await TestSeasons.EnsureAsync(fixture, 2300, claimsOpen: false, season => season.ClaimsOpenAt = new DateTimeOffset(opens, eastern.GetUtcOffset(opens)).ToUniversalTime());
+        using var organizer = await fixture.SignInAsync("organizer", AppHostFixture.OrganizerGitHubId);
+
+        var page = await organizer.GetStringAsync("/manage/social/signups?year=2300", CancellationToken);
+
+        Assert.Contains(string.Create(CultureInfo.InvariantCulture, $"Sign-ups open at 9 AM Eastern on {opens:MMMM d}, in 8 days."), page);
     }
 
     [Fact]

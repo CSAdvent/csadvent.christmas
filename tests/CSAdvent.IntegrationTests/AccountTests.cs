@@ -32,6 +32,18 @@ public sealed partial class AccountTests(AppHostFixture fixture)
     }
 
     [Fact]
+    public async Task SignInRefusesReturnUrlsWithControlCharacters()
+    {
+        using var browser = fixture.CreateBrowser();
+
+        // A tab between the slashes, which browsers drop, leaving //evil.example.
+        var response = await browser.GetAsync("/signin?returnUrl=/%09/evil.example", CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal("/dev/signin-options?returnUrl=%2F", response.Headers.Location!.OriginalString);
+    }
+
+    [Fact]
     public async Task SigningInRecordsTheContributorAndShowsTheirName()
     {
         using var browser = fixture.CreateBrowser();
