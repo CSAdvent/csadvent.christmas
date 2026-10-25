@@ -29,6 +29,25 @@ public sealed class ContentCatalogTests
     }
 
     [Fact]
+    public void TheAboutRulesAskForTheBlurbLikeTheTerms()
+    {
+        var about = Markdown.ToHtml(ContentCatalog.Find(ContentCatalog.About)!.Default).Value;
+
+        Assert.Contains("<strong>Open with the C# Advent blurb.</strong>", about);
+        Assert.Contains("href=\"https://csadvent.christmas\"", about);
+    }
+
+    [Fact]
+    public void TheDefaultCopySaysSignUps()
+    {
+        Assert.All(ContentCatalog.All, definition =>
+        {
+            Assert.DoesNotContain("registration", definition.Default, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("registration", definition.UsedOn, StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
+    [Fact]
     public void SuggestedOtherAdventsAreWorkingHttpsLinks()
     {
         Assert.NotEmpty(OtherAdventsService.Suggestions);

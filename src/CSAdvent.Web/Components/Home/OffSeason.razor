@@ -60,16 +60,16 @@
 
     internal static string Countdown(int days) => days switch
     {
-        0 => "Registration opens today!",
-        1 => "1 day until registration opens!",
-        _ => string.Create(CultureInfo.InvariantCulture, $"{days} days until registration opens!"),
+        0 => "Sign-ups open today!",
+        1 => "1 day until sign-ups open!",
+        _ => string.Create(CultureInfo.InvariantCulture, $"{days} days until sign-ups open!"),
     };
 
     private string Opening(UpcomingSeason? next) => next switch
     {
         { SignUpsOpenOn: { } opensOn } =>
-            string.Create(CultureInfo.InvariantCulture, $"Registration for C# Advent {next.Year} opens on {opensOn.ToString("MMMM d", CultureInfo.InvariantCulture)}."),
-        { } => $"We'll announce when registration for C# Advent {next.Year} opens, here and on social media.",
+            string.Create(CultureInfo.InvariantCulture, $"Sign-ups for C# Advent {next.Year} open on {opensOn.ToString("MMMM d", CultureInfo.InvariantCulture)}."),
+        { } => $"We'll announce when sign-ups for C# Advent {next.Year} open, here and on social media.",
         null when LastSeason is { } last => $"We'll announce C# Advent {last.Year + 1} here and on social media.",
         null => "We'll announce the next C# Advent here and on social media.",
     };

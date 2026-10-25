@@ -25,7 +25,7 @@
         }
         else if (posts.OpensAt is { } opensAt)
         {
-            <text>Sign-ups open at midnight Eastern on @OpensOn(opensAt), @(posts.DaysUntil == 1 ? "tomorrow" : $"in {posts.DaysUntil} days").</text>
+            <text>Sign-ups open at @Time(TimeOnly.FromDateTime(Schedule.ToLocalTime(opensAt).DateTime)) Eastern on @OpensOn(opensAt), @Until(posts.DaysUntil).</text>
         }
         else
         {
@@ -104,6 +104,14 @@ else if (_loaded)
 
     private string OpensOn(DateTimeOffset opensAt) => Schedule.ToLocalTime(opensAt).ToString("MMMM d", CultureInfo.InvariantCulture);
 
+    // Sign-ups can open at any time, later today included (no days left to count).
+    private static string Until(int? days) => days switch
+    {
+        null => "today",
+        1 => "tomorrow",
+        _ => string.Create(CultureInfo.InvariantCulture, $"in {days} days"),
+    };
+
     private static string Time(TimeOnly time) =>
-        time.ToString(time.Minute == 0 ? "h tt" : "h:mm tt", CultureInfo.InvariantCulture);
+        time == TimeOnly.MinValue ? "midnight" : time.ToString(time.Minute == 0 ? "h tt" : "h:mm tt", CultureInfo.InvariantCulture);
 }

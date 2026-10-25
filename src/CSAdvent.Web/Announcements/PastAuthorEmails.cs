@@ -34,7 +34,7 @@ public static class PastAuthorEmails
                     "Can't commit to a day? Join the ",
                     Link("backup list", string.Create(CultureInfo.InvariantCulture, $"{root}/backups/{year}")),
                     " and fill in if an author drops out."),
-                Paragraph("Thanks,", EmailSpan.LineBreak, "Calvin and Matt, the C# Advent organizers"),
+                Paragraph("Thanks,", EmailSpan.LineBreak, "Matt and Calvin, the C# Advent organizers"),
             ],
             Reason = "You're getting this email because you've written for C# Advent before.",
         };

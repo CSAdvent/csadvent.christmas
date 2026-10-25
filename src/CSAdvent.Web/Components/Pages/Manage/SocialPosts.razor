@@ -47,7 +47,7 @@
     @if (!day.IsRevealed)
     {
         <p class="mt-6 rounded-xl bg-amber-50 p-4 text-amber-900 ring-1 ring-amber-200">
-            Preview only: December @day.Day's posts are revealed at midnight Eastern (<LocalTime Value="day.RevealsAt" />), so
+            Preview only: December @day.Day's posts are revealed at midnight (<LocalTime Value="day.RevealsAt" />), so
             nothing can be posted before then. Platforms set to Automatic then post them at @Time(1) (post 1) and @Time(2) (post 2);
             you can post by hand any time after the reveal.
         </p>
