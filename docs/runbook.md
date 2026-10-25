@@ -57,7 +57,8 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
    the app until you answer a request in its developer portal (the README's Facebook setup has the rest).
 7. **Check email:** send yourself a sample from `/manage/emails`, and send a test email to hello@csadvent.christmas from
    another address (it forwards through ImprovMX).
-8. **Keep the stack current:** dependency updates, and a deploy (every merge to `main` deploys, unless it only changes documentation).
+8. **Keep the stack current:** dependency updates, and a deploy (every merge to `main` deploys, unless it only changes
+   documentation).
 9. **Check the announcements list** at `/manage/announcements`. The "sign-ups are open" email goes to every confirmed
    subscriber by itself at 9 AM on the day sign-ups open, 40 an hour. Write any other news there: save a draft, send a
    test to the organizers' inbox, then send it.
@@ -172,7 +173,7 @@ only then revoke the old one.
 
 Lines marked ✏️ **To fill in** are for the organizers: they aren't written down anywhere else.
 
-### 🌐 The domain, csadvent.christmas
+### 🌐 The Domain, csadvent.christmas
 
 - **Lives at:** Hover, the registrar. Its name servers point at the Azure DNS zone, which holds every record
   (`infra/dns.bicep`); nothing else is set at Hover.
@@ -195,7 +196,7 @@ Lines marked ✏️ **To fill in** are for the organizers: they aren't written d
 - **Checking:** send hello@ a test email from another address every fall. There's no key; keep the account's sign-in (with
   two-factor authentication) somewhere both organizers can reach.
 
-### 🐙 GitHub OAuth app (sign-in)
+### 🐙 GitHub OAuth App (Sign-In)
 
 - **Lives in:** variable `OAUTH_CLIENT_ID` and secret `OAUTH_CLIENT_SECRET` (AppHost parameters `github-client-id` and
   `github-client-secret`). The app itself is under a GitHub account's **Settings → Developer settings → OAuth Apps**, with
@@ -207,7 +208,7 @@ Lines marked ✏️ **To fill in** are for the organizers: they aren't written d
 - **Rotating:** in the OAuth app, **Generate a new client secret** (the old one keeps working until you delete it), set
   `OAUTH_CLIENT_SECRET`, deploy, sign in to check, then delete the old secret.
 
-### ✍️ Anthropic API key (the blurb check)
+### ✍️ Anthropic API Key (the Blurb Check)
 
 - **Lives in:** secret `ANTHROPIC_API_KEY` (parameter `anthropic-api-key`). The key belongs to a workspace in the
   [Anthropic Console](https://console.anthropic.com).
@@ -221,7 +222,7 @@ Lines marked ✏️ **To fill in** are for the organizers: they aren't written d
 - **Rotating:** create a new key in the same workspace, set the secret, deploy, press **Check now** on an entry page (the
   test season works), then revoke the old key.
 
-### 🐘 Mastodon access token
+### 🐘 Mastodon Access Token
 
 - **Lives in:** secret `MASTODON_ACCESS_TOKEN` (parameter `mastodon-access-token`), for `@csadvent@mastodon.social`.
 - ✏️ **To fill in:** who can sign in to the account.
@@ -231,7 +232,7 @@ Lines marked ✏️ **To fill in** are for the organizers: they aren't written d
   (or create a new application with the `write:statuses` scope). Set the secret, deploy, and press **Check** on
   `/manage/social`.
 
-### 🦋 Bluesky app password
+### 🦋 Bluesky App Password
 
 - **Lives in:** secret `BLUESKY_APP_PASSWORD` (parameter `bluesky-app-password`), for the `csadvent.christmas` account.
 - ✏️ **To fill in:** who can sign in to the account.
@@ -239,7 +240,7 @@ Lines marked ✏️ **To fill in** are for the organizers: they aren't written d
 - **Rotating:** in Bluesky's **Settings → Privacy and security → App passwords**, add a new one. Set the secret, deploy,
   press **Check**, then delete the old app password.
 
-### 📘 Facebook Page ID and token
+### 📘 Facebook Page ID and Token
 
 - **Lives in:** variable `FACEBOOK_PAGE_ID` and secret `FACEBOOK_PAGE_TOKEN` (parameters `facebook-page-id` and
   `facebook-page-token`). The token comes from the Meta app on developers.facebook.com.
@@ -250,7 +251,7 @@ Lines marked ✏️ **To fill in** are for the organizers: they aren't written d
 - **Rotating:** make a new Page token as the README's Facebook setup describes, set `FACEBOOK_PAGE_TOKEN`, deploy, and press
   **Check**.
 
-### ✖️ X credentials
+### ✖️ X Credentials
 
 - **Lives in:** secrets `X_API_KEY`, `X_API_KEY_SECRET`, `X_ACCESS_TOKEN` and `X_ACCESS_TOKEN_SECRET` (parameters
   `x-api-key`, `x-api-key-secret`, `x-access-token` and `x-access-token-secret`). All four are needed, or X stays copy and
@@ -263,7 +264,7 @@ Lines marked ✏️ **To fill in** are for the organizers: they aren't written d
 - **Rotating:** regenerate the keys or tokens in the app's settings, update every secret you regenerated, deploy, and press
   **Check**. Tokens made before the app had Read and write permission stay read-only.
 
-### 🗄️ PostgreSQL admin username and password
+### 🗄️ PostgreSQL Admin Username and Password
 
 - **Lives in:** variable `PG_ADMIN_USERNAME` and secret `PG_ADMIN_PASSWORD` (parameters `pg-admin-username` and
   `pg-admin-password`). Every deploy sets the server's admin password from them and writes the connection strings to the
@@ -275,7 +276,7 @@ Lines marked ✏️ **To fill in** are for the organizers: they aren't written d
   together. Then check `/health`, and restart the `web` app's revision in the portal if it's Unhealthy. The username can't
   be changed once the server exists.
 
-### 🪪 Azure sign-in for GitHub Actions
+### 🪪 Azure Sign-In for GitHub Actions
 
 - **Lives in:** no secret. Variables `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID` name the managed
   identity `id-csadvent-github` (resource group `rg-csadvent-github`, Owner of the subscription), which trusts GitHub's
@@ -296,7 +297,7 @@ Lines marked ✏️ **To fill in** are for the organizers: they aren't written d
 - **What notices:** the error alert (every failed send logs an error), and a sample from `/manage/emails`.
 - **Rotating:** nothing to rotate.
 
-### 🚨 Alert recipients
+### 🚨 Alert Recipients
 
 - **Lives in:** secret `ALERT_EMAILS` (parameter `alert-emails`): the addresses Azure Monitor's alerts go to, separated by
   commas. Not a credential, but personal, so it's a secret.
@@ -304,7 +305,7 @@ Lines marked ✏️ **To fill in** are for the organizers: they aren't written d
 - **Changing it:** set the secret and deploy. Never edit the action group in the portal, because the next deploy puts it
   back.
 
-### Nothing to look after
+### ✅ Nothing to Look After
 
 - **Application Insights, the Key Vault and the container registry** are created by the deploy and used through managed
   identities.
@@ -418,15 +419,15 @@ hello@, so it can't warn anyone about itself):
 - **An uptime check outside Azure** asks `https://csadvent.christmas/health` every few minutes. It's set up by hand (below).
 - **Azure Monitor alerts**, defined in [`infra/alerts.bicep`](../src/CSAdvent.AppHost/infra/alerts.bicep) and created by the
   deploy once the `ALERT_EMAILS` secret is set (the README's deploy setup). They go to every address in it, from Azure's
-  own `azure-noreply@microsoft.com`, so add that to your contacts. Each address got an email from Azure saying it was
-  added to the `csadvent-organizers` action group. To change who gets them, change the secret and run the Deploy
+  own `azure-noreply@microsoft.com`, so add that to your contacts. Each address gets an email from Azure when it's added
+  to the `csadvent-organizers` action group. To change who gets them, change the secret and run the Deploy
   workflow; a change made in the portal is undone by the next deploy.
 
 The alerts that keep firing (errors, database) email once when they start and again when they clear. In the portal they're
 under **Monitor → Alerts**, and **Monitor → Alerts → Alert rules** lists the rules. The action group's **Test** button sends
 a sample to everyone.
 
-### What each alert means
+### 🔔 What Each Alert Means
 
 - **"C# Advent: errors in the site's logs"** (`csadvent-errors`, checked every 15 minutes): the site or a background job
   logged an error. Usually an email that couldn't be sent, a background run that failed (reminders, backups, social posting,
@@ -470,7 +471,7 @@ a sample to everyone.
   2. **Unhealthy**: the site can't reach the database (look at the server in the portal, and the database alerts).
   3. **No answer**: look at the `web` container app's revisions in the portal, and at the last deploy in GitHub Actions.
 
-### Setting up the uptime check (by hand, once)
+### 📟 Setting Up the Uptime Check (by Hand, Once)
 
 Use the free tier of [UptimeRobot](https://uptimerobot.com) or [Better Stack](https://betterstack.com/uptime). Both organizers
 need to be on it.
@@ -481,7 +482,7 @@ need to be on it.
 3. Alert **both organizers** by email and by the service's phone app.
 4. ✏️ **To fill in:** which service, whose account, and who gets its alerts.
 
-### A budget alert (optional, by hand)
+### 💰 A Budget Alert (Optional, by Hand)
 
 Budgets are set on the subscription, outside the deploy. In the portal: **Cost Management → Budgets → Add**, monthly, with
 alerts to both organizers at 80% and 100%. It's free, and only warns: nothing is stopped.
