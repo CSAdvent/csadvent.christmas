@@ -169,6 +169,7 @@ public sealed class SeasonTestingService(
         // Offers point at both the backup list and the spots, so they go first.
         await db.BackupOffers.Where(o => o.Slot.SeasonYear == Year).ExecuteDeleteAsync(token);
         await db.Substitutes.Where(s => s.SeasonYear == Year).ExecuteDeleteAsync(token);
+        await db.BackupSignupEmails.Where(e => e.SeasonYear == Year).ExecuteDeleteAsync(token);
         await db.SentReminders.Where(r => r.Slot != null && r.Slot.SeasonYear == Year).ExecuteDeleteAsync(token);
         await db.EntryHits.Where(h => h.Slot.SeasonYear == Year).ExecuteDeleteAsync(token);
         await db.SocialPosts.Where(p => p.Slot.SeasonYear == Year).ExecuteDeleteAsync(token);

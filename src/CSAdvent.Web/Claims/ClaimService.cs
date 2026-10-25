@@ -2,6 +2,7 @@ using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Data;
 using CSAdvent.Web.SeasonTesting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Npgsql;
 
 namespace CSAdvent.Web.Claims;
@@ -20,6 +21,12 @@ public enum ClaimOutcome
     AlreadyRequested,
     NoVerifiedEmail,
     Unavailable,
+
+    /// <summary>They already have <see cref="ClaimOptions.MaxPendingPerSeason"/> requests waiting in the season.</summary>
+    TooManyPending,
+
+    /// <summary>They've made <see cref="ClaimOptions.MaxPerHour"/> requests in the last hour.</summary>
+    TooManyThisHour,
 }
 
 public sealed record ClaimableSlot(int SlotId, int Year, int Day, int Part, int SlotsPerDay, ClaimAvailability Availability);
@@ -29,10 +36,20 @@ public sealed record ClaimantDetails(string? VerifiedEmail, string? Bluesky, str
 
 /// <summary>
 /// Claim requests: a signed-in contributor asks for an open slot and the organizer approves one request per slot. Requests
-/// don't reserve the slot, so several people can ask for the same one; first come, first served.
+/// don't reserve the slot, so several people can ask for the same one; first come, first served. Every request emails the
+/// contributor and the organizers, so one person can only have a few waiting, and make a few an hour (<see cref="ClaimOptions"/>).
 /// </summary>
-public sealed class ClaimService(AdventDbContext db, AdventSchedule schedule, TimeProvider timeProvider, IClaimNotifier notifier, SeasonAccess access)
+public sealed class ClaimService(
+    AdventDbContext db,
+    AdventSchedule schedule,
+    TimeProvider timeProvider,
+    IClaimNotifier notifier,
+    SeasonAccess access,
+    IOptions<ClaimOptions> options)
 {
+    /// <summary>Requests one person can have waiting in a season.</summary>
+    public int MaxPendingPerSeason => options.Value.MaxPendingPerSeason;
+
     /// <summary>Whether the slot can be requested. The test season is always open, to the testers who can see it.</summary>
     public static ClaimAvailability CheckAvailability(Season season, Slot slot, AdventSchedule schedule) =>
         !(season.IsTest || schedule.AreClaimsOpen(season.ClaimsOpenAt)) ? ClaimAvailability.ClaimsNotOpen
@@ -76,6 +93,12 @@ public sealed class ClaimService(AdventDbContext db, AdventSchedule schedule, Ti
                 c.WebsiteUrl))
             .SingleOrDefaultAsync(cancellationToken);
 
+    /// <summary>How many of the contributor's requests in the season are waiting for the organizers.</summary>
+    public Task<int> CountPendingAsync(int contributorId, int year, CancellationToken cancellationToken = default) =>
+        db.ClaimRequests.CountAsync(
+            r => r.ContributorId == contributorId && r.Slot.SeasonYear == year && r.Status == ClaimRequestStatus.Pending,
+            cancellationToken);
+
     public async Task<ClaimOutcome> SubmitAsync(int contributorId, int year, int day, int part, ClaimForm form, CancellationToken cancellationToken = default)
     {
         var contributor = await db.Contributors.SingleOrDefaultAsync(c => c.Id == contributorId, cancellationToken);
@@ -91,7 +114,27 @@ public sealed class ClaimService(AdventDbContext db, AdventSchedule schedule, Ti
             return ClaimOutcome.Unavailable;
         }
 
+        if (await db.ClaimRequests.AnyAsync(
+            r => r.SlotId == slot.SlotId && r.ContributorId == contributorId && r.Status == ClaimRequestStatus.Pending,
+            cancellationToken))
+        {
+            return ClaimOutcome.AlreadyRequested;
+        }
+
+        // Each request sends two emails, so one person can't ask for every open spot (#137). Two requests at the same moment
+        // can go one over; that's fine, it's the hundreds that matter.
+        if (await CountPendingAsync(contributorId, year, cancellationToken) >= options.Value.MaxPendingPerSeason)
+        {
+            return ClaimOutcome.TooManyPending;
+        }
+
         var now = timeProvider.GetUtcNow();
+        var hourAgo = now.AddHours(-1);
+        if (await db.ClaimRequests.CountAsync(r => r.ContributorId == contributorId && r.SubmittedAt > hourAgo, cancellationToken) >= options.Value.MaxPerHour)
+        {
+            return ClaimOutcome.TooManyThisHour;
+        }
+
         var request = new ClaimRequest
         {
             SlotId = slot.SlotId,
@@ -124,7 +167,7 @@ public sealed class ClaimService(AdventDbContext db, AdventSchedule schedule, Ti
         }
         catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
         {
-            // The unique index on pending requests: this contributor already asked for this slot.
+            // The unique index on pending requests: this contributor asked for this slot at the same moment.
             return ClaimOutcome.AlreadyRequested;
         }
 

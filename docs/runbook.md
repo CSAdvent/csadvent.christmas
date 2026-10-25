@@ -79,8 +79,10 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
   requests you won't take. Approving emails the author.
 - **Entries** at `/manage/entries` show every spot's status. You can fix a name or link, put someone from the backup
   list into an open spot, or release a spot.
+- **Limits:** each person can have 3 requests waiting at once, and make 5 an hour, because every request emails them and
+  you. The claim page tells them. Answering or declining their requests frees them up again.
 - **Backup posters** sign up at `/backups/{year}`, and you can see them at `/manage/backups`. Point people there once
-  the calendar fills up.
+  the calendar fills up. The welcome email goes once per person and season, however often they leave and join again.
 - **Authors** add their post's title and URL themselves on My spots. Nobody sends them by email.
 - **Past authors** get an invitation by themselves at 9 AM on the day sign-ups open, a few at a time alongside the
   announcement. `/manage/announcements` shows how many are going out. Nothing to do.
@@ -150,6 +152,9 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
   environment, run the Deploy workflow, and press **Check**.
 - **Email:** a sample from `/manage/emails` proves the sending domain is still connected. The site can send 30 emails
   a minute and 100 an hour unless Azure has raised that (see Email Sending Limits, below).
+- **The announcements sign-up limit** (5 an IP address per 10 minutes): once someone has signed up after a deploy,
+  Application Insights should have "The announcements sign-up limit counts by each visitor's public IP address." A warning
+  instead means every visitor is sharing one limit, so the forwarded headers need checking (#137).
 - **Database restore:** practise a point-in-time restore once a year, before December (#90).
 - **The blurb check's Anthropic API key** lasts until it's revoked. Check its workspace's spend limit in the Anthropic
   Console, and replace the `ANTHROPIC_API_KEY` secret the same way as the social ones if it's ever rotated.

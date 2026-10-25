@@ -10,6 +10,33 @@ public static class AnnouncementEndpoints
     public const string ConfirmPage = "/announcements/confirm";
     public const string UnsubscribePage = "/announcements/unsubscribe";
 
+    private static int _rateLimitKeyChecked;
+
+    /// <summary>
+    /// What the sign-up form's rate limit counts by: the visitor's IP address. Behind Container Apps' ingress, that's the
+    /// rightmost X-Forwarded-For address (the AppHost sets <c>ASPNETCORE_FORWARDEDHEADERS_ENABLED</c>), which the ingress
+    /// adds itself, so a visitor can't choose their own. If it were ever the ingress's private address, every visitor would
+    /// share one limit (#137), so each replica logs which it is the first time, in production, without the address.
+    /// </summary>
+    public static string RateLimitKey(HttpContext context)
+    {
+        var address = context.Connection.RemoteIpAddress;
+        if (Interlocked.Exchange(ref _rateLimitKeyChecked, 1) == 0 && context.RequestServices.GetRequiredService<IHostEnvironment>().IsProduction())
+        {
+            var logger = context.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(AnnouncementEndpoints));
+            if (address is not null && Content.PublicAddresses.IsPublic(address))
+            {
+                logger.LogInformation("The announcements sign-up limit counts by each visitor's public IP address.");
+            }
+            else
+            {
+                logger.LogWarning("The announcements sign-up limit got a private or missing IP address, so every visitor may share one limit. Check the forwarded headers.");
+            }
+        }
+
+        return address?.ToString() ?? "unknown";
+    }
+
     public static WebApplication MapAnnouncements(this WebApplication app)
     {
         // The sign-up form, on the announcements page and the home page between seasons. Binding the form checks antiforgery,

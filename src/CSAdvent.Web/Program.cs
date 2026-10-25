@@ -55,6 +55,10 @@ builder.Services.AddSingleton<AdventSchedule>();
 builder.Services.AddScoped<ArchiveService>();
 builder.Services.AddScoped<HomeService>();
 builder.Services.AddScoped<ClaimService>();
+builder.Services.AddOptions<ClaimOptions>()
+    .BindConfiguration(ClaimOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
 builder.Services.AddScoped<SeasonAdminService>();
 builder.Services.AddScoped<ClaimReviewService>();
 builder.Services.AddScoped<EntryAdminService>();
@@ -153,7 +157,7 @@ var subscribeLimit = builder.Configuration.GetValue("Announcements:SubscribeLimi
 builder.Services.AddRateLimiter(options =>
 {
     options.AddPolicy(AnnouncementEndpoints.RateLimitPolicy, context => RateLimitPartition.GetFixedWindowLimiter(
-        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        AnnouncementEndpoints.RateLimitKey(context),
         _ => new FixedWindowRateLimiterOptions { PermitLimit = subscribeLimit, Window = TimeSpan.FromMinutes(10) }));
     options.OnRejected = (context, _) =>
     {

@@ -23,10 +23,15 @@
     </p>
 </div>
 
-@if (Done is "joined" or "left")
+@if (Done is "joined" or "rejoined" or "left")
 {
     <p class="mt-6 max-w-2xl rounded-xl bg-green-50 p-4 font-medium text-green-800 ring-1 ring-green-200" role="status">
-        @(Done == "joined" ? "You're on the list. We've emailed you the details." : "You've left the backup list.")
+        @(Done switch
+        {
+            "joined" => "You're on the list. We've emailed you the details.",
+            "rejoined" => "You're back on the list.",
+            _ => "You've left the backup list.",
+        })
     </p>
 }
 
@@ -171,6 +176,9 @@ else if (_email is null)
         {
             case BackupSignupOutcome.SignedUp or BackupSignupOutcome.AlreadyOnList:
                 Navigation.NavigateTo($"backups/{Year}?done=joined");
+                break;
+            case BackupSignupOutcome.Rejoined:
+                Navigation.NavigateTo($"backups/{Year}?done=rejoined");
                 break;
             case BackupSignupOutcome.NoVerifiedEmail:
                 _email = null;

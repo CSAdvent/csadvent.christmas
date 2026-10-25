@@ -4,6 +4,7 @@
 @using CSAdvent.Web.Claims
 @inject ClaimService Claims
 @inject NavigationManager Navigation
+@inject Microsoft.Extensions.Options.IOptions<SiteOptions> Site
 
 @if (_slot is not null)
 {
@@ -32,12 +33,21 @@
             then sign out and sign in again.
         </p>
     }
+    else if (_pending >= Claims.MaxPendingPerSeason)
+    {
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900">You have @_pending @(_pending == 1 ? "request" : "requests") waiting</h1>
+        <p class="mt-2 max-w-2xl text-slate-600">
+            That's as many as anyone can have waiting at once. Once the organizers have answered one, or you've withdrawn one on
+            <a href="my-spots" class="text-advent-700 underline">My spots</a>, you can ask for another.
+        </p>
+    }
     else
     {
         <h1 class="text-3xl font-bold tracking-tight text-slate-900">Request December @Day, @Year</h1>
         <p class="mt-2 max-w-2xl text-slate-600">
             You're asking for @(_slot.SlotsPerDay > 1 ? $"post {Part} of {_slot.SlotsPerDay}" : "the post") on December @Day.
-            You don't need a topic or a post yet; you can add those later. The organizers review requests in the order they arrive.
+            You don't need a topic or a post yet; you can add those later. The organizers review requests in the order they arrive,
+            and you can have up to @Claims.MaxPendingPerSeason waiting at once.
         </p>
 
         @if (_error is not null)
@@ -154,6 +164,7 @@
     private string? _email;
     private int _contributorId;
     private string? _error;
+    private int _pending;
 
     [Parameter]
     public int Year { get; set; }
@@ -172,7 +183,7 @@
 
     private bool _posted;
 
-    private bool CanRequest => _slot is { Availability: ClaimAvailability.Open } && _email is not null;
+    private bool CanRequest => _slot is { Availability: ClaimAvailability.Open } && _email is not null && _pending < Claims.MaxPendingPerSeason;
 
     protected override async Task OnInitializedAsync()
     {
@@ -203,7 +214,10 @@
         if (_slot is null)
         {
             Navigation.NotFound();
+            return;
         }
+
+        _pending = await Claims.CountPendingAsync(_contributorId, Year);
     }
 
     private static string Truncate(string text, int length) => text.Length <= length ? text : text[..length];
@@ -220,6 +234,12 @@
                 break;
             case ClaimOutcome.NoVerifiedEmail:
                 _email = null;
+                break;
+            case ClaimOutcome.TooManyPending:
+                _pending = await Claims.CountPendingAsync(_contributorId, Year);
+                break;
+            case ClaimOutcome.TooManyThisHour:
+                _error = $"You've asked for a lot of spots in the last hour. Try again later, or email {Site.Value.ContactEmail}.";
                 break;
             default:
                 _slot = await Claims.FindAsync(Year, Day, Part);

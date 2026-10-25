@@ -68,6 +68,80 @@ public sealed partial class SignUpDayTests(AppHostFixture fixture)
         Assert.False(await db.Substitutes.AnyAsync(s => s.SeasonYear == year, CancellationToken));
     }
 
+    [Fact]
+    public async Task OnePersonCanOnlyHaveAFewRequestsWaiting()
+    {
+        const int year = 2312;
+        await TestSeasons.EnsureAsync(fixture, year, claimsOpen: true);
+        using var eager = await fixture.SignInAsync("sud-eager", 231201);
+
+        for (var day = 1; day <= 3; day++)
+        {
+            Assert.Equal(HttpStatusCode.Redirect, (await PostClaimAsync(eager, year, day, 1, "Eager Beaver")).StatusCode);
+        }
+
+        var fourth = await PostClaimAsync(eager, year, 4, 1, "Eager Beaver");
+
+        Assert.Equal(HttpStatusCode.OK, fourth.StatusCode);
+        Assert.Contains("You have 3 requests waiting", await fourth.Content.ReadAsStringAsync(CancellationToken));
+        Assert.Contains("You have 3 requests waiting", await eager.GetPageAsync($"/claim/{year}/5/1"));
+        await using var db = await fixture.CreateDbContextAsync();
+        Assert.Equal(3, await db.ClaimRequests.CountAsync(r => r.Contributor.GithubUserId == 231201, CancellationToken));
+        Assert.Equal(3, await fixture.CountEmailsAsync("sud-eager@example.com", "We received your C# Advent request"));
+    }
+
+    [Fact]
+    public async Task OnePersonCanOnlyMakeAFewRequestsAnHour()
+    {
+        const int year = 2312;
+        await TestSeasons.EnsureAsync(fixture, year, claimsOpen: true);
+        using var busy = await fixture.SignInAsync("sud-busy", 231202);
+
+        // Five requests in the last hour that aren't waiting any more, such as ones the organizers already approved.
+        await using (var db = await fixture.CreateDbContextAsync())
+        {
+            var contributorId = await db.Contributors.Where(c => c.GithubUserId == 231202).Select(c => c.Id).SingleAsync(CancellationToken);
+            var slots = await db.Slots.Where(s => s.SeasonYear == year && s.Part == 2 && s.Day <= 5).Select(s => s.Id).ToListAsync(CancellationToken);
+            db.ClaimRequests.AddRange(slots.Select(slotId => new ClaimRequest
+            {
+                SlotId = slotId,
+                ContributorId = contributorId,
+                DisplayName = "Busy Bee",
+                Email = "sud-busy@example.com",
+                TermsAcceptedAt = DateTimeOffset.UtcNow,
+                TimingAcceptedAt = DateTimeOffset.UtcNow,
+                SubmittedAt = DateTimeOffset.UtcNow.AddMinutes(-30),
+                Status = ClaimRequestStatus.Approved,
+            }));
+            await db.SaveChangesAsync(CancellationToken);
+        }
+
+        var response = await PostClaimAsync(busy, year, 10, 2, "Busy Bee");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("You&#x27;ve asked for a lot of spots in the last hour.", await response.Content.ReadAsStringAsync(CancellationToken));
+        await using var check = await fixture.CreateDbContextAsync();
+        Assert.Equal(5, await check.ClaimRequests.CountAsync(r => r.Contributor.GithubUserId == 231202, CancellationToken));
+    }
+
+    [Fact]
+    public async Task LeavingAndJoiningTheBackupListAgainOnlyEmailsOnce()
+    {
+        const int year = 2311;
+        await TestSeasons.EnsureAsync(fixture, year, claimsOpen: true);
+        using var backup = await fixture.SignInAsync("sud-yoyo", 231101, "Yo Yo");
+
+        await JoinBackupsAsync(backup, year, "Yo Yo");
+        await fixture.WaitForEmailAsync("sud-yoyo@example.com", $"You're on the C# Advent {year} backup list");
+        await backup.PostFormAsync($"/backups/{year}", "leave", new() { ["Leave.Confirm"] = "true" });
+
+        var rejoined = await JoinBackupsAsync(backup, year, "Yo Yo");
+
+        Assert.Equal($"/backups/{year}?done=rejoined", TestBrowser.PathOf(rejoined.Headers.Location!));
+        Assert.Contains("You&#x27;re back on the list.", await backup.GetPageAsync(TestBrowser.PathOf(rejoined.Headers.Location!)));
+        Assert.Equal(1, await fixture.CountEmailsAsync("sud-yoyo@example.com", $"You're on the C# Advent {year} backup list"));
+    }
+
     private Task<HttpClient> SignInAsOrganizerAsync() => fixture.SignInAsync("organizer", AppHostFixture.OrganizerGitHubId);
 
     /// <summary>A contributor requests a spot through the claim form, as they would on the site. Returns the request's ID.</summary>
