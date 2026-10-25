@@ -118,6 +118,46 @@ public sealed class RetentionTests(AppHostFixture fixture)
         }
     }
 
+    [Fact]
+    public async Task DeletesRequestsForOlderPosts30DaysAfterTheyreDecided()
+    {
+        int oldId, recentId, pendingId;
+        await using (var db = await fixture.CreateDbContextAsync())
+        {
+            var asker = new Contributor { GithubUserId = 8103, GithubLogin = "old-poster", CreatedAt = Now };
+            db.Contributors.Add(asker);
+            await db.SaveChangesAsync(CancellationToken);
+            var slots = await db.Slots.Where(s => s.SeasonYear == 2020 && s.PostUrl != null).OrderBy(s => s.Id).Select(s => s.Id).Take(3).ToListAsync(CancellationToken);
+
+            PostClaimRequest Decided(int slotId, int daysAgo) => new()
+            {
+                SlotId = slotId,
+                ContributorId = asker.Id,
+                Note = "My old blog.",
+                SubmittedAt = Now.AddDays(-daysAgo - 1),
+                Status = PostClaimStatus.Declined,
+                DecidedAt = Now.AddDays(-daysAgo),
+                DecidedBy = "organizer",
+            };
+            var old = Decided(slots[0], 31);
+            var recent = Decided(slots[1], 29);
+            var pending = new PostClaimRequest { SlotId = slots[2], ContributorId = asker.Id, SubmittedAt = Now.AddDays(-90), Status = PostClaimStatus.Pending };
+            db.PostClaimRequests.AddRange(old, recent, pending);
+            await db.SaveChangesAsync(CancellationToken);
+            (oldId, recentId, pendingId) = (old.Id, recent.Id, pending.Id);
+        }
+
+        await using (var db = await fixture.CreateDbContextAsync())
+        {
+            var deletion = await CreateRetention(db, Now).DeleteExpiredAsync(CancellationToken);
+
+            Assert.True(deletion.PostClaimRequests >= 1);
+            Assert.False(await db.PostClaimRequests.AnyAsync(r => r.Id == oldId, CancellationToken));
+            Assert.True(await db.PostClaimRequests.AnyAsync(r => r.Id == recentId, CancellationToken));
+            Assert.True(await db.PostClaimRequests.AnyAsync(r => r.Id == pendingId, CancellationToken));
+        }
+    }
+
     private static ContactRetention CreateRetention(AdventDbContext db, DateTimeOffset now)
     {
         var clock = new FakeTimeProvider(now);

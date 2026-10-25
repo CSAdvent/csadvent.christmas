@@ -26,6 +26,7 @@ public sealed record SiblingEntry(int Part, string PostTitle, string AuthorName)
 /// <summary>
 /// An entry's page. Before its reveal it carries nothing about the post or its author (#5), only when it's revealed.
 /// </summary>
+/// <param name="IsLinked">Whether the post is on someone's account. A finished season's post that isn't can be asked for (#120).</param>
 public sealed record EntryView(
     int SlotId,
     int Year,
@@ -40,7 +41,8 @@ public sealed record EntryView(
     string? AuthorUrl,
     IReadOnlyList<AuthorLink> AuthorLinks,
     IReadOnlyList<SiblingEntry> Siblings,
-    bool IsSeasonOver)
+    bool IsSeasonOver,
+    bool IsLinked = false)
 {
     public string Spot => SlotsPerDay > 1 ? $"December {Day}, {Year} · Post {Part}" : $"December {Day}, {Year}";
 }
@@ -114,7 +116,8 @@ public sealed class EntryService(AdventDbContext db, AdventSchedule schedule, Ti
             [.. slots
                 .Where(s => s.Part != part && s.PostTitle is not null && s.PostUrl is not null && s.AuthorName is not null)
                 .Select(s => new SiblingEntry(s.Part, s.PostTitle!, s.AuthorName!))],
-            schedule.IsSeasonOver(year));
+            schedule.IsSeasonOver(year),
+            slot.GithubLogin is not null);
     }
 
     /// <summary>The post a click should go to: only a revealed entry's own post, so the redirect can't be pointed anywhere else.</summary>

@@ -1,0 +1,158 @@
+@page "/manage/authors/requests/{Id:int}"
+@using CSAdvent.Web.Contributors
+@using CSAdvent.Web.Data
+@inject PostClaimService PostClaims
+@inject NavigationManager Navigation
+
+<PageTitle>Request to add an older post · Manage · C# Advent</PageTitle>
+
+<ManageNav />
+
+<nav class="mb-4 text-sm font-medium"><a href="manage/authors/requests" class="text-advent-700 hover:underline">← Requests to add older posts</a></nav>
+
+@if (_error is { } error)
+{
+    <p class="mb-6 max-w-3xl rounded-xl bg-red-50 p-4 font-medium text-red-800 ring-1 ring-red-200" role="alert">@error</p>
+}
+
+@if (_review is { } review)
+{
+    <h1 class="text-3xl font-bold tracking-tight text-slate-900">Is this @(review.RequesterLogin)'s post?</h1>
+
+    <dl class="mt-6 grid max-w-3xl gap-x-6 gap-y-3 text-sm sm:grid-cols-[10rem_1fr]">
+        <dt class="font-medium text-slate-500">Post</dt>
+        <dd>
+            <a href="@review.EntryPage" class="font-semibold text-advent-700 underline">@review.Title</a>
+            <span class="text-slate-500">(<a href="@review.PostUrl" class="underline" rel="noopener" target="_blank">the post itself</a>)</span>
+        </dd>
+        <dt class="font-medium text-slate-500">Author on the post</dt>
+        <dd class="text-slate-800">@review.Author</dd>
+        <dt class="font-medium text-slate-500">When</dt>
+        <dd class="text-slate-800">C# Advent · @review.Spot</dd>
+        <dt class="font-medium text-slate-500">Asked by</dt>
+        <dd class="text-slate-800">
+            @if (review.RequesterName is { Length: > 0 } name)
+            {
+                <text>@name · </text>
+            }
+            <a href="@($"https://github.com/{review.RequesterLogin}")" class="text-advent-700 underline" rel="noopener" target="_blank">@review.RequesterLogin on GitHub</a>
+            · <a href="manage/authors/@review.RequesterId" class="text-advent-700 underline">their author page</a>
+            (@(review.RequesterPosts == 1 ? "1 post" : $"{review.RequesterPosts} posts") on their account)
+        </dd>
+        <dt class="font-medium text-slate-500">Asked</dt>
+        <dd class="text-slate-800"><LocalTime Value="review.SubmittedAt" /></dd>
+        <dt class="font-medium text-slate-500">Their note</dt>
+        <dd class="whitespace-pre-line text-slate-800">@(review.Note ?? "None")</dd>
+    </dl>
+
+    @if (review.Status is not PostClaimStatus.Pending)
+    {
+        <p class="mt-8 max-w-3xl rounded-xl bg-slate-50 p-4 text-slate-700 ring-1 ring-slate-200">
+            @(review.Status is PostClaimStatus.Approved ? "Approved" : "Declined") by @review.DecidedBy
+            @if (review.DecidedAt is { } decidedAt)
+            {
+                <text>, <LocalTime Value="decidedAt" /></text>
+            }.
+        </p>
+    }
+
+    @* A posted form stays rendered (hidden) even if the request was decided meanwhile, so its handler runs and says so. *@
+    @if (review.Status is PostClaimStatus.Pending || _posted)
+    {
+        @if (review.Status is PostClaimStatus.Pending && review.LinkedTo is { } linkedTo && !string.Equals(linkedTo, review.RequesterLogin, StringComparison.OrdinalIgnoreCase))
+        {
+            <p class="mt-8 max-w-3xl rounded-xl bg-amber-50 p-4 font-medium text-amber-900 ring-1 ring-amber-200">
+                This post is on @(linkedTo)'s account now, so it can't be approved. Decline this request, or unlink it from
+                <a href="manage/authors" class="underline">Authors</a> first if it isn't theirs.
+            </p>
+        }
+
+        <div class="mt-8 flex max-w-3xl flex-col gap-4" hidden="@(review.Status is not PostClaimStatus.Pending)">
+            <EditForm Model="Approve" FormName="approve" OnSubmit="ApproveAsync" class="rounded-xl bg-advent-50 p-4 ring-1 ring-advent-200">
+                <input type="hidden" name="Approve.Version" value="@review.Version" />
+                @if (_sameName > 0)
+                {
+                    <label class="flex items-center gap-2 text-sm font-medium text-slate-800">
+                        <InputCheckbox @bind-Value="Approve!.AlsoSameName" />
+                        Also add their @(_sameName == 1 ? "other post" : $"other {_sameName} posts") as “@review.Author” that aren't on anyone's account
+                    </label>
+                }
+                <p class="mt-2 text-sm text-slate-600">Approving links the post to their GitHub account and emails them.</p>
+                <button type="submit" class="mt-3 rounded-lg bg-advent-600 px-4 py-2 font-semibold text-white hover:bg-advent-700">Approve</button>
+            </EditForm>
+
+            <EditForm Model="Decline" FormName="decline" OnSubmit="DeclineAsync" class="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
+                <input type="hidden" name="Decline.Version" value="@review.Version" />
+                <p class="text-sm text-slate-600">Declining leaves the post as it is, and emails them that we couldn't confirm it's theirs. They can reply with more.</p>
+                <button type="submit" class="mt-3 rounded-lg bg-white px-4 py-2 font-semibold text-slate-800 ring-1 ring-slate-300 hover:bg-slate-100">Decline</button>
+            </EditForm>
+        </div>
+    }
+}
+
+@code {
+    private PostClaimReview? _review;
+    private int _sameName;
+    private string? _error;
+    private bool _posted;
+
+    [Parameter]
+    public int Id { get; set; }
+
+    [SupplyParameterFromForm(FormName = "approve")]
+    private PostClaimDecisionForm? Approve { get; set; }
+
+    [SupplyParameterFromForm(FormName = "decline")]
+    private PostClaimDecisionForm? Decline { get; set; }
+
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationState { get; set; } = null!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Static rendering starts at the first wait, so the forms need their models first.
+        _posted = Approve is not null || Decline is not null;
+        Approve ??= new();
+        Decline ??= new();
+
+        _review = await PostClaims.GetReviewAsync(Id);
+        if (_review is null)
+        {
+            Navigation.NotFound();
+            return;
+        }
+
+        _sameName = await PostClaims.CountSameNameAsync(_review);
+    }
+
+    private async Task ApproveAsync() =>
+        Decided(await PostClaims.ApproveAsync(Id, Approve!.Version, Approve.AlsoSameName, await UserAsync()));
+
+    private async Task DeclineAsync() =>
+        Decided(await PostClaims.DeclineAsync(Id, Decline!.Version, await UserAsync()));
+
+    private void Decided(PostClaimDecision decision)
+    {
+        switch (decision)
+        {
+            case PostClaimDecision.Approved:
+                Navigation.NavigateTo("manage/authors/requests?done=approved");
+                break;
+            case PostClaimDecision.Declined:
+                Navigation.NavigateTo("manage/authors/requests?done=declined");
+                break;
+            case PostClaimDecision.LinkedToSomeoneElse:
+                _error = "The post is on someone else's account now, so it wasn't approved.";
+                break;
+            case PostClaimDecision.AlreadyDecided:
+            case PostClaimDecision.ChangedByOthers:
+                _error = "Another organizer decided this request, or the post changed, while you were looking. Reload the page to see where it stands.";
+                break;
+            default:
+                Navigation.NotFound();
+                break;
+        }
+    }
+
+    private async Task<string> UserAsync() => (await AuthenticationState).User.Identity?.Name ?? "organizer";
+}

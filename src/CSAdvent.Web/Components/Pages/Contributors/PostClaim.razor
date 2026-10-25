@@ -1,0 +1,137 @@
+@page "/my-spots/claim/{Year:int}/{Day:int}/{Part:int}"
+@attribute [Authorize]
+@using CSAdvent.Web.Auth
+@using CSAdvent.Web.Contributors
+@inject PostClaimService PostClaims
+@inject NavigationManager Navigation
+@inject Microsoft.Extensions.Options.IOptions<SiteOptions> Site
+
+<PageTitle>Is this your post? · C# Advent</PageTitle>
+
+<nav class="mb-6 text-sm font-medium"><a href="my-spots" class="text-advent-700 hover:underline">← My spots</a></nav>
+
+@if (_post is { } post)
+{
+    <h1 class="text-3xl font-bold tracking-tight text-slate-900">Is this your post?</h1>
+
+    <div class="mt-6 max-w-2xl rounded-xl bg-slate-50 p-5 ring-1 ring-slate-200">
+        <p class="text-sm font-semibold uppercase tracking-wide text-advent-700">C# Advent · @post.Spot</p>
+        <p class="mt-1 text-lg font-semibold text-slate-900"><a href="@post.EntryPage" class="hover:text-advent-700 hover:underline">@post.Title</a></p>
+        <p class="mt-1 text-slate-600">by @post.Author</p>
+    </div>
+
+    @if (Done == "requested" || post.Requested)
+    {
+        <div class="mt-6 max-w-2xl rounded-xl bg-green-50 p-5 text-green-900 ring-1 ring-green-200" role="status">
+            <p class="font-semibold">You've asked for this one.</p>
+            <p class="mt-1">An organizer will check it and email you at your verified GitHub email. Once it's approved, it's in your C# Advent history on <a href="my-spots" class="underline">My spots</a>.</p>
+        </div>
+    }
+    else if (post.Owner is PostOwner.You)
+    {
+        <p class="mt-6 max-w-2xl text-slate-700">It's already on your account, in your C# Advent history on <a href="my-spots" class="text-advent-700 underline">My spots</a>.</p>
+    }
+    else if (post.Owner is PostOwner.SomeoneElse)
+    {
+        <div class="mt-6 max-w-2xl rounded-xl bg-amber-50 p-5 text-amber-900 ring-1 ring-amber-200">
+            <p class="font-semibold">This post is already on someone's account.</p>
+            <p class="mt-1">
+                If it's yours, and it was added to someone else's account by mistake or by someone pretending to be you, email
+                <a href="mailto:@Site.Value.ContactEmail" class="underline">@Site.Value.ContactEmail</a> and we'll sort it out.
+            </p>
+        </div>
+    }
+    else
+    {
+        <p class="mt-6 max-w-2xl text-slate-700">
+            If you wrote it, ask for it to be added to your account. An organizer checks every request, then it shows in your
+            C# Advent history, your name on it links to your website or GitHub profile, and it's credited to you from then on.
+        </p>
+
+        @if (_error is { } error)
+        {
+            <p class="mt-6 max-w-2xl rounded-xl bg-red-50 p-4 font-medium text-red-800 ring-1 ring-red-200" role="alert">@error</p>
+        }
+
+        <EditForm Model="Form" FormName="post-claim" OnValidSubmit="RequestAsync" class="mt-6 flex max-w-2xl flex-col gap-4">
+            <DataAnnotationsValidator />
+            <ValidationSummary class="rounded-xl bg-red-50 p-4 text-sm ring-1 ring-red-200" />
+            <label class="flex flex-col text-sm font-medium text-slate-700">
+                A note for the organizers <span class="font-normal text-slate-500">(optional: anything that helps us check, such as the name or blog you wrote under then)</span>
+                <InputTextArea @bind-Value="Form!.Note" rows="3" maxlength="1000" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+            </label>
+            <label class="flex items-center gap-2 text-sm font-medium text-slate-800">
+                <InputCheckbox @bind-Value="Form!.IWroteIt" />
+                I wrote this post
+            </label>
+            <div>
+                <button type="submit" class="rounded-lg bg-advent-600 px-4 py-2 font-semibold text-white hover:bg-advent-700">Ask to add it to my account</button>
+            </div>
+        </EditForm>
+
+        <p class="mt-8 max-w-2xl text-sm text-slate-500">
+            We'll email you at your verified GitHub email once an organizer has checked it. Your request and note are deleted 30
+            days after that.
+        </p>
+    }
+}
+
+@code {
+    private ClaimablePost? _post;
+    private string? _error;
+
+    [Parameter]
+    public int Year { get; set; }
+
+    [Parameter]
+    public int Day { get; set; }
+
+    [Parameter]
+    public int Part { get; set; }
+
+    [SupplyParameterFromQuery(Name = "done")]
+    public string? Done { get; set; }
+
+    [SupplyParameterFromForm(FormName = "post-claim")]
+    private PostClaimForm? Form { get; set; }
+
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationState { get; set; } = null!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Static rendering starts at the first wait, so the form needs its model first.
+        Form ??= new();
+
+        _post = await PostClaims.GetAsync(await ContributorIdAsync(), Year, Day, Part);
+        if (_post is null)
+        {
+            Navigation.NotFound();
+        }
+    }
+
+    private async Task RequestAsync()
+    {
+        switch (await PostClaims.RequestAsync(await ContributorIdAsync(), Year, Day, Part, Form!.Note))
+        {
+            case PostClaimOutcome.Requested:
+            case PostClaimOutcome.AlreadyRequested:
+                Navigation.NavigateTo($"{PostClaimLinks.Claim(Year, Day, Part)}?done=requested");
+                break;
+            case PostClaimOutcome.AlreadyLinked:
+                Navigation.NavigateTo(PostClaimLinks.Claim(Year, Day, Part));
+                break;
+            case PostClaimOutcome.TooMany:
+                _error = $"You've asked for a lot of posts in the last hour. Try again later, or email {Site.Value.ContactEmail} with the list.";
+                break;
+            case PostClaimOutcome.NoVerifiedEmail:
+                _error = "Your GitHub account needs a verified primary email, so we can tell you what the organizers decide. Add one on GitHub, sign out and sign in again.";
+                break;
+            default:
+                Navigation.NotFound();
+                break;
+        }
+    }
+
+    private async Task<int> ContributorIdAsync() => (await AuthenticationState).User.GetContributorId() ?? 0;
+}

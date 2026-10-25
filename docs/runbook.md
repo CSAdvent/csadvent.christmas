@@ -16,6 +16,7 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 | September–October | Create the season, refresh copy, run a test round, check social posting | Organizers |
 | November 1 | Sign-ups open; the announcements list and the Automatic social platforms hear about it at 9 AM | Automatic, once the season is scheduled; LinkedIn and Reddit by hand from `/manage/social/signups` |
 | November | Approve requests, watch the backup list | Organizers |
+| Any time | Check requests to add older posts to people's accounts (each one emails the organizers) | Organizers |
 | From 7 days before each day | "Your post is due" reminders, then a last call on the day | Automatic |
 | December 1–25 | Reveals at midnight, announcements at 10 AM and 2 PM, the daily email at 9 AM | Automatic, plus LinkedIn and Reddit by hand |
 | December 31 | The calendar moves to the archive, and the home page thanks everyone | Automatic |

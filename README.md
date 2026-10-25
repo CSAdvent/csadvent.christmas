@@ -105,6 +105,7 @@ dotnet test
 - 🚪 **Dropping out** there frees the spot straight away, without naming the author, emails the organizers, and offers the day to the backup posters
 - 📜 **Your C# Advent history:** returning authors see every post they've written, season by season, once an organizer has linked their archive posts to their GitHub account at `/manage/authors`. Organizers see them as returning on their requests
 - 📈 **How your posts did:** each revealed post shows its visits and clicks, to its author only
+- 🙋 **Older posts:** wrote for an earlier season? Find your posts on My spots, or from the post's page, and ask for them to be added to your account. Every request emails the organizers, who approve or decline it at `/manage/authors/requests`. A post already on someone else's account goes through hello@csadvent.christmas instead
 - 🪪 **Profiles:** contributors set the name, website and social accounts they're credited with at `/profile`, and can put them on every spot they've had. It fills in their next claim
 - 🐙 **Accounts from GitHub:** the first sign-in fills in any Bluesky, Mastodon, LinkedIn, Facebook or Reddit account linked on the contributor's GitHub profile, and **Fill in from GitHub** on their profile does it again
 - 🔗 **Author links:** an author's name links to their website or blog, or to their GitHub profile if they didn't give one. Social media profiles go in their own fields, and each entry's page links the author's website, GitHub and social accounts

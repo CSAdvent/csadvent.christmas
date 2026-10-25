@@ -29,6 +29,18 @@ public static class EmailCatalog
 
     private static readonly BackupSpot SampleSpot = new(2026, 12, 2, 2);
 
+    private static readonly PostClaimEmailDetails SamplePostClaim = new(
+        RequestId: 7,
+        Login: "ada-lovelace",
+        Name: "Ada Lovelace",
+        Note: "I wrote this under my old blog name, A. Byron.",
+        Year: 2019,
+        Day: 12,
+        Part: 2,
+        SlotsPerDay: 2,
+        Title: "Pattern matching all the way down",
+        Author: "A. Byron");
+
     public static IReadOnlyList<EmailCatalogEntry> Entries { get; } =
     [
         new(
@@ -49,6 +61,24 @@ public static class EmailCatalog
             "When an organizer approves a request into a spot.",
             "The contributor. Replies go to the organizers.",
             site => ClaimEmails.Approved(SampleClaim, site)),
+        new(
+            "post-claim-new-request",
+            "Someone asked for an older post",
+            "Right after a signed-in contributor asks for a finished season's post to be added to their account.",
+            "The organizers (Site:ContactEmail). Replies go to the contributor.",
+            site => PostClaimEmails.NewRequest(SamplePostClaim, site)),
+        new(
+            "post-claim-approved",
+            "Older post added",
+            "When an organizer approves a request to add an older post to someone's account.",
+            "The contributor, at their verified GitHub email. Replies go to the organizers.",
+            site => PostClaimEmails.Approved(SamplePostClaim, site)),
+        new(
+            "post-claim-declined",
+            "Older post not added",
+            "When an organizer declines a request to add an older post to someone's account.",
+            "The contributor, at their verified GitHub email. Replies go to the organizers.",
+            site => PostClaimEmails.Declined(SamplePostClaim, site)),
         new(
             "dropped-out",
             "An author dropped out",

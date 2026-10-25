@@ -70,6 +70,15 @@
             or <a href="archive" class="text-advent-700 underline">every past season</a>, and follow every new post with the
             <a href="rss" class="text-advent-700 underline">RSS feed</a>.
         </p>
+
+        @if (entry is { IsSeasonOver: true, IsLinked: false } && entry.Year != Season.TestYear)
+        {
+            <p class="mt-4 text-sm text-slate-500">
+                Did you write this post?
+                <a href="@CSAdvent.Web.Contributors.PostClaimLinks.Claim(entry.Year, entry.Day, entry.Part)" class="text-advent-700 underline">Add it to your account</a>
+                to see it in your C# Advent history.
+            </p>
+        }
     </article>
 }
 else if (_entry is { } upcoming)
