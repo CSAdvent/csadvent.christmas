@@ -28,6 +28,7 @@ public sealed partial class ContentTests(AppHostFixture fixture)
         Assert.True(page.IndexOf("Matt Groves", StringComparison.Ordinal) < page.IndexOf("Calvin Allen", StringComparison.Ordinal));
         Assert.Contains("Co-host</h2>", page);
         Assert.Contains("<meta property=\"og:title\" content=\"About C# Advent\"", page);
+        Assert.DoesNotContain("Built with", page);
     }
 
     [Fact]
