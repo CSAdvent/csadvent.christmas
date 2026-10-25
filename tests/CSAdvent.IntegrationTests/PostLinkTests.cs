@@ -7,10 +7,13 @@ namespace CSAdvent.IntegrationTests;
 
 /// <summary>
 /// Authors ask for new links to their older posts, and organizers approve, decline, or change the links themselves. Renames a
-/// few 2019 archive posts from December 10 on to names of its own (no other test reads those names).
+/// few 2019 archive posts from December 10 on to names of its own (no other test reads those names), and uses season 2130 for
+/// a season that isn't over.
 /// </summary>
 public sealed partial class PostLinkTests(AppHostFixture fixture)
 {
+    private const int RunningYear = 2130;
+
     private const string Organizers = "hello@csadvent.christmas";
 
     private const string Page = "/my-spots/links";
@@ -134,7 +137,7 @@ public sealed partial class PostLinkTests(AppHostFixture fixture)
             await db.Slots.Where(s => s.Id == other.Id).ExecuteUpdateAsync(s => s.SetProperty(x => x.ContributorId, (int?)null), CancellationToken);
         }
 
-        await TestSeasons.EnsureAsync(fixture, 2129, claimsOpen: true, season =>
+        await TestSeasons.EnsureAsync(fixture, RunningYear, claimsOpen: true, season =>
         {
             var slot = season.Slots.Single(s => s is { Day: 1, Part: 1 });
             slot.AuthorName = "Fay Links";
@@ -142,6 +145,12 @@ public sealed partial class PostLinkTests(AppHostFixture fixture)
             slot.PostUrl = "https://fay.example.dev/not-over-yet";
             slot.ContributorId = fayId;
         });
+
+        // The season is this test's own, so her spot in it is there to be left out.
+        await using (var db = await fixture.CreateDbContextAsync())
+        {
+            Assert.True(await db.Slots.AnyAsync(s => s.SeasonYear == RunningYear && s.ContributorId == fayId && s.PostTitle == "Not over yet", CancellationToken));
+        }
 
         var page = WebUtility.HtmlDecode(await fay.GetPageAsync(Page));
         Assert.Contains(post.PostTitle!, page);
