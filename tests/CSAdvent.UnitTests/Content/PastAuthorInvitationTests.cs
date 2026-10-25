@@ -1,6 +1,8 @@
 using CSAdvent.Web.Announcements;
+using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Content;
 using CSAdvent.Web.Email;
+using Microsoft.Extensions.Options;
 
 namespace CSAdvent.UnitTests.Content;
 
@@ -9,6 +11,20 @@ public sealed class PastAuthorInvitationTests
     private static readonly SiteOptions Site = new() { ContactEmail = "hello@csadvent.christmas", BaseUrl = "https://csadvent.christmas/" };
 
     private static readonly HashSet<string> Nothing = new(StringComparer.Ordinal);
+
+    private static readonly AdventSchedule Schedule = new(Options.Create(new AdventOptions { TimeZone = "America/New_York" }), TimeProvider.System);
+
+    [Theory]
+    // Sign-ups open at midnight Eastern (EDT on November 1, 2027): invitations start at 9 AM, with the announcement.
+    [InlineData("2027-11-01T04:00:00Z", "2027-11-01T13:00:00Z")]
+    // Sign-ups open at noon: invitations start straight away.
+    [InlineData("2027-11-01T16:00:00Z", "2027-11-01T16:00:00Z")]
+    public void InvitationsStartWithTheAnnouncement(string opensAt, string startsAt) =>
+        Assert.Equal(DateTimeOffset.Parse(startsAt, System.Globalization.CultureInfo.InvariantCulture), PastAuthorInvitationService.StartsAt(DateTimeOffset.Parse(opensAt, System.Globalization.CultureInfo.InvariantCulture), new TimeOnly(9, 0), Schedule));
+
+    [Fact]
+    public void InvitationsStopWhenSignUpsCloseAtTheLastReveal() =>
+        Assert.Equal(new DateTimeOffset(2027, 12, 25, 5, 0, 0, TimeSpan.Zero), PastAuthorInvitationService.EndsAt(2027, Schedule));
 
     [Fact]
     public void EachAddressIsInvitedOnceWithTheirHistory()

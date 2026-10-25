@@ -19,13 +19,16 @@ public sealed record PastSpot(int SlotId, int Year, bool HasPost, string AuthorN
 public sealed record PastAuthor(string Address, string Name, int Posts, int FirstYear);
 
 /// <summary>Where a season's invitations stand, for the organizers.</summary>
+/// <param name="StartsAt">When they start going out (<see cref="PastAuthorInvitationService.StartsAt"/>), once sign-ups are scheduled.</param>
+/// <param name="EndsAt">When sign-ups close, and with them the invitations still waiting.</param>
 /// <param name="Waiting">Past authors who'd get one now (or still will).</param>
-public sealed record InvitationStatus(int Year, DateTimeOffset? OpensAt, int Waiting, int Sent);
+public sealed record InvitationStatus(int Year, DateTimeOffset? StartsAt, DateTimeOffset EndsAt, int Waiting, int Sent);
 
 /// <summary>
 /// Invites everyone who has written for C# Advent before when a season's sign-ups open (#133). It runs inside
-/// <see cref="AnnouncementService.RunAsync"/>, at the same moment as the "sign-ups are open" announcement, and shares its
-/// hourly allowance. Each invitation is recorded (by the address's fingerprint) before it's sent, so nobody gets two.
+/// <see cref="AnnouncementService.RunAsync"/>, from the same moment as the "sign-ups are open" announcement, and shares its
+/// hourly allowance, so it keeps going a few at a time for as long as sign-ups are open, until everyone's had one (#210).
+/// Each invitation is recorded (by the address's fingerprint) before it's sent, so nobody gets two.
 /// </summary>
 /// <remarks>
 /// Past authors are the authors of spots in finished seasons, at the addresses we keep for them: the verified email on the
@@ -99,15 +102,34 @@ public sealed partial class PastAuthorInvitationService(
 
         return new InvitationStatus(
             year,
-            season.ClaimsOpenAt,
+            season.ClaimsOpenAt is { } opensAt ? StartsAt(opensAt, reminders.Value.SendAt, schedule) : null,
+            EndsAt(year, schedule),
             (await GetRecipientsAsync(year, cancellationToken)).Count,
             await db.PastAuthorInvitations.CountAsync(i => i.SeasonYear == year, cancellationToken));
     }
 
-    /// <summary>Sends up to <paramref name="budget"/> of the season's invitations. Returns how many went out.</summary>
+    /// <summary>
+    /// When a season's invitations start: at the morning send time on the day its sign-ups open, with the announcement, or
+    /// when they open if that's later.
+    /// </summary>
+    public static DateTimeOffset StartsAt(DateTimeOffset opensAt, TimeOnly sendAt, AdventSchedule schedule)
+    {
+        var morning = schedule.FromLocalTime(DateOnly.FromDateTime(schedule.ToLocalTime(opensAt).DateTime).ToDateTime(sendAt));
+        return morning > opensAt ? morning : opensAt;
+    }
+
+    /// <summary>When a season's sign-ups close, and its invitations stop: at its last reveal, after which no day can be claimed.</summary>
+    public static DateTimeOffset EndsAt(int year, AdventSchedule schedule) => schedule.GetRevealTime(year, Season.DaysInAdvent);
+
+    /// <summary>
+    /// Sends up to <paramref name="budget"/> of the season's invitations, if they're going out: from <see cref="StartsAt"/>
+    /// until sign-ups close (<see cref="EndsAt"/>). Returns how many went out.
+    /// </summary>
     public async Task<int> RunAsync(int year, DateTimeOffset now, int budget, CancellationToken cancellationToken = default)
     {
-        if (budget <= 0 || year == Season.TestYear)
+        if (budget <= 0 || year == Season.TestYear
+            || await db.Seasons.Where(s => s.Year == year).Select(s => s.ClaimsOpenAt).SingleOrDefaultAsync(cancellationToken) is not { } opensAt
+            || now < StartsAt(opensAt, reminders.Value.SendAt, schedule) || now >= EndsAt(year, schedule))
         {
             return 0;
         }

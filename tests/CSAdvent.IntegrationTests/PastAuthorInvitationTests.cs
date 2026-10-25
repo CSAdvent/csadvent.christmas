@@ -14,6 +14,7 @@ namespace CSAdvent.IntegrationTests;
 /// <item>Cy's post is linked to his account, with his profile name.</item>
 /// <item>Sue is on the announcements list, Tia already has a 2141 spot, and Oli unsubscribed: none for them.</item>
 /// </list>
+/// Season 2352 checks they keep going while sign-ups are open (#210), with Lee and Cid on the last two posts of 2020.
 /// </summary>
 public sealed class PastAuthorInvitationTests(AppHostFixture fixture)
 {
@@ -21,6 +22,9 @@ public sealed class PastAuthorInvitationTests(AppHostFixture fixture)
     private const string Subject = "C# Advent 2141 sign-ups are open: you wrote for us before";
 
     private static readonly DateTimeOffset OpensAt = new(2141, 11, 1, 5, 0, 0, TimeSpan.Zero);
+
+    private const int LaterYear = 2352;
+    private const string LaterSubject = "C# Advent 2352 sign-ups are open: you wrote for us before";
 
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
@@ -60,6 +64,58 @@ public sealed class PastAuthorInvitationTests(AppHostFixture fixture)
         }
 
         Assert.Contains("Invited ", WebUtility.HtmlDecode(await organizer.GetPageAsync($"/manage/announcements?year={Year}")));
+    }
+
+    [Fact]
+    public async Task InvitationsKeepGoingWhileSignUpsAreOpen()
+    {
+        var opensAt = new DateTimeOffset(2352, 11, 1, 5, 0, 0, TimeSpan.Zero);
+        await TestSeasons.EnsureAsync(fixture, LaterYear, claimsOpen: false, season => season.ClaimsOpenAt = opensAt);
+        int closedSlot;
+        await using (var db = await fixture.CreateDbContextAsync())
+        {
+            var posts = await db.Slots
+                .Include(s => s.Contact)
+                .Where(s => s.SeasonYear == 2020 && s.PostUrl != null && s.AuthorName != null)
+                .OrderByDescending(s => s.Day).ThenByDescending(s => s.Part)
+                .Take(2)
+                .ToListAsync(CancellationToken);
+            posts[0].ContributorId = null;
+            posts[0].Contact = new SlotContact { Email = "invite-lee-2352@example.com" };
+            closedSlot = posts[1].Id;
+
+            // Someone invited on the first morning.
+            db.PastAuthorInvitations.Add(new PastAuthorInvitation { SeasonYear = LaterYear, Fingerprint = EmailOptOutLinks.Fingerprint("invite-first-2352@example.com"), SentAt = opensAt.AddHours(5) });
+            await db.SaveChangesAsync(CancellationToken);
+        }
+
+        using var organizer = await fixture.SignInAsync("organizer", AppHostFixture.OrganizerGitHubId);
+        var page = WebUtility.HtmlDecode(await organizer.GetPageAsync($"/manage/announcements?year={LaterYear}"));
+        Assert.Contains("Invited 1 past author so far, with", page);
+        Assert.Contains("still to go", page);
+
+        // Three days after sign-ups opened, the ones still waiting are invited, 40 an hour (other tests add past authors too).
+        foreach (var hour in new[] { 0, 1, 2 })
+        {
+            await RunAsync(opensAt.AddDays(3).AddHours(hour), LaterYear);
+        }
+
+        await fixture.WaitForEmailAsync("invite-lee-2352@example.com", LaterSubject);
+
+        // Once the last day is revealed, sign-ups are closed, and so are the invitations.
+        await using (var db = await fixture.CreateDbContextAsync())
+        {
+            var slot = await db.Slots.Include(s => s.Contact).SingleAsync(s => s.Id == closedSlot, CancellationToken);
+            slot.ContributorId = null;
+            slot.Contact = new SlotContact { Email = "invite-cid-2352@example.com" };
+            await db.SaveChangesAsync(CancellationToken);
+        }
+
+        await RunAsync(new DateTimeOffset(2352, 12, 25, 6, 0, 0, TimeSpan.Zero), LaterYear);
+        await using (var db = await fixture.CreateDbContextAsync())
+        {
+            Assert.False(await db.PastAuthorInvitations.AnyAsync(i => i.SeasonYear == LaterYear && i.Fingerprint == EmailOptOutLinks.Fingerprint("invite-cid-2352@example.com"), CancellationToken));
+        }
     }
 
     private async Task SetUpAsync()
@@ -121,10 +177,10 @@ public sealed class PastAuthorInvitationTests(AppHostFixture fixture)
         await db.SaveChangesAsync(CancellationToken);
     }
 
-    private async Task RunAsync(DateTimeOffset at)
+    private async Task RunAsync(DateTimeOffset at, int year = Year)
     {
         using var client = fixture.CreateWebClient();
-        var query = $"at={Uri.EscapeDataString(at.ToString("O", CultureInfo.InvariantCulture))}&year={Year}";
+        var query = $"at={Uri.EscapeDataString(at.ToString("O", CultureInfo.InvariantCulture))}&year={year}";
         var response = await client.PostAsync($"/dev/announcements/run?{query}", null, CancellationToken);
         response.EnsureSuccessStatusCode();
     }

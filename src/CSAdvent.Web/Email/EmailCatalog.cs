@@ -297,7 +297,7 @@ public static class EmailCatalog
         new(
             "past-author-invitation",
             "Invitation for past authors",
-            "At 9 AM Eastern on the day the current season's sign-ups open, by itself, a few at a time alongside the announcement.",
+            "From 9 AM Eastern on the day the current season's sign-ups open, by itself, a few at a time alongside the announcement, until everyone's had one or sign-ups close.",
             "Everyone who has written for C# Advent before, once per address, except announcement subscribers, anyone who already has a spot or request, and anyone who unsubscribed. It has the unsubscribe link.",
             site => CSAdvent.Web.Announcements.PastAuthorEmails.Invitation(new CSAdvent.Web.Announcements.PastAuthor("ada@example.com", "Ada Lovelace", 3, 2019), 2026, site)),
         new(

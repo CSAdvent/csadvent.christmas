@@ -90,8 +90,9 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 - **Backup posters** sign up at `/backups/{year}`, and you can see them at `/manage/backups`. Point people there once
   the calendar fills up. The welcome email goes once per person and season, however often they leave and join again.
 - **Authors** add their post's title and URL themselves on My spots. Nobody sends them by email.
-- **Past authors** get an invitation by themselves at 9 AM on the day sign-ups open, a few at a time alongside the
-  announcement. `/manage/announcements` shows how many are going out. Nothing to do.
+- **Past authors** get an invitation by themselves from 9 AM on the day sign-ups open, a few at a time alongside the
+  announcement (40 an hour between them), and it carries on until everyone's had one, for as long as sign-ups are open.
+  `/manage/announcements` shows how many are still to go. Nothing to do.
 
 ---
 
