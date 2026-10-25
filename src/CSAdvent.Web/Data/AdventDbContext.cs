@@ -49,6 +49,8 @@ public sealed class AdventDbContext(DbContextOptions<AdventDbContext> options) :
 
     public DbSet<PostClaimRequest> PostClaimRequests => Set<PostClaimRequest>();
 
+    public DbSet<EmailOptOut> EmailOptOuts => Set<EmailOptOut>();
+
     /// <summary>
     /// ASP.NET Core's data protection keys, which protect sign-in cookies and antiforgery tokens. Kept in the database so
     /// they survive container restarts and are shared by every replica.

@@ -72,7 +72,7 @@ public sealed class ReminderEmailsTests
         Assert.Contains("- Span<T> tricks (https://example.com/span) by Grace Hopper\n- Records (https://example.com/records) by Alan Turing\n", text);
         Assert.DoesNotContain("is yours", text);
         Assert.Equal("https://csadvent.christmas/emails/daily/stop?token=abc", email.UnsubscribeUrl);
-        Assert.EndsWith("Stop these emails: https://csadvent.christmas/emails/daily/stop?token=abc\n", text);
+        Assert.EndsWith("Unsubscribe: https://csadvent.christmas/emails/daily/stop?token=abc\n", text);
     }
 
     [Fact]

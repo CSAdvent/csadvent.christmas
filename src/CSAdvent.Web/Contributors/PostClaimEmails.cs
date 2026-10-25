@@ -63,6 +63,7 @@ public static class PostClaimEmails
             SignOff,
         ],
         Reason = "You're getting this email because you asked to add a C# Advent post to your account.",
+        Transactional = true,
     };
 
     /// <summary>To the requester, if it's declined. Replies go to the organizers.</summary>
@@ -80,6 +81,7 @@ public static class PostClaimEmails
             SignOff,
         ],
         Reason = "You're getting this email because you asked to add a C# Advent post to your account.",
+        Transactional = true,
     };
 
     private static ParagraphBlock SignOff => Paragraph("Thanks,", EmailSpan.LineBreak, "Calvin and Matt, the C# Advent organizers");

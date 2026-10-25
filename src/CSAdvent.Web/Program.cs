@@ -195,6 +195,7 @@ app.MapStaticAssets();
 app.MapAccounts();
 app.MapEmailPreviews();
 app.MapReminders();
+app.MapEmailOptOuts();
 app.MapBackups();
 app.MapEntries();
 app.MapCards();

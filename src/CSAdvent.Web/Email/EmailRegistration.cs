@@ -24,16 +24,26 @@ public static class EmailRegistration
                 $"ConnectionStrings:{ConnectionName} must be an SMTP endpoint (such as MailPit's) or an Azure Communication Services endpoint.")
             .ValidateOnStart();
 
+        builder.Services.AddSingleton<EmailOptOutLinks>();
+        builder.Services.AddScoped<EmailOptOuts>();
+        builder.Services.AddScoped<IEmailOptOutList>(services => services.GetRequiredService<EmailOptOuts>());
         builder.Services.AddSingleton<EmailComposer>();
         builder.Services.AddSingleton<IEmailSender>(services =>
         {
             var options = services.GetRequiredService<IOptions<EmailOptions>>();
             var endpoint = EmailEndpoint.Parse(options.Value.ConnectionString);
-            return endpoint.Transport switch
+            IEmailSender transport = endpoint.Transport switch
             {
                 EmailTransport.Smtp => new SmtpEmailSender(endpoint, options),
                 _ => new AzureEmailSender(CreateEmailClient(endpoint), options),
             };
+
+            // No optional email goes to an address that unsubscribed, whatever sends it.
+            return new OptOutAwareEmailSender(
+                transport,
+                services.GetRequiredService<EmailOptOutLinks>(),
+                services.GetRequiredService<IServiceScopeFactory>(),
+                services.GetRequiredService<ILogger<OptOutAwareEmailSender>>());
         });
 
         return builder;

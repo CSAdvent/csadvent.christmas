@@ -1,0 +1,73 @@
+@page "/emails/unsubscribe"
+@using CSAdvent.Web.Email
+@inject EmailOptOutLinks Links
+@inject EmailOptOuts OptOuts
+@inject Microsoft.Extensions.Options.IOptions<SiteOptions> Site
+
+<PageTitle>Unsubscribe · C# Advent</PageTitle>
+<SocialMeta Title="Unsubscribe · C# Advent" Description="Stop emails from C# Advent." />
+
+<div class="max-w-2xl">
+    @if (_address is null)
+    {
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900">This link doesn't work</h1>
+        <p class="mt-4 text-slate-700">
+            It may be incomplete. If you're getting emails you don't want, reply to one of them, or email
+            <a href="mailto:@Site.Value.ContactEmail" class="text-advent-700 underline">@Site.Value.ContactEmail</a>, and we'll sort it out.
+        </p>
+    }
+    else if (_optedOut)
+    {
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900">You're unsubscribed</h1>
+        <p class="mt-4 text-slate-700">
+            We won't send <strong class="text-slate-900">@_address</strong> any more of our optional emails: no announcements,
+            no daily posts during Advent, and no invitations to future seasons. If you have a spot, a request or a backup offer,
+            we'll still email you about it, because you signed up for it.
+        </p>
+        <p class="mt-4 text-slate-700">Changed your mind?</p>
+        @* Plain forms: they post to the endpoints that the link and one-click unsubscribe use. *@
+        <form method="post" action="@($"{EmailOptOutLinks.ResumePath.TrimStart('/')}?token={Uri.EscapeDataString(Token!)}")" class="mt-3">
+            <button type="submit" class="rounded-lg bg-white px-5 py-2.5 font-semibold text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50">Email me again</button>
+        </form>
+    }
+    else
+    {
+        @if (Done == "resumed")
+        {
+            <p class="mb-6 rounded-xl bg-green-50 p-4 font-medium text-green-800 ring-1 ring-green-200" role="status">You'll get C# Advent's emails again.</p>
+        }
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900">Unsubscribe from C# Advent's emails?</h1>
+        <p class="mt-4 text-slate-700">
+            We'll stop sending our optional emails to <strong class="text-slate-900">@_address</strong>: announcements, the
+            daily posts during Advent, and invitations to future seasons. Emails about a spot, request or backup offer you
+            signed up for still come, because they're part of taking part. You can turn the optional emails back on here or on
+            your <a href="profile" class="text-advent-700 underline">profile</a> any time.
+        </p>
+        <form method="post" action="@($"{EmailOptOutLinks.StopPath.TrimStart('/')}?token={Uri.EscapeDataString(Token!)}")" class="mt-6">
+            <button type="submit" class="rounded-lg bg-advent-600 px-5 py-2.5 font-semibold text-white hover:bg-advent-700">Unsubscribe</button>
+        </form>
+        <p class="mt-6 text-sm text-slate-500">
+            To remember, we keep a one-way fingerprint of the address, not the address itself.
+        </p>
+    }
+</div>
+
+@code {
+    private string? _address;
+    private bool _optedOut;
+
+    [SupplyParameterFromQuery]
+    public string? Token { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? Done { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Links.TryReadToken(Token, out var address))
+        {
+            _address = address;
+            _optedOut = await OptOuts.IsOptedOutAsync(address);
+        }
+    }
+}

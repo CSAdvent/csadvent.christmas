@@ -7,7 +7,11 @@ using CSAdvent.Web.Reminders;
 namespace CSAdvent.Web.Email;
 
 /// <summary>An email the site sends: what triggers it, who gets it, and a sample for the preview page.</summary>
-public sealed record EmailCatalogEntry(string Key, string Name, string When, string To, Func<SiteOptions, EmailContent> Sample);
+public sealed record EmailCatalogEntry(string Key, string Name, string When, string To, Func<SiteOptions, EmailContent> Sample)
+{
+    /// <summary>Whether it goes to the organizers' inbox, which gets no unsubscribe link.</summary>
+    public bool IsForOrganizers => To.StartsWith("The organizers", StringComparison.Ordinal);
+}
 
 /// <summary>
 /// Every email the site sends, for review on the development preview page (<c>/dev/emails</c>). Add new emails here
