@@ -65,6 +65,8 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 11. **Try the blurb check** in the test round: give a test spot a real post with the blurb and one without, move "today" to
     their day, and see each entry's page. It needs the Anthropic API key (the README's deploy setup); without it, posts
     aren't checked and nothing is held.
+12. **Check the alerts** (see Alerts, below): press **Test** on the `csadvent-organizers` action group in the portal and
+    make sure both organizers get it, and check the uptime check is green and alerts both of you.
 
 ---
 
@@ -153,8 +155,89 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 
 ---
 
+## 🚨 Alerts
+
+Two things watch the site and email the organizers, and neither depends on the site's own email (which goes through
+hello@, so it can't warn anyone about itself):
+
+- **An uptime check outside Azure** asks `https://csadvent.christmas/health` every few minutes. It's set up by hand (below).
+- **Azure Monitor alerts**, defined in [`infra/alerts.bicep`](../src/CSAdvent.AppHost/infra/alerts.bicep) and created by the
+  deploy once the `ALERT_EMAILS` secret is set (the README's deploy setup). They go to every address in it, from Azure's
+  own `azure-noreply@microsoft.com`, so add that to your contacts. Each address got an email from Azure saying it was
+  added to the `csadvent-organizers` action group. To change who gets them, change the secret and run the Deploy
+  workflow; a change made in the portal is undone by the next deploy.
+
+The alerts that keep firing (errors, database) email once when they start and again when they clear. In the portal they're
+under **Monitor → Alerts**, and **Monitor → Alerts → Alert rules** lists the rules. The action group's **Test** button sends
+a sample to everyone.
+
+### What each alert means
+
+- **"C# Advent: errors in the site's logs"** (`csadvent-errors`, checked every 15 minutes): the site or a background job
+  logged an error. Usually an email that couldn't be sent, a background run that failed (reminders, backups, social posting,
+  announcements, retention, logos), or a page that crashed.
+  1. Open the query results linked from the email, or Application Insights → **Logs** with
+     `union traces, exceptions | where timestamp > ago(1h) and severityLevel >= 3 | order by timestamp desc`, and read the
+     message and `customDimensions.CategoryName`.
+  2. Background runs try again by themselves (every few minutes, or hourly for retention), so one error that clears is
+     usually nothing. One that keeps coming back needs a fix.
+  3. On sign-up day, emails refused with 429 are the email sending limit (below).
+
+  The duplicate inserts that the reminders, backups and announcements expect, which EF Core logs as errors all day, are left
+  out of this alert until #157 stops them being logged.
+- **Database storage over 80%** (`csadvent-postgres-storage`): the server has 32 GB and doesn't grow by itself. At 95% it
+  turns read-only, and the site stops saving anything. Raise `StorageSizeInGB` in `AppHost.cs` and deploy (storage can grow
+  but never shrink), then look for what grew:
+
+  ```sql
+  select relname, pg_size_pretty(pg_total_relation_size(relid)) from pg_statio_user_tables
+  order by pg_total_relation_size(relid) desc limit 10;
+  ```
+- **Database CPU credits below 30** (`csadvent-postgres-cpu-credits`): the server is Burstable B1ms, which saves up credits
+  while it's quiet and spends them when it's busy. With none left, it's held to 20% of a core and the site slows to a crawl.
+  Look for what's keeping it busy (the server's **CPU percent** metric, and requests in Application Insights: a crawler or
+  a loop). If December really needs more, change the `Sku` in `AppHost.cs` (B2s is the next size up, at about twice the
+  price) and deploy. Changing it restarts the server for a minute or two, and Azure warns that restarts are slow once the
+  credits are gone, so act on this warning rather than at zero.
+- **More than 30 database connections** (`csadvent-postgres-connections`): B1ms allows 50, and Azure keeps some of them.
+  A deploy briefly runs the old and new revisions side by side, so one alert that clears within 15 minutes is fine.
+  Otherwise see who's connected:
+
+  ```sql
+  select usename, application_name, state, count(*) from pg_stat_activity group by 1, 2, 3 order by 4 desc;
+  ```
+- **Service Health** (`csadvent-service-health`): Azure reported an outage, planned maintenance, a security notice or
+  something to act on, for a service in Central US or a global one (DNS, email, Azure's sign-in). Read it in the portal under
+  **Service Health**. Outages are Azure's to fix: tell people on social media if the site is affected. Planned database
+  maintenance restarts the server for a few minutes.
+- **The uptime check** says the site is down, or its certificate is about to expire:
+  1. Open the site and `/health` yourself.
+  2. **Unhealthy**: the site can't reach the database (look at the server in the portal, and the database alerts).
+  3. **No answer**: look at the `web` container app's revisions in the portal, and at the last deploy in GitHub Actions.
+
+### Setting up the uptime check (by hand, once)
+
+Use the free tier of [UptimeRobot](https://uptimerobot.com) or [Better Stack](https://betterstack.com/uptime). Both organizers
+need to be on it.
+
+1. Add an **HTTP(S) monitor** for `https://csadvent.christmas/health` every 5 minutes. It answers 200 when everything's
+   fine and 503 when the database is down, and never redirects.
+2. Turn on the **certificate expiry** reminder if the plan has one, and the domain expiry one too.
+3. Alert **both organizers** by email and by the service's phone app.
+4. ✏️ **To fill in:** which service, whose account, and who gets its alerts.
+
+### A budget alert (optional, by hand)
+
+Budgets are set on the subscription, outside the deploy. In the portal: **Cost Management → Budgets → Add**, monthly, with
+alerts to both organizers at 80% and 100%. It's free, and only warns: nothing is stopped.
+
+- ✏️ **To fill in:** the monthly amount, and whether it's set up.
+
+---
+
 ## 🧭 If Something Breaks
 
+- **Alerts:** what each one means is under Alerts, above.
 - **The site:** every deploy runs the database migrations job and checks the site. A new revision that can't reach the
   database never takes traffic, because the health probes keep the old one serving.
 - **Logs and telemetry:** Application Insights, in the `rg-csadvent` resource group.
