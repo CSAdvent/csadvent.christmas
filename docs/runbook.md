@@ -140,3 +140,66 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 - **Logs and telemetry:** Application Insights, in the `rg-csadvent` resource group.
 - **Emails not arriving:** check `/manage/emails` (send a sample) and the Communication Service in Azure.
 - **A wrong post on the calendar:** fix it at `/manage/entries`. An edited title gets a fresh share card.
+- **Lost or damaged data:** restore the database to a point before it happened. See below.
+
+---
+
+## 🗄️ Restoring the Database
+
+Every season since 2017 lives in one PostgreSQL Flexible Server, `postgres-54yzcow3wctne` in `rg-csadvent` (Central US).
+Azure backs it up automatically, and it can go back to **any second in the last 14 days**, up to a few minutes ago.
+Backups stay in Central US: there's no geo-redundant copy.
+
+A restore always makes a **new** server, and production isn't touched. The test on October 25, 2026 restored production
+from one minute before into a new server in **7 minutes 10 seconds**, with every season and that minute's latest migration.
+Deleting the server took about a minute.
+
+Pass `--subscription 4fab8317-7755-44bc-9063-1e8cc1c6867d` (C# Advent) to every command, because this may not be your
+default subscription.
+
+1. **Restore to a new server**, at a time (UTC) just before the problem:
+
+   ```bash
+   az postgres flexible-server restore --resource-group rg-csadvent      --name csadvent-restore-YYYYMMDD --source-server postgres-54yzcow3wctne      --restore-time 2026-12-05T14:30:00Z --subscription 4fab8317-7755-44bc-9063-1e8cc1c6867d
+   ```
+
+   It copies the source's admin login and password. In the portal, it's the server's **Restore** button.
+
+2. **Look at it.** Give the **new** server a password of its own, so you don't need production's, and let your IP in. Then
+   connect with any `psql`; Docker's works.
+
+   ```bash
+   az postgres flexible-server update -g rg-csadvent -n csadvent-restore-YYYYMMDD --admin-password '<new password>' --subscription …
+   az postgres flexible-server firewall-rule create -g rg-csadvent -n csadvent-restore-YYYYMMDD --rule-name restore-check      --start-ip-address <your IP> --end-ip-address <your IP> --subscription …
+   docker run --rm -it postgres:18-alpine psql "host=csadvent-restore-YYYYMMDD.postgres.database.azure.com dbname=csadvent user=<admin login> sslmode=require"
+   ```
+
+   Then check what's there:
+
+   ```sql
+   select season_year, count(*) as spots, count(post_url) as posts from slots group by season_year order by season_year;
+   select * from "__EFMigrationsHistory" order by 1 desc limit 3;
+   ```
+
+3. **Get the data back.**
+   - **Usually only what was lost:** copy those rows out of the restored server, with `psql`'s `\copy`, and into
+     production.
+   - **The whole database** (untested): stop the site, so nothing writes in between, by deactivating the `web` app's
+     revision in the portal. Then copy the database in and turn the site back on:
+
+     ```bash
+     pg_dump -Fc --no-owner <restored>
+     pg_restore --clean --if-exists --no-owner -d csadvent <production>
+     ```
+
+     Production's admin login and password are the `pg-admin-username` and `pg-admin-password` values given to the deploy.
+   - **Don't point the site at the restored server.** The AppHost owns the server's name and connection string, so the
+     next deploy would point it back, and the new server would be missing from the deploy's model.
+
+4. **Delete the restored server** when you're done. It costs money while it exists, and its firewall rule lets your IP in:
+
+   ```bash
+   az postgres flexible-server delete -g rg-csadvent -n csadvent-restore-YYYYMMDD --yes --subscription …
+   ```
+
+   **Check the name** before you press Enter: deleting `postgres-54yzcow3wctne` would delete production.

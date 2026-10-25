@@ -181,7 +181,7 @@ A hidden test season lets invited testers try everything for real on the live si
 
 ## ☁️ Deploying to Azure
 
-Production runs on **Azure Container Apps** with **Azure Database for PostgreSQL** (Flexible Server, PostgreSQL 18, Burstable B1ms, 14-day backups), **Application Insights**, the **Azure DNS** zone for csadvent.christmas, and **Azure Communication Services** for email. All of it is modeled in the AppHost, so one `aspire deploy` creates everything.
+Production runs on **Azure Container Apps** with **Azure Database for PostgreSQL** (Flexible Server, PostgreSQL 18, Burstable B1ms, 14-day point-in-time backups; restoring is in [the runbook](docs/runbook.md)), **Application Insights**, the **Azure DNS** zone for csadvent.christmas, and **Azure Communication Services** for email. All of it is modeled in the AppHost, so one `aspire deploy` creates everything.
 
 1. 🔑 Sign in with an account that's an **Owner** of the subscription (`az login`), and make sure Docker is running
 2. 🚀 Run `aspire deploy` from the repository root. It asks for the subscription, region (`centralus`, which has Burstable PostgreSQL capacity for this subscription) and resource group, and for these parameters:
