@@ -43,11 +43,16 @@ public static class EmailPreviewEndpoints
                 : Results.NotFound());
     }
 
-    /// <summary>The sample, with the unsubscribe link people get (a sample address's), unless it's for the organizers' inbox.</summary>
+    /// <summary>
+    /// The sample, with the unsubscribe link people get (a sample address's), unless it's for the organizers' inbox or about
+    /// something the recipient signed up for (transactional), which have none.
+    /// </summary>
     private static EmailContent Preview(EmailCatalogEntry entry, EmailOptOutLinks links, SiteOptions site)
     {
         var sample = entry.Sample(site);
-        return sample.UnsubscribeUrl is null && !entry.IsForOrganizers ? sample with { UnsubscribeUrl = links.CreateLink("sample@example.com") } : sample;
+        return sample.UnsubscribeUrl is null && !sample.Transactional && !entry.IsForOrganizers
+            ? sample with { UnsubscribeUrl = links.CreateLink("sample@example.com") }
+            : sample;
     }
 
     private static string Index()

@@ -20,9 +20,9 @@
     {
         <h1 class="text-3xl font-bold tracking-tight text-slate-900">You're unsubscribed</h1>
         <p class="mt-4 text-slate-700">
-            We won't send any more emails to <strong class="text-slate-900">@_address</strong>: no announcements, no daily posts,
-            and nothing about spots, requests or the backup list. That includes emails about a spot you have, so keep an eye on
-            <a href="my-spots" class="text-advent-700 underline">My spots</a> if you're taking part.
+            We won't send <strong class="text-slate-900">@_address</strong> any more of our optional emails: no announcements,
+            no daily posts during Advent, and no invitations to future seasons. If you have a spot, a request or a backup offer,
+            we'll still email you about it, because you signed up for it.
         </p>
         <p class="mt-4 text-slate-700">Changed your mind?</p>
         @* Plain forms: they post to the endpoints that the link and one-click unsubscribe use. *@
@@ -38,15 +38,16 @@
         }
         <h1 class="text-3xl font-bold tracking-tight text-slate-900">Unsubscribe from C# Advent's emails?</h1>
         <p class="mt-4 text-slate-700">
-            We'll stop sending every email to <strong class="text-slate-900">@_address</strong>: announcements, the daily posts
-            during Advent, and emails about spots, requests and the backup list, including any spot you have. You can turn them
-            back on here or on your <a href="profile" class="text-advent-700 underline">profile</a> any time.
+            We'll stop sending our optional emails to <strong class="text-slate-900">@_address</strong>: announcements, the
+            daily posts during Advent, and invitations to future seasons. Emails about a spot, request or backup offer you
+            signed up for still come, because they're part of taking part. You can turn the optional emails back on here or on
+            your <a href="profile" class="text-advent-700 underline">profile</a> any time.
         </p>
         <form method="post" action="@($"{EmailOptOutLinks.StopPath.TrimStart('/')}?token={Uri.EscapeDataString(Token!)}")" class="mt-6">
             <button type="submit" class="rounded-lg bg-advent-600 px-5 py-2.5 font-semibold text-white hover:bg-advent-700">Unsubscribe</button>
         </form>
         <p class="mt-6 text-sm text-slate-500">
-            To remember not to email you, we keep a one-way fingerprint of the address, not the address itself.
+            To remember, we keep a one-way fingerprint of the address, not the address itself.
         </p>
     }
 </div>

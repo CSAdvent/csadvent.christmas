@@ -26,6 +26,7 @@ public static class EmailRegistration
 
         builder.Services.AddSingleton<EmailOptOutLinks>();
         builder.Services.AddScoped<EmailOptOuts>();
+        builder.Services.AddScoped<IEmailOptOutList>(services => services.GetRequiredService<EmailOptOuts>());
         builder.Services.AddSingleton<EmailComposer>();
         builder.Services.AddSingleton<IEmailSender>(services =>
         {
@@ -37,7 +38,7 @@ public static class EmailRegistration
                 _ => new AzureEmailSender(CreateEmailClient(endpoint), options),
             };
 
-            // Nothing goes to an address that unsubscribed, whatever sends it.
+            // No optional email goes to an address that unsubscribed, whatever sends it.
             return new OptOutAwareEmailSender(
                 transport,
                 services.GetRequiredService<EmailOptOutLinks>(),

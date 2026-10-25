@@ -4,8 +4,9 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CSAdvent.Web.Data;
 
 /// <summary>
-/// An address that unsubscribed from every C# Advent email, through the link in any of them. Only a one-way fingerprint of
-/// the address is kept (<c>EmailOptOuts.Fingerprint</c>), never the address itself: enough to recognize it, not to read it.
+/// An address that unsubscribed from C# Advent's optional emails, through the link in any of them. Emails about a spot,
+/// request or backup offer they signed up for still go out. Only a one-way fingerprint of the address is kept
+/// (<c>EmailOptOutLinks.Fingerprint</c>), never the address itself: enough to recognize it, not to read it.
 /// </summary>
 public sealed class EmailOptOut
 {

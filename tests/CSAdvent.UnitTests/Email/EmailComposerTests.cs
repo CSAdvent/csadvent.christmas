@@ -109,6 +109,17 @@ public sealed class EmailComposerTests
     }
 
     [Fact]
+    public async Task EmailsAboutWhatSomeoneSignedUpForHaveNoUnsubscribeLink()
+    {
+        var email = await CreateComposer().ComposeAsync(Content with { Transactional = true }, new EmailRecipient("ada@example.com"));
+
+        Assert.Null(email.UnsubscribeUrl);
+        Assert.True(email.Transactional);
+        Assert.DoesNotContain("Unsubscribe", email.Html);
+        Assert.DoesNotContain("Unsubscribe", email.Text);
+    }
+
+    [Fact]
     public async Task TheOrganizersInboxGetsNoUnsubscribeLink()
     {
         var email = await CreateComposer().ComposeAsync(Content, new EmailRecipient("Hello@CSAdvent.christmas"));

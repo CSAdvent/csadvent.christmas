@@ -44,6 +44,7 @@ public static class BackupEmails
             SignOff,
         ],
         Reason = ForBackups,
+        Transactional = true,
     };
 
     /// <param name="answerBy">When the next backup gets asked, already in the reveal time zone, such as "10:00 PM Eastern on December 4".</param>
@@ -81,6 +82,7 @@ public static class BackupEmails
             Heading = $"Can you fill in on December {spot.Day}?",
             Body = body,
             Reason = ForBackups,
+            Transactional = true,
         };
     }
 
@@ -97,6 +99,7 @@ public static class BackupEmails
             SignOff,
         ],
         Reason = ForBackups,
+        Transactional = true,
     };
 
     public static EmailContent NotNeeded(string name, BackupSpot spot, SiteOptions site) => new()
@@ -111,6 +114,7 @@ public static class BackupEmails
             SignOff,
         ],
         Reason = ForBackups,
+        Transactional = true,
     };
 
     public static EmailContent SpotFilled(string backupName, BackupSpot spot, BackupReason reason, SiteOptions site) => new()
@@ -156,6 +160,7 @@ public static class BackupEmails
             SignOff,
         ],
         Reason = $"You're getting this email because you had a spot in C# Advent {spot.Year}.",
+        Transactional = true,
     };
 
     private static ParagraphBlock SignOff => Paragraph("Thanks,", EmailSpan.LineBreak, "Calvin and Matt, the C# Advent organizers");

@@ -62,6 +62,7 @@ public static class ReminderEmails
             Heading = reminder.DaysBefore == 1 ? "Your day is tomorrow!" : $"Your day is {reminder.DaysBefore} days away!",
             Body = body,
             Reason = $"You're getting this email because you have a spot in C# Advent {reminder.Year} and we don't have your post's link yet.",
+            Transactional = true,
         };
     }
 
@@ -84,6 +85,7 @@ public static class ReminderEmails
             SignOff,
         ],
         Reason = $"You're getting this email because you have a spot in C# Advent {reminder.Year} and we don't have your post's link yet.",
+        Transactional = true,
     };
 
     public static EmailContent Daily(DailyShare share, SiteOptions site, string unsubscribeUrl)

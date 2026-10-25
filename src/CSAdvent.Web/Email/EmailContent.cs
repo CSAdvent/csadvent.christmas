@@ -22,9 +22,17 @@ public sealed record EmailContent
 
     /// <summary>
     /// The one-click link that turns these emails off, in the footer and the headers. Left empty, <see cref="EmailComposer"/>
-    /// puts in the link that stops every C# Advent email to the recipient (except for the organizers' inbox).
+    /// puts in the link that stops C# Advent's optional emails to the recipient (except for the organizers' inbox, and
+    /// <see cref="Transactional"/> emails, which have none).
     /// </summary>
     public string? UnsubscribeUrl { get; init; }
+
+    /// <summary>
+    /// About a spot, a request or a backup offer the recipient signed up for, such as an approval or a post link reminder.
+    /// They're part of taking part, so they're always sent, even to someone who unsubscribed, and they have no unsubscribe
+    /// link: the <see cref="Reason"/> line says why they're getting it. Everything else is optional.
+    /// </summary>
+    public bool Transactional { get; init; }
 }
 
 /// <summary>Part of a paragraph or list item: text, a link, or a line break. Strings convert to text.</summary>

@@ -10,7 +10,7 @@ using Npgsql;
 namespace CSAdvent.Web.Email;
 
 /// <summary>
-/// The unsubscribe link in every email to a person (<see cref="EmailComposer"/> adds it). Its token is the recipient's
+/// The unsubscribe link in every optional email to a person (<see cref="EmailComposer"/> adds it). Its token is the recipient's
 /// address protected with the app's data protection keys, so the link works without signing in and can't be made for
 /// someone else's address.
 /// </summary>
@@ -59,11 +59,17 @@ public sealed class EmailOptOutLinks(IDataProtectionProvider dataProtection, IOp
     public static string Fingerprint(string address) => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(Normalize(address))));
 }
 
+/// <summary>Whether an address unsubscribed from C# Advent's optional emails.</summary>
+public interface IEmailOptOutList
+{
+    Task<bool> IsOptedOutAsync(string address, CancellationToken cancellationToken = default);
+}
+
 /// <summary>
-/// The do-not-email list: addresses that unsubscribed from every C# Advent email. <see cref="OptOutAwareEmailSender"/> checks
-/// it before every send. Only fingerprints are kept (<see cref="EmailOptOutLinks.Fingerprint"/>).
+/// The do-not-email list: addresses that unsubscribed from C# Advent's optional emails. <see cref="OptOutAwareEmailSender"/>
+/// checks it before every optional email. Only fingerprints are kept (<see cref="EmailOptOutLinks.Fingerprint"/>).
 /// </summary>
-public sealed class EmailOptOuts(AdventDbContext db, TimeProvider timeProvider)
+public sealed class EmailOptOuts(AdventDbContext db, TimeProvider timeProvider) : IEmailOptOutList
 {
     public Task<bool> IsOptedOutAsync(string address, CancellationToken cancellationToken = default)
     {

@@ -39,6 +39,7 @@ public static class ClaimEmails
             SignOff,
         ],
         Reason = $"You're getting this email because you requested a spot in C# Advent {claim.Year}.",
+        Transactional = true,
     };
 
     public static EmailContent NewRequest(ClaimEmailDetails claim, SiteOptions site) => new()
@@ -83,6 +84,7 @@ public static class ClaimEmails
             SignOff,
         ],
         Reason = $"You're getting this email because you requested a spot in C# Advent {claim.Year}.",
+        Transactional = true,
     };
 
     private static ParagraphBlock SignOff => Paragraph("Thanks,", EmailSpan.LineBreak, "Calvin and Matt, the C# Advent organizers");
