@@ -193,16 +193,17 @@ A hidden test season lets invited testers try everything for real on the live si
 ## 📖 Running a Season
 
 - 🗓️ The **[yearly runbook](docs/runbook.md)** says what happens each year, when, and who does it: creating the season, sign-ups, reminders, Advent, and what gets deleted afterwards
+- 🔐 It also covers keeping the site running: what each alert means, every credential and account (where it lives and how to replace it), the email sending limit, and GitHub Actions minutes
 
 ## ☁️ Deploying to Azure
 
-Production runs on **Azure Container Apps** with **Azure Database for PostgreSQL** (Flexible Server, PostgreSQL 18, Burstable B1ms, 14-day point-in-time backups; restoring is in [the runbook](docs/runbook.md)), **Application Insights**, the **Azure DNS** zone for csadvent.christmas, and **Azure Communication Services** for email. All of it is modeled in the AppHost, so one `aspire deploy` creates everything. The blurb check uses Claude through Anthropic's API, with a key (below).
+Production runs on **Azure Container Apps** with **Azure Database for PostgreSQL** (Flexible Server, PostgreSQL 18, Burstable B1ms, 14-day point-in-time backups; restoring is in [the runbook](docs/runbook.md)), **Application Insights**, the **Azure DNS** zone for csadvent.christmas, and **Azure Communication Services** for email, with **Azure Monitor alerts** that email the organizers when something fails. All of it is modeled in the AppHost, so one `aspire deploy` creates everything. The blurb check uses Claude through Anthropic's API, with a key (below).
 
 Email can't be sent until the sending domain is verified, which happens after the nameserver switch below.
 
 ### 🤖 Deploying from GitHub Actions
 
-[`deploy.yml`](.github/workflows/deploy.yml) deploys every push to `main` once CI has passed on it, and **Run workflow** in the Actions tab redeploys `main` by hand. It signs in to Azure with GitHub's OIDC token (no Azure password is stored), runs `aspire deploy`, starts the migrations job and waits for it, then checks the site. Deploys never overlap.
+[`deploy.yml`](.github/workflows/deploy.yml) deploys every push to `main` once CI has passed on it (a push that only changes documentation runs neither), and **Run workflow** in the Actions tab redeploys `main` by hand. It signs in to Azure with GitHub's OIDC token (no Azure password is stored), runs `aspire deploy`, starts the migrations job and waits for it, then checks the site. Deploys never overlap.
 
 One-time setup (`<sub>` is the subscription ID):
 
@@ -242,6 +243,8 @@ One-time setup (`<sub>` is the subscription ID):
      5. Generate the **Access Token and Secret**: `X_ACCESS_TOKEN` and `X_ACCESS_TOKEN_SECRET`. Do it after step 4: tokens made before the switch to Read and write stay read-only, so regenerate them if you changed the permissions later.
      6. Add the four secrets (`gh secret set X_API_KEY --env production` and so on), deploy, then on `/manage/social` press **Check**, **Send a test post** (it costs a post), and set X to **Automatic**.
 5. ✍️ **Optional: the blurb check** (#128). Add the secret `ANTHROPIC_API_KEY`, an API key from the [Anthropic Console](https://console.anthropic.com) (set a monthly spend limit on its workspace while you're there; a season costs cents). Posts are checked from the next deploy. Without it they aren't, and nothing is held.
+6. 🚨 **Alerts** (#139). Add the secret `ALERT_EMAILS`: the organizers' email addresses, separated by commas (`gh secret set ALERT_EMAILS --env production`). It's a secret rather than a variable so the addresses never show in the workflow's log. The next deploy creates an action group that emails them, and alerts on errors in the site's logs, the database's storage, CPU credits and connections, and Azure's Service Health ([`infra/alerts.bicep`](src/CSAdvent.AppHost/infra/alerts.bicep)). Without it, no alerts are set up. Change who gets them by changing the secret and deploying, never in the portal. The runbook says what each alert means.
+7. 📟 **An uptime check outside Azure**, on `https://csadvent.christmas/health`, from UptimeRobot's or Better Stack's free tier. It's set up by hand, as the runbook's Alerts section describes, and it still works when Azure or our email doesn't.
 
 The new revision of the site starts before the migrations job runs, so keep each migration safe for the code before it: add columns and tables first, and only remove them in a later release.
 
@@ -292,4 +295,4 @@ Keep `CustomDomains` and DNS records in the AppHost, not set by hand in the port
 
 1. Create a branch from an up-to-date `main`, named `type/scope/short-description`
 2. Use [conventional commits](https://www.conventionalcommits.org/) for commits and pull request titles
-3. Open a pull request. CI builds and runs every test.
+3. Open a pull request. CI builds and runs every test, unless it only changes `README.md`, `CLAUDE.md` or `docs/`. A newer push cancels the run it replaces.

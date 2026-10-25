@@ -3,11 +3,23 @@ name: CI
 on:
   push:
     branches: [main]
+    # A push that only changes documentation has nothing to build, test or deploy (deploy.yml waits for this workflow), so
+    # CI doesn't run at all. Keep this list in step with "Check for code changes" below.
+    paths-ignore:
+      - 'README.md'
+      - 'CLAUDE.md'
+      - 'docs/**'
   pull_request:
     branches: [main]
 
 permissions:
   contents: read
+
+# A new push to a pull request cancels the run it replaces. Pushes to main each get a group of their own, so their runs are
+# never cancelled or held back: each one leads to a deploy.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
@@ -18,24 +30,47 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          # A pull request's merge commit and its parents, to see what the pull request changes.
+          fetch-depth: 2
+
+      # A pull request that only changes documentation still runs this job, so "Build and test" passes and can never hold
+      # up a required check, but it skips the build and the tests. (A workflow skipped by path filters would leave a
+      # required check waiting forever, which is why pull requests don't use paths-ignore.)
+      - name: Check for code changes
+        id: changes
+        if: github.event_name == 'pull_request'
+        run: |
+          changed=$(git diff --name-only HEAD^1 HEAD)
+          if grep -qvE '^(README\.md|CLAUDE\.md|docs/.+)$' <<< "$changed"; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Only documentation changed, so there's nothing to build or test."
+            echo "code=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Setup .NET
+        if: steps.changes.outputs.code != 'false'
         uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
 
       # The build downloads Tailwind's standalone CLI (about 110 MB) into .tools/ unless it's already there.
       - name: Cache the Tailwind CLI
+        if: steps.changes.outputs.code != 'false'
         uses: actions/cache@v6
         with:
           path: .tools
           key: tailwind-${{ runner.os }}-${{ hashFiles('build/Tailwind.targets') }}
 
       - name: Restore
+        if: steps.changes.outputs.code != 'false'
         run: dotnet restore CSAdvent.slnx
 
       - name: Build
+        if: steps.changes.outputs.code != 'false'
         run: dotnet build CSAdvent.slnx --configuration Release --no-restore
 
       - name: Test
+        if: steps.changes.outputs.code != 'false'
         run: dotnet test --solution CSAdvent.slnx --configuration Release --no-build

@@ -8,6 +8,11 @@ permissions:
   contents: read
   pull-requests: read
 
+# Each run lints both the title and every commit, so a newer push or title edit cancels the run it replaces.
+concurrency:
+  group: commit-lint-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   lint-pr-title:
     name: Lint PR Title

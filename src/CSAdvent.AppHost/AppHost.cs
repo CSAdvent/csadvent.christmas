@@ -95,7 +95,8 @@ var web = builder.AddProject<Projects.CSAdvent_Web>("web", launchProfileName: is
 if (isPublish)
 {
     // Telemetry goes to Application Insights in production. Never added locally, where it would provision Azure resources.
-    web.WithReference(builder.AddAzureApplicationInsights("appinsights"));
+    var appInsights = builder.AddAzureApplicationInsights("appinsights");
+    web.WithReference(appInsights);
 
     // Email goes through Azure Communication Services. The web app sends with its own managed identity, so there's no key.
     var webIdentity = builder.AddAzureUserAssignedIdentity("web-identity");
@@ -116,6 +117,17 @@ if (isPublish)
         .WithParameter("emailSpf", acs.GetOutput("spf"))
         .WithParameter("emailDkim", acs.GetOutput("dkim"))
         .WithParameter("emailDkim2", acs.GetOutput("dkim2"));
+
+    // Alerts (#139): errors in the logs, the database short of storage, CPU credits or connections, and Azure's own outages,
+    // emailed to the organizers by Azure Monitor. Only with somewhere to send them (CI's ALERT_EMAILS), so a missing value
+    // never breaks a deploy. A secret, because the addresses are personal and a variable would show in the deploy's log.
+    if (builder.Configuration["Parameters:alert-emails"] is { Length: > 0 })
+    {
+        builder.AddBicepTemplate("alerts", "infra/alerts.bicep")
+            .WithParameter("alertEmails", builder.AddParameter("alert-emails", secret: true))
+            .WithParameter("appInsightsId", appInsights.GetOutput("id"))
+            .WithParameter("postgresId", postgres.GetOutput("id"));
+    }
 }
 else
 {
