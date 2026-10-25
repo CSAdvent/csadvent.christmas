@@ -20,6 +20,14 @@ public sealed class ReminderOptions
     public TimeSpan DayOfLead { get; set; } = TimeSpan.FromHours(3);
 
     /// <summary>
+    /// The latest the daily email waits for the rest of the day's posts, in the reveal time zone (#209). From
+    /// <see cref="SendAt"/> it goes out as soon as every post of the day has its title and link; from this time, with
+    /// whichever do. Empty means when the day's last post is announced
+    /// (<see cref="Social.Posting.SocialPostingOptions.PostAt"/>: 2 PM).
+    /// </summary>
+    public TimeOnly? DailyEmailCutoff { get; set; }
+
+    /// <summary>
     /// The pause after each email, to stay under Azure Communication Services' sending limit (30 a minute for a new
     /// custom domain).
     /// </summary>

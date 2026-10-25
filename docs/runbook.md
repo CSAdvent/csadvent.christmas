@@ -19,7 +19,7 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 | November | Approve requests, watch the backup list | Organizers |
 | Any time | Check requests to add older posts to people's accounts, and for new links to older posts (each one emails the organizers) | Organizers |
 | From 7 days before each day | "Your post is due" reminders, then a last call on the day | Automatic |
-| December 1–25 | Reveals at midnight, announcements at 10 AM and 2 PM, the daily email at 9 AM | Automatic, plus LinkedIn and Reddit by hand |
+| December 1–25 | Reveals at midnight, announcements at 10 AM and 2 PM, the daily email once both posts are in (from 9 AM, 2 PM at the latest) | Automatic, plus LinkedIn and Reddit by hand |
 | December 1–25 | Decide on posts the blurb check can't settle, before their announcement | Organizers, when emailed |
 | December 31 | The calendar moves to the archive, and the home page thanks everyone | Automatic |
 | Late December–January | Write, publish and share the season's retrospective | Organizers |
@@ -117,7 +117,8 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
   - Post **LinkedIn and Reddit by hand** from `/manage/social`, then **Mark as posted**.
   - Reddit posts go to r/csadvent only, never r/csharp or r/dotnet.
   - A failed automatic post shows its error and a **Retry now** button.
-- **The daily email** goes at 9 AM to everyone with a spot, once the day has posts, leaving out any without the blurb.
+- **The daily email** goes to everyone with a spot as soon as both of the day's posts are in, from 9 AM, or at 2 PM with
+  whichever are, leaving out any without the blurb.
 - **The blurb check** runs every 15 minutes, and only posts that pass are announced automatically.
   - **A missing blurb** emails its author (once) and asks the backups from midnight, an hour each. A backup who accepts takes
     the spot at the post's announcement unless the author adds the blurb first. If nobody has by then, you get an email: the

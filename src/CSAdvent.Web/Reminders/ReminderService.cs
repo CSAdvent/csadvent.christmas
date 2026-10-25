@@ -2,7 +2,6 @@ using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Content;
 using CSAdvent.Web.Data;
 using CSAdvent.Web.Email;
-using CSAdvent.Web.Entries;
 using CSAdvent.Web.Social.Posting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -19,7 +18,8 @@ public sealed record ReminderRun(int PostLinkReminders, int DailyShares, int Day
 /// Sends the day's reminder emails once the reveal time zone reaches <see cref="ReminderOptions.SendAt"/>:
 /// <list type="bullet">
 /// <item>authors without a post link, <see cref="ReminderOptions.DaysBefore"/> days before their day</item>
-/// <item>every author in the season, each day of Advent, the day's revealed posts to share (unless they opted out)</item>
+/// <item>every author in the season, each day of Advent, the day's revealed posts to share (unless they opted out), once
+/// every post of the day is ready or at the cutoff (<see cref="DailyPosts"/>)</item>
 /// </list>
 /// <para>
 /// Whatever the time, an author whose spot still has no post link on their day also gets a last call
@@ -34,6 +34,7 @@ public sealed partial class ReminderService(
     EmailComposer composer,
     IEmailSender sender,
     DailyEmailOptOut optOut,
+    DailyPosts dailyPosts,
     IOptions<ReminderOptions> options,
     IOptions<SocialPostingOptions> posting,
     IOptions<SiteOptions> site,
@@ -60,7 +61,7 @@ public sealed partial class ReminderService(
                 run = run with
                 {
                     PostLinkReminders = run.PostLinkReminders + await SendPostLinkRemindersAsync(year, today, now, cancellationToken),
-                    DailyShares = run.DailyShares + await SendDailySharesAsync(year, today, now, cancellationToken),
+                    DailyShares = run.DailyShares + await SendDailySharesAsync(year, now, cancellationToken),
                 };
             }
         }
@@ -143,35 +144,15 @@ public sealed partial class ReminderService(
         return sent;
     }
 
-    private async Task<int> SendDailySharesAsync(int year, DateOnly today, DateTimeOffset now, CancellationToken cancellationToken)
+    private async Task<int> SendDailySharesAsync(int year, DateTimeOffset now, CancellationToken cancellationToken)
     {
-        if (schedule.GetDayOfAdvent(year, today) is not { } day)
+        // Today's posts, once every one is ready or the cutoff has passed. Until then a later run tries again.
+        if (await dailyPosts.GetDueAsync(year, now, cancellationToken) is not { } edition)
         {
             return 0;
         }
 
-        // Today's posts, revealed at midnight. Until one has its title and link there's nothing to share, and a later run
-        // tries again. A post found without the C# Advent blurb (#128) is left out.
-        var revealed = await db.Slots
-            .AsNoTracking()
-            .Where(s => s.SeasonYear == year && s.Day == day && s.AuthorName != null && s.PostTitle != null && s.PostUrl != null
-                && !db.BlurbChecks.Any(c => c.SlotId == s.Id && c.PostUrl == s.PostUrl && c.Status == BlurbStatus.Missing))
-            .OrderBy(s => s.Part)
-            .Select(s => new { s.Part, s.PostTitle, s.AuthorName })
-            .ToListAsync(cancellationToken);
-
-        // Links go through the tracked redirect, tagged as email.
-        var posts = revealed
-            .Select(s => new SharedPost(
-                s.PostTitle!,
-                EntryLinks.Absolute(site.Value.BaseUrl, EntryLinks.Go(year, day, s.Part, "email")),
-                s.AuthorName!))
-            .ToList();
-        if (posts.Count == 0)
-        {
-            return 0;
-        }
-
+        var day = edition.Day;
         var contacts = await db.Slots
             .AsNoTracking()
             .Where(s => s.SeasonYear == year && s.AuthorName != null && s.Contact != null)
@@ -190,11 +171,11 @@ public sealed partial class ReminderService(
         {
             var content = ReminderEmails.Daily(
                 // The day of Advent, not today's day of the month: they differ in the test season's rehearsal.
-                new DailyShare(year, day, posts, recipient.First.AuthorName, recipient.IsAuthorToday),
+                new DailyShare(year, day, edition.Posts, recipient.First.AuthorName, recipient.IsAuthorToday),
                 site.Value,
                 optOut.CreateLink(recipient.First.Id));
             var to = new EmailRecipient(recipient.First.Email, recipient.First.AuthorName);
-            if (await SendOnceAsync(ReminderKind.ContributorDailyShare, schedule.InSeason(year, today), recipient.First.Id, now, content, to, cancellationToken))
+            if (await SendOnceAsync(ReminderKind.ContributorDailyShare, edition.RunDate, recipient.First.Id, now, content, to, cancellationToken))
             {
                 sent++;
             }

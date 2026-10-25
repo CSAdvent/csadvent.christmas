@@ -112,6 +112,7 @@ builder.Services.AddOptions<ReminderOptions>()
     .ValidateDataAnnotations()
     .ValidateOnStart();
 builder.Services.AddScoped<DailyEmailOptOut>();
+builder.Services.AddScoped<DailyPosts>();
 
 // The blurb check (#128): every post opens by saying it's part of that year's C# Advent calendar. Posts are fetched by our
 // own client (public addresses only) and judged by Claude Haiku through Anthropic's API. Without an API key the check is off;

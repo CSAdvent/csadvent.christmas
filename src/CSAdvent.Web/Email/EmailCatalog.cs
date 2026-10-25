@@ -303,7 +303,7 @@ public static class EmailCatalog
         new(
             "daily-share",
             "Today's posts",
-            "At 9 AM Eastern each day from December 1 to 25, once at least one of the day's posts has its title and link.",
+            "Each day from December 1 to 25: from 9 AM Eastern once every post of the day has its title and link, or from 2 PM Eastern (the day's last announcement) with whichever do.",
             "Everyone with a spot that season, once each, unless they turned it off with the link in the email.",
             site => ReminderEmails.Daily(
                 new DailyShare(
