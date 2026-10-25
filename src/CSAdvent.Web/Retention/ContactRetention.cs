@@ -4,9 +4,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CSAdvent.Web.Retention;
 
-public sealed record ContactDeletion(int ClaimRequests, int Substitutes, int ContributorEmails, int PostClaimRequests = 0, int PostLinkRequests = 0)
+public sealed record ContactDeletion(int ClaimRequests, int Substitutes, int ContributorEmails, int PostClaimRequests = 0, int PostLinkRequests = 0, int PastAuthorInvitations = 0)
 {
-    public static readonly ContactDeletion None = new(0, 0, 0, 0, 0);
+    public static readonly ContactDeletion None = new(0, 0, 0, 0, 0, 0);
 
     public bool DeletedAnything => this != None;
 }
@@ -57,6 +57,9 @@ public sealed class ContactRetention(AdventDbContext db, AdventSchedule schedule
         var substitutes = await db.Substitutes
             .Where(s => expired.Contains(s.SeasonYear))
             .ExecuteDeleteAsync(cancellationToken);
+        var invitations = await db.PastAuthorInvitations
+            .Where(i => expired.Contains(i.SeasonYear))
+            .ExecuteDeleteAsync(cancellationToken);
 
         // Every sign-in stores a freshly verified email, so anyone who has signed in since the latest deletion time keeps theirs,
         // and so does anyone who has had a spot: authors are told about the next season.
@@ -71,7 +74,7 @@ public sealed class ContactRetention(AdventDbContext db, AdventSchedule schedule
                     .SetProperty(c => c.EmailVerifiedAt, (DateTimeOffset?)null),
                 cancellationToken);
 
-        return Logged(new ContactDeletion(claimRequests, substitutes, contributorEmails, postClaimRequests, postLinkRequests));
+        return Logged(new ContactDeletion(claimRequests, substitutes, contributorEmails, postClaimRequests, postLinkRequests, invitations));
     }
 
     private ContactDeletion Logged(ContactDeletion deletion)
@@ -79,12 +82,13 @@ public sealed class ContactRetention(AdventDbContext db, AdventSchedule schedule
         if (deletion.DeletedAnything)
         {
             logger.LogInformation(
-                "Deleted expired contact details: {ClaimRequests} claim requests, {Substitutes} substitutes, {ContributorEmails} contributor emails, {PostClaimRequests} post claim requests and {PostLinkRequests} post link requests.",
+                "Deleted expired contact details: {ClaimRequests} claim requests, {Substitutes} substitutes, {ContributorEmails} contributor emails, {PostClaimRequests} post claim requests, {PostLinkRequests} post link requests and {PastAuthorInvitations} past author invitations.",
                 deletion.ClaimRequests,
                 deletion.Substitutes,
                 deletion.ContributorEmails,
                 deletion.PostClaimRequests,
-                deletion.PostLinkRequests);
+                deletion.PostLinkRequests,
+                deletion.PastAuthorInvitations);
         }
 
         return deletion;

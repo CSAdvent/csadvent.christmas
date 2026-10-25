@@ -35,15 +35,16 @@ public sealed class AnnouncementOptions
 
 /// <summary>
 /// Announcements to the list (#49): organizers write them at <c>/manage/announcements</c>, and the season's "sign-ups are
-/// open" email is queued automatically. <see cref="AnnouncementWorker"/> delivers them a few at a time, within
-/// <see cref="AnnouncementOptions.PerHour"/>, recording each subscriber's copy before sending it, so nobody gets one twice
-/// even across replicas.
+/// open" email is queued automatically, when past authors are invited too (<see cref="PastAuthorInvitationService"/>).
+/// <see cref="AnnouncementWorker"/> delivers them a few at a time, within <see cref="AnnouncementOptions.PerHour"/> for both
+/// kinds together, recording each copy before sending it, so nobody gets one twice even across replicas.
 /// </summary>
 public sealed partial class AnnouncementService(
     AdventDbContext db,
     AdventSchedule schedule,
     SeasonAdminService seasons,
     AnnouncementSubscriptions subscriptions,
+    PastAuthorInvitationService invitations,
     EmailComposer composer,
     IEmailSender sender,
     IOptions<AnnouncementOptions> options,
@@ -146,15 +147,22 @@ public sealed partial class AnnouncementService(
         await db.Announcements.Where(a => a.Id == id && a.SentAt == null).ExecuteDeleteAsync(cancellationToken) == 1;
 
     /// <summary>
-    /// Queues the "sign-ups are open" email when it's due, then delivers what it can within the hour's allowance. Returns how
-    /// many emails went out.
+    /// Queues the "sign-ups are open" email when it's due, then delivers what it can within the hour's allowance, and then
+    /// past authors' invitations with what's left. Returns how many emails went out.
     /// </summary>
     /// <param name="signUpsYear">The season whose sign-ups to announce, instead of the current one (for the tests).</param>
     public async Task<int> RunAsync(DateTimeOffset now, int? signUpsYear = null, CancellationToken cancellationToken = default)
     {
-        await QueueSignUpsOpenAsync(now, signUpsYear, cancellationToken);
+        var opening = await SignUpsOpeningAsync(now, signUpsYear, cancellationToken);
+        if (opening is { } openingYear)
+        {
+            await QueueSignUpsOpenAsync(openingYear, now, cancellationToken);
+        }
 
-        var budget = options.Value.PerHour - await db.AnnouncementDeliveries.CountAsync(d => d.SentAt > now - TimeSpan.FromHours(1), cancellationToken);
+        var hourAgo = now - TimeSpan.FromHours(1);
+        var budget = options.Value.PerHour
+            - await db.AnnouncementDeliveries.CountAsync(d => d.SentAt > hourAgo, cancellationToken)
+            - await invitations.CountSentSinceAsync(hourAgo, cancellationToken);
         var sent = 0;
         foreach (var announcement in await db.Announcements.AsNoTracking().Where(a => a.SentAt != null && a.FinishedAt == null).OrderBy(a => a.SentAt).ToListAsync(cancellationToken))
         {
@@ -186,6 +194,11 @@ public sealed partial class AnnouncementService(
                     await Task.Delay(reminders.Value.PauseBetweenEmails, timeProvider, cancellationToken);
                 }
             }
+        }
+
+        if (opening is { } invitingYear)
+        {
+            sent += await invitations.RunAsync(invitingYear, now, budget, cancellationToken);
         }
 
         return sent;
@@ -229,17 +242,25 @@ public sealed partial class AnnouncementService(
         [.. message.Replace("\r\n", "\n").Split("\n\n", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Select(paragraph => string.Join(' ', paragraph.Split('\n', StringSplitOptions.TrimEntries)))];
 
-    private async Task QueueSignUpsOpenAsync(DateTimeOffset now, int? signUpsYear, CancellationToken cancellationToken)
+    /// <summary>
+    /// The season whose sign-ups have just opened, if it's time to say so: only the current season, never the test season,
+    /// from the morning send time once sign-ups are open, and for <see cref="SignUpsAnnouncedWithin"/>.
+    /// </summary>
+    private async Task<int?> SignUpsOpeningAsync(DateTimeOffset now, int? signUpsYear, CancellationToken cancellationToken)
     {
-        // Only the current season, never the test season, at the morning send time once sign-ups have opened.
         if ((signUpsYear ?? await seasons.GetCurrentYearAsync(cancellationToken)) is not { } year || year == Season.TestYear
             || await db.Seasons.Where(s => s.Year == year).Select(s => s.ClaimsOpenAt).SingleAsync(cancellationToken) is not { } opensAt
             || now < opensAt || now - opensAt > SignUpsAnnouncedWithin
             || TimeOnly.FromDateTime(schedule.ToLocalTime(now).DateTime) < reminders.Value.SendAt)
         {
-            return;
+            return null;
         }
 
+        return year;
+    }
+
+    private async Task QueueSignUpsOpenAsync(int year, DateTimeOffset now, CancellationToken cancellationToken)
+    {
         var form = SignUpsOpen(year, site.Value.BaseUrl);
         db.Announcements.Add(new Announcement
         {
