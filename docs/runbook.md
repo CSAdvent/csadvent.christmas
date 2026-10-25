@@ -14,6 +14,7 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 |---|---|---|
 | September | The home page starts counting down to sign-ups | Automatic |
 | September–October | Create the season, refresh copy, run a test round, check social posting | Organizers |
+| Late October | Check credentials, the domain's renewal, the alerts and Actions minutes (Every November, below) | Organizers |
 | November 1 | Sign-ups open; the announcements list, past authors and the Automatic social platforms hear about it at 9 AM | Automatic, once the season is scheduled; LinkedIn and Reddit by hand from `/manage/social/signups` |
 | November | Approve requests, watch the backup list | Organizers |
 | Any time | Check requests to add older posts to people's accounts, and for new links to older posts (each one emails the organizers) | Organizers |
@@ -151,8 +152,164 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 - **Database restore:** practise a point-in-time restore once a year, before December (#90).
 - **The blurb check's Anthropic API key** lasts until it's revoked. Check its workspace's spend limit in the Anthropic
   Console, and replace the `ANTHROPIC_API_KEY` secret the same way as the social ones if it's ever rotated.
-- **Domains:** the managed certificates for csadvent.christmas and www renew themselves while the app is running.
+- **Domains:** the managed certificates for csadvent.christmas and www renew themselves while the app is running. The
+  domain itself doesn't: check its expiry date and auto-renew at Hover (see below).
+- **Sign-in:** sign in to the live site with GitHub. Nothing else notices a revoked OAuth secret.
+- **hello@:** send it a test email from another address. Nothing else notices ImprovMX failing.
 - **GitHub Actions minutes:** check the organization's usage before November (see below).
+
+Each credential and account is described below, with where it lives and how to replace it.
+
+---
+
+## 🔐 Credentials and Accounts
+
+Every secret and account the site depends on. Secrets and variables named in capitals live in the repository's
+**`production` environment** (Settings → Environments → production); the deploy passes each one to the AppHost parameter
+named after it. Secrets only reach the site when it deploys, so after changing one, run the Deploy workflow
+(`gh workflow run deploy.yml --ref main`). Where a service lets you, make the new credential, deploy, check it works, and
+only then revoke the old one.
+
+Lines marked ✏️ **To fill in** are for the organizers: they aren't written down anywhere else.
+
+### 🌐 The domain, csadvent.christmas
+
+- **Lives at:** Hover, the registrar. Its name servers point at the Azure DNS zone, which holds every record
+  (`infra/dns.bicep`); nothing else is set at Hover.
+- ✏️ **To fill in:** whose Hover account it's in, the expiry date, whether auto-renew is on (it should be), and the card it
+  renews on.
+- **If it lapses, everything stops:** the site, GitHub sign-in, the site's email (its sending domain is
+  `mail.csadvent.christmas`), hello@, and the Bluesky handle.
+- **What notices:** only Hover's renewal emails to the account's owner, and the uptime check's domain expiry reminder if its
+  plan has one.
+- **Renewing:** keep auto-renew on and the card current, and check the expiry date every November.
+
+### 📮 hello@csadvent.christmas (ImprovMX)
+
+- **Lives at:** an ImprovMX account, with an alias `hello` that forwards to the organizers. Its MX and SPF records are in
+  `infra/dns.bicep`, and the site's address for it is `Site:ContactEmail` in `appsettings.json`.
+- ✏️ **To fill in:** whose ImprovMX account it is, the plan, and where `hello` forwards.
+- **If it fails:** mail to hello@ bounces or vanishes. That's every email the site sends the organizers (new requests,
+  drop-outs, blurb decisions, failed credential checks, "no backups left") and replies to the site's emails.
+- **What notices:** nothing. The Azure alerts don't go through hello@, so they still arrive.
+- **Checking:** send hello@ a test email from another address every fall. There's no key; keep the account's sign-in (with
+  two-factor authentication) somewhere both organizers can reach.
+
+### 🐙 GitHub OAuth app (sign-in)
+
+- **Lives in:** variable `OAUTH_CLIENT_ID` and secret `OAUTH_CLIENT_SECRET` (AppHost parameters `github-client-id` and
+  `github-client-secret`). The app itself is under a GitHub account's **Settings → Developer settings → OAuth Apps**, with
+  the callback `/signin-github` on the site.
+- ✏️ **To fill in:** which account or organization the OAuth app belongs to.
+- **If it fails** (the secret is revoked or the app deleted): nobody can sign in, so contributors can't claim spots or add
+  their posts, and organizers can't reach `/manage`. The public pages keep working.
+- **What notices:** nothing. The uptime check and the alerts stay green, so sign in to the live site each November.
+- **Rotating:** in the OAuth app, **Generate a new client secret** (the old one keeps working until you delete it), set
+  `OAUTH_CLIENT_SECRET`, deploy, sign in to check, then delete the old secret.
+
+### ✍️ Anthropic API key (the blurb check)
+
+- **Lives in:** secret `ANTHROPIC_API_KEY` (parameter `anthropic-api-key`). The key belongs to a workspace in the
+  [Anthropic Console](https://console.anthropic.com).
+- ✏️ **To fill in:** whose Anthropic organization it is, and the workspace's monthly spend limit and usage alert.
+- **If it fails** (revoked, or the workspace reaches its spend limit): every post is Couldn't check, and posts aren't
+  announced automatically until an organizer marks them.
+- **What notices:** an email to the organizers once a post couldn't be checked for 30 minutes. Posts are only checked from
+  the day before their reveal, so outside the season nothing notices.
+- **Spend:** set the workspace's monthly limit to cover December (a season costs cents), with a usage notification below
+  it.
+- **Rotating:** create a new key in the same workspace, set the secret, deploy, press **Check now** on an entry page (the
+  test season works), then revoke the old key.
+
+### 🐘 Mastodon access token
+
+- **Lives in:** secret `MASTODON_ACCESS_TOKEN` (parameter `mastodon-access-token`), for `@csadvent@mastodon.social`.
+- ✏️ **To fill in:** who can sign in to the account.
+- **If it fails:** automatic Mastodon posts fail, each with its error and **Retry now**. Copy and paste still works.
+- **What notices:** the 8 AM credential check emails the organizers, but only while Mastodon is Automatic.
+- **Rotating:** on mastodon.social, **Preferences → Development**, open the application and regenerate its access token
+  (or create a new application with the `write:statuses` scope). Set the secret, deploy, and press **Check** on
+  `/manage/social`.
+
+### 🦋 Bluesky app password
+
+- **Lives in:** secret `BLUESKY_APP_PASSWORD` (parameter `bluesky-app-password`), for the `csadvent.christmas` account.
+- ✏️ **To fill in:** who can sign in to the account.
+- **If it fails, and what notices:** the same as Mastodon.
+- **Rotating:** in Bluesky's **Settings → Privacy and security → App passwords**, add a new one. Set the secret, deploy,
+  press **Check**, then delete the old app password.
+
+### 📘 Facebook Page ID and token
+
+- **Lives in:** variable `FACEBOOK_PAGE_ID` and secret `FACEBOOK_PAGE_TOKEN` (parameters `facebook-page-id` and
+  `facebook-page-token`). The token comes from the Meta app on developers.facebook.com.
+- ✏️ **To fill in:** whose Facebook account has the Page role and owns the Meta app.
+- **If it fails:** automatic Facebook posts fail. A Facebook password change, losing the Page role, or Meta limiting the app
+  all stop the token working.
+- **What notices:** the 8 AM credential check, while Facebook is Automatic.
+- **Rotating:** make a new Page token as the README's Facebook setup describes, set `FACEBOOK_PAGE_TOKEN`, deploy, and press
+  **Check**.
+
+### ✖️ X credentials
+
+- **Lives in:** secrets `X_API_KEY`, `X_API_KEY_SECRET`, `X_ACCESS_TOKEN` and `X_ACCESS_TOKEN_SECRET` (parameters
+  `x-api-key`, `x-api-key-secret`, `x-access-token` and `x-access-token-secret`). All four are needed, or X stays copy and
+  paste. They come from the app on [console.x.com](https://console.x.com), owned by `@csadvent`.
+- ✏️ **To fill in:** who can sign in to `@csadvent`, the card on the X developer account, its spending limit, and the
+  credit left.
+- **If it fails:** automatic X posts fail. Besides a revoked key, X's API is paid per use, so running out of credit stops
+  it too.
+- **What notices:** the 8 AM credential check, while X is Automatic (each check costs about a cent).
+- **Rotating:** regenerate the keys or tokens in the app's settings, update every secret you regenerated, deploy, and press
+  **Check**. Tokens made before the app had Read and write permission stay read-only.
+
+### 🗄️ PostgreSQL admin username and password
+
+- **Lives in:** variable `PG_ADMIN_USERNAME` and secret `PG_ADMIN_PASSWORD` (parameters `pg-admin-username` and
+  `pg-admin-password`). Every deploy sets the server's admin password from them and writes the connection strings to the
+  Key Vault Aspire created (`postgres-kv`), which the site and the migrations job read.
+- **If they're wrong:** the site can't reach the database. `/health` turns Unhealthy, and the deploy's migrations step fails.
+- **What notices:** the uptime check, the error alert, and the Deploy workflow.
+- **Rotating** (outside the season, because connections can fail for a minute while the new revision starts): set a new
+  `PG_ADMIN_PASSWORD` and run the Deploy workflow, which changes the server's password and the connection strings
+  together. Then check `/health`, and restart the `web` app's revision in the portal if it's Unhealthy. The username can't
+  be changed once the server exists.
+
+### 🪪 Azure sign-in for GitHub Actions
+
+- **Lives in:** no secret. Variables `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID` name the managed
+  identity `id-csadvent-github` (resource group `rg-csadvent-github`, Owner of the subscription), which trusts GitHub's
+  OIDC tokens for this repository's `production` environment through its federated credential `github-production`.
+- ✏️ **To fill in:** who else is an Owner of the subscription, and who pays for it.
+- **If it fails:** nothing deploys. It breaks if the identity, its federated credential or its role assignment is deleted,
+  or if the repository is re-created or transferred, because the credential names the repository by its ID. Renaming the
+  repository, or making it public, doesn't matter.
+- **What notices:** the Deploy workflow fails at "Sign in to Azure".
+- **Rotating:** nothing to rotate. To rebuild it, follow step 1 of the README's deploy setup.
+
+### ✉️ Email (Azure Communication Services)
+
+- **Lives in:** no key. The site's managed identity (`web-identity`) has the Communication and Email Service Owner role on
+  the Communication Service `csadvent-acs`, so its `email` connection string is just the endpoint.
+- **If it fails:** no email goes out. That happens if the role assignment is removed, the sending domain is disconnected,
+  or the sending limit is reached (below).
+- **What notices:** the error alert (every failed send logs an error), and a sample from `/manage/emails`.
+- **Rotating:** nothing to rotate.
+
+### 🚨 Alert recipients
+
+- **Lives in:** secret `ALERT_EMAILS` (parameter `alert-emails`): the addresses Azure Monitor's alerts go to, separated by
+  commas. Not a credential, but personal, so it's a secret.
+- **If it's empty:** the deploy leaves the alerts out. Rules already in Azure stay as they were.
+- **Changing it:** set the secret and deploy. Never edit the action group in the portal, because the next deploy puts it
+  back.
+
+### Nothing to look after
+
+- **Application Insights, the Key Vault and the container registry** are created by the deploy and used through managed
+  identities.
+- **The managed certificates** renew themselves while the app runs.
+- **LinkedIn and Reddit** have no credentials: they're always copy and paste.
 
 ---
 
