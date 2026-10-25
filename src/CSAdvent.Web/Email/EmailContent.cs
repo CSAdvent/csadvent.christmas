@@ -20,7 +20,10 @@ public sealed record EmailContent
     /// <summary>Why the recipient got this email, shown in the footer.</summary>
     public string? Reason { get; init; }
 
-    /// <summary>For emails people can turn off: the one-click link that does it, in the footer and the headers.</summary>
+    /// <summary>
+    /// The one-click link that turns these emails off, in the footer and the headers. Left empty, <see cref="EmailComposer"/>
+    /// puts in the link that stops every C# Advent email to the recipient (except for the organizers' inbox).
+    /// </summary>
     public string? UnsubscribeUrl { get; init; }
 }
 
@@ -119,7 +122,7 @@ public static class EmailText
 
         if (content.UnsubscribeUrl is { } unsubscribe)
         {
-            text.Append("Stop these emails: ").Append(unsubscribe).Append('\n');
+            text.Append("Unsubscribe: ").Append(unsubscribe).Append('\n');
         }
 
         return text.ToString();

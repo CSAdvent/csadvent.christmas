@@ -5,18 +5,25 @@ using Microsoft.Extensions.Options;
 
 namespace CSAdvent.Web.Email;
 
-/// <summary>Turns <see cref="EmailContent"/> into an <see cref="OutgoingEmail"/>: the branded HTML and its plain-text alternative.</summary>
-public sealed class EmailComposer(IServiceScopeFactory scopeFactory, ILoggerFactory loggerFactory, IOptions<SiteOptions> site)
+/// <summary>
+/// Turns <see cref="EmailContent"/> into an <see cref="OutgoingEmail"/>: the branded HTML and its plain-text alternative.
+/// Every email to a person has an unsubscribe link: its own (the daily email's, an announcement's), or else the one that stops
+/// every C# Advent email (<see cref="EmailOptOutLinks"/>). Only the organizers' inbox goes without.
+/// </summary>
+public sealed class EmailComposer(IServiceScopeFactory scopeFactory, ILoggerFactory loggerFactory, IOptions<SiteOptions> site, EmailOptOutLinks optOutLinks)
 {
     /// <summary>Composes an email. Replies go to the organizers unless <paramref name="replyTo"/> says otherwise.</summary>
-    public async Task<OutgoingEmail> ComposeAsync(EmailContent content, EmailRecipient to, string? replyTo = null) =>
-        new(
+    public async Task<OutgoingEmail> ComposeAsync(EmailContent content, EmailRecipient to, string? replyTo = null)
+    {
+        var withLink = content with { UnsubscribeUrl = content.UnsubscribeUrl ?? (optOutLinks.IsOrganizers(to.Address) ? null : optOutLinks.CreateLink(to.Address)) };
+        return new(
             to,
             replyTo ?? site.Value.ContactEmail,
-            EmailBlocks.SingleLine(content.Subject),
-            await RenderHtmlAsync(content),
-            RenderText(content),
-            content.UnsubscribeUrl);
+            EmailBlocks.SingleLine(withLink.Subject),
+            await RenderHtmlAsync(withLink),
+            RenderText(withLink),
+            withLink.UnsubscribeUrl);
+    }
 
     public async Task<string> RenderHtmlAsync(EmailContent content)
     {

@@ -1,5 +1,6 @@
 using CSAdvent.Web.Content;
 using CSAdvent.Web.Email;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -27,11 +28,14 @@ public sealed class EmailComposerTests
         Reason = "You're getting this because of a test.",
     };
 
+    private static readonly EmailOptOutLinks Links = new(new EphemeralDataProtectionProvider(), Options.Create(Site));
+
     private static EmailComposer CreateComposer() =>
         new(
             new ServiceCollection().BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
             NullLoggerFactory.Instance,
-            Options.Create(Site));
+            Options.Create(Site),
+            Links);
 
     [Fact]
     public async Task TheHtmlIsBrandedAndEncoded()
@@ -88,8 +92,43 @@ public sealed class EmailComposerTests
 
         Assert.Equal("https://csadvent.christmas/emails/daily/stop?token=abc", email.UnsubscribeUrl);
         Assert.Contains("<a href=\"https://csadvent.christmas/emails/daily/stop?token=abc\"", email.Html);
-        Assert.Contains("Stop these emails</a>", email.Html);
-        Assert.Null((await composer.ComposeAsync(Content, new EmailRecipient("ada@example.com"))).UnsubscribeUrl);
+        Assert.Contains("Unsubscribe</a>", email.Html);
+        Assert.Contains("Unsubscribe: https://csadvent.christmas/emails/daily/stop?token=abc", email.Text);
+    }
+
+    [Fact]
+    public async Task EveryOtherEmailToAPersonCanUnsubscribeFromEverything()
+    {
+        var email = await CreateComposer().ComposeAsync(Content, new EmailRecipient("Ada@Example.com", "Ada"));
+
+        Assert.StartsWith("https://csadvent.christmas/emails/stop?token=", email.UnsubscribeUrl);
+        Assert.Contains($"<a href=\"{email.UnsubscribeUrl}\"", email.Html);
+        Assert.Contains($"Unsubscribe: {email.UnsubscribeUrl}", email.Text);
+        Assert.True(Links.TryReadToken(new Uri(email.UnsubscribeUrl!).Query.Split("token=")[1], out var address));
+        Assert.Equal("ada@example.com", address);
+    }
+
+    [Fact]
+    public async Task TheOrganizersInboxGetsNoUnsubscribeLink()
+    {
+        var email = await CreateComposer().ComposeAsync(Content, new EmailRecipient("Hello@CSAdvent.christmas"));
+
+        Assert.Null(email.UnsubscribeUrl);
+        Assert.DoesNotContain("Unsubscribe", email.Html);
+    }
+
+    [Fact]
+    public void UnsubscribeTokensCantBeForgedAndTheListKeepsOnlyAFingerprint()
+    {
+        Assert.False(Links.TryReadToken("not-a-token", out _));
+        Assert.False(Links.TryReadToken(null, out _));
+        Assert.True(Links.TryReadToken(Links.CreateToken(" Grace@Example.com "), out var address));
+        Assert.Equal("grace@example.com", address);
+
+        var fingerprint = EmailOptOutLinks.Fingerprint("Grace@Example.com ");
+        Assert.Equal(EmailOptOutLinks.Fingerprint("grace@example.com"), fingerprint);
+        Assert.Equal(64, fingerprint.Length);
+        Assert.DoesNotContain("grace", fingerprint, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

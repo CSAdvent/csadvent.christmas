@@ -135,7 +135,7 @@ public sealed partial class ReminderTests(AppHostFixture fixture)
         Claim(21, 2, "Tom Twice", "tom-2106@example.com", "Tom's second 2106 post");
     });
 
-    [GeneratedRegex(@"Stop these emails: (?<url>\S+)")]
+    [GeneratedRegex(@"Unsubscribe: (?<url>\S+)")]
     private static partial Regex StopLink();
 
     private sealed record RunResult(int PostLinkReminders, int DailyShares, int DayOfReminders = 0);

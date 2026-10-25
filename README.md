@@ -167,6 +167,7 @@ A hidden test season lets invited testers try everything for real on the live si
 ## ✉️ Email
 
 - 🎨 **Branded HTML emails** with a plain-text alternative, both rendered from one description of each email (`EmailContent`)
+- 🔕 **Every email to a person can unsubscribe**, with a link and a one-click `List-Unsubscribe` header. Unsubscribing stops every C# Advent email to that address (the daily email and announcements have their own links too), and it can be turned back on from the same page or the profile. Only a fingerprint of the address is kept
 - 👀 **Preview every email** at <https://localhost:7092/dev/emails> while the AppHost runs (Development only). It lists when each one is sent and who gets it.
 - 📮 **Send any email now** from `/manage/emails` on the live site: organizers preview each one, and send it with sample data to themselves, the organizers' inbox or a tester, without waiting for the date that would trigger it
 - 📬 **Nothing leaves your machine locally**: MailPit catches every email, and its inbox is linked from the dashboard

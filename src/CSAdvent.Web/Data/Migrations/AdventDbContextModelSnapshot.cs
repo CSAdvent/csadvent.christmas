@@ -16,7 +16,7 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261025003144_AddPostClaimRequests";
+    public override string LastMigrationId => "20261025135733_AddEmailOptOuts";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -492,6 +492,24 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                     .HasDatabaseName("ix_contributors_github_user_id");
 
                 b.ToTable("contributors");
+            });
+
+        modelBuilder.Entity("CSAdvent.Web.Data.EmailOptOut", b =>
+            {
+                b.Property<string>("Fingerprint")
+                    .HasMaxLength(64)
+                    .HasColumnType("character(64)")
+                    .HasColumnName("fingerprint")
+                    .IsFixedLength();
+
+                b.Property<DateTimeOffset>("OptedOutAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("opted_out_at");
+
+                b.HasKey("Fingerprint")
+                    .HasName("pk_email_opt_outs");
+
+                b.ToTable("email_opt_outs");
             });
 
         modelBuilder.Entity("CSAdvent.Web.Data.EntryHit", b =>

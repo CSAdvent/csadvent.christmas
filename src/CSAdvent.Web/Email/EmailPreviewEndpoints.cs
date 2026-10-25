@@ -33,14 +33,21 @@ public static class EmailPreviewEndpoints
 
     private static void MapPreviews(RouteGroupBuilder previews)
     {
-        previews.MapGet("/{key}", async (string key, EmailComposer composer, IOptions<SiteOptions> site) =>
+        previews.MapGet("/{key}", async (string key, EmailComposer composer, EmailOptOutLinks links, IOptions<SiteOptions> site) =>
             EmailCatalog.Find(key) is { } entry
-                ? Results.Content(await composer.RenderHtmlAsync(entry.Sample(site.Value)), "text/html; charset=utf-8")
+                ? Results.Content(await composer.RenderHtmlAsync(Preview(entry, links, site.Value)), "text/html; charset=utf-8")
                 : Results.NotFound());
-        previews.MapGet("/{key}/text", (string key, EmailComposer composer, IOptions<SiteOptions> site) =>
+        previews.MapGet("/{key}/text", (string key, EmailComposer composer, EmailOptOutLinks links, IOptions<SiteOptions> site) =>
             EmailCatalog.Find(key) is { } entry
-                ? Results.Text(composer.RenderText(entry.Sample(site.Value)), "text/plain; charset=utf-8")
+                ? Results.Text(composer.RenderText(Preview(entry, links, site.Value)), "text/plain; charset=utf-8")
                 : Results.NotFound());
+    }
+
+    /// <summary>The sample, with the unsubscribe link people get (a sample address's), unless it's for the organizers' inbox.</summary>
+    private static EmailContent Preview(EmailCatalogEntry entry, EmailOptOutLinks links, SiteOptions site)
+    {
+        var sample = entry.Sample(site);
+        return sample.UnsubscribeUrl is null && !entry.IsForOrganizers ? sample with { UnsubscribeUrl = links.CreateLink("sample@example.com") } : sample;
     }
 
     private static string Index()
