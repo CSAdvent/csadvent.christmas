@@ -92,6 +92,10 @@ public sealed class OptOutAwareEmailSenderTests
             [
                 ClaimEmails.Received(claim, Site),
                 ClaimEmails.Approved(claim, Site),
+                ClaimEmails.Approved(claim with { Day = 5, RequestedDay = 3, RequestedPart = 1 }, Site),
+                ClaimEmails.Declined(claim, ClaimDeclineReason.SpotTaken, Site),
+                ClaimEmails.Declined(claim, ClaimDeclineReason.SeasonFull, Site),
+                ClaimEmails.Declined(claim, ClaimDeclineReason.NotApproved, Site),
                 BackupEmails.SignedUp("Grace", 2026, 1, Site),
                 BackupEmails.Ask("Grace", spot, BackupReason.DroppedOut, "1 PM", "https://csadvent.christmas/backups/offers/1", Site),
                 BackupEmails.YoureOn("Grace", spot, "Post", Site),

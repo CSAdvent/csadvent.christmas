@@ -57,6 +57,9 @@ public sealed class ContactRetention(AdventDbContext db, AdventSchedule schedule
         var substitutes = await db.Substitutes
             .Where(s => expired.Contains(s.SeasonYear))
             .ExecuteDeleteAsync(cancellationToken);
+        await db.BackupSignupEmails
+            .Where(e => expired.Contains(e.SeasonYear))
+            .ExecuteDeleteAsync(cancellationToken);
         var invitations = await db.PastAuthorInvitations
             .Where(i => expired.Contains(i.SeasonYear))
             .ExecuteDeleteAsync(cancellationToken);

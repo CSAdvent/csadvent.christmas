@@ -18,7 +18,8 @@ public sealed record MySpot(int SlotId, int Year, int Day, int Part, int SlotsPe
     public string Spot => SlotsPerDay > 1 ? $"December {Day}, {Year} · Post {Part}" : $"December {Day}, {Year}";
 }
 
-public sealed record MyRequest(int Year, int Day, int Part, int SlotsPerDay, DateTimeOffset SubmittedAt)
+/// <param name="SpotTaken">The spot has gone to someone else while the request waits for the organizers.</param>
+public sealed record MyRequest(int Id, int Year, int Day, int Part, int SlotsPerDay, DateTimeOffset SubmittedAt, bool SpotTaken)
 {
     public string Spot => SlotsPerDay > 1 ? $"December {Day}, {Year} · Post {Part}" : $"December {Day}, {Year}";
 }
@@ -90,7 +91,7 @@ public sealed partial class MySpotsService(
             .AsNoTracking()
             .Where(r => r.ContributorId == contributorId && r.Status == ClaimRequestStatus.Pending)
             .OrderBy(r => r.SubmittedAt)
-            .Select(r => new MyRequest(r.Slot.SeasonYear, r.Slot.Day, r.Slot.Part, r.Slot.Season.SlotsPerDay, r.SubmittedAt))
+            .Select(r => new MyRequest(r.Id, r.Slot.SeasonYear, r.Slot.Day, r.Slot.Part, r.Slot.Season.SlotsPerDay, r.SubmittedAt, r.Slot.AuthorName != null))
             .ToListAsync(cancellationToken);
 
         return new MySpotsOverview(

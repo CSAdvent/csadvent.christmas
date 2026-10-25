@@ -33,6 +33,9 @@ public sealed record BackupListEntry(
 public enum BackupSignupOutcome
 {
     SignedUp,
+
+    /// <summary>They're on the list again, after leaving it this season. They had the sign-up email the first time.</summary>
+    Rejoined,
     AlreadyOnList,
     NoVerifiedEmail,
     NotOpen,
@@ -106,6 +109,20 @@ public sealed partial class BackupListService(
             return BackupSignupOutcome.AlreadyOnList;
         }
 
+        // The email goes once per person and season, however often they leave and join again (#137). It's recorded first, so
+        // two replicas can't both send it, and the record goes again if sending fails, so a later sign-up tries again.
+        var record = new BackupSignupEmail { SeasonYear = year, ContributorId = contributorId, SentAt = timeProvider.GetUtcNow() };
+        db.BackupSignupEmails.Add(record);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        {
+            db.Entry(record).State = EntityState.Detached;
+            return BackupSignupOutcome.Rejoined;
+        }
+
         var position = (await GetMembershipAsync(contributorId, year, cancellationToken))?.Position ?? 1;
         try
         {
@@ -117,6 +134,8 @@ public sealed partial class BackupListService(
         catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
         {
             LogSignupEmailFailed(exception, year);
+            db.BackupSignupEmails.Remove(record);
+            await db.SaveChangesAsync(CancellationToken.None);
         }
 
         return BackupSignupOutcome.SignedUp;

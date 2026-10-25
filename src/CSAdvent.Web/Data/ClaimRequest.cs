@@ -7,12 +7,17 @@ public enum ClaimRequestStatus
 {
     Pending,
     Approved,
-    Archived,
+
+    /// <summary>An organizer turned it down, usually because the spot went to someone else. The contributor is told.</summary>
+    Declined,
+
+    /// <summary>The contributor took it back before an organizer decided, from My spots.</summary>
+    Withdrawn,
 }
 
 /// <summary>
-/// A contributor asking for a slot. The organizer either approves it, which copies it into the slot, or archives it.
-/// Everything here is private.
+/// A contributor asking for a slot. The organizer either approves it, which copies it into the slot, or declines it, and the
+/// contributor hears either way; they can also withdraw it while it's pending. Everything here is private.
 /// </summary>
 public sealed class ClaimRequest
 {
@@ -45,6 +50,7 @@ public sealed class ClaimRequest
 
     public ClaimRequestStatus Status { get; set; }
 
+    /// <summary>When an organizer decided it, or the contributor withdrew it.</summary>
     public DateTimeOffset? DecidedAt { get; set; }
 
     /// <summary>Concurrency token (PostgreSQL <c>xmin</c>), so approving twice can't apply twice.</summary>

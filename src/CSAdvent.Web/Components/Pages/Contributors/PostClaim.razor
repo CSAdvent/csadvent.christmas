@@ -52,8 +52,12 @@
         {
             <p class="mt-6 max-w-2xl rounded-xl bg-red-50 p-4 font-medium text-red-800 ring-1 ring-red-200" role="alert">@error</p>
         }
+    }
 
-        <EditForm Model="Form" FormName="post-claim" OnValidSubmit="RequestAsync" class="mt-6 flex max-w-2xl flex-col gap-4">
+    @* Also rendered (hidden) when it was just posted, so a repeated post, like a double click, reaches its handler instead of a 400. *@
+    @if (CanRequest || _posted)
+    {
+        <EditForm Model="Form" FormName="post-claim" OnValidSubmit="RequestAsync" hidden="@(!CanRequest)" class="mt-6 flex max-w-2xl flex-col gap-4">
             <DataAnnotationsValidator />
             <ValidationSummary class="rounded-xl bg-red-50 p-4 text-sm ring-1 ring-red-200" />
             <label class="flex flex-col text-sm font-medium text-slate-700">
@@ -69,7 +73,7 @@
             </div>
         </EditForm>
 
-        <p class="mt-8 max-w-2xl text-sm text-slate-500">
+        <p hidden="@(!CanRequest)" class="mt-8 max-w-2xl text-sm text-slate-500">
             We'll email you at your verified GitHub email once an organizer has checked it. Your request and note are deleted 30
             days after that.
         </p>
@@ -95,12 +99,18 @@
     [SupplyParameterFromForm(FormName = "post-claim")]
     private PostClaimForm? Form { get; set; }
 
+    private bool _posted;
+
+    /// <summary>The post isn't on anyone's account, and they haven't asked for it yet.</summary>
+    private bool CanRequest => _post is { Owner: PostOwner.Nobody, Requested: false } && Done != "requested";
+
     [CascadingParameter]
     private Task<AuthenticationState> AuthenticationState { get; set; } = null!;
 
     protected override async Task OnInitializedAsync()
     {
-        // Static rendering starts at the first wait, so the form needs its model first.
+        // Static rendering starts at the first wait, so the form needs its model first. It's only supplied when it was posted.
+        _posted = Form is not null;
         Form ??= new();
 
         _post = await PostClaims.GetAsync(await ContributorIdAsync(), Year, Day, Part);

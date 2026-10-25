@@ -7,7 +7,29 @@
 <ManageNav />
 
 <h1 class="text-3xl font-bold tracking-tight text-slate-900">Claim requests @(_year is { } year ? $"for {year}" : "")</h1>
-<p class="mt-2 text-slate-600">Oldest first: spots go to the first request, unless you decide otherwise.</p>
+<p class="mt-2 text-slate-600">
+    Oldest first: spots go to the first request, unless you decide otherwise. A request nobody else wants its spot for can be
+    approved from here; review the rest.
+</p>
+
+@if (_approved is { } approved)
+{
+    <p class="mt-6 rounded-xl bg-green-50 p-4 font-medium text-green-800 ring-1 ring-green-200" role="status">
+        Approved @approved.DisplayName for December @approved.RequestedSpot.Day@(approved.SlotsPerDay > 1 ? $", post {approved.RequestedSpot.Part}" : "").
+        We've emailed them.
+    </p>
+}
+
+@if (ReviewMessages.Describe(Error) is { } error)
+{
+    <p class="mt-6 rounded-xl bg-red-50 p-4 font-medium text-red-800 ring-1 ring-red-200" role="alert">
+        @error
+        @if (FailedRequest is { } failed)
+        {
+            <a href="manage/requests/@failed" class="ml-1 underline">Review the request</a>
+        }
+    </p>
+}
 
 @if (_year is { } shownYear)
 {
@@ -44,7 +66,11 @@
                     <tr>
                         <td class="py-2 pr-4 whitespace-nowrap">
                             December @request.Day · Post @request.Part
-                            @if (request.OtherPendingForSpot > 0)
+                            @if (request.Status is ClaimRequestStatus.Pending && request.SpotTaken)
+                            {
+                                <span class="ml-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800">Spot taken</span>
+                            }
+                            else if (request.OtherPendingForSpot > 0)
                             {
                                 <span class="ml-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">+@request.OtherPendingForSpot competing</span>
                             }
@@ -58,7 +84,28 @@
                         </td>
                         <td class="py-2 pr-4">@request.GitHubLogin</td>
                         <td class="py-2 pr-4 whitespace-nowrap"><LocalTime Value="request.SubmittedAt" /></td>
-                        <td class="py-2 text-right"><a href="manage/requests/@request.Id" class="text-advent-700 underline">Review</a></td>
+                        <td class="py-2">
+                            <div class="flex items-center justify-end gap-3">
+                                @* Plain forms to a minimal API, because there's one per request (#202). Contested requests and
+                                   taken spots are settled on the request's own page instead. *@
+                                @if (request.CanApproveFromList)
+                                {
+                                    <form method="post" action="manage/requests/approve">
+                                        <AntiforgeryToken />
+                                        <input type="hidden" name="RequestId" value="@request.Id" />
+                                        <input type="hidden" name="SlotId" value="@request.SlotId" />
+                                        @if (Year is { } listYear)
+                                        {
+                                            <input type="hidden" name="Year" value="@listYear" />
+                                        }
+                                        <button type="submit" class="whitespace-nowrap rounded-md bg-advent-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-advent-700">
+                                            Approve the requested spot<span class="sr-only"> for @request.DisplayName</span>
+                                        </button>
+                                    </form>
+                                }
+                                <a href="manage/requests/@request.Id" class="text-advent-700 underline">Review</a>
+                            </div>
+                        </td>
                     </tr>
                 }
             </tbody>
@@ -75,12 +122,24 @@ else if (_loaded)
     private bool _loaded;
     private ClaimRequestStatus _status;
     private List<RequestListItem> _requests = [];
+    private RequestDetails? _approved;
 
     [SupplyParameterFromQuery]
     public string? Status { get; set; }
 
     [SupplyParameterFromQuery]
     public int? Year { get; set; }
+
+    /// <summary>The request just approved from the list.</summary>
+    [SupplyParameterFromQuery]
+    public int? Approved { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? Error { get; set; }
+
+    /// <summary>The request an approve from the list didn't go through for.</summary>
+    [SupplyParameterFromQuery(Name = "request")]
+    public int? FailedRequest { get; set; }
 
     private string StatusLink(ClaimRequestStatus status) =>
         $"manage/requests?status={status.ToString().ToLowerInvariant()}" + (Year is null ? "" : $"&year={Year}");
@@ -90,6 +149,7 @@ else if (_loaded)
         _status = Enum.TryParse<ClaimRequestStatus>(Status, ignoreCase: true, out var status) ? status : ClaimRequestStatus.Pending;
         _year = Year ?? await Seasons.GetCurrentYearAsync();
         _requests = _year is { } year ? await Reviews.ListAsync(year, _status) : [];
+        _approved = Approved is { } approved ? await Reviews.GetAsync(approved) : null;
         _loaded = true;
     }
 }

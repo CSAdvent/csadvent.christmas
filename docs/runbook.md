@@ -75,12 +75,20 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 ## ✍️ November: Sign-Ups
 
 - **Requests** come in at `/manage/requests`, oldest first. A request doesn't reserve a spot, so approve promptly,
-  first come, first served. Approving can put someone in any open spot when theirs has gone. Archive duplicates and
-  requests you won't take. Approving emails the author.
+  first come, first served. When someone's spot has gone, choose another open spot for them (their comments often name a
+  second choice), or decline. Decline duplicates and requests you won't take too. Every approval and decline emails the
+  author: a decline points them to the open days, or to the backup list once the calendar's full.
+- **Quick approvals:** a request nobody else wants its spot for has **Approve the requested spot** right on the list.
+  After deciding one on its own page, **Next pending request** takes you to the next.
+- **Settle the rest:** after approving a spot that others asked for too, its request's page lists them under **Settle
+  the other requests**. Approve each into another open spot, or decline it; **Decline all** does the lot.
+- **Contributors withdraw** their own requests on My spots, which frees the request up for another day.
 - **Entries** at `/manage/entries` show every spot's status. You can fix a name or link, put someone from the backup
   list into an open spot, or release a spot.
+- **Limits:** each person can have 3 requests waiting at once, and make 5 an hour, because every request emails them and
+  you. The claim page tells them. Approving or declining a request, or their withdrawing one, frees them up again.
 - **Backup posters** sign up at `/backups/{year}`, and you can see them at `/manage/backups`. Point people there once
-  the calendar fills up.
+  the calendar fills up. The welcome email goes once per person and season, however often they leave and join again.
 - **Authors** add their post's title and URL themselves on My spots. Nobody sends them by email.
 - **Past authors** get an invitation by themselves at 9 AM on the day sign-ups open, a few at a time alongside the
   announcement. `/manage/announcements` shows how many are going out. Nothing to do.
@@ -150,6 +158,9 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
   environment, run the Deploy workflow, and press **Check**.
 - **Email:** a sample from `/manage/emails` proves the sending domain is still connected. The site can send 30 emails
   a minute and 100 an hour unless Azure has raised that (see Email Sending Limits, below).
+- **The announcements sign-up limit** (5 an IP address per 10 minutes): once someone has signed up after a deploy,
+  Application Insights should have "The announcements sign-up limit counts by each visitor's public IP address." A warning
+  instead means every visitor is sharing one limit, so the forwarded headers need checking (#137).
 - **Database restore:** practise a point-in-time restore once a year, before December (#90).
 - **The blurb check's Anthropic API key** lasts until it's revoked. Check its workspace's spend limit in the Anthropic
   Console, and replace the `ANTHROPIC_API_KEY` secret the same way as the social ones if it's ever rotated.
@@ -319,7 +330,8 @@ Lines marked ✏️ **To fill in** are for the organizers: they aren't written d
 **The limits now:** Azure Communication Services lets C# Advent send **30 emails a minute and 100 an hour**, the default
 for a custom domain. They're **per subscription**, so everything the site sends shares them:
 
-- claim emails (two per claim: one to the contributor, one to the organizers);
+- claim emails (two per claim: one to the contributor, one to the organizers; then one more when it's approved or
+  declined). One person can have 3 requests waiting and make 5 an hour, so nobody can use the limit up alone (#137);
 - announcements and past-author invitations;
 - post link reminders and the last call;
 - the daily email;

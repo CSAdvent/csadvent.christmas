@@ -16,7 +16,7 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261025200241_AddContributorXUsername";
+    public override string LastMigrationId => "20261025215907_DeclineArchivedClaimRequests";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -256,6 +256,40 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
 
                         t.HasCheckConstraint("ck_backup_offers_post_url", "post_url ~* '^https?://'");
                     });
+            });
+
+        modelBuilder.Entity("CSAdvent.Web.Data.BackupSignupEmail", b =>
+            {
+                var id = b.Property<int>("Id")
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("integer")
+                    .HasColumnName("id");
+
+                NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(id);
+
+                b.Property<int>("ContributorId")
+                    .HasColumnType("integer")
+                    .HasColumnName("contributor_id");
+
+                b.Property<int>("SeasonYear")
+                    .HasColumnType("integer")
+                    .HasColumnName("season_year");
+
+                b.Property<DateTimeOffset>("SentAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("sent_at");
+
+                b.HasKey("Id")
+                    .HasName("pk_backup_signup_emails");
+
+                b.HasIndex("ContributorId")
+                    .HasDatabaseName("ix_backup_signup_emails_contributor_id");
+
+                b.HasIndex("SeasonYear", "ContributorId")
+                    .IsUnique()
+                    .HasDatabaseName("ix_backup_signup_emails_season_year_contributor_id");
+
+                b.ToTable("backup_signup_emails");
             });
 
         modelBuilder.Entity("CSAdvent.Web.Data.BlurbCheck", b =>
@@ -1523,6 +1557,27 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                 b.Navigation("Slot");
 
                 b.Navigation("Substitute");
+            });
+
+        modelBuilder.Entity("CSAdvent.Web.Data.BackupSignupEmail", b =>
+            {
+                b.HasOne("CSAdvent.Web.Data.Contributor", "Contributor")
+                    .WithMany()
+                    .HasForeignKey("ContributorId")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired()
+                    .HasConstraintName("fk_backup_signup_emails_contributors_contributor_id");
+
+                b.HasOne("CSAdvent.Web.Data.Season", "Season")
+                    .WithMany()
+                    .HasForeignKey("SeasonYear")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired()
+                    .HasConstraintName("fk_backup_signup_emails_seasons_season_year");
+
+                b.Navigation("Contributor");
+
+                b.Navigation("Season");
             });
 
         modelBuilder.Entity("CSAdvent.Web.Data.BlurbCheck", b =>

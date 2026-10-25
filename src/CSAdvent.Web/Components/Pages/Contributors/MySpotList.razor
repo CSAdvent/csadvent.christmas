@@ -20,6 +20,13 @@
     <a href="profile" class="text-advent-700 underline">your profile</a>.
 </p>
 
+@if (Done is "withdrawn" or "not-withdrawn")
+{
+    <p class="mt-6 max-w-2xl rounded-xl p-4 font-medium ring-1 @(Done == "withdrawn" ? "bg-green-50 text-green-800 ring-green-200" : "bg-amber-50 text-amber-900 ring-amber-200")" role="status">
+        @(Done == "withdrawn" ? "You've withdrawn your request." : "That request isn't waiting any more: the organizers have just decided it, so check your email.")
+    </p>
+}
+
 @if (_overview is { } overview)
 {
     @if (overview.Spots.Count == 0)
@@ -28,7 +35,7 @@
             <p class="font-medium text-slate-900">You don't have a spot yet.</p>
             <p class="mt-2 text-slate-600">
                 @(overview.PendingRequests.Count > 0
-                    ? "Your request is waiting for the organizers. We'll email you as soon as it's approved."
+                    ? "Your request is waiting for the organizers. We'll email you once they've decided."
                     : "Pick an open day on the calendar to request one. If an organizer added you by hand, make sure the verified email on your GitHub account is the one you gave them.")
             </p>
         </div>
@@ -101,10 +108,27 @@
     @if (overview.PendingRequests.Count > 0)
     {
         <h2 class="mt-12 text-xl font-semibold text-slate-900">Waiting for approval</h2>
-        <ul class="mt-4 flex max-w-3xl flex-col gap-2 text-slate-700">
+        <ul class="mt-4 flex max-w-3xl flex-col gap-3 text-slate-700">
             @foreach (var request in overview.PendingRequests)
             {
-                <li>@request.Spot <span class="text-sm text-slate-500">(requested <LocalTime Value="request.SubmittedAt" />)</span></li>
+                <li class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <p>@request.Spot <span class="text-sm text-slate-500">(requested <LocalTime Value="request.SubmittedAt" />)</span></p>
+                        @if (request.SpotTaken)
+                        {
+                            <p class="mt-1 text-sm text-amber-800">
+                                This spot has gone to someone else. We'll email you when the organizers get to your request, or withdraw it
+                                and request another day.
+                            </p>
+                        }
+                    </div>
+                    @* A plain form to a minimal API, because there's one per request. *@
+                    <form method="post" action="my-spots/requests/withdraw">
+                        <AntiforgeryToken />
+                        <input type="hidden" name="RequestId" value="@request.Id" />
+                        <button type="submit" class="rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50">Withdraw</button>
+                    </form>
+                </li>
             }
         </ul>
     }
@@ -234,6 +258,9 @@
     /// <summary>A search for older posts by author name.</summary>
     [SupplyParameterFromQuery]
     public string? Find { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? Done { get; set; }
 
     private string HistorySummary
     {
