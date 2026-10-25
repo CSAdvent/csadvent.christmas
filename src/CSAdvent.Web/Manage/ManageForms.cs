@@ -23,8 +23,9 @@ public sealed class SignUpsForm
 
 public sealed class ApproveForm
 {
+    /// <summary>The spot the organizer chose. Zero until they choose one, when the requested spot has gone.</summary>
     public int SlotId { get; set; }
 }
 
-/// <summary>Archiving has no fields; the model only tells the page that the archive form was posted.</summary>
-public sealed class ArchiveForm;
+/// <summary>Declining has no fields; the model only tells the page that the decline form was posted.</summary>
+public sealed class DeclineForm;

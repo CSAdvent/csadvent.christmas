@@ -75,12 +75,16 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 ## ✍️ November: Sign-Ups
 
 - **Requests** come in at `/manage/requests`, oldest first. A request doesn't reserve a spot, so approve promptly,
-  first come, first served. Approving can put someone in any open spot when theirs has gone. Archive duplicates and
-  requests you won't take. Approving emails the author.
+  first come, first served. When someone's spot has gone, choose another open spot for them (their comments often name a
+  second choice), or decline. Decline duplicates and requests you won't take too. Every approval and decline emails the
+  author: a decline points them to the open days, or to the backup list once the calendar's full.
+- **Settle the rest:** after approving a spot that others asked for too, its request's page lists them under **Settle
+  the other requests**. Approve each into another open spot, or decline it; **Decline all** does the lot.
+- **Contributors withdraw** their own requests on My spots, which frees the request up for another day.
 - **Entries** at `/manage/entries` show every spot's status. You can fix a name or link, put someone from the backup
   list into an open spot, or release a spot.
 - **Limits:** each person can have 3 requests waiting at once, and make 5 an hour, because every request emails them and
-  you. The claim page tells them. Answering or declining their requests frees them up again.
+  you. The claim page tells them. Approving or declining a request, or their withdrawing one, frees them up again.
 - **Backup posters** sign up at `/backups/{year}`, and you can see them at `/manage/backups`. Point people there once
   the calendar fills up. The welcome email goes once per person and season, however often they leave and join again.
 - **Authors** add their post's title and URL themselves on My spots. Nobody sends them by email.

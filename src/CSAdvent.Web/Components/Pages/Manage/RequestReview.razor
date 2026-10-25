@@ -10,14 +10,18 @@
 
     <nav class="mb-4 text-sm font-medium"><a href="manage/requests" class="text-advent-700 hover:underline">← All requests</a></nav>
 
-    @if (Done is "approved" or "archived")
+    @if (Done is "approved" or "declined" || Settled is "approved" or "declined")
     {
-        <p class="mb-6 rounded-xl bg-green-50 p-4 font-medium text-green-800 ring-1 ring-green-200" role="status">Request @Done.</p>
+        <div class="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-green-50 p-4 text-green-800 ring-1 ring-green-200" role="status">
+            <p class="font-medium">
+                @(Done is not null ? $"Request {Done}. We've emailed {request.DisplayName}." : $"{(Settled == "approved" ? "Approved into the spot you chose" : "Declined")}. We've emailed them.")
+            </p>
+        </div>
     }
 
-    @if (_error is not null)
+    @if ((_error ?? ReviewMessages.Describe(Error)) is { } error)
     {
-        <p class="mb-6 rounded-xl bg-red-50 p-4 font-medium text-red-800 ring-1 ring-red-200" role="alert">@_error</p>
+        <p class="mb-6 rounded-xl bg-red-50 p-4 font-medium text-red-800 ring-1 ring-red-200" role="alert">@error</p>
     }
 
     <h1 class="text-3xl font-bold tracking-tight text-slate-900">Request from @request.DisplayName</h1>
@@ -30,6 +34,14 @@
             <span> on <LocalTime Value="decidedAt" /></span>
         }
     </p>
+
+    @if (request.Status is ClaimRequestStatus.Pending && request.RequestedSpot.AuthorName is { } holder)
+    {
+        <p class="mt-6 rounded-xl bg-amber-50 p-4 text-amber-900 ring-1 ring-amber-200">
+            December @request.RequestedSpot.Day@(request.SlotsPerDay > 1 ? $", post {request.RequestedSpot.Part}," : "") has gone to @holder.
+            Approve this request into another open spot (their comments may say which), or decline it. Either way, we'll email them.
+        </p>
+    }
 
     <div class="mt-8 grid gap-8 lg:grid-cols-2">
         <section>
@@ -101,6 +113,10 @@
                     <label class="flex flex-col text-sm font-medium text-slate-700">
                         Approve into
                         <InputSelect @bind-Value="Approve!.SlotId" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal">
+                            @if (!RequestedSpotOpen)
+                            {
+                                <option value="0">Choose a spot</option>
+                            }
                             @foreach (var spot in request.OpenSpots)
                             {
                                 <option value="@spot.SlotId">December @spot.Day · Post @spot.Part@(spot.SlotId == request.RequestedSpot.SlotId ? " (requested)" : "")</option>
@@ -115,9 +131,77 @@
                 }
             </EditForm>
 
-            <EditForm Model="Archive" FormName="archive" OnSubmit="ArchiveAsync">
-                <button type="submit" class="rounded-lg px-4 py-2 font-semibold text-slate-700 ring-1 ring-slate-300 hover:bg-slate-100">Archive</button>
+            <EditForm Model="Decline" FormName="decline" OnSubmit="DeclineAsync">
+                <button type="submit" class="rounded-lg px-4 py-2 font-semibold text-slate-700 ring-1 ring-slate-300 hover:bg-slate-100">Decline</button>
             </EditForm>
+
+            <p class="w-full text-sm text-slate-500">
+                We email them either way. If their spot has gone to someone else, the decline email points them to the open days.
+            </p>
+        </section>
+    }
+
+    @* Once a request has its spot, the others waiting for it are settled here (#143): each one approved into another open spot
+       or declined. Plain forms to minimal APIs, because there's one per request. *@
+    @if (request.Status is ClaimRequestStatus.Approved && request.Competing.Count > 0)
+    {
+        <section class="mt-10 rounded-xl bg-amber-50 p-5 ring-1 ring-amber-200">
+            <h2 class="text-lg font-semibold text-slate-900">Settle the other requests for this spot</h2>
+            <p class="mt-1 text-sm text-slate-700">
+                @request.DisplayName has this spot now, so @(request.Competing.Count == 1 ? "this request" : $"these {request.Competing.Count} requests")
+                can't have it. Approve each into another open spot (their comments may say which), or decline it. Either way, we'll
+                email them.
+            </p>
+            <ul class="mt-4 flex flex-col gap-3">
+                @foreach (var other in request.Competing)
+                {
+                    <li class="rounded-lg bg-white p-4 ring-1 ring-amber-100">
+                        <p class="text-sm">
+                            <a href="manage/requests/@other.Id" class="font-semibold text-advent-700 underline">@other.DisplayName</a>
+                            <span class="text-slate-500">(@other.GitHubLogin) · <LocalTime Value="other.SubmittedAt" /></span>
+                        </p>
+                        @if (other.Comments is { } comments)
+                        {
+                            <p class="mt-1 text-sm text-slate-700">Comments: @comments</p>
+                        }
+                        <div class="mt-3 flex flex-wrap items-end gap-3">
+                            @if (request.OpenSpots.Count > 0)
+                            {
+                                <form method="post" action="manage/requests/approve" class="flex flex-wrap items-end gap-2">
+                                    <AntiforgeryToken />
+                                    <input type="hidden" name="RequestId" value="@other.Id" />
+                                    <input type="hidden" name="ReturnTo" value="@request.Id" />
+                                    <label class="flex flex-col text-sm font-medium text-slate-700">
+                                        Another spot
+                                        <select name="SlotId" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal">
+                                            <option value="0">Choose a spot</option>
+                                            @foreach (var spot in request.OpenSpots)
+                                            {
+                                                <option value="@spot.SlotId">December @spot.Day · Post @spot.Part</option>
+                                            }
+                                        </select>
+                                    </label>
+                                    <button type="submit" class="rounded-lg bg-advent-600 px-4 py-2 font-semibold text-white hover:bg-advent-700">Approve into it</button>
+                                </form>
+                            }
+                            <form method="post" action="manage/requests/decline">
+                                <AntiforgeryToken />
+                                <input type="hidden" name="RequestId" value="@other.Id" />
+                                <input type="hidden" name="ReturnTo" value="@request.Id" />
+                                <button type="submit" class="rounded-lg bg-white px-4 py-2 font-semibold text-slate-700 ring-1 ring-slate-300 hover:bg-slate-100">Decline</button>
+                            </form>
+                        </div>
+                    </li>
+                }
+            </ul>
+            @if (request.Competing.Count > 1)
+            {
+                <form method="post" action="manage/requests/decline-competing" class="mt-4">
+                    <AntiforgeryToken />
+                    <input type="hidden" name="RequestId" value="@request.Id" />
+                    <button type="submit" class="rounded-lg bg-white px-4 py-2 font-semibold text-slate-700 ring-1 ring-slate-300 hover:bg-slate-100">Decline all @request.Competing.Count</button>
+                </form>
+            }
         </section>
     }
 }
@@ -132,19 +216,31 @@
     [SupplyParameterFromQuery]
     public string? Done { get; set; }
 
+    /// <summary>What happened to one of the other requests for this spot, from "Settle the other requests".</summary>
+    [SupplyParameterFromQuery]
+    public string? Settled { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? Error { get; set; }
+
     [SupplyParameterFromForm(FormName = "approve")]
     private ApproveForm? Approve { get; set; }
 
-    [SupplyParameterFromForm(FormName = "archive")]
-    private ArchiveForm? Archive { get; set; }
+    [SupplyParameterFromForm(FormName = "decline")]
+    private DeclineForm? Decline { get; set; }
 
     private bool _actionPosted;
 
+    private bool RequestedSpotOpen => _request is { } request && request.OpenSpots.Any(s => s.SlotId == request.RequestedSpot.SlotId);
+
     protected override async Task OnInitializedAsync()
     {
-        // The form models are only supplied when their form was posted.
-        _actionPosted = Approve is not null || Archive is not null;
-        Archive ??= new ArchiveForm();
+        // The form models are only supplied when their form was posted. Static rendering starts at the first wait, so they're
+        // created before it.
+        _actionPosted = Approve is not null || Decline is not null;
+        var approvePosted = Approve is not null;
+        Approve ??= new ApproveForm();
+        Decline ??= new DeclineForm();
 
         _request = await Reviews.GetAsync(Id);
         if (_request is null)
@@ -153,33 +249,36 @@
             return;
         }
 
-        // Offer the requested spot first when it's still open.
-        Approve ??= new ApproveForm
+        // Offer the requested spot when it's still open. Otherwise the organizer chooses one: approving never picks a
+        // different spot by itself (#143).
+        if (!approvePosted)
         {
-            SlotId = _request.OpenSpots.Any(s => s.SlotId == _request.RequestedSpot.SlotId)
-                ? _request.RequestedSpot.SlotId
-                : _request.OpenSpots.FirstOrDefault()?.SlotId ?? 0,
-        };
+            Approve.SlotId = RequestedSpotOpen ? _request.RequestedSpot.SlotId : 0;
+        }
     }
 
-    private async Task ApproveAsync() => await HandleAsync(await Reviews.ApproveAsync(Id, Approve!.SlotId));
+    private async Task ApproveAsync()
+    {
+        if (Approve!.SlotId == 0)
+        {
+            _error = ReviewMessages.Describe(ReviewMessages.ChooseSpot);
+            return;
+        }
 
-    private async Task ArchiveAsync() => await HandleAsync(await Reviews.ArchiveAsync(Id));
+        await HandleAsync(await Reviews.ApproveAsync(Id, Approve.SlotId));
+    }
+
+    private async Task DeclineAsync() => await HandleAsync(await Reviews.DeclineAsync(Id));
 
     private async Task HandleAsync(ReviewOutcome outcome)
     {
-        if (outcome is ReviewOutcome.Approved or ReviewOutcome.Archived)
+        if (outcome is ReviewOutcome.Approved or ReviewOutcome.Declined)
         {
             Navigation.NavigateTo($"manage/requests/{Id}?done={outcome.ToString().ToLowerInvariant()}");
             return;
         }
 
-        _error = outcome switch
-        {
-            ReviewOutcome.SpotTaken => "That spot has just been claimed. Choose another open spot.",
-            ReviewOutcome.AlreadyDecided => "This request has already been approved or archived.",
-            _ => "That spot doesn't exist in this season.",
-        };
+        _error = ReviewMessages.Describe(ReviewMessages.Code(outcome));
         _request = await Reviews.GetAsync(Id);
     }
 

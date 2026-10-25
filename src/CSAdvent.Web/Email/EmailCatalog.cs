@@ -85,6 +85,30 @@ public static class EmailCatalog
             "The contributor. Replies go to the organizers.",
             site => ClaimEmails.Approved(SampleClaim, site)),
         new(
+            "claim-approved-other-spot",
+            "Request approved for another spot",
+            "When an organizer approves a request into a different spot from the one asked for, such as when settling the other requests for a spot that's gone.",
+            "The contributor. Replies go to the organizers.",
+            site => ClaimEmails.Approved(SampleClaim with { Day = 5, Part = 2, RequestedDay = 3, RequestedPart = 1 }, site)),
+        new(
+            "claim-declined-taken",
+            "Request declined: the spot's gone",
+            "When an organizer declines a request whose spot has gone to someone else, while other days are still open.",
+            "The contributor. Replies go to the organizers.",
+            site => ClaimEmails.Declined(SampleClaim, ClaimDeclineReason.SpotTaken, site)),
+        new(
+            "claim-declined-full",
+            "Request declined: the calendar's full",
+            "When an organizer declines a request whose spot has gone to someone else, and every spot is taken.",
+            "The contributor. Replies go to the organizers.",
+            site => ClaimEmails.Declined(SampleClaim, ClaimDeclineReason.SeasonFull, site)),
+        new(
+            "claim-declined",
+            "Request declined",
+            "When an organizer declines a request whose spot is still open.",
+            "The contributor. Replies go to the organizers.",
+            site => ClaimEmails.Declined(SampleClaim, ClaimDeclineReason.NotApproved, site)),
+        new(
             "post-claim-new-request",
             "Someone asked for an older post",
             "Right after a signed-in contributor asks for a finished season's post to be added to their account.",

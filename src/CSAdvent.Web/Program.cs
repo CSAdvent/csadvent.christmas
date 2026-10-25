@@ -224,6 +224,7 @@ app.MapEmailPreviews();
 app.MapReminders();
 app.MapEmailOptOuts();
 app.MapBackups();
+app.MapClaims();
 app.MapBlurbs();
 app.MapEntries();
 app.MapCards();

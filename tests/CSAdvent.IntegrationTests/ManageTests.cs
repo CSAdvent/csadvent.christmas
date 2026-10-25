@@ -116,11 +116,11 @@ public sealed class ManageTests(AppHostFixture fixture)
             $"/manage/requests/{requestId}",
             new FormUrlEncodedContent([new("_handler", "approve"), new("Approve.SlotId", $"{slotId}"), new("__RequestVerificationToken", await TokenAsync(organizer, $"/manage/requests/{requestId}"))]),
             CancellationToken);
-        Assert.Contains("already been approved or archived", await again.Content.ReadAsStringAsync(CancellationToken));
+        Assert.Contains("already been approved, declined or withdrawn", await again.Content.ReadAsStringAsync(CancellationToken));
     }
 
     [Fact]
-    public async Task ASpotGoesToOneRequestAndTheOthersCanBeArchived()
+    public async Task ASpotGoesToOneRequestAndTheOthersCanBeDeclined()
     {
         await TestSeasons.EnsureAsync(fixture, 2102, claimsOpen: true);
         var first = await RequestAsync("first-in", 7103, day: 4, part: 1, "First In");
@@ -139,10 +139,10 @@ public sealed class ManageTests(AppHostFixture fixture)
             CancellationToken);
         Assert.Contains("That spot has just been claimed", await refused.Content.ReadAsStringAsync(CancellationToken));
 
-        var archived = await organizer.PostFormAsync($"/manage/requests/{second}", "archive", []);
-        Assert.Equal($"/manage/requests/{second}?done=archived", TestBrowser.PathOf(archived.Headers.Location!));
+        var declined = await organizer.PostFormAsync($"/manage/requests/{second}", "decline", []);
+        Assert.Equal($"/manage/requests/{second}?done=declined", TestBrowser.PathOf(declined.Headers.Location!));
         await using var db = await fixture.CreateDbContextAsync();
-        Assert.Equal(ClaimRequestStatus.Archived, (await db.ClaimRequests.SingleAsync(r => r.Id == second, CancellationToken)).Status);
+        Assert.Equal(ClaimRequestStatus.Declined, (await db.ClaimRequests.SingleAsync(r => r.Id == second, CancellationToken)).Status);
         Assert.Equal("First In", (await db.Slots.SingleAsync(s => s.Id == slotId, CancellationToken)).AuthorName);
     }
 

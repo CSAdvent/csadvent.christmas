@@ -44,7 +44,11 @@
                     <tr>
                         <td class="py-2 pr-4 whitespace-nowrap">
                             December @request.Day · Post @request.Part
-                            @if (request.OtherPendingForSpot > 0)
+                            @if (request.Status is ClaimRequestStatus.Pending && request.SpotTaken)
+                            {
+                                <span class="ml-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800">Spot taken</span>
+                            }
+                            else if (request.OtherPendingForSpot > 0)
                             {
                                 <span class="ml-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">+@request.OtherPendingForSpot competing</span>
                             }

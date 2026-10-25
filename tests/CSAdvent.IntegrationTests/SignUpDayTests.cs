@@ -142,6 +142,127 @@ public sealed partial class SignUpDayTests(AppHostFixture fixture)
         Assert.Equal(1, await fixture.CountEmailsAsync("sud-yoyo@example.com", $"You're on the C# Advent {year} backup list"));
     }
 
+    [Fact]
+    public async Task ApprovingARequestSettlesTheOthersForItsSpot()
+    {
+        const int year = 2314;
+        await TestSeasons.EnsureAsync(fixture, year, claimsOpen: true);
+        var first = await RequestAsync(year, "sud-first", 231401, day: 24, part: 1, "First Fan");
+        var flexible = await RequestAsync(year, "sud-flexible", 231402, day: 24, part: 1, "Flexi Ble", comments: "December 23 works too");
+        var third = await RequestAsync(year, "sud-third", 231403, day: 24, part: 1, "Third Wheel");
+        using var organizer = await SignInAsOrganizerAsync();
+
+        await organizer.PostFormAsync($"/manage/requests/{first}", "approve", new() { ["Approve.SlotId"] = $"{await SlotIdAsync(year, 24, 1)}" });
+
+        var page = await organizer.GetPageAsync($"/manage/requests/{first}?done=approved");
+        Assert.Contains("Settle the other requests for this spot", page);
+        Assert.Contains("Flexi Ble", page);
+        Assert.Contains("December 23 works too", page);
+        Assert.Contains("Third Wheel", page);
+
+        // While it waits, the third contributor's My spots says the spot has gone.
+        using (var waiting = await fixture.SignInAsync("sud-third", 231403))
+        {
+            Assert.Contains("This spot has gone to someone else.", await waiting.GetPageAsync("/my-spots"));
+        }
+
+        // One goes to the day their comments suggest, and the rest are declined together.
+        var december23 = await SlotIdAsync(year, 23, 1);
+        var moved = await PostPlainFormAsync(organizer, $"/manage/requests/{first}", "/manage/requests/approve", new()
+        {
+            ["RequestId"] = $"{flexible}",
+            ["SlotId"] = $"{december23}",
+            ["ReturnTo"] = $"{first}",
+        });
+        Assert.Equal($"/manage/requests/{first}?settled=approved", TestBrowser.PathOf(moved.Headers.Location!));
+
+        var declined = await PostPlainFormAsync(organizer, $"/manage/requests/{first}", "/manage/requests/decline-competing", new() { ["RequestId"] = $"{first}" });
+        Assert.Equal($"/manage/requests/{first}?settled=declined", TestBrowser.PathOf(declined.Headers.Location!));
+        Assert.DoesNotContain("Settle the other requests for this spot", await organizer.GetPageAsync($"/manage/requests/{first}"));
+
+        await using (var db = await fixture.CreateDbContextAsync())
+        {
+            Assert.Equal(("Flexi Ble", ClaimRequestStatus.Approved, december23), (
+                (await db.Slots.SingleAsync(s => s.Id == december23, CancellationToken)).AuthorName,
+                (await db.ClaimRequests.SingleAsync(r => r.Id == flexible, CancellationToken)).Status,
+                (await db.ClaimRequests.SingleAsync(r => r.Id == flexible, CancellationToken)).SlotId));
+            Assert.Equal(ClaimRequestStatus.Declined, (await db.ClaimRequests.SingleAsync(r => r.Id == third, CancellationToken)).Status);
+        }
+
+        var approval = await fixture.WaitForEmailAsync("sud-flexible@example.com", "You're on the C# Advent calendar: December 23");
+        Assert.Contains($"December 23, {year} (post 1) is yours, instead of December 24, {year} (post 1).", approval.Text);
+        var decline = await fixture.WaitForEmailAsync("sud-third@example.com", "About your C# Advent request for December 24");
+        Assert.Contains("That spot has gone to another author", decline.Text);
+        Assert.Contains("See the open days", decline.Text);
+    }
+
+    [Fact]
+    public async Task ApprovingNeverPicksADifferentSpotByItself()
+    {
+        const int year = 2315;
+        await TestSeasons.EnsureAsync(fixture, year, claimsOpen: true);
+        var winner = await RequestAsync(year, "sud-winner", 231501, day: 3, part: 1, "Win Ner");
+        var runnerUp = await RequestAsync(year, "sud-runner", 231502, day: 3, part: 1, "Runner Up");
+        using var organizer = await SignInAsOrganizerAsync();
+        await organizer.PostFormAsync($"/manage/requests/{winner}", "approve", new() { ["Approve.SlotId"] = $"{await SlotIdAsync(year, 3, 1)}" });
+
+        var page = await organizer.GetPageAsync($"/manage/requests/{runnerUp}");
+        Assert.Contains("has gone to Win Ner", page);
+        Assert.Contains("<option value=\"0\"", page);
+
+        var response = await organizer.PostFormAsync($"/manage/requests/{runnerUp}", "approve", new() { ["Approve.SlotId"] = "0" });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Choose the spot to approve them into.", await response.Content.ReadAsStringAsync(CancellationToken));
+        await using var db = await fixture.CreateDbContextAsync();
+        Assert.Equal(ClaimRequestStatus.Pending, (await db.ClaimRequests.SingleAsync(r => r.Id == runnerUp, CancellationToken)).Status);
+    }
+
+    [Fact]
+    public async Task DecliningARequestTellsTheContributor()
+    {
+        const int year = 2315;
+        await TestSeasons.EnsureAsync(fixture, year, claimsOpen: true);
+        var request = await RequestAsync(year, "sud-declined", 231503, day: 9, part: 2, "Dee Clined");
+        using var organizer = await SignInAsOrganizerAsync();
+
+        var response = await organizer.PostFormAsync($"/manage/requests/{request}", "decline", []);
+
+        Assert.Equal($"/manage/requests/{request}?done=declined", TestBrowser.PathOf(response.Headers.Location!));
+        var email = await fixture.WaitForEmailAsync("sud-declined@example.com", "About your C# Advent request for December 9");
+        Assert.Contains("We couldn't approve your request this time.", email.Text);
+        using var contributor = await fixture.SignInAsync("sud-declined", 231503);
+        Assert.DoesNotContain("Waiting for approval", await contributor.GetPageAsync("/my-spots"));
+    }
+
+    [Fact]
+    public async Task ContributorsCanWithdrawTheirOwnPendingRequests()
+    {
+        const int year = 2316;
+        await TestSeasons.EnsureAsync(fixture, year, claimsOpen: true);
+        var request = await RequestAsync(year, "sud-withdraw", 231601, day: 6, part: 1, "With Drawer");
+        using var contributor = await fixture.SignInAsync("sud-withdraw", 231601);
+        using var stranger = await fixture.SignInAsync("sud-stranger", 231602);
+        Assert.Contains("Withdraw", await contributor.GetPageAsync("/my-spots"));
+
+        var refused = await PostPlainFormAsync(stranger, "/my-spots", "/my-spots/requests/withdraw", new() { ["RequestId"] = $"{request}" });
+        Assert.Equal("/my-spots?done=not-withdrawn", TestBrowser.PathOf(refused.Headers.Location!));
+
+        var withdrawn = await PostPlainFormAsync(contributor, "/my-spots", "/my-spots/requests/withdraw", new() { ["RequestId"] = $"{request}" });
+
+        Assert.Equal("/my-spots?done=withdrawn", TestBrowser.PathOf(withdrawn.Headers.Location!));
+        var page = await contributor.GetPageAsync("/my-spots?done=withdrawn");
+        Assert.Contains("You&#x27;ve withdrawn your request.", page);
+        Assert.DoesNotContain("Waiting for approval", page);
+        await using var db = await fixture.CreateDbContextAsync();
+        var withdrawnRequest = await db.ClaimRequests.SingleAsync(r => r.Id == request, CancellationToken);
+        Assert.Equal(ClaimRequestStatus.Withdrawn, withdrawnRequest.Status);
+        Assert.NotNull(withdrawnRequest.DecidedAt);
+
+        // They can ask for the same spot again.
+        Assert.Equal(HttpStatusCode.Redirect, (await PostClaimAsync(contributor, year, 6, 1, "With Drawer")).StatusCode);
+    }
+
     private Task<HttpClient> SignInAsOrganizerAsync() => fixture.SignInAsync("organizer", AppHostFixture.OrganizerGitHubId);
 
     /// <summary>A contributor requests a spot through the claim form, as they would on the site. Returns the request's ID.</summary>
@@ -190,6 +311,13 @@ public sealed partial class SignUpDayTests(AppHostFixture fixture)
     {
         await using var db = await fixture.CreateDbContextAsync();
         return await db.Slots.Where(s => s.SeasonYear == year && s.Day == day && s.Part == part).Select(s => s.Id).SingleAsync(CancellationToken);
+    }
+
+    /// <summary>Posts a plain form (one that goes to a minimal API) the way a browser does, with the antiforgery token from its page.</summary>
+    private static async Task<HttpResponseMessage> PostPlainFormAsync(HttpClient browser, string page, string action, Dictionary<string, string> fields)
+    {
+        fields["__RequestVerificationToken"] = Token(await browser.GetPageAsync(page));
+        return await browser.PostAsync(action, new FormUrlEncodedContent(fields), CancellationToken);
     }
 
     private static string Token(string page) => WebUtility.HtmlDecode(AntiforgeryToken().Match(page).Groups["token"].Value);

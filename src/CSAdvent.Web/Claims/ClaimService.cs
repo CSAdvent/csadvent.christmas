@@ -175,6 +175,33 @@ public sealed class ClaimService(
         return ClaimOutcome.Submitted;
     }
 
+    /// <summary>
+    /// Takes back a request the organizers haven't decided yet (#143), from My spots. Nobody is emailed. False if it isn't
+    /// theirs or isn't waiting any more, including when an organizer decided it at the same moment (<c>xmin</c>).
+    /// </summary>
+    public async Task<bool> WithdrawAsync(int contributorId, int requestId, CancellationToken cancellationToken = default)
+    {
+        var request = await db.ClaimRequests.SingleOrDefaultAsync(
+            r => r.Id == requestId && r.ContributorId == contributorId && r.Status == ClaimRequestStatus.Pending,
+            cancellationToken);
+        if (request is null)
+        {
+            return false;
+        }
+
+        request.Status = ClaimRequestStatus.Withdrawn;
+        request.DecidedAt = timeProvider.GetUtcNow();
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+            return true;
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return false;
+        }
+    }
+
     private static string? Normalize(SocialPlatform platform, string? input) =>
         SocialAccounts.TryNormalize(platform, input, out var normalized)
             ? normalized
