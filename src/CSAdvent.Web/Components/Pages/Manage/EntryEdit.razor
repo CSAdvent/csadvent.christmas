@@ -59,6 +59,10 @@
                 URL
                 <InputText @bind-Value="Form!.PostUrl" maxlength="500" placeholder="https://" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
             </label>
+            <label class="flex flex-col text-sm font-medium text-slate-700">
+                Summary <span class="font-normal text-slate-500">(optional; the post in one line, up to 160 characters, for its page, the feeds and social posts once it's revealed)</span>
+                <InputText @bind-Value="Form!.PostSummary" maxlength="160" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+            </label>
         </fieldset>
 
         <div>

@@ -21,10 +21,26 @@ public sealed record FeedItem(int Year, int Day, int Part, int SlotsPerDay, stri
     /// <summary>A retrospective's description, instead of the entry's <see cref="Summary"/>.</summary>
     public string? Description { get; init; }
 
-    /// <summary>For example "Day 6, post 2 of C# Advent 2025, by Ada Lovelace."</summary>
-    public string Summary => Description ?? (SlotsPerDay > 1
-        ? $"Day {Day}, post {Part} of C# Advent {Year}, by {Author}."
-        : $"Day {Day} of C# Advent {Year}, by {Author}.");
+    /// <summary>The post in one line, if its author gave one (#208).</summary>
+    public string? PostSummary { get; init; }
+
+    /// <summary>
+    /// For example "Day 6, post 2 of C# Advent 2025, by Ada Lovelace.", after the post's own summary if it has one: "Pattern
+    /// matching, all the way down. Day 6, post 2 of C# Advent 2025, by Ada Lovelace."
+    /// </summary>
+    public string Summary
+    {
+        get
+        {
+            if (Description is not null)
+            {
+                return Description;
+            }
+
+            var line = SlotsPerDay > 1 ? $"Day {Day}, post {Part} of C# Advent {Year}, by {Author}." : $"Day {Day} of C# Advent {Year}, by {Author}.";
+            return PostSummary is { } summary ? $"{PostSummaries.AsSentence(summary)} {line}" : line;
+        }
+    }
 
     /// <summary>Stable, so editing an item never makes it look new: <c>csadvent-2025-6-2</c>, or <c>csadvent-2025-retrospective</c>.</summary>
     public string Guid => Path is null
@@ -50,7 +66,7 @@ public sealed class RssFeed(AdventDbContext db, AdventSchedule schedule, IOption
             .AsNoTracking()
             // Never the test season, even for its testers: feed readers remember items, and these are deleted afterwards.
             .Where(s => (year == null || s.SeasonYear == year) && s.SeasonYear != Season.TestYear && s.PostTitle != null && s.PostUrl != null && s.AuthorName != null)
-            .Select(s => new { s.SeasonYear, s.Day, s.Part, s.Season.SlotsPerDay, s.PostTitle, s.AuthorName })
+            .Select(s => new { s.SeasonYear, s.Day, s.Part, s.Season.SlotsPerDay, s.PostTitle, s.AuthorName, s.PostSummary })
             .ToListAsync(cancellationToken);
 
         var retrospectives = await db.Retrospectives
@@ -61,7 +77,7 @@ public sealed class RssFeed(AdventDbContext db, AdventSchedule schedule, IOption
         // Only what's been revealed: the reveal time depends on the time zone, so it's checked here rather than in SQL (#5).
         return [.. slots
             .Where(s => schedule.IsRevealed(s.SeasonYear, s.Day))
-            .Select(s => new FeedItem(s.SeasonYear, s.Day, s.Part, s.SlotsPerDay, s.PostTitle!, s.AuthorName!, schedule.GetRevealTime(s.SeasonYear, s.Day)))
+            .Select(s => new FeedItem(s.SeasonYear, s.Day, s.Part, s.SlotsPerDay, s.PostTitle!, s.AuthorName!, schedule.GetRevealTime(s.SeasonYear, s.Day)) { PostSummary = s.PostSummary })
             .Concat(retrospectives.Select(r => FeedItem.Retrospective(r.SeasonYear, r.Title, RetrospectiveDraft.Summary(r.Stats), r.PublishedAt!.Value)))
             .OrderByDescending(item => item.RevealedAt)
             .ThenBy(item => item.Part)];

@@ -32,15 +32,16 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 1. **Create the season** at `/manage/seasons`, with sign-ups scheduled for November 1 (entered in Eastern time). Every
    spot starts open. Once it's scheduled:
    - the between-seasons home page says when sign-ups open, and counts down from September 1;
-   - the home page's share card says "Sign-ups open November 1".
+   - the home page's share card says "Sign-ups open November 1";
+   - the between-seasons home page and `/announcements` offer add-to-calendar files for sign-ups opening and December 1.
 
    Creating next year's season early never replaces this year's calendar.
 2. **Refresh the copy** at `/manage/content`: the between-seasons message, the About page and the Other Advents
    introduction. Every save is a revision you can go back to.
 3. **Start this year's Other Advents** at `/manage/other-advents` from last year's list. Remove calendars that have
    stopped, and refresh or upload any missing logos.
-4. **Link returning authors** at `/manage/authors`, so they see their history on My spots. New authors are linked when
-   their claim is approved.
+4. **Link returning authors** at `/manage/authors`, so they see their history on My spots and all their posts share one
+   public author page. New authors are linked when their claim is approved.
 5. **Run a test round** at `/manage/testing`:
    1. Create the test season and invite testers by GitHub login.
    2. Have them claim, add posts, drop out and join the backup list.

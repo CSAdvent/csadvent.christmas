@@ -25,6 +25,9 @@ public sealed record EntryAnnouncements(
 {
     /// <summary>Whether automatic posting can announce it: no blurb check applies, or its post passed or was let through.</summary>
     public bool CanAnnounce => Blurb is null || Blurb.CanAnnounce;
+
+    /// <summary>The post in one line, if its author gave one (#208).</summary>
+    public string? Summary { get; init; }
 }
 
 public sealed record AnnouncementDay(int Year, int Day, int SlotsPerDay, bool IsRevealed, DateTimeOffset RevealsAt, IReadOnlyList<EntryAnnouncements> Entries);
@@ -61,6 +64,7 @@ public sealed class SocialService(
                 s.Season.SlotsPerDay,
                 Title = s.PostTitle!,
                 Author = s.AuthorName!,
+                Summary = s.PostSummary,
                 Accounts = s.Contributor == null
                     ? null
                     : new AuthorAccounts(s.Contributor.BlueskyHandle, s.Contributor.MastodonHandle, s.Contributor.LinkedInUrl, s.Contributor.FacebookUrl, s.Contributor.RedditUsername, s.Contributor.XUsername),
@@ -75,7 +79,7 @@ public sealed class SocialService(
 
         var entries = slots.Select(s =>
         {
-            var announcement = new Announcement(year, day, s.Part, s.SlotsPerDay, s.Title, s.Author, s.Accounts ?? AuthorAccounts.None, site.Value.BaseUrl);
+            var announcement = new Announcement(year, day, s.Part, s.SlotsPerDay, s.Title, s.Author, s.Accounts ?? AuthorAccounts.None, site.Value.BaseUrl) { Summary = s.Summary };
             return new EntryAnnouncements(
                 s.Id,
                 s.Part,
@@ -83,7 +87,10 @@ public sealed class SocialService(
                 s.Author,
                 [.. Enum.GetValues<SocialPlatform>().Select(platform => AnnouncementFormatter.Format(announcement, platform, accounts.Value))],
                 posts.Where(p => p.SlotId == s.Id).ToDictionary(p => p.Platform),
-                checks is null ? null : checks.GetValueOrDefault(s.Id, new BlurbState(BlurbStatus.Waiting, null, schedule.Now, null, null, false)));
+                checks is null ? null : checks.GetValueOrDefault(s.Id, new BlurbState(BlurbStatus.Waiting, null, schedule.Now, null, null, false)))
+            {
+                Summary = s.Summary,
+            };
         });
 
         var slotsPerDay = await db.Seasons.Where(s => s.Year == year).Select(s => s.SlotsPerDay).SingleOrDefaultAsync(cancellationToken);

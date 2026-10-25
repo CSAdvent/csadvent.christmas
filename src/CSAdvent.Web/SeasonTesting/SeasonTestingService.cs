@@ -126,6 +126,7 @@ public sealed class SeasonTestingService(
                             .SetProperty(x => x.AuthorUrl, (string?)null)
                             .SetProperty(x => x.PostTitle, (string?)null)
                             .SetProperty(x => x.PostUrl, (string?)null)
+                            .SetProperty(x => x.PostSummary, (string?)null)
                             .SetProperty(x => x.ContributorId, (int?)null)
                             .SetProperty(x => x.DroppedOutAt, (DateTimeOffset?)null),
                         token);

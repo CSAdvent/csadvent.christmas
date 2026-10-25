@@ -65,6 +65,7 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 - **Countdown (#31):** the day revealed next counts down ("Revealed in 11:42:07") once it's within 24 hours (`SeasonCalendar.CountingDownTo`, from `GeneratedAt`). `wwwroot/js/countdown.js` ticks it, correcting the visitor's clock with the server's time (`data-now`), and reloads once at the reveal, a few seconds late and spread out. It follows the rehearsal in the test season.
 - **Home page** (`HomeService.Plan`): a season's calendar is shown from when its sign-ups open (or December 1, if that's sooner or sign-ups aren't scheduled) **until the end of December** (`AdventSchedule.IsCalendarShown`), earliest season first, so creating next year's season early never replaces this year's. Once every day is revealed, `CurrentSeason` says "That's a wrap" instead of counting spots.
 - **Between seasons** the home page is `OffSeason`: thanks for the latest finished season (posts and authors), the organizers' `between-seasons` content block, when the next season's sign-ups open (if the season exists and is scheduled), and the archive. From **September 1** (`HomeService.CountdownFrom`) it counts down the days ("33 days until sign-ups open!"). It's server-rendered, so there's no script.
+- **Add to calendar** (#207, `CalendarFileService`, `CalendarFileEndpoints`): `/calendar/{year}/sign-ups.ics` (at `seasons.claims_open_at`, 404 until it's scheduled) and `/calendar/{year}/starts.ics` (the first reveal, from `AdventSchedule`), one-hour events written by `ICalendar`: CRLF lines folded at 75 octets, escaped text, times in UTC, and a stable `UID` (`csadvent-{year}-sign-ups@{host}`) with `DTSTAMP`. `OffSeason` links the next season's, and `/announcements` links the next season that hasn't started (`GetUpcomingAsync`; sign-ups only while they're still to come). Never the test season (404).
 - Organizer pages work on the **current season** (`SeasonAdminService.GetCurrentYearAsync`): the earliest season whose last day isn't over. **When every season is finished there's no current season**, and Requests, Entries, Backups, Social and Other Advents show `NoCurrentSeason` rather than last year's data. Past seasons are opened from the overview's **Past seasons** list (`?year=`), where `PastSeasonNotice` says they're history. A finished season's sign-ups can't be edited.
 - Component tests use **bUnit** (`BunitContext`) in `tests/CSAdvent.UnitTests`. `CalendarFixtures` builds a season as seen on a given date with a fake clock.
 
@@ -122,6 +123,9 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 ## Entry Pages and Traffic
 
 - **Every revealed entry with a post has a page** at `/{year}/day/{day}/{part}` (`EntryService`, `EntryLinks.Page`). It shows the title, author, the author's links (`AuthorLinks.All`: website, GitHub, then the social accounts on their profile), a **Read the post** button and the day's other post. Before the reveal it says only when the post is coming (#5), and a revealed spot without a post (or with no title) is a 404.
+- **Previous and next** (#205): a revealed entry's page links the season's revealed posts either side of it, in calendar order (`EntryService.Neighbors`, `rel="prev"` and `rel="next"`), with the reveal checked in C#, so the latest post has no next link until the next day is revealed.
+- **A random post:** `/random` (linked from the archive) redirects to any post's page, never cached, and robots stay out of it. It reads `RevealedPosts`: every post with a title, link and author whose reveal has passed (checked in C#, #5), from every season but the test season, even for its testers.
+- **Summaries** (#208): an optional one-line `slots.post_summary` (up to `Slot.PostSummaryMaxLength`, 160 characters), set on My spots or in the entry editor and kept on one line by `PostSummaries.Clean`. Like the title, it's only shown once the post is revealed: under the title on the entry page and first in its meta description, first in the RSS item's description, in social posts where it fits, and on the Bluesky link card. Dropping out, releasing a spot, a backup taking it and resetting the test season clear it.
 - **"Read the post" goes through `/go/{year}/{day}/{part}`**, which counts the click and redirects (302) to the entry's own post URL. Nothing else can be a destination, so it isn't an open redirect.
 - **Every link we publish goes through us, tagged with `?via=`:**
   - Social posts and RSS link to the entry page (for the preview card).
@@ -137,6 +141,17 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
   - Caching: `CardLinks` adds `?v=` (a hash of the text, or the post count), so an edited title gets a new URL. Responses are cached for a day, and rendered cards are kept in memory.
   - Before an entry's reveal there's no card for it (404).
   - Fonts and images: Inter Bold and Regular (SIL Open Font License, `Cards/Assets/Inter-LICENSE.txt`), the card background and the logo are embedded resources. Linux uses `SkiaSharp.NativeAssets.Linux.NoDependencies`, so containers need no fontconfig or system fonts. `CardRenderer.Printable` drops characters Inter can't draw (emoji, for example) rather than draw boxes.
+
+## Author Pages and Search
+
+- **Every author with a revealed post has a public page** (#203, `AuthorPageService`, `Components/Pages/Authors`), listing their posts by season, newest first, with each post's summary and their links (`AuthorLinks.All`). It's built on `RevealedPosts`, so it never shows the test season or a post before its reveal, and an author whose only posts aren't revealed yet has no page (404).
+  - **Addresses** (`AuthorPageLinks`): an author linked to a GitHub account is `/authors/{login}` (any case), and an archive author who isn't is `/authors/name/{key}`, by `AuthorService.Key`, the same grouping as the organizers' authors list. A path, not a query, because the canonical URL drops the query string.
+  - **Names and links** come from their latest revealed post: its name is the page's heading, and its website (the latest one given) leads the links. A linked author also gets GitHub and the social accounts on their profile.
+  - **Linked since:** a name page whose posts are all on one account now redirects to that account's page, so old links and search results still find them.
+  - **`/authors`** lists everyone, sorted by name ignoring case and accents, with their seasons and post counts. The archive links it, every entry page outside the test season links its author's page ("Every C# Advent post by …"), and the sitemap lists them all, dated by their latest post.
+- **Searching the archive** (#204): `/archive/search?q=…&year=…` (`ArchiveSearchPage`, `ArchiveSearch`), with a search box on `/archive`. Every word has to be in a post's title, author's name or summary, ignoring case and accents (`ArchiveSearch.Fold`), and a season narrows it down or lists its posts. Results are newest season first, linking to each entry's page and its author's page.
+  - **Only revealed posts are candidates:** it matches in C# on `RevealedPosts` (about 450 posts), so the database is never asked about a post before its reveal, and a search for an unrevealed post's words gets exactly the page a search that matches nothing gets (`ArchiveSearchTests` compares them). The seasons list only has seasons with revealed posts. Never the test season.
+  - **Robots stay out** of the results (`/archive/search` in `SearchEndpoints.Disallowed`), as search engines ask of a site's own search.
 
 ## Content Pages
 
@@ -173,6 +188,7 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
   - **Reddit:** a title of up to 300 characters plus the link, no hashtags, and a submit link.
   - **X:** 280, counted X's way (`XLength`): a link is 23, an emoji or "…" is 2, and text X would link, like "ASP.NET", counts as a link. `@username` mentions, and X's documented web intent (`x.com/intent/tweet?text=`).
   - **Long titles** are shortened with an ellipsis to fit.
+  - **The post's summary** goes between the title line and the link where it fits with the whole title (`AnnouncementFormatter.Fit`), and is left out otherwise; never on Reddit, whose post is a title and a link.
 - **`/manage/social`** (organizers) shows a day's announcements, today by default. Each has a preview, a count against the limit, Copy buttons (`wwwroot/js/copy.js`, `data-copy="element-id"`), and the composer link where one exists. Upcoming days are preview-only, with no composer and no marking before the reveal (#5).
 - **Mark as posted / Undo** are plain forms posting to `/manage/social/mark` and `/unmark` (minimal APIs; binding the form checks antiforgery; Admin policy). They're plain because the page has one per entry and platform, and Blazor form names must be unique. They record `social_posts` (unique per slot and platform: status, time, optional post link, and who marked it; `automation` for #61).
 - **Automatic posting** (#61, `Social/Posting`): Mastodon, Bluesky, the Facebook Page and X. LinkedIn and Reddit have no API access, so they're always copy and paste.
@@ -211,13 +227,13 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
   - `pubDate` is the reveal time.
   - The GUID is `csadvent-{year}-{day}-{part}` (`isPermaLink="false"`), so edits never duplicate an item.
   - The link goes to the entry page with `?via=rss`, never straight to the post.
-  - The description reads like "Day 6, post 2 of C# Advent 2025, by …".
+  - The description reads like "Day 6, post 2 of C# Advent 2025, by …", after the post's summary if it has one.
 - **Caching:** responses carry an ETag (a hash of the XML) and `Cache-Control: public, max-age=600`, and a matching `If-None-Match` gets a 304.
 - **Discovery:** every page has `<link rel="alternate">` for `/rss` in `App.razor`, and season pages add their own feed through `SocialMeta`'s child content.
 
 ## Search Engines
 
-- **`/robots.txt` and `/sitemap.xml`** (`Content/SearchEndpoints.cs`, #38): robots keeps crawlers out of signed-in, organizer and personal pages and the tracked `/go` redirects (`SearchEndpoints.Disallowed`), and points at the sitemap. The sitemap lists the public pages, every finished season's archive and published retrospective, and every revealed entry's page (checked in C#, #5), with the reveal date as `lastmod`, and never the test season. Both are cached for an hour.
+- **`/robots.txt` and `/sitemap.xml`** (`Content/SearchEndpoints.cs`, #38): robots keeps crawlers out of signed-in, organizer and personal pages, the tracked `/go` and `/random` redirects and the archive's search results (`SearchEndpoints.Disallowed`), and points at the sitemap. The sitemap lists the public pages, every finished season's archive and published retrospective, every revealed entry's page (checked in C#, #5), with the reveal date as `lastmod`, and every author's page, and never the test season. Both are cached for an hour.
 - **No analytics** (decided 2026-10-23): the entry visit and click counts are enough, and the privacy page promises no tracking.
 
 ## Backup Posters

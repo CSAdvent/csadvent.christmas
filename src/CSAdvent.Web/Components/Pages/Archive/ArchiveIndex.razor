@@ -6,6 +6,15 @@
 
 <h1 class="text-3xl font-bold tracking-tight text-slate-900">The C# Advent archive</h1>
 <p class="mt-2 text-slate-600">Every season since the first one in 2017: @_seasons.Sum(s => s.Posts) posts from the C# community.</p>
+<form method="get" action="archive/search" role="search" class="mt-6 flex max-w-xl gap-2">
+    <label for="archive-search" class="sr-only">Search every post</label>
+    <input id="archive-search" type="search" name="q" maxlength="100" placeholder="Search every post by title or author" class="min-w-0 grow rounded-lg border border-slate-300 px-3 py-2" />
+    <button type="submit" class="rounded-lg bg-advent-600 px-5 py-2 font-semibold text-white hover:bg-advent-700">Search</button>
+</form>
+<p class="mt-3 text-sm text-slate-600">
+    Browse <a href="authors" class="font-medium text-advent-700 underline">every author</a>, or if you're not sure where to
+    start, read <a href="random" class="font-medium text-advent-700 underline">a random post</a>.
+</p>
 
 <ul class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
     @foreach (var season in _seasons)

@@ -1,5 +1,7 @@
 @page "/announcements"
+@using System.Globalization
 @using CSAdvent.Web.Components.Announcements
+@inject CalendarFileService CalendarFiles
 
 <PageTitle>Announcements by email · C# Advent</PageTitle>
 <SocialMeta Title="C# Advent announcements by email" Description="Get an email when each season's sign-ups open, the organizers' occasional news, and each December day's new posts if you like." />
@@ -13,12 +15,31 @@
     <div class="mt-6">
         <SubscribeBox Heading="Email me when sign-ups open" ReturnTo="announcements" Done="@Done" Error="@Error" />
     </div>
+    @if (_upcoming is { } upcoming)
+    {
+        @* Add-to-calendar files (#207). *@
+        <p class="mt-6 text-slate-600">
+            Or put C# Advent @upcoming.Year in your calendar:
+            @if (upcoming.SignUpsOpenOn is { } opensOn)
+            {
+                <a href="@CalendarFileLinks.SignUps(upcoming.Year)" class="font-medium text-advent-700 underline">sign-ups open on @Day(opensOn)</a>
+                <span>and</span>
+            }
+            <a href="@CalendarFileLinks.Starts(upcoming.Year)" class="font-medium text-advent-700 underline">it starts on @Day(upcoming.StartsOn)</a>.
+        </p>
+    }
 </div>
 
 @code {
+    private UpcomingDates? _upcoming;
+
     [SupplyParameterFromQuery]
     public string? Done { get; set; }
 
     [SupplyParameterFromQuery]
     public string? Error { get; set; }
+
+    protected override async Task OnInitializedAsync() => _upcoming = await CalendarFiles.GetUpcomingAsync();
+
+    private static string Day(DateOnly date) => date.ToString("MMMM d", CultureInfo.InvariantCulture);
 }

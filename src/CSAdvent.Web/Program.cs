@@ -1,6 +1,7 @@
 using System.Threading.RateLimiting;
 using CSAdvent.Web.Announcements;
 using CSAdvent.Web.Auth;
+using CSAdvent.Web.Authors;
 using CSAdvent.Web.Backups;
 using CSAdvent.Web.Blurbs;
 using CSAdvent.Web.Calendar;
@@ -54,6 +55,7 @@ builder.Services.AddScoped<SeasonTestingService>();
 builder.Services.AddSingleton<AdventSchedule>();
 builder.Services.AddScoped<ArchiveService>();
 builder.Services.AddScoped<HomeService>();
+builder.Services.AddScoped<CalendarFileService>();
 builder.Services.AddScoped<ClaimService>();
 builder.Services.AddOptions<ClaimOptions>()
     .BindConfiguration(ClaimOptions.SectionName)
@@ -67,6 +69,8 @@ builder.Services.AddScoped<PostClaimService>();
 builder.Services.AddScoped<PostLinkService>();
 builder.Services.AddScoped<ProfileService>();
 builder.Services.AddScoped<EntryService>();
+builder.Services.AddScoped<RevealedPosts>();
+builder.Services.AddScoped<AuthorPageService>();
 builder.Services.AddSingleton<CardRenderer>();
 builder.Services.AddScoped<RssFeed>();
 builder.Services.AddScoped<RetrospectiveService>();
@@ -231,6 +235,7 @@ app.MapBlurbs();
 app.MapEntries();
 app.MapCards();
 app.MapFeeds();
+app.MapCalendarFiles();
 app.MapSearch();
 app.MapAnnouncements();
 app.MapSocial();

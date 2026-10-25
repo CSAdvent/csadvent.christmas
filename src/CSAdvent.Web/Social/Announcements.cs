@@ -21,6 +21,9 @@ public sealed record Announcement(int Year, int Day, int Part, int SlotsPerDay, 
     /// <summary>Where a test post links instead of an entry's page, relative to the base URL.</summary>
     public string? Path { get; init; }
 
+    /// <summary>The post in one line, if its author gave one (#208). It goes in only where it fits with the whole title.</summary>
+    public string? Summary { get; init; }
+
     /// <summary>For example "C# Advent 2026, December 6, part 2".</summary>
     public string When => Label ?? (SlotsPerDay > 1 ? $"C# Advent {Year}, December {Day}, part {Part}" : $"C# Advent {Year}, December {Day}");
 
@@ -77,22 +80,23 @@ public static partial class AnnouncementFormatter
         var submit = ours?.Subreddit is { Length: > 0 } subreddit ? $"https://www.reddit.com/r/{subreddit}/submit" : "https://www.reddit.com/submit";
         return platform switch
         {
-            SocialPlatform.Bluesky => Fit(announcement, BlueskyLimit, Graphemes, title =>
-                Compose(announcement.When, title, announcement.Author, Mention(announcement.Accounts.Bluesky), link, Hashtags),
+            SocialPlatform.Bluesky => Fit(announcement, BlueskyLimit, Graphemes, (title, summary) =>
+                Compose(announcement.When, title, announcement.Author, Mention(announcement.Accounts.Bluesky), summary, link, Hashtags),
                 text => (platform, link, null, $"https://bsky.app/intent/compose?text={Uri.EscapeDataString(text)}")),
-            SocialPlatform.Mastodon => Fit(announcement, MastodonLimit, MastodonLength, title =>
-                Compose(announcement.When, title, announcement.Author, announcement.Accounts.Mastodon, link, Hashtags),
+            SocialPlatform.Mastodon => Fit(announcement, MastodonLimit, MastodonLength, (title, summary) =>
+                Compose(announcement.When, title, announcement.Author, announcement.Accounts.Mastodon, summary, link, Hashtags),
                 text => (platform, link, null, mastodonInstance is null ? null : $"https://{mastodonInstance}/share?text={Uri.EscapeDataString(text)}")),
-            SocialPlatform.LinkedIn => Fit(announcement, LinkedInLimit, text => text.Length, title =>
-                Compose(announcement.When, title, announcement.Author, null, link, Hashtags),
+            SocialPlatform.LinkedIn => Fit(announcement, LinkedInLimit, text => text.Length, (title, summary) =>
+                Compose(announcement.When, title, announcement.Author, null, summary, link, Hashtags),
                 text => (platform, link, Hint(announcement.Accounts.LinkedIn), LinkedInComposer(text))),
-            SocialPlatform.Facebook => Fit(announcement, null, text => text.Length, title =>
-                Compose(announcement.When, title, announcement.Author, null, link, "#csharp #csadvent"),
+            SocialPlatform.Facebook => Fit(announcement, null, text => text.Length, (title, summary) =>
+                Compose(announcement.When, title, announcement.Author, null, summary, link, "#csharp #csadvent"),
                 _ => (platform, link, Hint(announcement.Accounts.Facebook), null)),
-            SocialPlatform.X => Fit(announcement, XLimit, XLength, title =>
-                Compose(announcement.When, title, announcement.Author, Mention(announcement.Accounts.X), link, Hashtags),
+            SocialPlatform.X => Fit(announcement, XLimit, XLength, (title, summary) =>
+                Compose(announcement.When, title, announcement.Author, Mention(announcement.Accounts.X), summary, link, Hashtags),
                 text => (platform, link, null, XComposer(text))),
-            _ => Fit(announcement, RedditTitleLimit, text => text.Length, title =>
+            // A Reddit post is a title and a link, so there's no room for the summary.
+            _ => Fit(announcement, RedditTitleLimit, text => text.Length, (title, _) =>
                 $"{Quote(title)} by {announcement.Author} ({announcement.When})",
                 text => (platform, link, Hint(announcement.Accounts.Reddit is { } user ? $"u/{user}" : null),
                     $"{submit}?url={Uri.EscapeDataString(link)}&title={Uri.EscapeDataString(text)}")),
@@ -186,8 +190,8 @@ public static partial class AnnouncementFormatter
         return counted.EnumerateRunes().Sum(rune => rune.Value is <= 0x10FF or (>= 0x2000 and <= 0x200D) or (>= 0x2010 and <= 0x201F) or (>= 0x2032 and <= 0x2037) ? 1 : 2);
     }
 
-    private static string Compose(string when, string title, string author, string? mention, string link, string hashtags) =>
-        $"{when}: {Quote(title)} by {author}{(mention is null ? "" : $" ({mention})")}\n\n{link}\n\n{hashtags}";
+    private static string Compose(string when, string title, string author, string? mention, string? summary, string link, string hashtags) =>
+        $"{when}: {Quote(title)} by {author}{(mention is null ? "" : $" ({mention})")}\n\n{(summary is null ? "" : $"{summary}\n\n")}{link}\n\n{hashtags}";
 
     private static string Quote(string title) => $"“{title}”";
 
@@ -204,20 +208,28 @@ public static partial class AnnouncementFormatter
     /// <summary>X's documented web intent, which opens its composer with the text filled in.</summary>
     private static string XComposer(string text) => $"https://x.com/intent/tweet?text={Uri.EscapeDataString(text)}";
 
-    /// <summary>Builds the text, shortening the title with an ellipsis until it fits the limit.</summary>
+    /// <summary>
+    /// Builds the text, with the post's summary if it fits alongside the whole title, and otherwise without it, shortening the
+    /// title with an ellipsis until it fits the limit. The title always matters more than the summary.
+    /// </summary>
     private static FormattedAnnouncement Fit(
         Announcement announcement,
         int? limit,
         Func<string, int> measure,
-        Func<string, string> build,
+        Func<string, string?, string> build,
         Func<string, (SocialPlatform Platform, string Link, string? Hint, string? Composer)> extras)
     {
         var title = announcement.Title;
-        var text = build(title);
+        var text = build(title, announcement.Summary);
+        if (announcement.Summary is not null && limit is { } most && measure(text) > most)
+        {
+            text = build(title, null);
+        }
+
         while (limit is { } max && measure(text) > max && title.Length > 1)
         {
             title = title[..^2].TrimEnd() + "…";
-            text = build(title);
+            text = build(title, null);
         }
 
         var (platform, link, hint, composer) = extras(text);

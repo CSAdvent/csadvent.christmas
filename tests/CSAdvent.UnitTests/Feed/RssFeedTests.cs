@@ -37,6 +37,19 @@ public sealed class RssFeedTests
         Assert.Equal("https://csadvent.christmas/rss", channel.Element(Atom + "link")!.Attribute("href")!.Value);
     }
 
+    [Theory]
+    [InlineData("Pattern matching, all the way down", "Pattern matching, all the way down. Day 6, post 2 of C# Advent 2026, by Ada Lovelace.")]
+    [InlineData("Is it a record?", "Is it a record? Day 6, post 2 of C# Advent 2026, by Ada Lovelace.")]
+    [InlineData(null, "Day 6, post 2 of C# Advent 2026, by Ada Lovelace.")]
+    public void AnItemsDescriptionStartsWithThePostsSummary(string? summary, string description)
+    {
+        var item = new FeedItem(2026, 6, 2, 2, "Patterns", "Ada Lovelace", new DateTimeOffset(2026, 12, 6, 5, 0, 0, TimeSpan.Zero)) { PostSummary = summary };
+
+        var written = XDocument.Parse(CreateFeed().Write([item])).Root!.Element("channel")!.Element("item")!;
+
+        Assert.Equal(description, written.Element("description")!.Value);
+    }
+
     [Fact]
     public void ItemsLinkThroughUsWithStableGuidsAndTheirRevealDate()
     {

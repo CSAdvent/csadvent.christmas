@@ -1,0 +1,103 @@
+@page "/archive/search"
+@using System.Globalization
+@using CSAdvent.Web.Authors
+@using CSAdvent.Web.Entries
+@inject RevealedPosts Revealed
+
+<PageTitle>@(_words.Count > 0 ? $"{Echo} · " : "")Search the archive · C# Advent</PageTitle>
+<SocialMeta Title="Search the C# Advent archive" Description="Find any C# Advent post since 2017 by its title or author." />
+
+<nav class="mb-6 text-sm font-medium">
+    <a href="archive" class="text-advent-700 hover:underline">← The archive</a>
+</nav>
+
+<h1 class="text-3xl font-bold tracking-tight text-slate-900">Search the archive</h1>
+<p class="mt-2 text-slate-600">Every C# Advent post since 2017, by title, author or summary.</p>
+
+<form method="get" action="archive/search" role="search" class="mt-6 flex max-w-3xl flex-wrap items-end gap-3">
+    <label class="flex min-w-60 grow flex-col text-sm font-medium text-slate-700">
+        Words to look for
+        <input type="search" name="q" value="@Q" maxlength="@ArchiveSearch.MaxQueryLength" placeholder="Blazor, source generators, an author…" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+    </label>
+    <label class="flex flex-col text-sm font-medium text-slate-700">
+        Season
+        <select name="year" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal">
+            <option value="">Every season</option>
+            @foreach (var year in _years)
+            {
+                <option value="@year" selected="@(year == _year)">@year</option>
+            }
+        </select>
+    </label>
+    <button type="submit" class="rounded-lg bg-advent-600 px-5 py-2.5 font-semibold text-white hover:bg-advent-700">Search</button>
+</form>
+
+@if (_words.Count > 0 || _year is not null)
+{
+    <p class="mt-8 font-medium text-slate-800" role="status">@ResultLine()</p>
+    @if (_results.Count > 0)
+    {
+        <ol class="mt-4 flex max-w-3xl flex-col gap-3">
+            @foreach (var post in _results)
+            {
+                <li class="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">@post.Spot, @post.Year</p>
+                    <a href="@post.Page" class="mt-1 inline-block font-semibold text-advent-700 underline decoration-advent-200 underline-offset-2 hover:decoration-advent-700">@post.Title</a>
+                    <p class="text-sm text-slate-600">by <a href="@AuthorPageLinks.For(post)" class="underline decoration-slate-300 underline-offset-2 hover:text-advent-700">@post.AuthorName</a></p>
+                    @if (post.Summary is { } summary)
+                    {
+                        <p class="mt-1 text-slate-600">@summary</p>
+                    }
+                </li>
+            }
+        </ol>
+    }
+}
+
+@code {
+    private IReadOnlyList<RevealedPost> _results = [];
+    private IReadOnlyList<int> _years = [];
+    private IReadOnlyList<string> _words = [];
+    private int? _year;
+
+    [SupplyParameterFromQuery(Name = "q")]
+    public string? Q { get; set; }
+
+    /// <summary>A season to search, as text, so a mistyped one is ignored rather than an error.</summary>
+    [SupplyParameterFromQuery(Name = "year")]
+    public string? Year { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var revealed = await Revealed.GetAsync();
+        _years = [.. revealed.Select(p => p.Year).Distinct().OrderDescending()];
+        _year = int.TryParse(Year, NumberStyles.None, CultureInfo.InvariantCulture, out var year) ? year : null;
+        _words = ArchiveSearch.Words(Q);
+        _results = ArchiveSearch.Find(revealed, Q, _year);
+    }
+
+    /// <summary>The query as it was searched for, to say what was looked for.</summary>
+    private string Echo
+    {
+        get
+        {
+            var query = Q?.Trim() ?? "";
+            return query.Length > ArchiveSearch.MaxQueryLength ? query[..ArchiveSearch.MaxQueryLength] : query;
+        }
+    }
+
+    private string ResultLine()
+    {
+        var season = _year is { } year ? string.Create(CultureInfo.InvariantCulture, $" in C# Advent {year}") : "";
+        var posts = _results.Count == 1 ? "1 post" : string.Create(CultureInfo.InvariantCulture, $"{_results.Count} posts");
+        if (_words.Count == 0)
+        {
+            return _results.Count == 0 ? $"No posts{season}." : $"{posts}{season}.";
+        }
+
+        var query = $"“{Echo}”";
+        return _results.Count == 0
+            ? $"No posts match {query}{season}. Try fewer words, or another spelling."
+            : $"{posts} {(_results.Count == 1 ? "matches" : "match")} {query}{season}.";
+    }
+}

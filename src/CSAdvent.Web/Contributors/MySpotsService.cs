@@ -158,6 +158,7 @@ public sealed partial class MySpotsService(
                 AuthorUrl = slot.AuthorUrl,
                 PostTitle = slot.PostTitle,
                 PostUrl = slot.PostUrl,
+                PostSummary = slot.PostSummary,
                 Version = slot.Version,
             });
     }
@@ -179,6 +180,7 @@ public sealed partial class MySpotsService(
         slot.AuthorUrl = Clean(form.AuthorUrl);
         slot.PostTitle = Clean(form.PostTitle);
         slot.PostUrl = Clean(form.PostUrl);
+        slot.PostSummary = PostSummaries.Clean(form.PostSummary);
         slot.ContributorId = contributorId;
 
         return await SaveChangesAsync(MySpotOutcome.Saved, cancellationToken);
@@ -206,6 +208,7 @@ public sealed partial class MySpotsService(
         slot.AuthorUrl = null;
         slot.PostTitle = null;
         slot.PostUrl = null;
+        slot.PostSummary = null;
         slot.ContributorId = null;
         slot.DroppedOutAt = timeProvider.GetUtcNow();
         if (slot.Contact is not null)
@@ -326,6 +329,10 @@ public sealed class MySpotForm : IValidatableObject
     [StringLength(500, ErrorMessage = "Keep the URL to 500 characters or fewer.")]
     [HttpUrl(ErrorMessage = "Your post's URL must be a full web address that starts with https:// or http://.")]
     public string? PostUrl { get; set; }
+
+    /// <summary>Optional: the post in one line, for its page, the feeds and our social posts once it's revealed.</summary>
+    [StringLength(Slot.PostSummaryMaxLength, ErrorMessage = "Keep the summary to 160 characters or fewer.")]
+    public string? PostSummary { get; set; }
 
     /// <summary>The spot's row version when the form was shown.</summary>
     public uint Version { get; set; }
