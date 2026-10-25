@@ -21,7 +21,7 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 | December 1–25 | Reveals at midnight, announcements at 10 AM and 2 PM, the daily email at 9 AM | Automatic, plus LinkedIn and Reddit by hand |
 | December 31 | The calendar moves to the archive, and the home page thanks everyone | Automatic |
 | Late December–January | Write, publish and share the season's retrospective | Organizers |
-| February 1 | The season's contact details are deleted | Automatic |
+| February 1 | The season's requests and backup list are deleted (authors' emails are kept) | Automatic |
 
 ---
 
@@ -111,9 +111,9 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
   the same page (Post now on Automatic platforms, Copy for the rest), and send it to the announcements list from
   `/manage/announcements` if you like. Generate it before February 1, because the season's requests and backup list
   (two of its numbers) are deleted then.
-- **February 1:** the season's contact details are deleted automatically: spot emails, claim requests, the backup
-  list, and contributor emails that haven't been verified again since. The calendar, GitHub logins and social
-  accounts stay. Nothing to do.
+- **February 1:** the season's claim requests (with comments) and backup list are deleted automatically, and so are
+  the emails of people who signed in but never had a spot. **Authors' email addresses are kept**, on their accounts and
+  their spots, so they can hear about the next season. Delete an author's address when they ask. Nothing else to do.
 
 ---
 

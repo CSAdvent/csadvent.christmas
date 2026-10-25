@@ -10,7 +10,8 @@ namespace CSAdvent.IntegrationTests;
 
 /// <summary>
 /// The retention policy on the privacy page, run against the real database with a fake clock. The contact details live on
-/// archived seasons (whose deletion times have passed) and on 2105 (whose deletion time is far away).
+/// archived seasons (whose deletion times have passed) and on 2105 (whose deletion time is far away). Authors keep their
+/// email addresses; requests, backup lists and non-authors' emails go.
 /// </summary>
 public sealed class RetentionTests(AppHostFixture fixture)
 {
@@ -22,12 +23,15 @@ public sealed class RetentionTests(AppHostFixture fixture)
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
     [Fact]
-    public async Task DeletesContactDetailsOnceTheSeasonsDeletionTimeHasPassed()
+    public async Task DeletesRequestsBackupListsAndNonAuthorsEmailsButKeepsAuthorsEmails()
     {
         await TestSeasons.EnsureAsync(fixture, FutureYear, claimsOpen: false, season =>
-            season.Slots.Single(s => s is { Day: 1, Part: 1 }).AuthorName = "Active Dev");
+        {
+            season.Slots.Single(s => s is { Day: 1, Part: 1 }).AuthorName = "Active Dev";
+            season.Slots.Single(s => s is { Day: 2, Part: 1 }).AuthorName = "Lapsed Author";
+        });
 
-        int archivedSlotId, futureSlotId, lapsedId, activeId;
+        int archivedSlotId, futureSlotId, lapsedId, activeId, authorId;
         await using (var db = await fixture.CreateDbContextAsync())
         {
             // Verified before the latest deletion time and not since, and verified again after it.
@@ -48,7 +52,18 @@ public sealed class RetentionTests(AppHostFixture fixture)
                 EmailVerifiedAt = new DateTimeOffset(2026, 10, 1, 12, 0, 0, TimeSpan.Zero),
                 CreatedAt = new DateTimeOffset(2025, 11, 2, 12, 0, 0, TimeSpan.Zero),
             };
-            db.Contributors.AddRange(lapsed, active);
+            // An author who hasn't signed in since either: they keep their address, to hear about the next season.
+            var author = new Contributor
+            {
+                GithubUserId = 8104,
+                GithubLogin = "lapsed-author",
+                Email = "author@example.com",
+                EmailVerifiedAt = new DateTimeOffset(2025, 11, 2, 12, 0, 0, TimeSpan.Zero),
+                CreatedAt = new DateTimeOffset(2025, 11, 2, 12, 0, 0, TimeSpan.Zero),
+            };
+            db.Contributors.AddRange(lapsed, active, author);
+            await db.SaveChangesAsync(CancellationToken);
+            (await db.Slots.SingleAsync(s => s.SeasonYear == FutureYear && s.Day == 2 && s.Part == 1, CancellationToken)).ContributorId = author.Id;
 
             var archivedSlot = await db.Slots.SingleAsync(s => s.SeasonYear == 2017 && s.Day == 1 && s.Part == 1, CancellationToken);
             archivedSlot.Contact = new SlotContact { Email = "lapsed@example.com" };
@@ -61,7 +76,7 @@ public sealed class RetentionTests(AppHostFixture fixture)
 
             db.ClaimRequests.AddRange(Request(archivedSlot.Id, lapsed.Id), Request(futureSlot.Id, active.Id));
             await db.SaveChangesAsync(CancellationToken);
-            (archivedSlotId, futureSlotId, lapsedId, activeId) = (archivedSlot.Id, futureSlot.Id, lapsed.Id, active.Id);
+            (archivedSlotId, futureSlotId, lapsedId, activeId, authorId) = (archivedSlot.Id, futureSlot.Id, lapsed.Id, active.Id, author.Id);
         }
 
         ContactDeletion deletion;
@@ -72,38 +87,37 @@ public sealed class RetentionTests(AppHostFixture fixture)
 
         await using (var db = await fixture.CreateDbContextAsync())
         {
-            // The calendar keeps the entry; only the private details go.
+            // The calendar keeps the entry, and the author's contact email stays with it.
             var archivedSlot = await db.Slots.Include(s => s.Contact).SingleAsync(s => s.Id == archivedSlotId, CancellationToken);
-            Assert.Null(archivedSlot.Contact);
+            Assert.Equal("lapsed@example.com", archivedSlot.Contact?.Email);
             Assert.NotNull(archivedSlot.AuthorName);
             Assert.False(await db.ClaimRequests.AnyAsync(r => r.SlotId == archivedSlotId, CancellationToken));
             Assert.False(await db.Substitutes.AnyAsync(s => s.SeasonYear == 2017, CancellationToken));
 
-            // The account stays, without its email.
+            // Someone who never had a spot keeps their account, without its email; an author keeps theirs.
             var lapsed = await db.Contributors.SingleAsync(c => c.Id == lapsedId, CancellationToken);
             Assert.Null(lapsed.Email);
             Assert.Null(lapsed.EmailVerifiedAt);
             Assert.Equal("lapsed-dev", lapsed.GithubLogin);
             Assert.Equal("lapsed.bsky.social", lapsed.BlueskyHandle);
             Assert.Equal("active@example.com", (await db.Contributors.SingleAsync(c => c.Id == activeId, CancellationToken)).Email);
+            Assert.Equal("author@example.com", (await db.Contributors.SingleAsync(c => c.Id == authorId, CancellationToken)).Email);
 
             Assert.Equal("active@example.com", (await db.SlotContacts.SingleAsync(c => c.SlotId == futureSlotId, CancellationToken)).Email);
             Assert.True(await db.ClaimRequests.AnyAsync(r => r.SlotId == futureSlotId, CancellationToken));
         }
 
-        Assert.True(deletion.SpotContacts >= 1 && deletion.ClaimRequests >= 1 && deletion.Substitutes >= 1 && deletion.ContributorEmails >= 1);
+        Assert.True(deletion.ClaimRequests >= 1 && deletion.Substitutes >= 1 && deletion.ContributorEmails >= 1);
     }
 
     [Fact]
-    public async Task KeepsContactDetailsUntilTheStartOfFebruary()
+    public async Task KeepsTheBackupListUntilTheStartOfFebruary()
     {
-        int slotId;
         await using (var db = await fixture.CreateDbContextAsync())
         {
-            var slot = await db.Slots.SingleAsync(s => s.SeasonYear == 2025 && s.Day == 2 && s.Part == 1, CancellationToken);
-            slot.Contact = new SlotContact { Email = "january@example.com" };
+            var season = await db.Seasons.SingleAsync(s => s.Year == 2025, CancellationToken);
+            season.Substitutes.Add(new Substitute { Name = "January Backup", Email = "january@example.com", SignedUpAt = Now });
             await db.SaveChangesAsync(CancellationToken);
-            slotId = slot.Id;
         }
 
         // 2025's deletion time is midnight Eastern on February 1, 2026 (05:00 UTC).
@@ -111,10 +125,10 @@ public sealed class RetentionTests(AppHostFixture fixture)
         await using (var db = await fixture.CreateDbContextAsync())
         {
             await CreateRetention(db, deletionTime.AddSeconds(-1)).DeleteExpiredAsync(CancellationToken);
-            Assert.True(await db.SlotContacts.AnyAsync(c => c.SlotId == slotId, CancellationToken));
+            Assert.True(await db.Substitutes.AnyAsync(s => s.Email == "january@example.com", CancellationToken));
 
             await CreateRetention(db, deletionTime).DeleteExpiredAsync(CancellationToken);
-            Assert.False(await db.SlotContacts.AnyAsync(c => c.SlotId == slotId, CancellationToken));
+            Assert.False(await db.Substitutes.AnyAsync(s => s.Email == "january@example.com", CancellationToken));
         }
     }
 

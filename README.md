@@ -274,7 +274,8 @@ Keep `CustomDomains` and DNS records in the AppHost, not set by hand in the port
 ## 🔏 Privacy
 
 - 📜 **[Privacy](https://csadvent.christmas/privacy) and [terms](https://csadvent.christmas/terms)** are pages in the site, with the organizers' address (`hello@csadvent.christmas`) from `Site:ContactEmail` in `appsettings.json`. The app won't start without it.
-- 🗑️ **Contact details are deleted automatically** on February 1 after each season: spot emails, claim requests, the standby list, and contributor emails that haven't been verified again since. The calendar itself stays.
+- 📇 **Authors' email addresses are kept** after the season, so they can hear about the next one, until they ask us to delete them
+- 🗑️ **Requests and backup lists are deleted automatically** on February 1 after each season, with the emails of people who signed in but never had a spot. The calendar itself stays.
 - ✏️ **Collecting something new?** Update the privacy page, and its date, in the same pull request.
 
 ## 🤝 Contributing

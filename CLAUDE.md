@@ -284,7 +284,10 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 ## Privacy
 
 - `/privacy` and `/terms` are Razor pages. The contact address is `Site:ContactEmail` (`SiteOptions`), set to `hello@csadvent.christmas` in `appsettings.json`. It's required and validated on start, so the app won't start without it.
-- **Retention:** `ContactRetention` deletes a season's contact details at `AdventSchedule.GetContactDeletionTime` (midnight in the reveal time zone on February 1 after the season): `slot_contacts`, `claim_requests` and `substitutes` for that season, plus every contributor email that hasn't been verified again since. Slots, contributors' GitHub logins and social accounts stay.
+- **Retention:** **authors' email addresses are kept** (decided 2026-10-25), so they can hear about the next season: `slot_contacts`, and the `contributors.email` of anyone who has had a spot in a real season.
+  - On February 1 after a season (`AdventSchedule.GetContactDeletionTime`, midnight in the reveal time zone), `ContactRetention` deletes that season's `claim_requests` (with comments) and `substitutes`. It also deletes the email of every contributor who has never had a spot and hasn't verified it since.
+  - Slots, contributors' GitHub logins and social accounts stay.
+  - The privacy page and terms say authors' addresses are kept until they ask.
 - `ContactRetentionWorker` runs it on start and then hourly. The AppHost turns it off in the Testing environment (`Retention:DeleteInBackground`), because `RetentionTests` run it with a fake clock and the real-time run would race them.
 - **Keep the privacy page true.** Anything that collects or shares something new (analytics in #38, click tracking in #58, the mailing list in #49) updates `/privacy` and its "Last updated" date in the same PR. New personal data goes in the private tables and into `ContactRetention`.
 
@@ -316,7 +319,7 @@ Entities and their EF configuration live together in `src/CSAdvent.Web/Data` (on
 
 - **Seasons are keyed by year** and hold every season since 2017. `slots_per_day` is 1 for 2017 and 2 since. `Season.Create` adds an open slot for every day and part; creating a season never touches earlier ones.
 - **No stored status.** A slot is open or claimed depending on whether it has an author. Reveal times are computed by `Calendar/AdventSchedule` from the year, the day and `Advent:TimeZone` (midnight in that zone), never stored. Claims open at `seasons.claims_open_at`.
-- **Public vs private:** `slots` is public and never holds an email. Contact details live in `slot_contacts`, `contributors`, `claim_requests` and `substitutes`, so they can be purged after a season without touching the calendar.
+- **Public vs private:** `slots` is public and never holds an email. Contact details live in `slot_contacts`, `contributors`, `claim_requests` and `substitutes`, so they never show on the calendar, and requests and backup lists can be purged after a season without touching it.
 - **snake_case names** come from `SnakeCaseNamingConvention`, so raw SQL in check constraints and filters uses snake_case column names.
 - **Concurrency:** `slots` and `claim_requests` use PostgreSQL `xmin` as a row version.
 - **Unit tests fail if the model changes without a migration** (`HasPendingModelChanges`).

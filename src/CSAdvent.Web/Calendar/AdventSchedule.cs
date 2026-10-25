@@ -87,8 +87,8 @@ public sealed class AdventSchedule
     }
 
     /// <summary>
-    /// When a season's contact details are deleted: the start of February 1 after it, in the reveal time zone. The privacy
-    /// page promises this date, and <see cref="Retention.ContactRetention"/> keeps the promise.
+    /// When a season's requests and backup list are deleted: the start of February 1 after it, in the reveal time zone. The
+    /// privacy page promises this date, and <see cref="Retention.ContactRetention"/> keeps the promise.
     /// </summary>
     public DateTimeOffset GetContactDeletionTime(int year) => FromLocalTime(new DateTime(year + 1, 2, 1));
 

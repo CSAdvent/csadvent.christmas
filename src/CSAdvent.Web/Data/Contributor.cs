@@ -12,7 +12,10 @@ public sealed class Contributor
 
     public required string GithubLogin { get; set; }
 
-    /// <summary>The address the contributor verified. Private, and purged with the season's other contact details.</summary>
+    /// <summary>
+    /// The address the contributor verified, refreshed at every sign-in. Private. Kept for authors, so they hear about the next
+    /// season; deleted on February 1 for anyone who has never had a spot and hasn't signed in since (<c>ContactRetention</c>).
+    /// </summary>
     public string? Email { get; set; }
 
     public DateTimeOffset? EmailVerifiedAt { get; set; }
