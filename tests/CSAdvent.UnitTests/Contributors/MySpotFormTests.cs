@@ -18,6 +18,13 @@ public sealed class MySpotFormTests
         Assert.Equal(2, Errors(new MySpotForm { AuthorName = "Ada", AuthorUrl = "ftp://example.com", PostTitle = "Title", PostUrl = "javascript:alert(1)" }).Count);
 
     [Fact]
+    public void TheSummaryIsOptionalAndOneShortLine()
+    {
+        Assert.Empty(Errors(new MySpotForm { AuthorName = "Ada", PostSummary = new string('a', 160) }));
+        Assert.Equal(["Keep the summary to 160 characters or fewer."], Errors(new MySpotForm { AuthorName = "Ada", PostSummary = new string('a', 161) }));
+    }
+
+    [Fact]
     public void DroppingOutNeedsConfirmation() =>
         Assert.Equal(["Tick the box to confirm you're giving up this spot."], Errors(new DropOutForm()));
 

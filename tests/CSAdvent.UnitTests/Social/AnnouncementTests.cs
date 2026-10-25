@@ -1,6 +1,7 @@
 using CSAdvent.UnitTests.Retrospectives;
 using CSAdvent.Web.Claims;
 using CSAdvent.Web.Social;
+using CSAdvent.Web.Social.Posting;
 
 namespace CSAdvent.UnitTests.Social;
 
@@ -148,6 +149,56 @@ public sealed class AnnouncementTests
         Assert.Equal($"https://x.com/intent/tweet?text={Uri.EscapeDataString(x.Text)}", x.ComposerUrl);
         Assert.Equal(AnnouncementFormatter.XLimit, x.Limit);
         Assert.Null(x.TagHint);
+    }
+
+    [Fact]
+    public void ThePostsSummaryGoesInBeforeTheLink()
+    {
+        var announcement = Entry() with { Summary = "Switch expressions, list patterns and more." };
+
+        foreach (var platform in new[] { SocialPlatform.Bluesky, SocialPlatform.Mastodon, SocialPlatform.LinkedIn, SocialPlatform.Facebook, SocialPlatform.X })
+        {
+            var formatted = AnnouncementFormatter.Format(announcement, platform, Ours);
+
+            Assert.Contains($"\n\nSwitch expressions, list patterns and more.\n\n{formatted.Link}\n\n", formatted.Text);
+            Assert.True(formatted.Limit is null || formatted.Length <= formatted.Limit, $"{platform} is {formatted.Length} long.");
+        }
+
+        // A Reddit post is a title and a link.
+        Assert.Equal(
+            "“Pattern matching all the way down” by Ada Lovelace (C# Advent 2026, December 6, part 2)",
+            AnnouncementFormatter.Format(announcement, SocialPlatform.Reddit, Ours).Text);
+    }
+
+    [Fact]
+    public void ASummaryThatDoesNotFitIsLeftOutRatherThanShorteningTheTitle()
+    {
+        var summary = string.Join(' ', Enumerable.Repeat("Spans everywhere.", 9))[..160];
+        var announcement = Entry() with { Summary = summary };
+
+        foreach (var platform in new[] { SocialPlatform.Bluesky, SocialPlatform.X })
+        {
+            var formatted = AnnouncementFormatter.Format(announcement, platform, Ours);
+
+            Assert.DoesNotContain("Spans everywhere", formatted.Text);
+            Assert.Contains("“Pattern matching all the way down”", formatted.Text);
+            Assert.True(formatted.Length <= formatted.Limit, $"{platform} is {formatted.Length} long.");
+        }
+
+        Assert.Contains(summary, AnnouncementFormatter.Format(announcement, SocialPlatform.Mastodon, Ours).Text);
+        Assert.Contains(summary, AnnouncementFormatter.Format(announcement, SocialPlatform.LinkedIn, Ours).Text);
+    }
+
+    [Fact]
+    public void TheLinkCardDescribesThePostLikeItsPage()
+    {
+        var day = new AnnouncementDay(2026, 6, 2, IsRevealed: true, new DateTimeOffset(2026, 12, 6, 5, 0, 0, TimeSpan.Zero), []);
+        var entry = new EntryAnnouncements(1, 2, "Patterns", "Ada Lovelace", [], new Dictionary<SocialPlatform, CSAdvent.Web.Data.SocialPost>());
+
+        Assert.Equal("By Ada Lovelace, for C# Advent 2026: December 6, post 2.", SocialPostingService.Description(day, entry));
+        Assert.Equal(
+            "Switch expressions and more. By Ada Lovelace, for C# Advent 2026: December 6, post 2.",
+            SocialPostingService.Description(day, entry with { Summary = "Switch expressions and more" }));
     }
 
     [Fact]

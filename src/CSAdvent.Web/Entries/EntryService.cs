@@ -45,6 +45,9 @@ public sealed record EntryView(
     bool IsLinked = false)
 {
     public string Spot => SlotsPerDay > 1 ? $"December {Day}, {Year} · Post {Part}" : $"December {Day}, {Year}";
+
+    /// <summary>The post in one line, if its author gave one (#208). Only once it's revealed, like the title.</summary>
+    public string? PostSummary { get; init; }
 }
 
 /// <summary>Entry pages, the tracked redirect to each post, and their visit and click counts.</summary>
@@ -75,6 +78,7 @@ public sealed class EntryService(AdventDbContext db, AdventSchedule schedule, Ti
                 s.AuthorUrl,
                 s.PostTitle,
                 s.PostUrl,
+                s.PostSummary,
                 GithubLogin = s.Contributor != null ? s.Contributor.GithubLogin : null,
                 Bluesky = s.Contributor != null ? s.Contributor.BlueskyHandle : null,
                 Mastodon = s.Contributor != null ? s.Contributor.MastodonHandle : null,
@@ -118,7 +122,10 @@ public sealed class EntryService(AdventDbContext db, AdventSchedule schedule, Ti
                 .Where(s => s.Part != part && s.PostTitle is not null && s.PostUrl is not null && s.AuthorName is not null)
                 .Select(s => new SiblingEntry(s.Part, s.PostTitle!, s.AuthorName!))],
             schedule.IsSeasonOver(year),
-            slot.GithubLogin is not null);
+            slot.GithubLogin is not null)
+        {
+            PostSummary = slot.PostSummary,
+        };
     }
 
     /// <summary>The post a click should go to: only a revealed entry's own post, so the redirect can't be pointed anywhere else.</summary>

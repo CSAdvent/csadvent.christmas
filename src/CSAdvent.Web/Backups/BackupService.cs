@@ -393,6 +393,8 @@ public sealed partial class BackupService(
         slot.AuthorUrl = offer.AuthorUrl;
         slot.PostTitle = offer.PostTitle;
         slot.PostUrl = offer.PostUrl;
+        // The summary was the original author's, about their post.
+        slot.PostSummary = null;
         slot.ContributorId = substitute.ContributorId;
         slot.DroppedOutAt = null;
         if (slot.Contact is null)

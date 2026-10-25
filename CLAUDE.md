@@ -122,6 +122,7 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 ## Entry Pages and Traffic
 
 - **Every revealed entry with a post has a page** at `/{year}/day/{day}/{part}` (`EntryService`, `EntryLinks.Page`). It shows the title, author, the author's links (`AuthorLinks.All`: website, GitHub, then the social accounts on their profile), a **Read the post** button and the day's other post. Before the reveal it says only when the post is coming (#5), and a revealed spot without a post (or with no title) is a 404.
+- **Summaries** (#208): an optional one-line `slots.post_summary` (up to `Slot.PostSummaryMaxLength`, 160 characters), set on My spots or in the entry editor and kept on one line by `PostSummaries.Clean`. Like the title, it's only shown once the post is revealed: under the title on the entry page and first in its meta description, first in the RSS item's description, in social posts where it fits, and on the Bluesky link card. Dropping out, releasing a spot, a backup taking it and resetting the test season clear it.
 - **"Read the post" goes through `/go/{year}/{day}/{part}`**, which counts the click and redirects (302) to the entry's own post URL. Nothing else can be a destination, so it isn't an open redirect.
 - **Every link we publish goes through us, tagged with `?via=`:**
   - Social posts and RSS link to the entry page (for the preview card).
@@ -173,6 +174,7 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
   - **Reddit:** a title of up to 300 characters plus the link, no hashtags, and a submit link.
   - **X:** 280, counted X's way (`XLength`): a link is 23, an emoji or "…" is 2, and text X would link, like "ASP.NET", counts as a link. `@username` mentions, and X's documented web intent (`x.com/intent/tweet?text=`).
   - **Long titles** are shortened with an ellipsis to fit.
+  - **The post's summary** goes between the title line and the link where it fits with the whole title (`AnnouncementFormatter.Fit`), and is left out otherwise; never on Reddit, whose post is a title and a link.
 - **`/manage/social`** (organizers) shows a day's announcements, today by default. Each has a preview, a count against the limit, Copy buttons (`wwwroot/js/copy.js`, `data-copy="element-id"`), and the composer link where one exists. Upcoming days are preview-only, with no composer and no marking before the reveal (#5).
 - **Mark as posted / Undo** are plain forms posting to `/manage/social/mark` and `/unmark` (minimal APIs; binding the form checks antiforgery; Admin policy). They're plain because the page has one per entry and platform, and Blazor form names must be unique. They record `social_posts` (unique per slot and platform: status, time, optional post link, and who marked it; `automation` for #61).
 - **Automatic posting** (#61, `Social/Posting`): Mastodon, Bluesky, the Facebook Page and X. LinkedIn and Reddit have no API access, so they're always copy and paste.
@@ -211,7 +213,7 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
   - `pubDate` is the reveal time.
   - The GUID is `csadvent-{year}-{day}-{part}` (`isPermaLink="false"`), so edits never duplicate an item.
   - The link goes to the entry page with `?via=rss`, never straight to the post.
-  - The description reads like "Day 6, post 2 of C# Advent 2025, by …".
+  - The description reads like "Day 6, post 2 of C# Advent 2025, by …", after the post's summary if it has one.
 - **Caching:** responses carry an ETag (a hash of the XML) and `Cache-Control: public, max-age=600`, and a matching `If-None-Match` gets a 304.
 - **Discovery:** every page has `<link rel="alternate">` for `/rss` in `App.razor`, and season pages add their own feed through `SocialMeta`'s child content.
 

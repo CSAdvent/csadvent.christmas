@@ -13,6 +13,9 @@ namespace CSAdvent.Web.Data;
 /// </remarks>
 public sealed class Slot
 {
+    /// <summary>How long a post's one-line summary can be: about what a search result or a link preview shows.</summary>
+    public const int PostSummaryMaxLength = 160;
+
     public int Id { get; private set; }
 
     public int SeasonYear { get; init; }
@@ -32,6 +35,12 @@ public sealed class Slot
     public string? PostTitle { get; set; }
 
     public string? PostUrl { get; set; }
+
+    /// <summary>
+    /// The post in one line, from its author or an organizer (#208). Optional. Like the title, it's only shown once the post is
+    /// revealed: on its entry page, in the feeds and in our social posts.
+    /// </summary>
+    public string? PostSummary { get; set; }
 
     /// <summary>
     /// The signed-in contributor who owns the slot. Empty for imported history and for authors the organizer adds by hand.
@@ -62,6 +71,7 @@ internal sealed class SlotConfiguration : IEntityTypeConfiguration<Slot>
         builder.Property(s => s.AuthorUrl).HasMaxLength(500);
         builder.Property(s => s.PostTitle).HasMaxLength(300);
         builder.Property(s => s.PostUrl).HasMaxLength(500);
+        builder.Property(s => s.PostSummary).HasMaxLength(Slot.PostSummaryMaxLength);
         builder.Property(s => s.Version).IsRowVersion();
 
         builder.HasIndex(s => new { s.SeasonYear, s.Day, s.Part }).IsUnique();

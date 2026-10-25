@@ -3,6 +3,7 @@ using CSAdvent.Web.Backups;
 using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Claims;
 using CSAdvent.Web.Data;
+using CSAdvent.Web.Entries;
 using Microsoft.EntityFrameworkCore;
 
 namespace CSAdvent.Web.Manage;
@@ -92,6 +93,7 @@ public sealed class EntryAdminService(AdventDbContext db, AdventSchedule schedul
                     ContactEmail = slot.Contact?.Email,
                     PostTitle = slot.PostTitle,
                     PostUrl = slot.PostUrl,
+                    PostSummary = slot.PostSummary,
                     Version = slot.Version,
                 });
     }
@@ -109,6 +111,7 @@ public sealed class EntryAdminService(AdventDbContext db, AdventSchedule schedul
         slot.AuthorUrl = Clean(form.AuthorUrl);
         slot.PostTitle = Clean(form.PostTitle);
         slot.PostUrl = Clean(form.PostUrl);
+        slot.PostSummary = PostSummaries.Clean(form.PostSummary);
 
         // A spot an organizer empties is no longer the contributor's.
         if (authorName is null)
@@ -136,6 +139,7 @@ public sealed class EntryAdminService(AdventDbContext db, AdventSchedule schedul
         slot.AuthorUrl = null;
         slot.PostTitle = null;
         slot.PostUrl = null;
+        slot.PostSummary = null;
         slot.ContributorId = null;
         slot.DroppedOutAt = timeProvider.GetUtcNow();
         SetContact(slot, email: null);
@@ -217,12 +221,15 @@ public sealed class EntryForm : IValidatableObject
     [HttpUrl(ErrorMessage = "The post URL must be a full web address that starts with https:// or http://.")]
     public string? PostUrl { get; set; }
 
+    [StringLength(Slot.PostSummaryMaxLength, ErrorMessage = "Keep the summary to 160 characters or fewer.")]
+    public string? PostSummary { get; set; }
+
     /// <summary>The spot's row version when the form was shown.</summary>
     public uint Version { get; set; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        if (string.IsNullOrWhiteSpace(AuthorName) && (!string.IsNullOrWhiteSpace(PostTitle) || !string.IsNullOrWhiteSpace(PostUrl)))
+        if (string.IsNullOrWhiteSpace(AuthorName) && (!string.IsNullOrWhiteSpace(PostTitle) || !string.IsNullOrWhiteSpace(PostUrl) || !string.IsNullOrWhiteSpace(PostSummary)))
         {
             yield return new ValidationResult("A post needs an author. Enter the author's name, or clear the post.", [nameof(AuthorName)]);
         }

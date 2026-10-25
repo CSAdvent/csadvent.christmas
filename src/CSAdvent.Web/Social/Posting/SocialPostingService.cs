@@ -4,6 +4,7 @@ using CSAdvent.Web.Cards;
 using CSAdvent.Web.Claims;
 using CSAdvent.Web.Content;
 using CSAdvent.Web.Data;
+using CSAdvent.Web.Entries;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Npgsql;
@@ -284,11 +285,14 @@ public sealed partial class SocialPostingService(
     private static string? SafeUrl(string? postUrl) =>
         Uri.TryCreate(postUrl, UriKind.Absolute, out var uri) && uri.Scheme is "https" or "http" ? postUrl : null;
 
-    /// <summary>What a link card says under the title, like the entry page's preview.</summary>
-    public static string Description(AnnouncementDay day, EntryAnnouncements entry) =>
-        day.SlotsPerDay > 1
+    /// <summary>What a link card says under the title, like the entry page's preview: the post's summary first, if it has one.</summary>
+    public static string Description(AnnouncementDay day, EntryAnnouncements entry)
+    {
+        var byline = day.SlotsPerDay > 1
             ? $"By {entry.Author}, for C# Advent {day.Year}: December {day.Day}, post {entry.Part}."
             : $"By {entry.Author}, for C# Advent {day.Year}: December {day.Day}.";
+        return entry.Summary is { } summary ? $"{PostSummaries.AsSentence(summary)} {byline}" : byline;
+    }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Posting slot {SlotId} to {Platform} failed; it'll be tried again or shown to the organizers")]
     private partial void LogFailed(Exception exception, SocialPlatform platform, int slotId);

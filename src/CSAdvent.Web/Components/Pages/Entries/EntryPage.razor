@@ -10,7 +10,7 @@
 {
     <PageTitle>@entry.PostTitle · C# Advent @entry.Year</PageTitle>
     <SocialMeta Title="@(entry.PostTitle!)"
-                Description="@($"By {entry.AuthorName}, for C# Advent {entry.Year}: {entry.Spot.Replace(" · ", ", ")}.")"
+                Description="@Description(entry)"
                 Type="article"
                 Image="@CardLinks.Entry(CardEndpoints.CardFor(entry))"
                 ImageAlt="@($"{entry.PostTitle} by {entry.AuthorName}, C# Advent {entry.Year}, December {entry.Day}")" />
@@ -22,6 +22,10 @@
     <article class="max-w-3xl">
         <p class="text-sm font-semibold uppercase tracking-wide text-advent-700">@entry.Spot</p>
         <h1 class="mt-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">@entry.PostTitle</h1>
+        @if (entry.PostSummary is { } summary)
+        {
+            <p class="mt-3 text-xl text-slate-600">@summary</p>
+        }
         <p class="mt-3 text-lg text-slate-700">
             by @if (entry.AuthorUrl is { } authorUrl)
             {
@@ -129,6 +133,13 @@ else if (_entry is { } upcoming)
         {
             await Entries.RecordAsync(_entry.SlotId, EntryHitKind.View, Via);
         }
+    }
+
+    /// <summary>The preview's description: the post's summary, if it has one, then who wrote it and when.</summary>
+    internal static string Description(EntryView entry)
+    {
+        var byline = $"By {entry.AuthorName}, for C# Advent {entry.Year}: {entry.Spot.Replace(" · ", ", ")}.";
+        return entry.PostSummary is { } summary ? $"{PostSummaries.AsSentence(summary)} {byline}" : byline;
     }
 
     // A season's calendar is on the home page until it's over, then in the archive.
