@@ -81,6 +81,7 @@ public sealed class EntryService(AdventDbContext db, AdventSchedule schedule, Ti
                 LinkedIn = s.Contributor != null ? s.Contributor.LinkedInUrl : null,
                 Facebook = s.Contributor != null ? s.Contributor.FacebookUrl : null,
                 Reddit = s.Contributor != null ? s.Contributor.RedditUsername : null,
+                X = s.Contributor != null ? s.Contributor.XUsername : null,
             })
             .ToListAsync(cancellationToken);
         var slot = slots.SingleOrDefault(s => s.Part == part);
@@ -112,7 +113,7 @@ public sealed class EntryService(AdventDbContext db, AdventSchedule schedule, Ti
             slot.PostUrl,
             slot.AuthorName,
             AuthorLinks.ForName(slot.AuthorUrl, slot.GithubLogin),
-            AuthorLinks.All(slot.AuthorUrl, slot.GithubLogin, new AuthorAccounts(slot.Bluesky, slot.Mastodon, slot.LinkedIn, slot.Facebook, slot.Reddit)),
+            AuthorLinks.All(slot.AuthorUrl, slot.GithubLogin, new AuthorAccounts(slot.Bluesky, slot.Mastodon, slot.LinkedIn, slot.Facebook, slot.Reddit, slot.X)),
             [.. slots
                 .Where(s => s.Part != part && s.PostTitle is not null && s.PostUrl is not null && s.AuthorName is not null)
                 .Select(s => new SiblingEntry(s.Part, s.PostTitle!, s.AuthorName!))],

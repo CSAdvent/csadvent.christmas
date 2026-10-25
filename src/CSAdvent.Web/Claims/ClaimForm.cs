@@ -32,6 +32,9 @@ public sealed class ClaimForm
     [SocialAccount(SocialPlatform.Reddit, ErrorMessage = "Enter a Reddit username, such as u/you.")]
     public string? Reddit { get; set; }
 
+    [SocialAccount(SocialPlatform.X, ErrorMessage = "Enter an X username, such as @you.")]
+    public string? X { get; set; }
+
     [Range(typeof(bool), "true", "true", ErrorMessage = "Agree to publish your post on your day to continue.")]
     public bool AgreeToTiming { get; set; }
 

@@ -35,9 +35,9 @@ public sealed record RequestDetails(
     IReadOnlyList<RequestListItem> OtherRequestsForSpot,
     IReadOnlyList<SpotStatus> OpenSpots);
 
-public sealed record ClaimantSocials(string? Bluesky, string? Mastodon, string? LinkedIn, string? Facebook, string? Reddit)
+public sealed record ClaimantSocials(string? Bluesky, string? Mastodon, string? LinkedIn, string? Facebook, string? Reddit, string? X)
 {
-    public bool Any => Bluesky is not null || Mastodon is not null || LinkedIn is not null || Facebook is not null || Reddit is not null;
+    public bool Any => Bluesky is not null || Mastodon is not null || LinkedIn is not null || Facebook is not null || Reddit is not null || X is not null;
 }
 
 public enum ReviewOutcome
@@ -110,7 +110,7 @@ public sealed class ClaimReviewService(AdventDbContext db, TimeProvider timeProv
             request.Status,
             request.DecidedAt,
             contributor.GithubLogin,
-            new ClaimantSocials(contributor.BlueskyHandle, contributor.MastodonHandle, contributor.LinkedInUrl, contributor.FacebookUrl, contributor.RedditUsername),
+            new ClaimantSocials(contributor.BlueskyHandle, contributor.MastodonHandle, contributor.LinkedInUrl, contributor.FacebookUrl, contributor.RedditUsername, contributor.XUsername),
             [.. spots.Where(s => s.Day == request.Slot.Day)],
             others,
             [.. spots.Where(s => s.AuthorName is null)]);

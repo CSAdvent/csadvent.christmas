@@ -106,6 +106,10 @@ else if (Message is { } message)
                     Reddit
                     <InputText @bind-Value="Form!.Reddit" maxlength="40" placeholder="u/you" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
                 </label>
+                <label class="flex flex-col text-sm font-medium text-slate-700">
+                    X
+                    <InputText @bind-Value="Form!.X" maxlength="100" placeholder="@("@you")" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                </label>
             </div>
         </fieldset>
 

@@ -49,6 +49,9 @@ public sealed class Contributor
     /// <summary>A Reddit username, without <c>u/</c>.</summary>
     public string? RedditUsername { get; set; }
 
+    /// <summary>An X username, without <c>@</c>.</summary>
+    public string? XUsername { get; set; }
+
     public DateTimeOffset CreatedAt { get; init; }
 }
 
@@ -66,6 +69,8 @@ internal sealed class ContributorConfiguration : IEntityTypeConfiguration<Contri
         builder.Property(c => c.LinkedInUrl).HasMaxLength(200).HasColumnName("linkedin_url");
         builder.Property(c => c.FacebookUrl).HasMaxLength(200);
         builder.Property(c => c.RedditUsername).HasMaxLength(20);
+        // X usernames are at most 15 characters.
+        builder.Property(c => c.XUsername).HasMaxLength(15);
 
         builder.HasIndex(c => c.GithubUserId).IsUnique();
     }

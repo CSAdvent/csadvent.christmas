@@ -26,8 +26,9 @@ public sealed class ProfileFormTests
     [Fact]
     public void SocialAccountsAreCheckedLikeTheClaimForm()
     {
-        Assert.Empty(Errors(new ProfileForm { Name = "Ada", Bluesky = "ada.bsky.social", Mastodon = "@ada@mastodon.social", Reddit = "u/ada" }));
+        Assert.Empty(Errors(new ProfileForm { Name = "Ada", Bluesky = "ada.bsky.social", Mastodon = "@ada@mastodon.social", Reddit = "u/ada", X = "@ada" }));
         Assert.Equal(["Enter a Mastodon handle, such as @you@mastodon.social."], Errors(new ProfileForm { Name = "Ada", Mastodon = "not a handle" }));
+        Assert.Equal(["Enter an X username, such as @you."], Errors(new ProfileForm { Name = "Ada", X = "ada.bsky.social" }));
     }
 
     [Fact]

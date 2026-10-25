@@ -35,6 +35,7 @@ public sealed class EntryPageTests(AppHostFixture fixture)
         Assert.Contains($"<meta property=\"og:image\" content=\"https://localhost:7092/cards/2020/{slot.Day}/{slot.Part}.jpg?v=", page);
         Assert.Contains("<meta property=\"og:image:width\" content=\"1200\"", page);
         Assert.Contains("<meta name=\"twitter:card\" content=\"summary_large_image\"", page);
+        Assert.Contains("<meta name=\"twitter:site\" content=\"@csadvent\"", page);
         Assert.Contains("<meta name=\"fediverse:creator\" content=\"@csadvent@mastodon.social\"", page);
     }
 

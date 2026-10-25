@@ -48,8 +48,9 @@ public sealed class SocialPublishException(string message) : Exception(message)
     }
 
     /// <summary>
-    /// The message in an error body: Mastodon's <c>{"error": "…"}</c>, Bluesky's <c>{"error": "…", "message": "…"}</c>, or
-    /// Facebook's <c>{"error": {"message": "…"}}</c>.
+    /// The message in an error body: Mastodon's <c>{"error": "…"}</c>, Bluesky's <c>{"error": "…", "message": "…"}</c>,
+    /// Facebook's <c>{"error": {"message": "…"}}</c>, or X's <c>{"title": "…", "detail": "…"}</c> or
+    /// <c>{"errors": [{"message": "…"}]}</c>.
     /// </summary>
     public static string? ErrorMessage(string body)
     {
@@ -75,6 +76,17 @@ public sealed class SocialPublishException(string message) : Exception(message)
                     JsonValueKind.Object when error.TryGetProperty("message", out var inner) && inner.ValueKind is JsonValueKind.String => inner.GetString(),
                     _ => null,
                 };
+            }
+
+            if (root.TryGetProperty("detail", out var detail) && detail.ValueKind is JsonValueKind.String)
+            {
+                return detail.GetString();
+            }
+
+            if (root.TryGetProperty("errors", out var errors) && errors.ValueKind is JsonValueKind.Array && errors.GetArrayLength() > 0
+                && errors[0].ValueKind is JsonValueKind.Object && errors[0].TryGetProperty("message", out var first) && first.ValueKind is JsonValueKind.String)
+            {
+                return first.GetString();
             }
 
             return null;

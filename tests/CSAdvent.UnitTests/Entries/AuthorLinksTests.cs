@@ -16,7 +16,7 @@ public sealed class AuthorLinksTests
     [Fact]
     public void ListsTheirWebsiteGitHubAndAccounts()
     {
-        var links = AuthorLinks.All("https://ada.dev", "ada", new AuthorAccounts("ada.bsky.social", "@ada@hachyderm.io", null, null, "ada_dev"));
+        var links = AuthorLinks.All("https://ada.dev", "ada", new AuthorAccounts("ada.bsky.social", "@ada@hachyderm.io", null, null, "ada_dev", "AdaCodes"));
 
         Assert.Equal(
             [
@@ -25,6 +25,7 @@ public sealed class AuthorLinksTests
                 new AuthorLink("Bluesky", "https://bsky.app/profile/ada.bsky.social"),
                 new AuthorLink("Mastodon", "https://hachyderm.io/@ada"),
                 new AuthorLink("Reddit", "https://www.reddit.com/user/ada_dev"),
+                new AuthorLink("X", "https://x.com/AdaCodes"),
             ],
             links);
     }

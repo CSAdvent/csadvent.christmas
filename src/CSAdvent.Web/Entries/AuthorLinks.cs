@@ -39,6 +39,7 @@ public static class AuthorLinks
             (SocialPlatform.LinkedIn, accounts.LinkedIn),
             (SocialPlatform.Facebook, accounts.Facebook),
             (SocialPlatform.Reddit, accounts.Reddit),
+            (SocialPlatform.X, accounts.X),
         })
         {
             if (account is not null)

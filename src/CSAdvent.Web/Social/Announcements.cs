@@ -7,9 +7,9 @@ using CSAdvent.Web.Retrospectives;
 namespace CSAdvent.Web.Social;
 
 /// <summary>The author's accounts, from the claim form, for tagging them.</summary>
-public sealed record AuthorAccounts(string? Bluesky, string? Mastodon, string? LinkedIn, string? Facebook, string? Reddit)
+public sealed record AuthorAccounts(string? Bluesky, string? Mastodon, string? LinkedIn, string? Facebook, string? Reddit, string? X)
 {
-    public static readonly AuthorAccounts None = new(null, null, null, null, null);
+    public static readonly AuthorAccounts None = new(null, null, null, null, null, null);
 }
 
 /// <summary>What every platform's announcement of an entry says. Only the formatting differs (<see cref="AnnouncementFormatter"/>).</summary>
@@ -65,6 +65,7 @@ public static partial class AnnouncementFormatter
     public const int MastodonLimit = 500;
     public const int LinkedInLimit = 3000;
     public const int RedditTitleLimit = 300;
+    public const int XLimit = 280;
 
     private const string Hashtags = "#csharp #dotnet #csadvent";
 
@@ -88,6 +89,9 @@ public static partial class AnnouncementFormatter
             SocialPlatform.Facebook => Fit(announcement, null, text => text.Length, title =>
                 Compose(announcement.When, title, announcement.Author, null, link, "#csharp #csadvent"),
                 _ => (platform, link, Hint(announcement.Accounts.Facebook), null)),
+            SocialPlatform.X => Fit(announcement, XLimit, XLength, title =>
+                Compose(announcement.When, title, announcement.Author, Mention(announcement.Accounts.X), link, Hashtags),
+                text => (platform, link, null, XComposer(text))),
             _ => Fit(announcement, RedditTitleLimit, text => text.Length, title =>
                 $"{Quote(title)} by {announcement.Author} ({announcement.When})",
                 text => (platform, link, Hint(announcement.Accounts.Reddit is { } user ? $"u/{user}" : null),
@@ -159,6 +163,7 @@ public static partial class AnnouncementFormatter
                 ours?.MastodonServer is { } server ? $"https://{server}/share?text={Uri.EscapeDataString(Post(Hashtags))}" : null),
             SocialPlatform.LinkedIn => Made(Post(Hashtags), text => text.Length, LinkedInLimit, LinkedInComposer(Post(Hashtags))),
             SocialPlatform.Facebook => Made(Post("#csharp #csadvent"), text => text.Length, null, null),
+            SocialPlatform.X => Made(Post(Hashtags), XLength, XLimit, XComposer(Post(Hashtags))),
             _ => Made(redditTitle, text => text.Length, RedditTitleLimit, $"{submit}?url={Uri.EscapeDataString(link)}&title={Uri.EscapeDataString(redditTitle)}"),
         };
     }
@@ -170,12 +175,23 @@ public static partial class AnnouncementFormatter
     public static int MastodonLength(string text) =>
         MentionDomain().Replace(Url().Replace(text, new string('x', 23)), "").Length;
 
+    /// <summary>
+    /// X counts every link as 23 characters, and anything outside Latin scripts and common punctuation (an emoji, "…",
+    /// Chinese) as two. It also links text that looks like a domain, such as "ASP.NET", so that counts as a link, or as
+    /// itself if it's longer. That overcounts names like "System.Text.Json", which only shortens a title that's nearly too long.
+    /// </summary>
+    public static int XLength(string text)
+    {
+        var counted = Domain().Replace(Url().Replace(text.Normalize(), new string('x', 23)), domain => new string('x', Math.Max(23, domain.Length)));
+        return counted.EnumerateRunes().Sum(rune => rune.Value is <= 0x10FF or (>= 0x2000 and <= 0x200D) or (>= 0x2010 and <= 0x201F) or (>= 0x2032 and <= 0x2037) ? 1 : 2);
+    }
+
     private static string Compose(string when, string title, string author, string? mention, string link, string hashtags) =>
         $"{when}: {Quote(title)} by {author}{(mention is null ? "" : $" ({mention})")}\n\n{link}\n\n{hashtags}";
 
     private static string Quote(string title) => $"“{title}”";
 
-    private static string? Mention(string? blueskyHandle) => blueskyHandle is null ? null : $"@{blueskyHandle}";
+    private static string? Mention(string? handle) => handle is null ? null : $"@{handle}";
 
     private static string? Hint(string? account) => account is null ? null : $"Tag the author: {account}";
 
@@ -184,6 +200,9 @@ public static partial class AnnouncementFormatter
     /// URL), so it may stop filling the text in one day; the Copy button is the fallback.
     /// </summary>
     private static string LinkedInComposer(string text) => $"https://www.linkedin.com/feed/?shareActive=true&text={Uri.EscapeDataString(text)}";
+
+    /// <summary>X's documented web intent, which opens its composer with the text filled in.</summary>
+    private static string XComposer(string text) => $"https://x.com/intent/tweet?text={Uri.EscapeDataString(text)}";
 
     /// <summary>Builds the text, shortening the title with an ellipsis until it fits the limit.</summary>
     private static FormattedAnnouncement Fit(
@@ -211,4 +230,8 @@ public static partial class AnnouncementFormatter
     // "@user@server" counts as "@user".
     [GeneratedRegex(@"(?<=@[A-Za-z0-9_]+)@[A-Za-z0-9.\-]+")]
     private static partial Regex MentionDomain();
+
+    // "ASP.NET", "csadvent.christmas/2026", but not "e.g." or "C# 14.0".
+    [GeneratedRegex(@"(?<![\w@.])(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}(?:/\S*)?(?!\w)")]
+    private static partial Regex Domain();
 }

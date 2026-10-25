@@ -83,6 +83,7 @@ public sealed record SourceClicks(string Source, int Clicks)
         "facebook" => "Facebook",
         "linkedin" => "LinkedIn",
         "reddit" => "Reddit",
+        "x" => "X",
         "retrospective" => "Retrospectives",
         RetrospectiveCalculator.Direct => "Shared and direct links",
         _ => "Elsewhere",

@@ -25,7 +25,7 @@ public enum ClaimOutcome
 public sealed record ClaimableSlot(int SlotId, int Year, int Day, int Part, int SlotsPerDay, ClaimAvailability Availability);
 
 /// <summary>What the claim form shows and prefills for the signed-in contributor.</summary>
-public sealed record ClaimantDetails(string? VerifiedEmail, string? Bluesky, string? Mastodon, string? LinkedIn, string? Facebook, string? Reddit, string? DisplayName, string? WebsiteUrl);
+public sealed record ClaimantDetails(string? VerifiedEmail, string? Bluesky, string? Mastodon, string? LinkedIn, string? Facebook, string? Reddit, string? X, string? DisplayName, string? WebsiteUrl);
 
 /// <summary>
 /// Claim requests: a signed-in contributor asks for an open slot and the organizer approves one request per slot. Requests
@@ -71,6 +71,7 @@ public sealed class ClaimService(AdventDbContext db, AdventSchedule schedule, Ti
                 c.LinkedInUrl,
                 c.FacebookUrl,
                 c.RedditUsername,
+                c.XUsername,
                 c.DisplayName,
                 c.WebsiteUrl))
             .SingleOrDefaultAsync(cancellationToken);
@@ -115,6 +116,7 @@ public sealed class ClaimService(AdventDbContext db, AdventSchedule schedule, Ti
         contributor.LinkedInUrl = Normalize(SocialPlatform.LinkedIn, form.LinkedIn);
         contributor.FacebookUrl = Normalize(SocialPlatform.Facebook, form.Facebook);
         contributor.RedditUsername = Normalize(SocialPlatform.Reddit, form.Reddit);
+        contributor.XUsername = Normalize(SocialPlatform.X, form.X);
 
         try
         {

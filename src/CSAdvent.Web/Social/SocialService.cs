@@ -63,7 +63,7 @@ public sealed class SocialService(
                 Author = s.AuthorName!,
                 Accounts = s.Contributor == null
                     ? null
-                    : new AuthorAccounts(s.Contributor.BlueskyHandle, s.Contributor.MastodonHandle, s.Contributor.LinkedInUrl, s.Contributor.FacebookUrl, s.Contributor.RedditUsername),
+                    : new AuthorAccounts(s.Contributor.BlueskyHandle, s.Contributor.MastodonHandle, s.Contributor.LinkedInUrl, s.Contributor.FacebookUrl, s.Contributor.RedditUsername, s.Contributor.XUsername),
             })
             .ToListAsync(cancellationToken);
 

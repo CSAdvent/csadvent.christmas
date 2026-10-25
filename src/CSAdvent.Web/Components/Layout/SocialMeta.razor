@@ -1,8 +1,9 @@
 @*
     The tags link previews read: Open Graph (Facebook, LinkedIn, Mastodon, Bluesky, Reddit, Slack, Teams), the large-image
-    card that Discord and others take from the Twitter tags, and Mastodon's author credit. URLs are absolute, and the
-    canonical URL drops the query string, so ?via= tags don't split a page into many. A page gets one HeadContent (the last
-    one rendered wins), so other head tags go in this component's child content.
+    card that X, Discord and others take from the Twitter tags, and our accounts on X and Mastodon (twitter:site and
+    fediverse:creator). URLs are absolute, and the canonical URL drops the query string, so ?via= tags don't split a page
+    into many. A page gets one HeadContent (the last one rendered wins), so other head tags go in this component's child
+    content.
 *@
 @using Microsoft.Extensions.Options
 @using CSAdvent.Web.Social
@@ -23,6 +24,10 @@
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="@ImageAlt" />
     <meta name="twitter:card" content="summary_large_image" />
+    @if (Accounts.Value.X is { Length: > 0 } site)
+    {
+        <meta name="twitter:site" content="@($"@{site}")" />
+    }
     @if (Accounts.Value.Mastodon is { Length: > 0 } creator)
     {
         <meta name="fediverse:creator" content="@creator" />

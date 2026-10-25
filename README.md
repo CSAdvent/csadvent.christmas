@@ -108,7 +108,7 @@ dotnet test
 - 🙋 **Older posts:** wrote for an earlier season? Find your posts on My spots, or from the post's page, and ask for them to be added to your account. Every request emails the organizers, who approve or decline it at `/manage/authors/requests`. A post already on someone else's account goes through hello@csadvent.christmas instead
 - 🚚 **Moved your blog?** Authors give their older posts' new links in one go from My spots (`/my-spots/links`). An organizer checks them and approves or declines the whole request at `/manage/authors/link-changes`, and can change any author's links directly from their author page. The calendar, the archive and entry pages link through `/go`, so a new link applies to all of them at once
 - 🪪 **Profiles:** contributors set the name, website and social accounts they're credited with at `/profile`, and can put them on every spot they've had. It fills in their next claim
-- 🐙 **Accounts from GitHub:** the first sign-in fills in any Bluesky, Mastodon, LinkedIn, Facebook or Reddit account linked on the contributor's GitHub profile, and **Fill in from GitHub** on their profile does it again
+- 🐙 **Accounts from GitHub:** the first sign-in fills in any Bluesky, Mastodon, LinkedIn, Facebook, Reddit or X account linked on the contributor's GitHub profile, and **Fill in from GitHub** on their profile does it again
 - 🔗 **Author links:** an author's name links to their website or blog, or to their GitHub profile if they didn't give one. Social media profiles go in their own fields, and each entry's page links the author's website, GitHub and social accounts
 - 👥 **Authors:** organizers see every author across every season at `/manage/authors`, with each season linking to the post. They can edit anyone's profile, combine names that belong to the same person, and rename or link archive authors
 
@@ -129,9 +129,9 @@ dotnet test
 ## 📣 Social Announcements
 
 - 📆 **Sign-ups posts** at `/manage/social/signups`: "sign-ups open in 8 days" whenever you like, and "sign-ups are open", which Automatic platforms post by themselves at 9 AM Eastern on the day
-- 🤖 **Automatic posting** to Mastodon, Bluesky and the Facebook Page: each platform is Automatic, Manual or Off on `/manage/social`, changed without a redeploy. Automatic ones post each entry at 10 AM (post 1) or 2 PM (post 2) Eastern on its day, or as soon as its link arrives (or its blurb check passes) after that, exactly once even with several replicas. Failures retry a few times, then show the platform's error with a **Retry now** button. **Send a test post** posts a labelled test, formatted like an announcement, to check how posts look. Each Automatic platform's credentials are checked every morning, and the organizers get an email if one stops working. Development and the tests use dry-run mode, which only logs, so they never reach a real account
+- 🤖 **Automatic posting** to Mastodon, Bluesky, the Facebook Page and X: each platform is Automatic, Manual or Off on `/manage/social`, changed without a redeploy. Automatic ones post each entry at 10 AM (post 1) or 2 PM (post 2) Eastern on its day, or as soon as its link arrives (or its blurb check passes) after that, exactly once even with several replicas. Failures retry a few times, then show the platform's error with a **Retry now** button. **Send a test post** posts a labelled test, formatted like an announcement, to check how posts look. Each Automatic platform's credentials are checked every morning, and the organizers get an email if one stops working. Development and the tests use dry-run mode, which only logs, so they never reach a real account
 
-- 📋 **Organizers get every day's announcements at `/manage/social`**: one per post for Bluesky, Mastodon, LinkedIn, Facebook and Reddit, with the same content, each platform's formatting and limits, Copy buttons and composer links
+- 📋 **Organizers get every day's announcements at `/manage/social`**: one per post for Bluesky, Mastodon, LinkedIn, Facebook, Reddit and X, with the same content, each platform's formatting and limits, Copy buttons and composer links
 - ✅ **Mark as posted** keeps track of what's gone out where. Links go to our entry pages, tagged with the platform
 
 ## 🛟 Backup Posters
@@ -154,7 +154,7 @@ dotnet test
 
 ## 🔗 Entry Pages
 
-- 📄 **Every revealed post has its own page** at `/{year}/day/{day}/{part}`, with preview tags for Facebook, LinkedIn, Mastodon, Bluesky, Reddit, Slack, Teams and Discord
+- 📄 **Every revealed post has its own page** at `/{year}/day/{day}/{part}`, with preview tags for Facebook, LinkedIn, Mastodon, Bluesky, Reddit, X, Slack, Teams and Discord
 - 🖼️ **Shared links get a generated card** showing the post's title, author and day (seasons get one too), drawn with SkiaSharp and the embedded Inter font
 - 📡 **RSS:** `/rss` has every revealed post from every season, newest first, and `/archive/{year}/rss` has one season
 - 📈 **Read the post** goes through `/go/...`, which counts the click (people only, nothing personal) and redirects to the post. Links we publish carry `?via=` (bluesky, rss, email, calendar...), so the stats show where readers came from
@@ -232,6 +232,13 @@ One-time setup (`<sub>` is the subscription ID):
      6. Switch the app to **Live** mode (it asks for the privacy policy, `https://csadvent.christmas/privacy`). Posts from an app in Development mode can be visible only to people with a role on it.
 
      Changing the Facebook password, or losing the Page role, invalidates the Page token, so check it on `/manage/social` each November.
+   - X: secrets `X_API_KEY`, `X_API_KEY_SECRET`, `X_ACCESS_TOKEN` and `X_ACCESS_TOKEN_SECRET` (all four, or X stays copy and paste). X's API is paid per use from prepaid credits: in October 2026 a post with a link (every announcement) cost $0.20, so a season is about $10–15, and the daily credential check about a cent while X is Automatic. Set X back to Manual after the season to stop the checks.
+     1. Sign in at [console.x.com](https://console.x.com) **as `@csadvent`** (the access token is always for the account that owns the app), accept the Developer Agreement and Policy, and describe the use: posting C# Advent's own announcements.
+     2. Buy credits with a card, and set a **spending limit** per billing cycle. X's first-purchase bonus credits expire after 3 months, so buy close to the season.
+     3. Create a **New App**. Copy its **API Key and Secret** straight away (they're shown once): `X_API_KEY` and `X_API_KEY_SECRET`.
+     4. In the app's **User authentication settings**, set the permissions to **Read and write**, the type to **Automated App / Bot**, and `https://csadvent.christmas` wherever it asks for a website or callback URL.
+     5. Generate the **Access Token and Secret**: `X_ACCESS_TOKEN` and `X_ACCESS_TOKEN_SECRET`. Do it after step 4: tokens made before the switch to Read and write stay read-only, so regenerate them if you changed the permissions later.
+     6. Add the four secrets (`gh secret set X_API_KEY --env production` and so on), deploy, then on `/manage/social` press **Check**, **Send a test post** (it costs a post), and set X to **Automatic**.
 5. ✍️ **Optional: the blurb check** (#128). Add the secret `ANTHROPIC_API_KEY`, an API key from the [Anthropic Console](https://console.anthropic.com) (set a monthly spend limit on its workspace while you're there; a season costs cents). Posts are checked from the next deploy. Without it they aren't, and nothing is held.
 
 The new revision of the site starts before the migrations job runs, so keep each migration safe for the code before it: add columns and tables first, and only remove them in a later release.

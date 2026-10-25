@@ -6,7 +6,7 @@ public static class EntryVia
     /// <summary>Everywhere we put links: the platforms we post to, our own emails, feed and pages, and the retrospectives.</summary>
     public static readonly IReadOnlySet<string> Known = new HashSet<string>(StringComparer.Ordinal)
     {
-        "bluesky", "mastodon", "facebook", "linkedin", "reddit", "rss", "email", "calendar", "site", "retrospective",
+        "bluesky", "mastodon", "facebook", "linkedin", "reddit", "x", "rss", "email", "calendar", "site", "retrospective",
     };
 
     /// <summary>A known tag, <c>other</c> for anything else, or nothing when there's no tag.</summary>
@@ -20,7 +20,7 @@ public static class EntryVia
 /// <summary>Which requests count as a person visiting: not link-preview fetchers, crawlers, scripts or prefetches.</summary>
 public static class EntryTraffic
 {
-    // Link previews (Facebook, LinkedIn, Mastodon, Bluesky, Slack, Discord, Teams...), search crawlers and scripts.
+    // Link previews (Facebook, LinkedIn, Mastodon, Bluesky, X's Twitterbot, Slack, Discord, Teams...), search crawlers and scripts.
     private static readonly string[] AutomatedAgents =
     [
         "bot", "crawl", "spider", "slurp", "preview", "facebookexternalhit", "facebookcatalog", "embedly", "mastodon", "cardyb",

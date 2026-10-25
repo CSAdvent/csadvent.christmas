@@ -21,19 +21,21 @@ public sealed class GitHubFillInTests
 
         var added = ProfileService.FillIn(contributor, Matt);
 
-        Assert.Equal([SocialPlatform.LinkedIn, SocialPlatform.Bluesky], added);
-        Assert.Equal(("https://www.linkedin.com/in/mgroves", "mgroves.com"), (contributor.LinkedInUrl, contributor.BlueskyHandle));
+        Assert.Equal([SocialPlatform.X, SocialPlatform.LinkedIn, SocialPlatform.Bluesky], added);
+        Assert.Equal(
+            ("mgroves", "https://www.linkedin.com/in/mgroves", "mgroves.com"),
+            (contributor.XUsername, contributor.LinkedInUrl, contributor.BlueskyHandle));
     }
 
     [Fact]
     public void NeverReplacesAnAccountTheyGaveUs()
     {
-        var contributor = new Contributor { GithubLogin = "mgroves", BlueskyHandle = "matt.bsky.social" };
+        var contributor = new Contributor { GithubLogin = "mgroves", BlueskyHandle = "matt.bsky.social", XUsername = "MattGroves" };
 
         var added = ProfileService.FillIn(contributor, Matt);
 
         Assert.Equal([SocialPlatform.LinkedIn], added);
-        Assert.Equal("matt.bsky.social", contributor.BlueskyHandle);
+        Assert.Equal(("matt.bsky.social", "MattGroves"), (contributor.BlueskyHandle, contributor.XUsername));
     }
 
     [Fact]
