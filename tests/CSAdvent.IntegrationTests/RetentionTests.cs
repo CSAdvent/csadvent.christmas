@@ -133,6 +133,32 @@ public sealed class RetentionTests(AppHostFixture fixture)
     }
 
     [Fact]
+    public async Task DeletesASeasonsPastAuthorInvitationsOnFebruary1()
+    {
+        // A season of this test's own: the class's other seasons are set up by the first test to ask for them.
+        const int UpcomingYear = 2132;
+        await TestSeasons.EnsureAsync(fixture, UpcomingYear, claimsOpen: false);
+        var expired = CSAdvent.Web.Email.EmailOptOutLinks.Fingerprint("invited-2019@example.com");
+        var upcoming = CSAdvent.Web.Email.EmailOptOutLinks.Fingerprint("invited-2132@example.com");
+        await using (var db = await fixture.CreateDbContextAsync())
+        {
+            db.PastAuthorInvitations.AddRange(
+                new PastAuthorInvitation { SeasonYear = 2019, Fingerprint = expired, SentAt = Now },
+                new PastAuthorInvitation { SeasonYear = UpcomingYear, Fingerprint = upcoming, SentAt = Now });
+            await db.SaveChangesAsync(CancellationToken);
+        }
+
+        await using (var db = await fixture.CreateDbContextAsync())
+        {
+            var deletion = await CreateRetention(db, Now).DeleteExpiredAsync(CancellationToken);
+
+            Assert.True(deletion.PastAuthorInvitations >= 1);
+            Assert.False(await db.PastAuthorInvitations.AnyAsync(i => i.Fingerprint == expired, CancellationToken));
+            Assert.True(await db.PastAuthorInvitations.AnyAsync(i => i.Fingerprint == upcoming, CancellationToken));
+        }
+    }
+
+    [Fact]
     public async Task DeletesRequestsForOlderPosts30DaysAfterTheyreDecided()
     {
         int oldId, recentId, pendingId;

@@ -271,6 +271,12 @@ public static class EmailCatalog
                     site);
             }),
         new(
+            "past-author-invitation",
+            "Invitation for past authors",
+            "At 9 AM Eastern on the day the current season's sign-ups open, by itself, a few at a time alongside the announcement.",
+            "Everyone who has written for C# Advent before, once per address, except announcement subscribers, anyone who already has a spot or request, and anyone who unsubscribed. It has the unsubscribe link.",
+            site => CSAdvent.Web.Announcements.PastAuthorEmails.Invitation(new CSAdvent.Web.Announcements.PastAuthor("ada@example.com", "Ada Lovelace", 3, 2019), 2026, site)),
+        new(
             "daily-share",
             "Today's posts",
             "At 9 AM Eastern each day from December 1 to 25, once at least one of the day's posts has its title and link.",

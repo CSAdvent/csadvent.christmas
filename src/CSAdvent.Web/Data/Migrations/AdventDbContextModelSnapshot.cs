@@ -16,7 +16,7 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261025185253_AddBlurbChecks";
+    public override string LastMigrationId => "20261025191116_AddPastAuthorInvitations";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -730,6 +730,43 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                     .HasDatabaseName("ix_other_advent_logos_url");
 
                 b.ToTable("other_advent_logos");
+            });
+
+        modelBuilder.Entity("CSAdvent.Web.Data.PastAuthorInvitation", b =>
+            {
+                var id = b.Property<int>("Id")
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("integer")
+                    .HasColumnName("id");
+
+                NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(id);
+
+                b.Property<string>("Fingerprint")
+                    .IsRequired()
+                    .HasMaxLength(64)
+                    .HasColumnType("character(64)")
+                    .HasColumnName("fingerprint")
+                    .IsFixedLength();
+
+                b.Property<int>("SeasonYear")
+                    .HasColumnType("integer")
+                    .HasColumnName("season_year");
+
+                b.Property<DateTimeOffset>("SentAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("sent_at");
+
+                b.HasKey("Id")
+                    .HasName("pk_past_author_invitations");
+
+                b.HasIndex("SentAt")
+                    .HasDatabaseName("ix_past_author_invitations_sent_at");
+
+                b.HasIndex("SeasonYear", "Fingerprint")
+                    .IsUnique()
+                    .HasDatabaseName("ix_past_author_invitations_season_year_fingerprint");
+
+                b.ToTable("past_author_invitations");
             });
 
         modelBuilder.Entity("CSAdvent.Web.Data.PostClaimRequest", b =>
@@ -1565,6 +1602,18 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                     .OnDelete(DeleteBehavior.Cascade)
                     .IsRequired()
                     .HasConstraintName("fk_other_advents_seasons_season_year");
+
+                b.Navigation("Season");
+            });
+
+        modelBuilder.Entity("CSAdvent.Web.Data.PastAuthorInvitation", b =>
+            {
+                b.HasOne("CSAdvent.Web.Data.Season", "Season")
+                    .WithMany()
+                    .HasForeignKey("SeasonYear")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired()
+                    .HasConstraintName("fk_past_author_invitations_seasons_season_year");
 
                 b.Navigation("Season");
             });

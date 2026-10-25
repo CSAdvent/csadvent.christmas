@@ -123,6 +123,7 @@ dotnet test
 - ✍️ **Anyone can sign up** at `/announcements` (or on the home page between seasons) with a confirmed email, kept until they unsubscribe
 - 📢 **Organizers send announcements** from `/manage/announcements`: draft, test to the organizers' inbox, then send. They go out 40 an hour, to stay under the email service's limit
 - 🗓️ **"Sign-ups are open"** goes out by itself at 9 AM Eastern on the day each season's sign-ups open
+- 💌 **Past authors are invited back** at the same time, once each, unless they're already on the list, have a spot or request, or unsubscribed
 - 🚪 **Every email has a one-click unsubscribe**, which deletes the address
 
 ## 📣 Social Announcements

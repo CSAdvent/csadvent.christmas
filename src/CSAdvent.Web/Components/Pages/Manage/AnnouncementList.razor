@@ -3,6 +3,9 @@
 @using CSAdvent.Web.Announcements
 @using Microsoft.Extensions.Options
 @inject AnnouncementService Announcements
+@inject PastAuthorInvitationService Invitations
+@inject SeasonAdminService Seasons
+@inject AdventSchedule Schedule
 @inject IOptions<AnnouncementOptions> Options
 
 <PageTitle>Announcements · Manage · C# Advent</PageTitle>
@@ -21,6 +24,29 @@
     </div>
     <a href="manage/announcements/new" class="rounded-lg bg-advent-600 px-4 py-2 font-semibold text-white hover:bg-advent-700">New announcement</a>
 </div>
+
+@if (_invitations is { } invitations)
+{
+    <section class="mt-8 max-w-3xl rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200" aria-labelledby="past-authors">
+        <h2 id="past-authors" class="font-semibold text-slate-900">Past authors, C# Advent @invitations.Year</h2>
+        <p class="mt-1 text-sm text-slate-600">
+            @if (invitations.Sent > 0)
+            {
+                <text>Invited @Plural(invitations.Sent, "past author") so far@(invitations.Waiting > 0 ? $", with {invitations.Waiting} still to go, a few at a time" : ", and that's everyone").</text>
+            }
+            else if (invitations.OpensAt is { } opensAt)
+            {
+                <text>@Plural(invitations.Waiting, "past author") will be invited at 9 AM Eastern on @Schedule.ToLocalTime(opensAt).ToString("MMMM d", CultureInfo.InvariantCulture), when sign-ups open.</text>
+            }
+            else
+            {
+                <text>@Plural(invitations.Waiting, "past author") will be invited on the day sign-ups open, once they're scheduled.</text>
+            }
+            Everyone who's written before gets one, once, unless they're on this list (they get the announcement), already have
+            a spot or a request, or unsubscribed.
+        </p>
+    </section>
+}
 
 @if (_rows.Count == 0)
 {
@@ -65,11 +91,20 @@ else
 @code {
     private IReadOnlyList<AnnouncementRow> _rows = [];
     private SubscriberCounts _counts = new(0, 0);
+    private InvitationStatus? _invitations;
+
+    /// <summary>The season whose past author invitations to show, instead of the current one.</summary>
+    [SupplyParameterFromQuery]
+    public int? Year { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
         _counts = await Announcements.CountSubscribersAsync();
         _rows = await Announcements.ListAsync();
+        if ((Year ?? await Seasons.GetCurrentYearAsync()) is { } year)
+        {
+            _invitations = await Invitations.GetStatusAsync(year);
+        }
     }
 
     private static string Plural(int count, string noun) => string.Create(CultureInfo.InvariantCulture, $"{count} {noun}{(count == 1 ? "" : "s")}");

@@ -14,7 +14,7 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 |---|---|---|
 | September | The home page starts counting down to sign-ups | Automatic |
 | September–October | Create the season, refresh copy, run a test round, check social posting | Organizers |
-| November 1 | Sign-ups open; the announcements list and the Automatic social platforms hear about it at 9 AM | Automatic, once the season is scheduled; LinkedIn and Reddit by hand from `/manage/social/signups` |
+| November 1 | Sign-ups open; the announcements list, past authors and the Automatic social platforms hear about it at 9 AM | Automatic, once the season is scheduled; LinkedIn and Reddit by hand from `/manage/social/signups` |
 | November | Approve requests, watch the backup list | Organizers |
 | Any time | Check requests to add older posts to people's accounts, and for new links to older posts (each one emails the organizers) | Organizers |
 | From 7 days before each day | "Your post is due" reminders, then a last call on the day | Automatic |
@@ -76,6 +76,8 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 - **Backup posters** sign up at `/backups/{year}`, and you can see them at `/manage/backups`. Point people there once
   the calendar fills up.
 - **Authors** add their post's title and URL themselves on My spots. Nobody sends them by email.
+- **Past authors** get an invitation by themselves at 9 AM on the day sign-ups open, a few at a time alongside the
+  announcement. `/manage/announcements` shows how many are going out. Nothing to do.
 
 ---
 
