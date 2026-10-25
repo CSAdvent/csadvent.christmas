@@ -330,7 +330,8 @@ Lines marked ✏️ **To fill in** are for the organizers: they aren't written d
 **The limits now:** Azure Communication Services lets C# Advent send **30 emails a minute and 100 an hour**, the default
 for a custom domain. They're **per subscription**, so everything the site sends shares them:
 
-- claim emails (two per claim: one to the contributor, one to the organizers);
+- claim emails (two per claim: one to the contributor, one to the organizers; then one more when it's approved or
+  declined). One person can have 3 requests waiting and make 5 an hour, so nobody can use the limit up alone (#137);
 - announcements and past-author invitations;
 - post link reminders and the last call;
 - the daily email;
