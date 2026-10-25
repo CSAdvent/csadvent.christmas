@@ -52,6 +52,8 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
    2. Set each to **Automatic**.
 
    LinkedIn and Reddit are always copy and paste. X is paid per use, so make sure its app has credit for the season.
+   If Facebook's check says a permission "must be granted before impersonating a user's page", Meta has probably limited
+   the app until you answer a request in its developer portal (the README's Facebook setup has the rest).
 7. **Check email:** send yourself a sample from `/manage/emails`, and send a test email to hello@csadvent.christmas from
    another address (it forwards through ImprovMX).
 8. **Keep the stack current:** dependency updates, and a deploy (every merge to `main` deploys).
