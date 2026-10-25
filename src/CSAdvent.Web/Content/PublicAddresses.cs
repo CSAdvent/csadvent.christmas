@@ -4,9 +4,9 @@ using System.Net.Sockets;
 namespace CSAdvent.Web.Content;
 
 /// <summary>
-/// Keeps the logo fetcher on the public internet. Organizers type the addresses it visits, and a redirect can point anywhere,
-/// so every connection is checked, not just the first URL: nothing on the container's network, localhost, or the cloud
-/// metadata endpoint (169.254.169.254).
+/// Keeps the logo fetcher and the blurb check's post fetcher on the public internet. Organizers and authors type the addresses
+/// they visit, and a redirect can point anywhere, so every connection is checked, not just the first URL: nothing on the
+/// container's network, localhost, or the cloud metadata endpoint (169.254.169.254).
 /// </summary>
 public static class PublicAddresses
 {
@@ -23,7 +23,7 @@ public static class PublicAddresses
         {
             var addresses = await Dns.GetHostAddressesAsync(context.DnsEndPoint.Host, cancellationToken);
             var address = addresses.FirstOrDefault(IsPublic)
-                ?? throw new HttpRequestException($"{context.DnsEndPoint.Host} isn't a public address, so its logo isn't fetched.");
+                ?? throw new HttpRequestException($"{context.DnsEndPoint.Host} isn't a public address, so it isn't fetched.");
 
             var socket = new Socket(address.AddressFamily, SocketType.Stream, ProtocolType.Tcp) { NoDelay = true };
             try

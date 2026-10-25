@@ -1,10 +1,12 @@
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
+using CSAdvent.Web.Blurbs;
 using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Claims;
 using CSAdvent.Web.Content;
 using CSAdvent.Web.Data;
 using CSAdvent.Web.Email;
+using CSAdvent.Web.Social.Posting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Npgsql;
@@ -34,6 +36,9 @@ public enum BackupOfferOutcome
 
     TakenByOthers,
     NotFound,
+
+    /// <summary>Filling in for a missing blurb, but their own post doesn't open with it either.</summary>
+    MissingBlurb,
 }
 
 /// <summary>A backup's view of one ask, for the offer page.</summary>
@@ -44,7 +49,11 @@ public sealed record BackupOfferView(
     BackupOfferStatus Status,
     bool TakenByOthers,
     bool IsDayOver,
-    BackupAcceptForm Values);
+    BackupAcceptForm Values)
+{
+    /// <summary>For a missing blurb: when the original author's time runs out, and a backup standing by takes the spot.</summary>
+    public DateTimeOffset? Deadline { get; init; }
+}
 
 /// <summary>
 /// Backup posters filling spots, asked one at a time in sign-up order (see the decisions on #36). A spot needs a backup when
@@ -53,6 +62,9 @@ public sealed record BackupOfferView(
 /// it straight away</item>
 /// <item>it still has no post link at <see cref="BackupOptions.AskFrom"/> on the evening before its day: a backup who accepts
 /// takes it at the reveal (midnight), unless the original author's link arrives first</item>
+/// <item>on its day, its post doesn't open with the C# Advent blurb (#128): a backup whose own post has it takes the spot at
+/// the deadline (its announcement), unless the original author adds the blurb first, or straight away if an organizer asked
+/// for a backup</item>
 /// </list>
 /// Each backup has <see cref="BackupOptions.AnswerWithin"/> before the next is asked too; anyone asked can accept while the
 /// spot still needs a post. When everybody's been asked, the organizers hear about it once.
@@ -62,7 +74,9 @@ public sealed partial class BackupService(
     AdventSchedule schedule,
     EmailComposer composer,
     IEmailSender sender,
+    BlurbChecker blurbs,
     IOptions<BackupOptions> options,
+    IOptions<SocialPostingOptions> posting,
     IOptions<SiteOptions> site,
     ILogger<BackupService> logger)
 {
@@ -71,20 +85,48 @@ public sealed partial class BackupService(
         schedule.FromLocalTime(schedule.GetDate(year, day).AddDays(-1).ToDateTime(options.Value.AskFrom));
 
     /// <summary>
-    /// Whether a backup could still fill the slot: it was dropped, or it has no post link, and its day isn't over. Anyone who
-    /// was asked can accept while this holds.
+    /// Whether a backup could still fill the slot, and its day isn't over: it was dropped, it has no post link, or its post's
+    /// blurb is missing. Anyone who was asked can accept while this holds.
     /// </summary>
-    public BackupReason? CouldUseBackup(Slot slot, DateTimeOffset now) =>
+    /// <param name="blurb">The slot's blurb check, if it's about the slot's current post.</param>
+    public BackupReason? CouldUseBackup(Slot slot, DateTimeOffset now, BlurbCheck? blurb = null) =>
         now >= schedule.GetDayEndTime(slot.SeasonYear, slot.Day) ? null
         : slot.AuthorName is null ? (slot.DroppedOutAt is not null ? BackupReason.DroppedOut : null)
         : slot.PostUrl is null ? BackupReason.LinkMissing
+        : blurb is { Status: BlurbStatus.Missing } && blurb.PostUrl == slot.PostUrl && BlurbRules.AppliesTo(slot.SeasonYear)
+            ? BackupReason.BlurbMissing
         : null;
 
-    /// <summary>Whether it's time to ask backups about the slot: as soon as it's dropped, or from the evening before if its link is missing.</summary>
-    public BackupReason? NeedsBackup(Slot slot, DateTimeOffset now) =>
-        CouldUseBackup(slot, now) is BackupReason.LinkMissing && now < GetAskStart(slot.SeasonYear, slot.Day)
-            ? null
-            : CouldUseBackup(slot, now);
+    /// <summary>
+    /// Whether it's time to ask backups about the slot: as soon as it's dropped, from the evening before if its link is missing,
+    /// and from the reveal if its blurb is (or straight away once an organizer asks for a backup).
+    /// </summary>
+    public BackupReason? NeedsBackup(Slot slot, DateTimeOffset now, BlurbCheck? blurb = null) => CouldUseBackup(slot, now, blurb) switch
+    {
+        BackupReason.LinkMissing when now < GetAskStart(slot.SeasonYear, slot.Day) => null,
+        BackupReason.BlurbMissing when now < schedule.GetRevealTime(slot) && blurb?.BackupRequestedAt is null => null,
+        var reason => reason,
+    };
+
+    /// <summary>For a missing blurb: when the original author's time runs out, the post's announcement.</summary>
+    public DateTimeOffset GetBlurbDeadline(Slot slot) => BlurbRules.Deadline(schedule, posting.Value, slot.SeasonYear, slot.Day, slot.Part);
+
+    /// <summary>
+    /// Whether a backup who accepted takes the spot now: a dropped spot straight away, a missing link at the reveal, and a missing
+    /// blurb at its deadline, or straight away once an organizer asked for a backup.
+    /// </summary>
+    private bool IsDue(BackupReason reason, Slot slot, BlurbCheck? blurb, DateTimeOffset now) => reason switch
+    {
+        BackupReason.DroppedOut => true,
+        BackupReason.BlurbMissing => now >= GetBlurbDeadline(slot) || blurb?.BackupRequestedAt is not null,
+        _ => now >= schedule.GetRevealTime(slot.SeasonYear, slot.Day),
+    };
+
+    /// <summary>The slot's blurb check, if it's about the slot's current post.</summary>
+    private Task<BlurbCheck?> BlurbOfAsync(Slot slot, CancellationToken cancellationToken) =>
+        slot.PostUrl is null
+            ? Task.FromResult<BlurbCheck?>(null)
+            : db.BlurbChecks.AsNoTracking().SingleOrDefaultAsync(c => c.SlotId == slot.Id && c.PostUrl == slot.PostUrl, cancellationToken);
 
     /// <summary>
     /// Moves every spot along: closes offers that aren't needed, uses acceptances that are due, and asks the next backups.
@@ -102,7 +144,9 @@ public sealed partial class BackupService(
             // Spots that might need a backup, and spots with offers that might need closing.
             var slotIds = await db.Slots
                 .Where(s => s.SeasonYear == year
-                    && ((s.AuthorName == null && s.DroppedOutAt != null) || (s.AuthorName != null && s.PostUrl == null)))
+                    && ((s.AuthorName == null && s.DroppedOutAt != null)
+                        || (s.AuthorName != null && s.PostUrl == null)
+                        || (s.AuthorName != null && db.BlurbChecks.Any(c => c.SlotId == s.Id && c.PostUrl == s.PostUrl && c.Status == BlurbStatus.Missing))))
                 .Select(s => s.Id)
                 .Union(db.BackupOffers
                     .Where(o => o.Slot.SeasonYear == year && (o.Status == BackupOfferStatus.Asked || o.Status == BackupOfferStatus.Accepted))
@@ -133,11 +177,12 @@ public sealed partial class BackupService(
         var takenByOthers = await db.BackupOffers.AnyAsync(
             o => o.SlotId == offer.SlotId && o.Id != offer.Id && (o.Status == BackupOfferStatus.Accepted || o.Status == BackupOfferStatus.Used),
             cancellationToken);
+        var reason = CouldUseBackup(offer.Slot, now, await BlurbOfAsync(offer.Slot, cancellationToken));
 
         return new BackupOfferView(
             offer.Id,
             SpotOf(offer.Slot),
-            CouldUseBackup(offer.Slot, now),
+            reason,
             offer.Status,
             takenByOthers,
             now >= schedule.GetDayEndTime(offer.Slot.SeasonYear, offer.Slot.Day),
@@ -147,7 +192,10 @@ public sealed partial class BackupService(
                 AuthorUrl = offer.AuthorUrl ?? offer.Substitute.Link,
                 PostTitle = offer.PostTitle,
                 PostUrl = offer.PostUrl,
-            });
+            })
+        {
+            Deadline = reason is BackupReason.BlurbMissing ? GetBlurbDeadline(offer.Slot) : null,
+        };
     }
 
     /// <summary>A backup taking a spot with their post. Anyone who was asked can, while the spot still needs one.</summary>
@@ -169,9 +217,18 @@ public sealed partial class BackupService(
             return BackupOfferOutcome.StandingBy;
         }
 
-        if (CouldUseBackup(offer.Slot, now) is not { } reason)
+        var blurb = await BlurbOfAsync(offer.Slot, cancellationToken);
+        if (CouldUseBackup(offer.Slot, now, blurb) is not { } reason)
         {
             return BackupOfferOutcome.NoLongerNeeded;
+        }
+
+        // Filling in for a missing blurb on the day, their post has to be out already and have the blurb itself. Anything the
+        // models can't settle is accepted, and the post is checked again once it's on the calendar.
+        if (reason is BackupReason.BlurbMissing && Uri.TryCreate(form.PostUrl?.Trim(), UriKind.Absolute, out var postUrl)
+            && (await blurbs.CheckAsync(offer.Slot.SeasonYear, postUrl, unchanged: null, cancellationToken)).Outcome.Status is BlurbStatus.Missing)
+        {
+            return BackupOfferOutcome.MissingBlurb;
         }
 
         offer.Status = BackupOfferStatus.Accepted;
@@ -190,7 +247,7 @@ public sealed partial class BackupService(
             return BackupOfferOutcome.TakenByOthers;
         }
 
-        if (reason is BackupReason.DroppedOut || now >= schedule.GetRevealTime(offer.Slot.SeasonYear, offer.Slot.Day))
+        if (IsDue(reason, offer.Slot, blurb, now))
         {
             var others = await db.BackupOffers
                 .Where(o => o.SlotId == offer.SlotId && o.Id != offer.Id && o.Status == BackupOfferStatus.Asked)
@@ -231,20 +288,20 @@ public sealed partial class BackupService(
             .OrderBy(o => o.AskedAt)
             .ToListAsync(cancellationToken);
         var open = offers.Where(o => o.Status is BackupOfferStatus.Asked or BackupOfferStatus.Accepted).ToList();
+        var blurb = await BlurbOfAsync(slot, cancellationToken);
 
-        if (CouldUseBackup(slot, now) is not { } stillNeeded)
+        if (CouldUseBackup(slot, now, blurb) is not { } stillNeeded)
         {
             return await CloseAsync(slot, open, now, cancellationToken);
         }
 
         if (open.FirstOrDefault(o => o.Status is BackupOfferStatus.Accepted) is { } accepted)
         {
-            var due = stillNeeded is BackupReason.DroppedOut || now >= schedule.GetRevealTime(slot.SeasonYear, slot.Day);
-            return due ? await UseAsync(slot, accepted, open.Where(o => o != accepted), stillNeeded, cancellationToken) : BackupRun.None;
+            return IsDue(stillNeeded, slot, blurb, now) ? await UseAsync(slot, accepted, open.Where(o => o != accepted), stillNeeded, cancellationToken) : BackupRun.None;
         }
 
-        // A missing link isn't chased until the evening before.
-        if (NeedsBackup(slot, now) is not { } reason)
+        // A missing link isn't chased until the evening before, or a missing blurb until the reveal.
+        if (NeedsBackup(slot, now, blurb) is not { } reason)
         {
             return BackupRun.None;
         }
@@ -291,7 +348,8 @@ public sealed partial class BackupService(
             SlotId = slot.Id,
             SubstituteId = candidate.Id,
             AskedAt = now,
-            ExpiresAt = now + options.Value.AnswerWithin,
+            // On the day, a missing blurb's deadline is hours away, so each backup gets less time.
+            ExpiresAt = now + (reason is BackupReason.BlurbMissing ? options.Value.AnswerWithinOnTheDay : options.Value.AnswerWithin),
             Status = BackupOfferStatus.Asked,
         };
         db.BackupOffers.Add(offer);
@@ -314,7 +372,8 @@ public sealed partial class BackupService(
                 reason,
                 string.Create(CultureInfo.InvariantCulture, $"{answerBy:h:mm tt} Eastern on {answerBy:MMMM d}"),
                 $"{Site}/backups/offers/{offer.Id}",
-                site.Value),
+                site.Value,
+                reason is BackupReason.BlurbMissing ? Eastern(GetBlurbDeadline(slot)) : null),
             new EmailRecipient(candidate.Email, candidate.Name),
             "backup ask",
             slot.Id,
@@ -325,7 +384,7 @@ public sealed partial class BackupService(
     /// <summary>Puts the backup's post on the calendar in place of the spot's author (if any), who's never named again.</summary>
     private async Task<BackupRun> UseAsync(Slot slot, BackupOffer offer, IEnumerable<BackupOffer> others, BackupReason reason, CancellationToken cancellationToken)
     {
-        var original = reason is BackupReason.LinkMissing && slot.AuthorName is { } author && slot.Contact is { } contact
+        var original = reason is BackupReason.LinkMissing or BackupReason.BlurbMissing && slot.AuthorName is { } author && slot.Contact is { } contact
             ? new EmailRecipient(contact.Email, author)
             : null;
         var substitute = offer.Substitute ?? await db.Substitutes.SingleAsync(s => s.Id == offer.SubstituteId, cancellationToken);
@@ -369,7 +428,7 @@ public sealed partial class BackupService(
         await SendAsync(BackupEmails.SpotFilled(substitute.Name, spot, reason, site.Value), Organizers, "spot filled", slot.Id, cancellationToken);
         if (original is not null)
         {
-            await SendAsync(BackupEmails.Replaced(original.Name!, spot, site.Value), original, "author replaced", slot.Id, cancellationToken);
+            await SendAsync(BackupEmails.Replaced(original.Name!, spot, site.Value, reason), original, "author replaced", slot.Id, cancellationToken);
         }
 
         return BackupRun.None with { Used = 1 };
@@ -452,6 +511,13 @@ public sealed partial class BackupService(
     }
 
     private static BackupSpot SpotOf(Slot slot) => new(slot.SeasonYear, slot.Day, slot.Part, slot.Season.SlotsPerDay);
+
+    /// <summary>A time as emails give it: "10:00 AM Eastern on December 6".</summary>
+    private string Eastern(DateTimeOffset moment)
+    {
+        var local = schedule.ToLocalTime(moment);
+        return string.Create(CultureInfo.InvariantCulture, $"{local:h:mm tt} Eastern on {local:MMMM d}");
+    }
 
     private EmailRecipient Organizers => new(site.Value.ContactEmail, "C# Advent organizers");
 

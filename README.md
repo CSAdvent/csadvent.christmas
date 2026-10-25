@@ -128,7 +128,7 @@ dotnet test
 ## 📣 Social Announcements
 
 - 📆 **Sign-ups posts** at `/manage/social/signups`: "sign-ups open in 8 days" whenever you like, and "sign-ups are open", which Automatic platforms post by themselves at 9 AM Eastern on the day
-- 🤖 **Automatic posting** to Mastodon, Bluesky and the Facebook Page: each platform is Automatic, Manual or Off on `/manage/social`, changed without a redeploy. Automatic ones post each entry at 10 AM (post 1) or 2 PM (post 2) Eastern on its day, or as soon as its link arrives after that, exactly once even with several replicas. Failures retry a few times, then show the platform's error with a **Retry now** button. **Send a test post** posts a labelled test, formatted like an announcement, to check how posts look. Each Automatic platform's credentials are checked every morning, and the organizers get an email if one stops working. Development and the tests use dry-run mode, which only logs, so they never reach a real account
+- 🤖 **Automatic posting** to Mastodon, Bluesky and the Facebook Page: each platform is Automatic, Manual or Off on `/manage/social`, changed without a redeploy. Automatic ones post each entry at 10 AM (post 1) or 2 PM (post 2) Eastern on its day, or as soon as its link arrives (or its blurb check passes) after that, exactly once even with several replicas. Failures retry a few times, then show the platform's error with a **Retry now** button. **Send a test post** posts a labelled test, formatted like an announcement, to check how posts look. Each Automatic platform's credentials are checked every morning, and the organizers get an email if one stops working. Development and the tests use dry-run mode, which only logs, so they never reach a real account
 
 - 📋 **Organizers get every day's announcements at `/manage/social`**: one per post for Bluesky, Mastodon, LinkedIn, Facebook and Reddit, with the same content, each platform's formatting and limits, Copy buttons and composer links
 - ✅ **Mark as posted** keeps track of what's gone out where. Links go to our entry pages, tagged with the platform
@@ -138,7 +138,18 @@ dotnet test
 - 🙋 **Anyone signed in can join a season's backup list** at `/backups/{year}`, kept in sign-up order
 - 📨 **Spots are offered one backup at a time**, 4 hours each: straight away when an author drops out, or from 6 PM Eastern the evening before a day whose post link is still missing
 - ✅ **A backup who accepts takes the spot**: immediately for a dropped spot, or at the reveal if the original author's link hasn't arrived by then
+- ✍️ **A post without the C# Advent blurb** lines up a backup from the reveal, an hour each, and one who accepts (with the blurb in their own post) takes the spot at the post's announcement, unless the author adds it first
 - 🧪 **Try it** without waiting for December: `POST https://localhost:7092/dev/backups/run?at=2026-12-04T23:00:00Z` (Development only)
+
+## ✍️ The C# Advent Blurb
+
+- 📌 **Every post opens with the blurb** from 2026 on: a sentence saying it's part of that year's C# Advent calendar, with a link to csadvent.christmas, in the author's own words. My spots has one ready to paste, as text, Markdown or HTML
+- 🔎 **Each post is checked automatically** from the day before its reveal: we fetch it ourselves (public addresses only), read the top of the article, and fail it straight away without a link back near the top
+- 🤖 **Claude Haiku 5.5 checks the rest**, through Anthropic's API. Its quote of the blurb has to really be in the post, and anything it's unsure about goes to an organizer
+- 📨 **A missing blurb emails the author** once, with the blurb to paste and the deadline (the post's announcement), and lines up a backup. Fixing it is noticed within 15 minutes, with no reply needed
+- ⏸️ **Announcements wait for it**: automatic social posts only go out once a post passes (or an organizer lets it through), and the daily email leaves out a post without it
+- 🧑‍⚖️ **Organizers decide on each entry's page**: Claude's answer, **Check now**, **Mark as passed**, **Mark as missing**, **Announce anyway** and **Use a backup**
+- 🧪 **Try it**: `POST https://localhost:7092/dev/blurbs/run?at=2026-12-05T06:00:00Z` (Development only). Development and the tests use a stand-in for Claude and built-in sample posts (`https://samples.csadvent.test/with-blurb?year=2026` and the others in `SamplePosts`), so they never reach Anthropic or the internet
 
 ## 🔗 Entry Pages
 
@@ -184,23 +195,7 @@ A hidden test season lets invited testers try everything for real on the live si
 
 ## ☁️ Deploying to Azure
 
-Production runs on **Azure Container Apps** with **Azure Database for PostgreSQL** (Flexible Server, PostgreSQL 18, Burstable B1ms, 14-day point-in-time backups; restoring is in [the runbook](docs/runbook.md)), **Application Insights**, the **Azure DNS** zone for csadvent.christmas, and **Azure Communication Services** for email. All of it is modeled in the AppHost, so one `aspire deploy` creates everything.
-
-1. 🔑 Sign in with an account that's an **Owner** of the subscription (`az login`), and make sure Docker is running
-2. 🚀 Run `aspire deploy` from the repository root. It asks for the subscription, region (`centralus`, which has Burstable PostgreSQL capacity for this subscription) and resource group, and for these parameters:
-   - `pg-admin-username` and `pg-admin-password`: the database administrator. **The username can't be changed after the server is created**, and names like `admin`, `root` and `azure_superuser` aren't allowed. Keep the password in a password manager.
-   - `github-client-id` and `github-client-secret`: the **production** GitHub OAuth app
-3. 🗄️ Run the migrations job. `aspire deploy` doesn't start it, so do this after **every** deploy:
-
-   ```bash
-   az containerapp job start -n migrations -g <resource group>
-   az containerapp job execution list -n migrations -g <resource group> -o table
-   ```
-
-   On a new database it creates the schema and seeds the 2017–2025 history. After that it only applies new migrations.
-4. 🌐 Find the site's address: `az containerapp show -n web -g <resource group> --query properties.configuration.ingress.fqdn -o tsv`
-
-To skip the prompts, set `Azure__SubscriptionId`, `Azure__Location`, `Azure__ResourceGroup` and the `Parameters__*` values as environment variables. `aspire deploy` saves what it's given under `~/.aspire/deployments/` and reuses it next time. For a Bicep check, run `aspire publish --output-path <dir> --environment PublishCheck`, which needs no Azure account and keeps its own saved state. If the registry login fails with "Azure CLI authentication timed out", set `Azure__CredentialProcessTimeoutSeconds` to `60` and deploy again.
+Production runs on **Azure Container Apps** with **Azure Database for PostgreSQL** (Flexible Server, PostgreSQL 18, Burstable B1ms, 14-day point-in-time backups; restoring is in [the runbook](docs/runbook.md)), **Application Insights**, the **Azure DNS** zone for csadvent.christmas, and **Azure Communication Services** for email. All of it is modeled in the AppHost, so one `aspire deploy` creates everything. The blurb check uses Claude through Anthropic's API, with a key (below).
 
 Email can't be sent until the sending domain is verified, which happens after the nameserver switch below.
 
@@ -236,6 +231,7 @@ One-time setup (`<sub>` is the subscription ID):
      6. Switch the app to **Live** mode (it asks for the privacy policy, `https://csadvent.christmas/privacy`). Posts from an app in Development mode can be visible only to people with a role on it.
 
      Changing the Facebook password, or losing the Page role, invalidates the Page token, so check it on `/manage/social` each November.
+5. ✍️ **Optional: the blurb check** (#128). Add the secret `ANTHROPIC_API_KEY`, an API key from the [Anthropic Console](https://console.anthropic.com) (set a monthly spend limit on its workspace while you're there; a season costs cents). Posts are checked from the next deploy. Without it they aren't, and nothing is held.
 
 The new revision of the site starts before the migrations job runs, so keep each migration safe for the code before it: add columns and tables first, and only remove them in a later release.
 
@@ -278,6 +274,7 @@ Keep `CustomDomains` and DNS records in the AppHost, not set by hand in the port
 
 - 📜 **[Privacy](https://csadvent.christmas/privacy) and [terms](https://csadvent.christmas/terms)** are pages in the site, with the organizers' address (`hello@csadvent.christmas`) from `Site:ContactEmail` in `appsettings.json`. The app won't start without it.
 - 📇 **Authors' email addresses are kept** after the season, so they can hear about the next one, until they ask us to delete them
+- 🤖 **Posts are checked for the blurb** by Claude, through Anthropic's API, which only ever sees the public text at the top of a post
 - 🗑️ **Requests and backup lists are deleted automatically** on February 1 after each season, with the emails of people who signed in but never had a spot. The calendar itself stays.
 - ✏️ **Collecting something new?** Update the privacy page, and its date, in the same pull request.
 

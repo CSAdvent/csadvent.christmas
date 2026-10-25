@@ -4,6 +4,7 @@
 @using CSAdvent.Web.Backups
 @using CSAdvent.Web.Data
 @inject BackupService Backups
+@inject AdventSchedule Schedule
 @inject TimeProvider Clock
 @inject NavigationManager Navigation
 
@@ -23,8 +24,14 @@
     {
         <h1 class="text-3xl font-bold tracking-tight text-slate-900">You're on deck for December @offer.Spot.Day</h1>
         <p class="mt-2 max-w-2xl text-slate-700">
-            Thanks! If the original author's link still hasn't arrived when their day starts at midnight Eastern, your post goes on
-            the calendar, and we'll email you either way.
+            @if (offer.Deadline is { } deadline)
+            {
+                @($"Thanks! If the original post still doesn't open with the C# Advent blurb at {Eastern(deadline)}, your post goes on the calendar, and we'll email you either way.")
+            }
+            else
+            {
+                @("Thanks! If the original author's link still hasn't arrived when their day starts at midnight Eastern, your post goes on the calendar, and we'll email you either way.")
+            }
         </p>
     }
     else if (offer.TakenByOthers)
@@ -49,6 +56,10 @@
             {
                 @($"The author of {offer.Spot.Name} had to drop out, so the spot is open. Send your post below and it goes straight onto the calendar.")
             }
+            else if (offer.Reason is BackupReason.BlurbMissing)
+            {
+                @($"The post for {offer.Spot.Name} doesn't open with the C# Advent blurb. Yours has to be published already, and open by saying it's part of the {offer.Spot.Year} C# Advent calendar with a link to csadvent.christmas (any wording). We check it when you send it.")
+            }
             else
             {
                 @($"We still don't have the post for {offer.Spot.Name}.")
@@ -59,6 +70,20 @@
             <p class="mt-4 max-w-2xl rounded-xl bg-amber-50 p-4 text-amber-900 ring-1 ring-amber-200">
                 <strong>No guarantee yet.</strong> The original author can still send their link until their day starts at midnight
                 Eastern. If they do, we'll let you know and you stay on the list. If they don't, your post goes on the calendar.
+            </p>
+        }
+        @if (offer.Reason is BackupReason.BlurbMissing && offer.Deadline is { } until)
+        {
+            <p class="mt-4 max-w-2xl rounded-xl bg-amber-50 p-4 text-amber-900 ring-1 ring-amber-200">
+                <strong>No guarantee yet.</strong> The original author can still add the blurb until @Eastern(until). If they do,
+                we'll let you know and you stay on the list. If they don't, your post goes on the calendar then.
+            </p>
+        }
+        @if (Error is "blurb")
+        {
+            <p class="mt-4 max-w-2xl rounded-xl bg-red-50 p-4 font-medium text-red-800 ring-1 ring-red-200" role="alert">
+                Your post doesn't open with the C# Advent blurb either. Add a sentence at the top saying it's part of the
+                @offer.Spot.Year C# Advent calendar, with a link to csadvent.christmas, then send it again.
             </p>
         }
         @if (offer.Status is BackupOfferStatus.Declined)
@@ -121,6 +146,9 @@
     [Parameter]
     public int OfferId { get; set; }
 
+    [SupplyParameterFromQuery]
+    public string? Error { get; set; }
+
     [CascadingParameter]
     private Task<AuthenticationState> AuthenticationState { get; set; } = null!;
 
@@ -159,13 +187,20 @@
             return;
         }
 
-        Navigation.NavigateTo($"backups/offers/{OfferId}");
+        Navigation.NavigateTo(outcome is BackupOfferOutcome.MissingBlurb ? $"backups/offers/{OfferId}?error=blurb" : $"backups/offers/{OfferId}");
     }
 
     private async Task DeclineAsync()
     {
         await Backups.DeclineAsync(_contributorId, OfferId, Clock.GetUtcNow());
         Navigation.NavigateTo($"backups/offers/{OfferId}");
+    }
+
+    /// <summary>"10:00 AM Eastern on December 6".</summary>
+    private string Eastern(DateTimeOffset moment)
+    {
+        var local = Schedule.ToLocalTime(moment);
+        return string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{local:h:mm tt} Eastern on {local:MMMM d}");
     }
 
     /// <summary>The decline form has no fields; it only needs a model.</summary>

@@ -1,12 +1,14 @@
 @page "/my-spots"
 @attribute [Authorize]
 @using CSAdvent.Web.Auth
+@using CSAdvent.Web.Blurbs
 @using CSAdvent.Web.Components.Manage
 @using CSAdvent.Web.Contributors
 @using CSAdvent.Web.Manage
 @inject MySpotsService MySpots
 @inject PostClaimService PostClaims
 @inject PostLinkService PostLinks
+@inject BlurbQueries Blurbs
 @inject Microsoft.Extensions.Options.IOptions<SiteOptions> Site
 
 <PageTitle>My spots · C# Advent</PageTitle>
@@ -33,6 +35,32 @@
     }
     else
     {
+        @foreach (var season in overview.Spots.Where(s => BlurbRules.AppliesTo(s.Year)).GroupBy(s => s.Year))
+        {
+            var blurb = SuggestedBlurb.For(season.Key, season.First().SlotsPerDay);
+            <section class="mt-8 max-w-3xl rounded-xl bg-advent-50 p-5 ring-1 ring-advent-100">
+                <h2 class="font-semibold text-slate-900">Open your post with the C# Advent blurb</h2>
+                <p class="mt-1 text-sm text-slate-700">
+                    Start your post by saying it's part of the @season.Key C# Advent calendar, with a link to csadvent.christmas. Any
+                    wording is fine, as long as it says that and links back. We check every post from the day before it's revealed,
+                    and a post without it by the time it's announced goes to a backup poster. Here's one ready to paste:
+                </p>
+                <dl class="mt-4 flex flex-col gap-3 text-sm">
+                    @foreach (var (format, text) in new[] { ("Text", blurb.Text), ("Markdown", blurb.Markdown), ("HTML", blurb.Html) })
+                    {
+                        var id = $"blurb-{season.Key}-{format.ToLowerInvariant()}";
+                        <div>
+                            <dt class="flex items-center justify-between gap-2 font-medium text-slate-700">
+                                @format
+                                <button type="button" data-copy="@id" class="rounded-md bg-white px-2 py-1 text-xs font-semibold text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50">Copy</button>
+                            </dt>
+                            <dd><pre id="@id" class="mt-1 whitespace-pre-wrap break-words rounded-lg bg-white p-3 font-mono text-xs text-slate-800 ring-1 ring-slate-200">@text</pre></dd>
+                        </div>
+                    }
+                </dl>
+            </section>
+        }
+
         <ul class="mt-8 flex max-w-3xl flex-col gap-4">
             @foreach (var spot in overview.Spots)
             {
@@ -50,6 +78,10 @@
                                 <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">Needs your post's title and URL</span>
                             }
                         </p>
+                        @if (spot.Status is EntryStatus.Ready && BlurbRules.AppliesTo(spot.Year) && Blurbs.IsEnabled && !spot.IsDayOver)
+                        {
+                            <p class="mt-1 text-sm text-slate-600">@BlurbNote(_blurbs.GetValueOrDefault(spot.SlotId))</p>
+                        }
                         @if (spot.IsRevealed && spot.Status is EntryStatus.Ready)
                         {
                             <p class="mt-1 text-sm text-slate-500">@(spot.Traffic.Any ? Traffic(spot.Traffic) : "No visits or clicks counted yet.")</p>
@@ -192,6 +224,7 @@
 
 @code {
     private MySpotsOverview? _overview;
+    private Dictionary<int, BlurbState> _blurbs = [];
     private IReadOnlyList<PastPost> _history = [];
     private IReadOnlyList<ClaimablePost> _pendingPosts = [];
     private IReadOnlyList<ClaimablePost> _found = [];
@@ -215,6 +248,16 @@
     [CascadingParameter]
     private Task<AuthenticationState> AuthenticationState { get; set; } = null!;
 
+    /// <summary>Where their post stands on the blurb, in their words.</summary>
+    private static string BlurbNote(BlurbState? blurb) => blurb?.Status switch
+    {
+        CSAdvent.Web.Data.BlurbStatus.Passed => "C# Advent blurb: found. Thank you!",
+        CSAdvent.Web.Data.BlurbStatus.Waived => "C# Advent blurb: an organizer has OK'd your post.",
+        CSAdvent.Web.Data.BlurbStatus.Missing => $"C# Advent blurb: missing. {blurb.Detail} Add it at the top of your post; we check again every few minutes.",
+        CSAdvent.Web.Data.BlurbStatus.NeedsDecision or CSAdvent.Web.Data.BlurbStatus.CouldNotCheck => "C# Advent blurb: an organizer is taking a look.",
+        _ => "C# Advent blurb: we check for it from the day before your post is revealed.",
+    };
+
     private static string Traffic(PostTraffic traffic) => string.Create(
         System.Globalization.CultureInfo.InvariantCulture,
         $"{traffic.Views:N0} {(traffic.Views == 1 ? "visit" : "visits")}, {traffic.Clicks:N0} {(traffic.Clicks == 1 ? "click" : "clicks")} through to your post");
@@ -223,6 +266,7 @@
     {
         var user = (await AuthenticationState).User;
         _overview = await MySpots.GetOverviewAsync(user.GetContributorId() ?? 0);
+        _blurbs = await Blurbs.GetSlotsAsync([.. _overview.Spots.Select(s => s.SlotId)]);
         _history = await MySpots.GetHistoryAsync(user.GetContributorId() ?? 0);
         _pendingPosts = await PostClaims.GetPendingAsync(user.GetContributorId() ?? 0);
         _found = await PostClaims.SearchAsync(user.GetContributorId() ?? 0, Find);

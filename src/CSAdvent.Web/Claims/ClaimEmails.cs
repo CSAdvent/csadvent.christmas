@@ -73,7 +73,11 @@ public static class ClaimEmails
             Paragraph("Here's what happens next:"),
             List(
                 ["Prepare your post. It can be about anything related to C#, and it should be in English."],
-                ["Link to ", Link(Host(site), Site(site)), " in your post, so your readers can find the rest of the Advent."],
+                [
+                    $"Open your post by saying it's part of the {claim.Year} C# Advent calendar, with a link to ", Link(Host(site), Site(site)),
+                    ", so your readers can find the rest of the Advent. Any wording is fine; there's one ready to paste on your My spots page. " +
+                    "We check every post, and one without it when it's announced goes to a backup poster.",
+                ],
                 [$"Keep it to yourself until December {claim.Day}, then publish it and share it with #csharp and #csadvent."],
                 ["When you know your post's title and URL, sign in and add them on your ", Link("My spots", MySpots(site)), " page. That's how they get onto the calendar."]),
             Button("Add your post details", MySpots(site)),

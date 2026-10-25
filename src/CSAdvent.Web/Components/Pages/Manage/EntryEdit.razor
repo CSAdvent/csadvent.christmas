@@ -1,5 +1,7 @@
 @page "/manage/entries/{SlotId:int}"
+@using CSAdvent.Web.Blurbs
 @inject EntryAdminService Entries
+@inject BlurbQueries Blurbs
 @inject NavigationManager Navigation
 
 @if (_entry is { } entry)
@@ -85,10 +87,13 @@
             </EditForm>
         </section>
     }
+
+    <BlurbPanel Details="_blurb" ReturnUrl="@($"manage/entries/{SlotId}")" Action="@BlurbDone" />
 }
 
 @code {
     private EntryDetails? _entry;
+    private BlurbDetails? _blurb;
     private bool _claimed;
     private bool _releasePosted;
     private string? _error;
@@ -98,6 +103,10 @@
 
     [SupplyParameterFromQuery]
     public string? Done { get; set; }
+
+    /// <summary>What a blurb button just did.</summary>
+    [SupplyParameterFromQuery(Name = "blurb")]
+    public string? BlurbDone { get; set; }
 
     [SupplyParameterFromForm(FormName = "entry")]
     private EntryForm? Form { get; set; }
@@ -119,6 +128,7 @@
 
         _claimed = _entry.Values.AuthorName is not null;
         Form ??= _entry.Values;
+        _blurb = await Blurbs.GetAsync(SlotId);
     }
 
     private async Task SaveAsync() => await HandleAsync(await Entries.SaveAsync(SlotId, Form!));

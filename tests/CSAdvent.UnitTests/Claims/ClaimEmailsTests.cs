@@ -48,7 +48,8 @@ public sealed class ClaimEmailsTests
 
         Assert.Equal("You're on the C# Advent calendar: December 3", email.Subject);
         Assert.Contains("December 3, 2026 (post 2) is yours.", text);
-        Assert.Contains("Link to csadvent.christmas (https://csadvent.christmas) in your post", text);
+        Assert.Contains("Open your post by saying it's part of the 2026 C# Advent calendar, with a link to csadvent.christmas (https://csadvent.christmas)", text);
+        Assert.Contains("one without it when it's announced goes to a backup poster", text);
         Assert.Contains("Keep it to yourself until December 3", text);
         Assert.Contains("sign in and add them on your My spots (https://csadvent.christmas/my-spots) page", text);
         Assert.Equal("https://csadvent.christmas/my-spots", Assert.Single(email.Body.OfType<ButtonBlock>()).Url);

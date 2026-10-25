@@ -62,6 +62,17 @@
     {
         <section class="mt-10">
             <h2 class="text-xl font-semibold text-slate-900">Post @entry.Part: @entry.Title <span class="font-normal text-slate-500">by @entry.Author</span></h2>
+            @if (entry.Blurb is { } blurb)
+            {
+                <p class="mt-1 flex flex-wrap items-center gap-2 text-sm">
+                    <span title="@blurb.Detail" class="rounded-full px-2 py-0.5 text-xs font-semibold @CSAdvent.Web.Blurbs.Labels.Badge(blurb.Status)">@blurb.Label</span>
+                    @if (!entry.CanAnnounce)
+                    {
+                        <span class="text-slate-600">Not posted automatically until its blurb check passes.</span>
+                    }
+                    <a href="manage/entries/@entry.SlotId" class="font-medium text-advent-700 underline">Check or decide</a>
+                </p>
+            }
 
             <div class="mt-4 grid gap-4 lg:grid-cols-2">
                 @foreach (var platform in entry.Platforms.Where(p => ModeOf(p.Platform) is not SocialPostingMode.Off))
@@ -153,7 +164,7 @@
                                 }
                                 else if (automatic)
                                 {
-                                    <p class="mb-2 text-sm text-slate-600">@AutomaticNote(day, entry.Part)</p>
+                                    <p class="mb-2 text-sm text-slate-600">@(entry.CanAnnounce ? AutomaticNote(day, entry.Part) : "Waiting for its blurb check before it's posted automatically. Or post it by hand and mark it below.")</p>
                                 }
                                 <form method="post" action="manage/social/mark" class="flex flex-wrap items-center gap-2 text-sm">
                                     <AntiforgeryToken />

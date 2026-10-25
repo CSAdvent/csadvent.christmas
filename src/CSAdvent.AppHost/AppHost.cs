@@ -130,8 +130,9 @@ if (isPublish || builder.Configuration["Parameters:github-client-id"] is not nul
         .WithEnvironment("Accounts__GitHub__ClientSecret", builder.AddParameter("github-client-secret", secret: true));
 }
 
-// Automatic social posting (#61). Each platform's credentials are optional: one without them stays copy and paste. Only
-// published, so nothing run locally can post to C# Advent's real accounts (development uses dry-run mode instead).
+// Automatic social posting (#61), and the Anthropic API key the blurb check (#128) asks Claude with. Each is optional: a
+// platform without credentials stays copy and paste, and without the key posts aren't checked. Only published, so nothing
+// run locally can post to C# Advent's real accounts or spend on the API (development uses dry-run modes instead).
 if (isPublish)
 {
     foreach (var (parameter, setting, secret) in new[]
@@ -140,6 +141,7 @@ if (isPublish)
         ("bluesky-app-password", "SocialPosting__Bluesky__AppPassword", true),
         ("facebook-page-id", "SocialPosting__Facebook__PageId", false),
         ("facebook-page-token", "SocialPosting__Facebook__PageToken", true),
+        ("anthropic-api-key", "Blurbs__ApiKey", true),
     })
     {
         if (builder.Configuration[$"Parameters:{parameter}"] is { Length: > 0 })
