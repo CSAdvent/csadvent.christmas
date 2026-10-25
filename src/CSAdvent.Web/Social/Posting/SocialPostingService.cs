@@ -39,6 +39,8 @@ public enum PostOutcome
 /// hand is skipped.</item>
 /// <item>A failed post is tried again a few times, waiting longer each time, then waits for an organizer to retry it.</item>
 /// <item>Never the test season: its entries must never reach C# Advent's real accounts.</item>
+/// <item>Only posts that passed the blurb check (#128), or that an organizer let through: a post that fails it, or hasn't been
+/// checked, waits, and goes out as soon as it passes that day.</item>
 /// </list>
 /// </summary>
 public sealed partial class SocialPostingService(
@@ -92,7 +94,7 @@ public sealed partial class SocialPostingService(
             }
 
             var announcements = await social.GetDayAsync(year, day, cancellationToken);
-            foreach (var entry in announcements.Entries.Where(e => time >= options.Value.TimeFor(e.Part)))
+            foreach (var entry in announcements.Entries.Where(e => time >= options.Value.TimeFor(e.Part) && e.CanAnnounce))
             {
                 foreach (var platform in automatic)
                 {

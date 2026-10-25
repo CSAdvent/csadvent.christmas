@@ -12,6 +12,12 @@ public enum BackupReason
 
     /// <summary>The evening before the day, the author still hasn't sent their post's link. They can still, until the reveal.</summary>
     LinkMissing,
+
+    /// <summary>
+    /// On the day, the post doesn't open with the C# Advent blurb (#128). The author can still add it until it's announced, or
+    /// an organizer asked for a backup because they won't.
+    /// </summary>
+    BlurbMissing,
 }
 
 /// <summary>A spot, as the backup emails describe it.</summary>
@@ -48,13 +54,26 @@ public static class BackupEmails
     };
 
     /// <param name="answerBy">When the next backup gets asked, already in the reveal time zone, such as "10:00 PM Eastern on December 4".</param>
-    public static EmailContent Ask(string name, BackupSpot spot, BackupReason reason, string answerBy, string offerUrl, SiteOptions site)
+    /// <param name="deadline">For a missing blurb: when the author's time runs out, such as "10 AM Eastern".</param>
+    public static EmailContent Ask(string name, BackupSpot spot, BackupReason reason, string answerBy, string offerUrl, SiteOptions site, string? deadline = null)
     {
         List<EmailBlock> body = reason switch
         {
             BackupReason.DroppedOut =>
             [
                 Paragraph($"Hi {name}, the author of {spot.Name} had to drop out, so the spot is open. Do you have a post you'd like to use?"),
+            ],
+            BackupReason.BlurbMissing =>
+            [
+                Paragraph(
+                    $"Hi {name}, the post for {spot.Name} doesn't open with the C# Advent blurb, which every post needs. Do you " +
+                    "have a post you'd like to use in its place?"),
+                Paragraph(
+                    "It has to be published already, and open by saying it's part of the ", Link($"{spot.Year} C# Advent calendar", "https://csadvent.christmas"),
+                    ", with a link to csadvent.christmas. Any wording is fine. We check it when you send it."),
+                Paragraph(
+                    $"There's no guarantee yet: the original author can still add the blurb until {deadline ?? "their post is announced"}. " +
+                    "If they do, we'll let you know, and you stay on the list for the next one. If they don't, your post takes the spot then."),
             ],
             _ =>
             [
@@ -76,9 +95,12 @@ public static class BackupEmails
         return new EmailContent
         {
             Subject = $"Can you fill in on C# Advent, December {spot.Day}?",
-            Preview = reason is BackupReason.DroppedOut
-                ? $"{spot.Name} is open. You're next on the backup list."
-                : $"{spot.Name} might need a post. You're next on the backup list.",
+            Preview = reason switch
+            {
+                BackupReason.DroppedOut => $"{spot.Name} is open. You're next on the backup list.",
+                BackupReason.BlurbMissing => $"{spot.Name} might need a post today. You're next on the backup list.",
+                _ => $"{spot.Name} might need a post. You're next on the backup list.",
+            },
             Heading = $"Can you fill in on December {spot.Day}?",
             Body = body,
             Reason = ForBackups,
@@ -109,7 +131,7 @@ public static class BackupEmails
         Heading = "The original author came through",
         Body =
         [
-            Paragraph($"Hi {name}, the author of {spot.Name} sent their post after all, so we won't need yours this time."),
+            Paragraph($"Hi {name}, the author of {spot.Name} came through after all, so we won't need yours this time."),
             Paragraph("Thanks for being ready to step in. You're still on the backup list for the next one."),
             SignOff,
         ],
@@ -124,9 +146,12 @@ public static class BackupEmails
         Heading = "A backup poster stepped in",
         Body =
         [
-            Paragraph(reason is BackupReason.DroppedOut
-                ? $"{backupName} filled {spot.Name}, which its author had dropped."
-                : $"{backupName} filled {spot.Name}, because its author's link didn't arrive before the reveal."),
+            Paragraph(reason switch
+            {
+                BackupReason.DroppedOut => $"{backupName} filled {spot.Name}, which its author had dropped.",
+                BackupReason.BlurbMissing => $"{backupName} filled {spot.Name}, because its post didn't open with the C# Advent blurb.",
+                _ => $"{backupName} filled {spot.Name}, because its author's link didn't arrive before the reveal.",
+            }),
             Button("See the season's entries", $"{Site(site)}/manage/entries?year={spot.Year}"),
         ],
         Reason = ForOrganizers,
@@ -146,16 +171,20 @@ public static class BackupEmails
         Reason = ForOrganizers,
     };
 
-    public static EmailContent Replaced(string authorName, BackupSpot spot, SiteOptions site) => new()
+    public static EmailContent Replaced(string authorName, BackupSpot spot, SiteOptions site, BackupReason reason = BackupReason.LinkMissing) => new()
     {
         Subject = $"Your C# Advent spot went to a backup poster",
-        Preview = $"We didn't get your post's link for {spot.Name} in time.",
+        Preview = reason is BackupReason.BlurbMissing
+            ? $"Your post for {spot.Name} didn't open with the C# Advent blurb in time."
+            : $"We didn't get your post's link for {spot.Name} in time.",
         Heading = $"Sorry we missed you, {authorName}",
         Body =
         [
-            Paragraph(
-                $"We didn't get your post's link for {spot.Name} before your day started, so a backup poster's post went on the " +
-                "calendar instead."),
+            Paragraph(reason is BackupReason.BlurbMissing
+                ? $"Your post for {spot.Name} didn't open with the C# Advent blurb by the time it was due to be announced, so a " +
+                    "backup poster's post went on the calendar instead."
+                : $"We didn't get your post's link for {spot.Name} before your day started, so a backup poster's post went on the " +
+                    "calendar instead."),
             Paragraph("No hard feelings: things happen. We hope you'll join us again next year."),
             SignOff,
         ],

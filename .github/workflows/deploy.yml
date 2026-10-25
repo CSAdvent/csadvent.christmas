@@ -52,6 +52,8 @@ jobs:
       Parameters__bluesky-app-password: ${{ secrets.BLUESKY_APP_PASSWORD }}
       Parameters__facebook-page-id: ${{ vars.FACEBOOK_PAGE_ID }}
       Parameters__facebook-page-token: ${{ secrets.FACEBOOK_PAGE_TOKEN }}
+      # The blurb check (#128). Optional: without it, posts aren't checked.
+      Parameters__anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
 
     steps:
       - name: Checkout

@@ -1,8 +1,9 @@
 namespace CSAdvent.Web.Reminders;
 
 /// <summary>
-/// Runs <see cref="ReminderService"/> and <see cref="Backups.BackupService"/> every 15 minutes. Runs with nothing to do
-/// (before the send time, or with no spot needing a backup) are cheap.
+/// Runs <see cref="Blurbs.BlurbCheckService"/>, <see cref="ReminderService"/> and <see cref="Backups.BackupService"/> every 15
+/// minutes, in that order: the day's posts are checked for the blurb first, so the daily email leaves out a failed one, and a
+/// blurb added just before its deadline is seen before a backup takes the spot. Runs with nothing to do are cheap.
 /// </summary>
 public sealed class ReminderWorker(IServiceScopeFactory scopeFactory, TimeProvider timeProvider, ILogger<ReminderWorker> logger)
     : BackgroundService
@@ -17,6 +18,7 @@ public sealed class ReminderWorker(IServiceScopeFactory scopeFactory, TimeProvid
             try
             {
                 await using var scope = scopeFactory.CreateAsyncScope();
+                await scope.ServiceProvider.GetRequiredService<Blurbs.BlurbCheckService>().RunAsync(timeProvider.GetUtcNow(), cancellationToken: stoppingToken);
                 await scope.ServiceProvider.GetRequiredService<ReminderService>().RunAsync(timeProvider.GetUtcNow(), stoppingToken);
                 await scope.ServiceProvider.GetRequiredService<Backups.BackupService>().RunAsync(timeProvider.GetUtcNow(), cancellationToken: stoppingToken);
             }

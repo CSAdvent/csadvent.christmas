@@ -20,6 +20,11 @@
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="11.0.0-rc.2.26504.105" />
   </ItemGroup>
   <ItemGroup Label="Web">
+    <!-- HTML parsing for the blurb check: reading the opening of an author's post. Kept at bUnit's version: central pinning
+         gives the unit tests this one too, and 1.8.6 breaks bUnit 2.12.5. -->
+    <PackageVersion Include="AngleSharp" Version="1.8.5" />
+    <!-- Claude Haiku, for the blurb check -->
+    <PackageVersion Include="Anthropic" Version="13.3.0" />
     <PackageVersion Include="Azure.Communication.Email" Version="1.1.0" />
     <PackageVersion Include="Azure.Identity" Version="1.21.0" />
     <PackageVersion Include="MailKit" Version="4.18.1" />

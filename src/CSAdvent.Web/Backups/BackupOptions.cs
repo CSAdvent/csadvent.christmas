@@ -12,4 +12,7 @@ public sealed class BackupOptions
 
     /// <summary>How long each backup has to answer before the next one is asked too.</summary>
     public TimeSpan AnswerWithin { get; set; } = TimeSpan.FromHours(4);
+
+    /// <summary>The same for a post whose C# Advent blurb is missing on its day (#128), when the deadline is only hours away.</summary>
+    public TimeSpan AnswerWithinOnTheDay { get; set; } = TimeSpan.FromHours(1);
 }

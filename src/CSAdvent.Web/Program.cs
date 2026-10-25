@@ -2,6 +2,7 @@ using System.Threading.RateLimiting;
 using CSAdvent.Web.Announcements;
 using CSAdvent.Web.Auth;
 using CSAdvent.Web.Backups;
+using CSAdvent.Web.Blurbs;
 using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Cards;
 using CSAdvent.Web.Claims;
@@ -21,6 +22,7 @@ using CSAdvent.Web.Retention;
 using CSAdvent.Web.Retrospectives;
 using CSAdvent.Web.SeasonTesting;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -106,6 +108,25 @@ builder.Services.AddOptions<ReminderOptions>()
     .ValidateDataAnnotations()
     .ValidateOnStart();
 builder.Services.AddScoped<DailyEmailOptOut>();
+
+// The blurb check (#128): every post opens by saying it's part of that year's C# Advent calendar. Posts are fetched by our
+// own client (public addresses only) and judged by Claude Haiku through Anthropic's API. Without an API key the check is off;
+// development and the tests use a stand-in and the built-in sample pages, so they never reach Anthropic or the internet.
+builder.Services.AddOptions<BlurbOptions>()
+    .BindConfiguration(BlurbOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddSingleton<IPostFetcher>(services =>
+    services.GetRequiredService<IOptions<BlurbOptions>>().Value.SamplePages
+        ? new SamplePostFetcher()
+        : new WebPostFetcher(WebPostFetcher.CreateClient(), services.GetRequiredService<ILogger<WebPostFetcher>>()));
+builder.Services.AddSingleton(services => new BlurbChecker(
+    services.GetRequiredService<IPostFetcher>(),
+    BlurbJudges.Create(services),
+    services.GetRequiredService<IOptions<BlurbOptions>>()));
+builder.Services.AddScoped<BlurbCheckService>();
+builder.Services.AddScoped<BlurbQueries>();
+
 builder.Services.AddOptions<BackupOptions>().BindConfiguration(BackupOptions.SectionName);
 builder.Services.AddScoped<BackupService>();
 builder.Services.AddScoped<BackupListService>();
@@ -198,6 +219,7 @@ app.MapEmailPreviews();
 app.MapReminders();
 app.MapEmailOptOuts();
 app.MapBackups();
+app.MapBlurbs();
 app.MapEntries();
 app.MapCards();
 app.MapFeeds();

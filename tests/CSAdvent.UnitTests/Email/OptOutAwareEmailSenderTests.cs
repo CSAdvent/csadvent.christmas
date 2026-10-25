@@ -1,5 +1,6 @@
 using CSAdvent.Web.Announcements;
 using CSAdvent.Web.Backups;
+using CSAdvent.Web.Blurbs;
 using CSAdvent.Web.Claims;
 using CSAdvent.Web.Content;
 using CSAdvent.Web.Contributors;
@@ -96,6 +97,9 @@ public sealed class OptOutAwareEmailSenderTests
                 BackupEmails.YoureOn("Grace", spot, "Post", Site),
                 BackupEmails.NotNeeded("Grace", spot, Site),
                 BackupEmails.Replaced("Ada", spot, Site),
+                BackupEmails.Ask("Grace", spot, BackupReason.BlurbMissing, "1 AM", "https://csadvent.christmas/backups/offers/1", Site, "10 AM"),
+                BackupEmails.Replaced("Ada", spot, Site, BackupReason.BlurbMissing),
+                BlurbEmails.Missing("Ada", new BlurbPost(1, spot, "Post", "https://example.com/post", "10 AM"), "It's missing.", Site),
                 PostClaimEmails.Approved(postClaim, Site),
                 PostClaimEmails.Declined(postClaim, Site),
                 PostLinkEmails.Approved(postLinks, Site),

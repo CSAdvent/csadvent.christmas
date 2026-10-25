@@ -151,10 +151,11 @@ public sealed partial class ReminderService(
         }
 
         // Today's posts, revealed at midnight. Until one has its title and link there's nothing to share, and a later run
-        // tries again.
+        // tries again. A post found without the C# Advent blurb (#128) is left out.
         var revealed = await db.Slots
             .AsNoTracking()
-            .Where(s => s.SeasonYear == year && s.Day == day && s.AuthorName != null && s.PostTitle != null && s.PostUrl != null)
+            .Where(s => s.SeasonYear == year && s.Day == day && s.AuthorName != null && s.PostTitle != null && s.PostUrl != null
+                && !db.BlurbChecks.Any(c => c.SlotId == s.Id && c.PostUrl == s.PostUrl && c.Status == BlurbStatus.Missing))
             .OrderBy(s => s.Part)
             .Select(s => new { s.Part, s.PostTitle, s.AuthorName })
             .ToListAsync(cancellationToken);

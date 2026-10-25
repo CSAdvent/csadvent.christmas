@@ -16,7 +16,7 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261025170733_AddPostLinkRequests";
+    public override string LastMigrationId => "20261025185253_AddBlurbChecks";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -256,6 +256,99 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
 
                         t.HasCheckConstraint("ck_backup_offers_post_url", "post_url ~* '^https?://'");
                     });
+            });
+
+        modelBuilder.Entity("CSAdvent.Web.Data.BlurbCheck", b =>
+            {
+                var id = b.Property<int>("Id")
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("integer")
+                    .HasColumnName("id");
+
+                NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(id);
+
+                b.Property<DateTimeOffset?>("AuthorEmailedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("author_emailed_at");
+
+                b.Property<DateTimeOffset?>("BackupRequestedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("backup_requested_at");
+
+                b.Property<DateTimeOffset?>("CheckedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("checked_at");
+
+                b.Property<string>("ContentHash")
+                    .HasMaxLength(64)
+                    .HasColumnType("character varying(64)")
+                    .HasColumnName("content_hash");
+
+                b.Property<DateTimeOffset?>("DeadlineEmailedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("deadline_emailed_at");
+
+                b.Property<DateTimeOffset?>("DecidedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("decided_at");
+
+                b.Property<string>("DecidedBy")
+                    .HasMaxLength(39)
+                    .HasColumnType("character varying(39)")
+                    .HasColumnName("decided_by");
+
+                b.Property<string>("Detail")
+                    .HasMaxLength(500)
+                    .HasColumnType("character varying(500)")
+                    .HasColumnName("detail");
+
+                b.Property<DateTimeOffset?>("LeasedUntil")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("leased_until");
+
+                b.Property<string>("OrganizersEmailedAbout")
+                    .HasMaxLength(20)
+                    .HasColumnType("character varying(20)")
+                    .HasColumnName("organizers_emailed_about");
+
+                b.Property<string>("PostUrl")
+                    .IsRequired()
+                    .HasMaxLength(500)
+                    .HasColumnType("character varying(500)")
+                    .HasColumnName("post_url");
+
+                b.Property<string>("Quote")
+                    .HasMaxLength(1000)
+                    .HasColumnType("character varying(1000)")
+                    .HasColumnName("quote");
+
+                b.Property<string>("Reason")
+                    .HasMaxLength(1000)
+                    .HasColumnType("character varying(1000)")
+                    .HasColumnName("reason");
+
+                b.Property<int>("SlotId")
+                    .HasColumnType("integer")
+                    .HasColumnName("slot_id");
+
+                b.Property<string>("Status")
+                    .IsRequired()
+                    .HasMaxLength(20)
+                    .HasColumnType("character varying(20)")
+                    .HasColumnName("status");
+
+                b.Property<DateTimeOffset>("StatusSince")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("status_since");
+
+                b.HasKey("Id")
+                    .HasName("pk_blurb_checks");
+
+                b.HasIndex("SlotId")
+                    .IsUnique()
+                    .HasDatabaseName("ix_blurb_checks_slot_id");
+
+                b.ToTable("blurb_checks");
             });
 
         modelBuilder.Entity("CSAdvent.Web.Data.ClaimRequest", b =>
@@ -1388,6 +1481,18 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                 b.Navigation("Slot");
 
                 b.Navigation("Substitute");
+            });
+
+        modelBuilder.Entity("CSAdvent.Web.Data.BlurbCheck", b =>
+            {
+                b.HasOne("CSAdvent.Web.Data.Slot", "Slot")
+                    .WithMany()
+                    .HasForeignKey("SlotId")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired()
+                    .HasConstraintName("fk_blurb_checks_slots_slot_id");
+
+                b.Navigation("Slot");
             });
 
         modelBuilder.Entity("CSAdvent.Web.Data.ClaimRequest", b =>

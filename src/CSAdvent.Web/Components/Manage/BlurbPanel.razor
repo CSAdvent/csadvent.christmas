@@ -1,0 +1,94 @@
+@* A post's blurb check (#128) on its entry page: where it stands, what Claude said, and the organizer's buttons. *@
+@using CSAdvent.Web.Blurbs
+@using CSAdvent.Web.Data
+
+@if (Details is { Applies: true } details)
+{
+    <section class="mt-12 max-w-3xl rounded-xl p-5 ring-1 ring-slate-200">
+        <h2 class="font-semibold text-slate-900">C# Advent blurb</h2>
+
+        @if (!details.Enabled)
+        {
+            <p class="mt-2 text-sm text-slate-600">Posts aren't being checked, because there's no Anthropic API key for this site.</p>
+        }
+        else if (!details.HasPost)
+        {
+            <p class="mt-2 text-sm text-slate-600">It's checked once the post's URL is in, from the day before its reveal.</p>
+        }
+        else
+        {
+            @if (Done is { } done)
+            {
+                <p class="mt-3 rounded-lg bg-green-50 p-3 text-sm font-medium text-green-800 ring-1 ring-green-200" role="status">@done</p>
+            }
+
+            <p class="mt-3 flex flex-wrap items-center gap-2 text-sm">
+                <span class="rounded-full px-2 py-0.5 text-xs font-semibold @Labels.Badge(details.State?.Status ?? BlurbStatus.Waiting)">@Labels.For(details.State?.Status ?? BlurbStatus.Waiting)</span>
+                @if (details.State is { } state)
+                {
+                    <span class="text-slate-700">@state.Detail</span>
+                    @if (state.CheckedAt is { } checkedAt)
+                    {
+                        <span class="text-slate-500">· checked <LocalTime Value="checkedAt" /></span>
+                    }
+                }
+            </p>
+            <p class="mt-2 text-sm text-slate-600">
+                Due by <LocalTime Value="details.Deadline" />, when the post is announced. Automatic social posts wait until it passes
+                or you let it through.
+                @if (details.State?.BackupRequested == true)
+                {
+                    <span class="font-medium text-slate-800">You asked for a backup: the next one who accepts takes the spot straight away.</span>
+                }
+            </p>
+
+            @if (details.State is { Quote: { Length: > 0 } } or { Reason: not null })
+            {
+                <div class="mt-4 rounded-lg bg-slate-50 p-3 text-sm ring-1 ring-slate-100">
+                    <h3 class="font-semibold text-slate-900">Claude's answer</h3>
+                    @if (details.State?.Quote is { Length: > 0 } quote)
+                    {
+                        <blockquote class="mt-2 border-l-2 border-slate-300 pl-2 text-slate-700">@quote</blockquote>
+                    }
+                    @if (details.State?.Reason is { } reason)
+                    {
+                        <p class="mt-2 text-slate-600">@reason</p>
+                    }
+                </div>
+            }
+
+            <div class="mt-5 flex flex-wrap gap-2 text-sm">
+                <BlurbButton Action="manage/blurbs/check" SlotId="details.SlotId" ReturnUrl="@ReturnUrl" Label="Check now" />
+                <BlurbButton Action="manage/blurbs/decide" SlotId="details.SlotId" ReturnUrl="@ReturnUrl" Decision="BlurbDecision.Passed" Label="Mark as passed" />
+                <BlurbButton Action="manage/blurbs/decide" SlotId="details.SlotId" ReturnUrl="@ReturnUrl" Decision="BlurbDecision.Missing" Label="Mark as missing" />
+                <BlurbButton Action="manage/blurbs/decide" SlotId="details.SlotId" ReturnUrl="@ReturnUrl" Decision="BlurbDecision.AnnounceAnyway" Label="Announce anyway" />
+                <BlurbButton Action="manage/blurbs/backup" SlotId="details.SlotId" ReturnUrl="@ReturnUrl" Label="Use a backup" Danger="true" />
+            </div>
+            <p class="mt-2 text-xs text-slate-500">
+                Marking it as missing emails the author (once) and lines up a backup for the deadline. Use a backup for an author who
+                won't add it: the next backup who accepts takes the spot straight away.
+            </p>
+        }
+    </section>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public BlurbDetails? Details { get; set; }
+
+    /// <summary>The page the buttons come back to.</summary>
+    [Parameter, EditorRequired]
+    public string ReturnUrl { get; set; } = "";
+
+    /// <summary>What was just done ("checked", "decided" or "backup"), from the query string.</summary>
+    [Parameter]
+    public string? Action { get; set; }
+
+    private string? Done => Action switch
+    {
+        "checked" => "Checked again.",
+        "decided" => "Saved.",
+        "backup" => "A backup is being lined up.",
+        _ => null,
+    };
+}

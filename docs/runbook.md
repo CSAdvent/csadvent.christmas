@@ -19,6 +19,7 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 | Any time | Check requests to add older posts to people's accounts, and for new links to older posts (each one emails the organizers) | Organizers |
 | From 7 days before each day | "Your post is due" reminders, then a last call on the day | Automatic |
 | December 1–25 | Reveals at midnight, announcements at 10 AM and 2 PM, the daily email at 9 AM | Automatic, plus LinkedIn and Reddit by hand |
+| December 1–25 | Decide on posts the blurb check can't settle, before their announcement | Organizers, when emailed |
 | December 31 | The calendar moves to the archive, and the home page thanks everyone | Automatic |
 | Late December–January | Write, publish and share the season's retrospective | Organizers |
 | February 1 | The season's requests and backup list are deleted (authors' emails are kept) | Automatic |
@@ -59,6 +60,9 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
    test to the organizers' inbox, then send it.
 10. **Post "sign-ups open soon"** from `/manage/social/signups` as the day approaches (a week out, the day before). It counts
     down by itself; post it with **Post now**, or copy it for LinkedIn and Reddit.
+11. **Try the blurb check** in the test round: give a test spot a real post with the blurb and one without, move "today" to
+    their day, and see each entry's page. It needs the Anthropic API key (the README's deploy setup); without it, posts
+    aren't checked and nothing is held.
 
 ---
 
@@ -83,6 +87,8 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
   4 hours to answer. You get an email if nobody's left, and then the spot needs you at `/manage/entries`.
 - **The last call** goes out on the day, 3 hours before the post is announced (7 AM for post 1, 11 AM for post 2),
   if the link still hasn't arrived.
+- **The blurb check** starts the day before each post's reveal: authors who publish early can see on My spots whether
+  their post passes.
 - **An author who drops out** frees their spot straight away, and the backups are asked immediately.
 
 ---
@@ -95,7 +101,15 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
   - Post **LinkedIn and Reddit by hand** from `/manage/social`, then **Mark as posted**.
   - Reddit posts go to r/csadvent only, never r/csharp or r/dotnet.
   - A failed automatic post shows its error and a **Retry now** button.
-- **The daily email** goes at 9 AM to everyone with a spot, once the day has posts.
+- **The daily email** goes at 9 AM to everyone with a spot, once the day has posts, leaving out any without the blurb.
+- **The blurb check** runs every 15 minutes, and only posts that pass are announced automatically.
+  - **A missing blurb** emails its author (once) and asks the backups from midnight, an hour each. A backup who accepts takes
+    the spot at the post's announcement unless the author adds the blurb first. If nobody has by then, you get an email: the
+    post stays up but isn't announced until you decide.
+  - **You get an email** when Claude is unsure, or a post couldn't be checked for 30 minutes. Open the entry's page, look
+    at the post, and **Mark as passed** or **Mark as missing**.
+  - **An author who won't add it** (they reply to the email): **Use a backup** on the entry's page hands the spot to the next
+    backup who accepts, straight away. **Announce anyway** lets a post through without it.
 - **A spot that ends up empty** can be filled from the backup list, or released, at `/manage/entries`.
 
 ---
@@ -129,6 +143,8 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 - **Email:** a sample from `/manage/emails` proves the sending domain is still connected. A new custom domain is
   limited to 30 emails a minute and 100 an hour. If a season needs more, ask Azure support to raise it.
 - **Database restore:** practise a point-in-time restore once a year, before December (#90).
+- **The blurb check's Anthropic API key** lasts until it's revoked. Check its workspace's spend limit in the Anthropic
+  Console, and replace the `ANTHROPIC_API_KEY` secret the same way as the social ones if it's ever rotated.
 - **Domains:** the managed certificates for csadvent.christmas and www renew themselves while the app is running.
 
 ---
@@ -139,6 +155,9 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
   database never takes traffic, because the health probes keep the old one serving.
 - **Logs and telemetry:** Application Insights, in the `rg-csadvent` resource group.
 - **Emails not arriving:** check `/manage/emails` (send a sample) and the Communication Service in Azure.
+- **Every post says "Couldn't check":** Claude isn't answering. Each entry's page says why (a rate limit, an expired key,
+  or the workspace's spend limit). Posts aren't announced automatically meanwhile, so mark the day's posts as passed (or
+  announce them anyway) by hand.
 - **A wrong post on the calendar:** fix it at `/manage/entries`. An edited title gets a fresh share card.
 - **Lost or damaged data:** restore the database to a point before it happened. See below.
 

@@ -1,4 +1,5 @@
 using CSAdvent.Web.Backups;
+using CSAdvent.Web.Blurbs;
 using CSAdvent.Web.Claims;
 using CSAdvent.Web.Content;
 using CSAdvent.Web.Contributors;
@@ -32,6 +33,13 @@ public static class EmailCatalog
         SlotsPerDay: 2);
 
     private static readonly BackupSpot SampleSpot = new(2026, 12, 2, 2);
+
+    private static readonly BlurbPost SampleBlurbPost = new(
+        42,
+        new BackupSpot(2026, 6, 1, 2),
+        "Span<T> all the way down",
+        "https://example.com/span",
+        "10:00 AM Eastern on December 6");
 
     private static readonly PostClaimEmailDetails SamplePostClaim = new(
         RequestId: 7,
@@ -137,6 +145,12 @@ public static class EmailCatalog
             "One backup at a time.",
             site => BackupEmails.Ask("Grace Hopper", SampleSpot, BackupReason.LinkMissing, "10:00 PM Eastern on December 11", SampleOffer(site), site)),
         new(
+            "backup-ask-blurb",
+            "Backup ask: the blurb is missing",
+            "On a post's day, as soon as it's found without the C# Advent blurb (or an organizer asks for a backup), to the first backup in sign-up order; then the next every hour until the deadline (10 AM or 2 PM Eastern).",
+            "One backup at a time.",
+            site => BackupEmails.Ask("Grace Hopper", SampleSpot, BackupReason.BlurbMissing, "1:15 AM Eastern on December 12", SampleOffer(site), site, "10:00 AM Eastern on December 12")),
+        new(
             "backup-used",
             "Backup's post is on the calendar",
             "When a backup's post replaces a spot's: straight away for a dropped spot, or at the reveal for a missing link.",
@@ -166,6 +180,36 @@ public static class EmailCatalog
             "When a backup's post replaces an author whose link didn't arrive before the reveal.",
             "The original author.",
             site => BackupEmails.Replaced("Ada Lovelace", SampleSpot, site)),
+        new(
+            "backup-replaced-blurb",
+            "Spot went to a backup: no blurb",
+            "When a backup's post replaces one that still didn't open with the C# Advent blurb at its deadline.",
+            "The original author.",
+            site => BackupEmails.Replaced("Ada Lovelace", SampleSpot, site, BackupReason.BlurbMissing)),
+        new(
+            "blurb-missing",
+            "Please add the C# Advent blurb",
+            "From a post's reveal (it's checked from the day before), once each time it's found without the blurb: no link to csadvent.christmas near the top, Claude says it's missing, or an organizer marks it missing.",
+            "The author. Replies go to the organizers.",
+            site => BlurbEmails.Missing("Ada Lovelace", SampleBlurbPost, "There's no link to csadvent.christmas near the top of the post.", site)),
+        new(
+            "blurb-needs-decision",
+            "A post's blurb needs a decision",
+            "From a post's reveal, when Claude is unsure about its blurb, or the post seems to talk to it. Once per post.",
+            "The organizers.",
+            site => BlurbEmails.NeedsDecision(SampleBlurbPost, CSAdvent.Web.Data.BlurbStatus.NeedsDecision, "Claude found the blurb, but its quote of it isn't in the post.", site)),
+        new(
+            "blurb-could-not-check",
+            "A post couldn't be checked",
+            "From a post's reveal, when its page hasn't loaded, or Claude hasn't answered, for 30 minutes. Once per post.",
+            "The organizers.",
+            site => BlurbEmails.NeedsDecision(SampleBlurbPost, CSAdvent.Web.Data.BlurbStatus.CouldNotCheck, "The post's page answered 404 Not Found.", site)),
+        new(
+            "blurb-deadline",
+            "No blurb and no backup",
+            "At a post's deadline (10 AM or 2 PM Eastern on its day), if it still has no blurb and no backup has taken the spot. Once per post.",
+            "The organizers.",
+            site => BlurbEmails.DeadlinePassed(SampleBlurbPost, site)),
         new(
             "post-link-reminder",
             "Post link reminder",
