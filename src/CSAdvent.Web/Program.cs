@@ -32,11 +32,16 @@ builder.AddSecurityHeaders();
 
 // Add service defaults & Aspire client integrations.
 builder.AddServiceDefaults();
-builder.AddNpgsqlDbContext<AdventDbContext>("csadvent", configureDbContextOptions: options => options
-    // Runs after migrations are applied, and adds any archived season that isn't in the database yet.
-    // EF Core's tools and migration bundles use the synchronous delegate.
-    .UseSeeding((context, _) => ArchiveSeeder.Seed(context))
-    .UseAsyncSeeding((context, _, cancellationToken) => ArchiveSeeder.SeedAsync(context, cancellationToken)));
+builder.AddNpgsqlDbContext<AdventDbContext>(
+    "csadvent",
+    // In production the AppHost caps each replica's connection pool (#158). Every connection the app opens comes from here.
+    configureSettings: settings => settings.ConnectionString = ConnectionPool.WithMaxPoolSize(
+        settings.ConnectionString, builder.Configuration.GetValue<int?>(ConnectionPool.MaxPoolSizeSetting)),
+    configureDbContextOptions: options => options
+        // Runs after migrations are applied, and adds any archived season that isn't in the database yet.
+        // EF Core's tools and migration bundles use the synchronous delegate.
+        .UseSeeding((context, _) => ArchiveSeeder.Seed(context))
+        .UseAsyncSeeding((context, _, cancellationToken) => ArchiveSeeder.SeedAsync(context, cancellationToken)));
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddOptions<AdventOptions>()

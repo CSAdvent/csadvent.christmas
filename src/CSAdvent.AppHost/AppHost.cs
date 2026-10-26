@@ -1,3 +1,4 @@
+using System.Globalization;
 using Aspire.Hosting.Azure;
 using Azure.Provisioning.AppContainers;
 using Azure.Provisioning.Expressions;
@@ -36,6 +37,17 @@ var postgres = builder.AddAzurePostgresFlexibleServer("postgres")
             BackupRetentionDays = 14,
             GeoRedundantBackup = PostgreSqlFlexibleServerGeoRedundantBackupEnum.Disabled,
         };
+
+        // Azure's monthly patching restarts the server for a few minutes (#158). Without a window of our own it can land on
+        // any night between 11 PM and 7 AM, midnight's reveal included. Sundays from 08:00 UTC is 3 AM Eastern in winter
+        // (4 AM in summer): hours after the reveal, and before the morning's emails and announcements. Day 0 is Sunday.
+        server.MaintenanceWindow = new PostgreSqlFlexibleServerMaintenanceWindow
+        {
+            CustomWindow = "Enabled",
+            DayOfWeek = 0,
+            StartHour = 8,
+            StartMinute = 0,
+        };
     })
     .RunAsContainer(container =>
     {
@@ -67,6 +79,25 @@ var customDomains = (builder.Configuration.GetSection("CustomDomains").Get<Custo
         Certificate: builder.AddParameter($"custom-domain-{index}-certificate", domain.Certificate ?? "", publishValueAsDefault: true)))
     .ToList();
 
+// The web app's replicas in production (#158). The minimum is Web:MinReplicas in appsettings.json: 1 most of the year (a
+// managed certificate needs the app up to renew), and 2 from December 1 to 26, so one replica restarting never takes the site
+// down (the runbook's December and After Advent sections say when to change it). The maximum stays at 3, because the
+// database's connections are shared out between them (connectionsPerReplica).
+const int maxReplicas = 3;
+var minReplicas = builder.Configuration.GetValue("Web:MinReplicas", 1);
+if (minReplicas is < 1 or > maxReplicas)
+{
+    throw new InvalidOperationException($"Web:MinReplicas must be from 1 to {maxReplicas}, not {minReplicas}.");
+}
+
+// Each replica's database connection pool stops at 8 (Npgsql's default is 100), counting everything the web app opens: its
+// DbContexts, so the health check, data protection and the email queue's advisory lock too. The server ran out of connections
+// on October 24-25 (#158). Burstable B1ms allows 50 and keeps 15 for Azure, leaving 35. At most: 3 busy replicas, 24 (during
+// a deploy, the old revision's); the new revision's replicas, which start at the minimum and only run their background jobs
+// until they take traffic, about 3 each; and the migrations job's 1. That's 31. Change it only with the server's Sku or
+// maxReplicas, and keep the connections alert in step.
+const int connectionsPerReplica = 8;
+
 var web = builder.AddProject<Projects.CSAdvent_Web>("web", launchProfileName: isTesting ? "http" : "https")
     .WithExternalHttpEndpoints()
     .WithHttpHealthCheck("/health")
@@ -74,9 +105,8 @@ var web = builder.AddProject<Projects.CSAdvent_Web>("web", launchProfileName: is
     .WaitFor(database)
     .PublishAsAzureContainerApp((_, app) =>
     {
-        // Always one replica running (a managed certificate needs the app up to renew), and room to scale in December.
-        app.Template.Scale.MinReplicas = 1;
-        app.Template.Scale.MaxReplicas = 3;
+        app.Template.Scale.MinReplicas = minReplicas;
+        app.Template.Scale.MaxReplicas = maxReplicas;
 
         // Plain http reaches the app, which sends it to https://csadvent.christmas in one permanent redirect (#165). Left to
         // the ingress, http://www. took two: to https://www., then to the canonical host.
@@ -101,6 +131,9 @@ if (isPublish)
     // Telemetry goes to Application Insights in production. Never added locally, where it would provision Azure resources.
     var appInsights = builder.AddAzureApplicationInsights("appinsights");
     web.WithReference(appInsights);
+
+    // Caps each replica's connection pool (connectionsPerReplica, above). Locally and in the tests the pool keeps its default.
+    web.WithEnvironment("Database__MaxPoolSize", connectionsPerReplica.ToString(CultureInfo.InvariantCulture));
 
     // Email goes through Azure Communication Services. The web app sends with its own managed identity, so there's no key.
     var webIdentity = builder.AddAzureUserAssignedIdentity("web-identity");
@@ -216,8 +249,12 @@ var migrations = web.AddEFMigrations(
     .WaitFor(database)
     .RunDatabaseUpdateOnStart()
     // The bundle is framework-dependent and loads the web app's assembly, so it needs .NET 11 with ASP.NET Core. Left to
-    // itself, Aspire picks runtime:10.0. Update the tag with the rest of the .NET 11 GA work (#55).
-    .PublishAsMigrationBundle(publishContainer: true, baseImage: "mcr.microsoft.com/dotnet/aspnet:11.0")
+    // itself, Aspire picks runtime:10.0. Pinned by digest (#180) to the runtime of global.json's SDK, so a deploy never picks
+    // up a different image by itself (the tag is only a label). Update both with the .NET 11 GA work (#55): the digest is
+    // the Docker-Content-Digest of https://mcr.microsoft.com/v2/dotnet/aspnet/manifests/<tag>, asking for a manifest list.
+    .PublishAsMigrationBundle(
+        publishContainer: true,
+        baseImage: "mcr.microsoft.com/dotnet/aspnet:11.0.0-rc.2@sha256:9a52cade70623cb66cad79baeea5ae9995b42b38d169ccc2a95b4f6b041e9874")
     .PublishAsAzureContainerAppJob();
 
 web.WaitForCompletion(migrations);

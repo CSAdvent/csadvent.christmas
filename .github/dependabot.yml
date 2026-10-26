@@ -1,0 +1,59 @@
+# Dependency updates (#180), once a week, each ecosystem's in one grouped pull request, because every pull request and merge
+# costs Actions minutes (the runbook's GitHub Actions Minutes section).
+#
+# December: pause both by setting open-pull-requests-limit to 0, in the same pull request that raises the web app's replicas,
+# and set them back to 5 after Advent (the runbook's December and After Advent sections). Security updates aren't paused by
+# this: they're a repository setting.
+version: 2
+updates:
+  # The workflows' actions. deploy.yml pins them to commits with the tag in a comment, and Dependabot updates both.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: America/New_York
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: ci
+      include: scope
+    groups:
+      actions:
+        patterns: ['*']
+        applies-to: version-updates
+      actions-security:
+        patterns: ['*']
+        applies-to: security-updates
+
+  # Directory.Packages.props, and dotnet-tools.json.
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: America/New_York
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: build
+      include: scope
+    # Everything tied to .NET 11's release candidate moves together with the GA work (#55): EF Core (and the EF Core packages
+    # pinned to it), Npgsql, and Aspire. Remove these once that's done.
+    ignore:
+      - dependency-name: 'Microsoft.EntityFrameworkCore*'
+      - dependency-name: 'Microsoft.AspNetCore.DataProtection.EntityFrameworkCore'
+      - dependency-name: 'Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore'
+      - dependency-name: 'dotnet-ef'
+      - dependency-name: 'Npgsql*'
+      - dependency-name: 'Aspire.*'
+      - dependency-name: 'CommunityToolkit.Aspire.*'
+      # Kept at bUnit's version (CLAUDE.md's Gotchas): update the two together, by hand.
+      - dependency-name: 'AngleSharp'
+    groups:
+      nuget:
+        patterns: ['*']
+        applies-to: version-updates
+      nuget-security:
+        patterns: ['*']
+        applies-to: security-updates

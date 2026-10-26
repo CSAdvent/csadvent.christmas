@@ -16,7 +16,7 @@ concurrency:
 jobs:
   lint-pr-title:
     name: Lint PR Title
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -39,7 +39,7 @@ jobs:
 
   commitlint:
     name: Lint Commit Messages
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout code
         uses: actions/checkout@v7

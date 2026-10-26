@@ -4,7 +4,8 @@ on:
   push:
     branches: [main]
     # A push that only changes documentation has nothing to build, test or deploy (deploy.yml waits for this workflow), so
-    # CI doesn't run at all. Keep this list in step with "Check for code changes" below.
+    # CI doesn't run at all. Keep this list in step with "Check for code changes" below, and with deploy.yml's "Choose the
+    # commit".
     paths-ignore:
       - 'README.md'
       - 'CLAUDE.md'
@@ -21,11 +22,18 @@ concurrency:
   group: ci-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+env:
+  # The same Aspire CLI as deploy.yml. Keep the two in step.
+  ASPIRE_CLI_VERSION: 13.6.3
+  DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
+  ASPIRE_CLI_TELEMETRY_OPTOUT: 'true'
+
 jobs:
   build:
     name: Build and test
-    # The integration tests start the AppHost, which runs Postgres and MailPit in Docker.
-    runs-on: ubuntu-latest
+    # The integration tests start the AppHost, which runs Postgres and MailPit in Docker. Pinned rather than ubuntu-latest,
+    # which moves to a new Ubuntu in the middle of the season (#177). Move it on outside the season (the runbook's January).
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
@@ -49,11 +57,17 @@ jobs:
             echo "code=false" >> "$GITHUB_OUTPUT"
           fi
 
+      # Only the SDK global.json asks for (#177). setup-dotnet also installs the latest LTS runtime first, every time, which
+      # cost about 40 seconds whenever that download failed. The install script is pinned to a commit of
+      # dotnet/install-scripts (tag v2026.07.21), and puts the SDK beside the runner's own, where setup-dotnet did.
       - name: Setup .NET
         if: steps.changes.outputs.code != 'false'
-        uses: actions/setup-dotnet@v6
-        with:
-          global-json-file: global.json
+        run: |
+          curl --fail --silent --show-error --location --retry 3 --output "$RUNNER_TEMP/dotnet-install.sh" \
+            https://raw.githubusercontent.com/dotnet/install-scripts/da3ce11ba63f3dbb0fb835d41bda2665d5c48e84/src/dotnet-install.sh
+          bash "$RUNNER_TEMP/dotnet-install.sh" --jsonfile global.json --install-dir /usr/share/dotnet --skip-non-versioned-files
+          echo "DOTNET_ROOT=/usr/share/dotnet" >> "$GITHUB_ENV"
+          dotnet --version
 
       # The build downloads Tailwind's standalone CLI (about 110 MB) into .tools/ unless it's already there.
       - name: Cache the Tailwind CLI
@@ -71,6 +85,45 @@ jobs:
         if: steps.changes.outputs.code != 'false'
         run: dotnet build CSAdvent.slnx --configuration Release --no-restore
 
+      # Generates the production Bicep as the deploy does (#178), and compiles it, so a break in the Azure-only parts of the
+      # AppHost shows up here, not in the deploy after the merge. Pull requests only: on main, the deploy does the same before
+      # it changes anything in Azure. "aspire do publish-azure-environment" is "aspire publish" without the migration bundle,
+      # which would add about two minutes. Always the PublishCheck environment, never Production, whose saved state aspire
+      # deploy reuses. The placeholders switch on the AppHost's optional parts (alerts, social posting, the blurb check);
+      # publishing only declares parameters, so their values never reach the output.
+      - name: Check the Azure publish
+        if: github.event_name == 'pull_request' && steps.changes.outputs.code != 'false'
+        env:
+          # With --no-build, run what the Build step built.
+          Configuration: Release
+          Parameters__alert-emails: organizers@example.invalid
+          Parameters__mastodon-access-token: placeholder
+          Parameters__bluesky-app-password: placeholder
+          Parameters__facebook-page-id: placeholder
+          Parameters__facebook-page-token: placeholder
+          Parameters__x-api-key: placeholder
+          Parameters__x-api-key-secret: placeholder
+          Parameters__x-access-token: placeholder
+          Parameters__x-access-token-secret: placeholder
+          Parameters__anthropic-api-key: placeholder
+        run: |
+          dotnet tool install --global Aspire.Cli --version "$ASPIRE_CLI_VERSION"
+          # shellcheck disable=SC1010 # "do" is the Aspire command here, not the shell's keyword.
+          aspire do publish-azure-environment --apphost src/CSAdvent.AppHost --output-path "$RUNNER_TEMP/publish" \
+            --environment PublishCheck --no-build --non-interactive --nologo
+          bicep build "$RUNNER_TEMP/publish/main.bicep" --stdout > /dev/null
+          echo "The Azure publish generated and compiled."
+
+      # Every test's result goes into a TRX file, uploaded below when a test fails (#177).
       - name: Test
+        id: test
         if: steps.changes.outputs.code != 'false'
-        run: dotnet test --solution CSAdvent.slnx --configuration Release --no-build
+        run: dotnet test --solution CSAdvent.slnx --configuration Release --no-build --report-xunit-trx --results-directory TestResults
+
+      - name: Upload the test results
+        if: failure() && steps.test.outcome == 'failure'
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results
+          path: TestResults/*.trx
+          retention-days: 7
