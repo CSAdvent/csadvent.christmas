@@ -501,8 +501,10 @@ a sample to everyone.
   3. "Gave up on … email" means the email queue tried an email 6 times over about 2 hours 20 minutes. It's on
      `/manage/emails/queue` with the email service's answer: fix the cause, then **Retry** (or **Retry all**).
 
-  The duplicate inserts that the reminders, backups and announcements expect, which EF Core logs as errors all day, are left
-  out of this alert until #157 stops them being logged.
+  A failed database command is logged as an error by EF Core and Npgsql before the site can handle it. The alert leaves out
+  EF Core's "Failed executing DbCommand" (`CommandError`), because whatever ran the command reports the failure again, and
+  their records of a duplicate (SqlState 23505), which the site expects when two runs or replicas save the same thing at
+  once (#224). So the manual query above shows more than the alert counts: read the error that comes after them.
 - **Database storage over 80%** (`csadvent-postgres-storage`): the server has 32 GB and doesn't grow by itself. At 95% it
   turns read-only, and the site stops saving anything. Raise `StorageSizeInGB` in `AppHost.cs` and deploy (storage can grow
   but never shrink), then look for what grew:
