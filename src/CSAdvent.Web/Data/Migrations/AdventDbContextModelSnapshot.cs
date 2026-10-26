@@ -16,7 +16,7 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261026213926_AddLinkChecks";
+    public override string LastMigrationId => "20261026232357_AddAuthorNotDroppedOutCheck";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -1678,6 +1678,8 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
 
                 b.ToTable("slots", t =>
                     {
+                        t.HasCheckConstraint("ck_slots_author_not_dropped_out", "author_name IS NULL OR dropped_out_at IS NULL");
+
                         t.HasCheckConstraint("ck_slots_author_url", "author_url ~* '^https?://'");
 
                         t.HasCheckConstraint("ck_slots_contributor_needs_author", "contributor_id IS NULL OR author_name IS NOT NULL");
