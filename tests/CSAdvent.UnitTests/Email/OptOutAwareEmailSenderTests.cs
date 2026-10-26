@@ -124,5 +124,8 @@ public sealed class OptOutAwareEmailSenderTests
                 BlurbEmails.BackupStandingBy(new BlurbPost(1, spot, "Post", "https://example.com/post", "10 AM"), new BlurbBackup("Grace", "Hers", "https://example.com/hers"), "It's missing.", "10 AM", Site),
             ],
             email => Assert.False(email.Transactional, email.Subject));
+
+        // Emails to the organizers aren't about anything they signed up for; their inbox is never skipped anyway.
+        Assert.False(SpotEmails.PostChanged(new PostChangeDetails(1, "Ada", 2026, 3, 1, 2, "Old", "New", null, null), Site).Transactional);
     }
 }

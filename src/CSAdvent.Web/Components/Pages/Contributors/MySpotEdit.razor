@@ -8,10 +8,13 @@
 @inject BlurbQueries Blurbs
 @inject BlurbSelfCheckService SelfChecks
 @inject NavigationManager Navigation
+@inject Microsoft.Extensions.Options.IOptions<SiteOptions> Site
 
-@if (Done == "saved")
+@if (Done is "saved" or "link-requested")
 {
-    <p class="mb-6 rounded-xl bg-green-50 p-4 font-medium text-green-800 ring-1 ring-green-200" role="status">Saved.</p>
+    <p class="mb-6 rounded-xl bg-green-50 p-4 font-medium text-green-800 ring-1 ring-green-200" role="status">
+        @(Done == "saved" ? "Saved." : "Saved. An organizer will check your new link and email you; until then, readers go to the one you had.")
+    </p>
 }
 
 @if (_spot is { } spot)
@@ -27,10 +30,20 @@
 
     <h1 class="text-3xl font-bold tracking-tight text-slate-900">@spot.Spot</h1>
     <p class="mt-2 max-w-2xl text-slate-600">
-        @(spot.IsRevealed
-            ? "Your day has been revealed, so changes show on the calendar right away."
-            : $"Your post is revealed on the calendar at midnight Eastern on December {spot.Day}. Don't publish it before then.")
+        @(spot.IsPublished
+            ? "Your post has been revealed. A new title or summary shows straight away, and we let the organizers know. A new link waits for an organizer to check it, because every link we've shared to your post goes there."
+            : spot.IsRevealed
+                ? "Your day has been revealed, so changes show on the calendar right away."
+                : $"Your post is revealed on the calendar at midnight Eastern on December {spot.Day}. Don't publish it before then.")
     </p>
+
+    @if (spot.PendingLink is { } pendingLink)
+    {
+        <p class="mt-4 max-w-2xl rounded-xl bg-advent-50 p-4 text-sm text-slate-700 ring-1 ring-advent-200" role="status">
+            Your new link, <span class="break-all font-medium text-slate-900">@pendingLink</span>, is waiting for an organizer. Readers go
+            to the one below until it's checked. <a href="@PostLinkLinks.Request" class="font-medium text-advent-700 underline">See or withdraw your request</a>
+        </p>
+    }
 
     <EditForm Model="Form" FormName="spot" OnValidSubmit="SaveAsync" class="mt-8 flex max-w-2xl flex-col gap-5">
         <DataAnnotationsValidator />
@@ -177,12 +190,28 @@ else if (Done == "dropped")
                     ? $"my-spots/{SlotId}?done=saved&blurb={BlurbSelfCheckService.QueryValue(checkedNow)}&slot={SlotId}"
                     : $"my-spots/{SlotId}?done=saved");
                 return;
+            case MySpotOutcome.LinkRequested:
+                Navigation.NavigateTo($"my-spots/{SlotId}?done=link-requested");
+                return;
             case MySpotOutcome.DroppedOut:
                 Navigation.NavigateTo($"my-spots/{SlotId}?done=dropped");
                 return;
             case MySpotOutcome.TooLate:
                 _error = "It's too late to change this spot.";
                 break;
+            // Nothing was saved, so the form keeps what they typed.
+            case MySpotOutcome.PostRequired:
+                _error = "Your post has been revealed, so it can't be taken off the calendar here. If you can't keep it, drop out below, or email us.";
+                return;
+            case MySpotOutcome.LinkAlreadyRequested:
+                _error = "Nothing was saved: you're already waiting for an organizer to check new links. Withdraw that request (on Change your posts' links, from My spots) to ask for this one.";
+                return;
+            case MySpotOutcome.LinkTooMany:
+                _error = $"Nothing was saved: you've asked for new links a few times in the last hour. Try again later, or email {Site.Value.ContactEmail} with the new link.";
+                return;
+            case MySpotOutcome.NoVerifiedEmail:
+                _error = "Nothing was saved: a new link needs a verified primary email on your GitHub account, so we can tell you what the organizers decide. Add one on GitHub, sign out and sign in again.";
+                return;
             case MySpotOutcome.NotFound:
                 Navigation.NotFound();
                 return;

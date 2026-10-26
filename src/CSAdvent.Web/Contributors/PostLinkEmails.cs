@@ -6,7 +6,7 @@ using static CSAdvent.Web.Email.EmailBlocks;
 
 namespace CSAdvent.Web.Contributors;
 
-/// <summary>What the emails about a request to change older posts' links say.</summary>
+/// <summary>What the emails about a request to change posts' links say: older posts', or a revealed post's this season (#155).</summary>
 /// <param name="Login">The requester's GitHub login.</param>
 /// <param name="Name">Their name, from their profile or GitHub, if they have one.</param>
 public sealed record PostLinkEmailDetails(int RequestId, string Login, string? Name, string? Note, IReadOnlyList<PostLinkEmailChange> Changes)
@@ -24,7 +24,7 @@ public sealed record PostLinkEmailChange(int Year, int Day, int Part, int SlotsP
     public string Spot => SlotsPerDay > 1 ? $"December {Day}, {Year}, post {Part}" : $"December {Day}, {Year}";
 }
 
-/// <summary>Emails about changing the links of someone's older posts.</summary>
+/// <summary>Emails about changing the links of someone's posts.</summary>
 public static class PostLinkEmails
 {
     /// <summary>To the organizers, for every request. Replies go to the requester.</summary>
@@ -32,11 +32,11 @@ public static class PostLinkEmails
     {
         Kind = "post-links-new-request",
         Subject = SingleLine($"New post links? {request.Login} asked to change the links to {request.Posts}"),
-        Preview = SingleLine($"{request.Who} asked for new links to {request.Posts} from earlier seasons of C# Advent."),
+        Preview = SingleLine($"{request.Who} asked for new links to {request.Posts} on C# Advent."),
         Heading = "Someone wants new links to their posts",
         Body =
         [
-            Paragraph($"{request.Who} asked to change the links to {request.Posts} from earlier seasons of C# Advent:"),
+            Paragraph($"{request.Who} asked to change the links to {request.Posts} on C# Advent:"),
             List([.. request.Changes.Select(change => new EmailSpan[]
             {
                 $"“{change.Title}” ({change.Spot})", EmailSpan.LineBreak,
@@ -68,8 +68,8 @@ public static class PostLinkEmails
                 Link(change.Title, EntryLinks.Absolute(Site(site), EntryLinks.Page(change.Year, change.Day, change.Part))),
                 $" ({change.Spot}) now goes to {change.NewUrl}",
             })]),
-            Paragraph("The archive and your posts' pages send readers to the new addresses from now on."),
-            Button("See your history", ClaimEmails.MySpots(site)),
+            Paragraph("Every link we've shared to them sends readers to the new addresses from now on."),
+            Button("Open My spots", ClaimEmails.MySpots(site)),
             SignOff,
         ],
         Reason = "You're getting this email because you asked to change the links to your C# Advent posts.",

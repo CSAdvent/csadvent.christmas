@@ -1,11 +1,6 @@
-using CSAdvent.Web.Calendar;
-using CSAdvent.Web.Content;
 using CSAdvent.Web.Contributors;
 using CSAdvent.Web.Data;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Time.Testing;
 
 namespace CSAdvent.IntegrationTests;
 
@@ -86,14 +81,7 @@ public sealed class MySpotsSeasonEndTests(AppHostFixture fixture)
         }
     }
 
-    /// <summary>My spots on a fake clock. Saving a post and reading the page don't send email or ask backups.</summary>
-    private static MySpotsService Service(AdventDbContext db, DateTimeOffset now)
-    {
-        var clock = new FakeTimeProvider(now);
-        var schedule = new AdventSchedule(Options.Create(new AdventOptions { TimeZone = "America/New_York" }), clock);
-        var site = Options.Create(new SiteOptions { ContactEmail = "hello@csadvent.christmas", BaseUrl = "https://localhost" });
-        return new MySpotsService(db, schedule, clock, null!, null!, null!, site, NullLogger<MySpotsService>.Instance);
-    }
+    private static MySpotsService Service(AdventDbContext db, DateTimeOffset now) => new ServicesOnAClock(db, now).MySpots();
 
     private async Task<(int ContributorId, int SlotId)> GiveSpotAsync(long githubUserId, string login, int day, int part)
     {

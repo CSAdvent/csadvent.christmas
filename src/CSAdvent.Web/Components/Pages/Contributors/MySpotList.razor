@@ -86,6 +86,10 @@
                                 <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">Needs your post's title and URL</span>
                             }
                         </p>
+                        @if (_pendingLinks?.Changes.Any(c => c.SlotId == spot.SlotId) == true)
+                        {
+                            <p class="mt-1 text-sm text-slate-600">Your new link is waiting for an organizer.</p>
+                        }
                         @if (spot.Status is EntryStatus.Ready && BlurbRules.AppliesTo(spot.Year) && Blurbs.IsEnabled && !spot.IsDayOver)
                         {
                             <PostBlurbCheck SlotId="spot.SlotId" Year="spot.Year" IsRevealed="spot.IsRevealed" State="_blurbs.GetValueOrDefault(spot.SlotId)" ReturnUrl="my-spots" />

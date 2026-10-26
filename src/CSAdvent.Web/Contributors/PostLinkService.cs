@@ -107,7 +107,10 @@ public enum PostLinkSaveOutcome
 /// author's links themselves. The calendar, the archive and entry pages link through <c>/go</c>, so a new link applies
 /// everywhere at once, including in the emails, social posts and feeds we've sent since 2026.
 /// </summary>
-/// <remarks>Posts in a season that isn't over are changed on My spots instead (<see cref="MySpotsService"/>).</remarks>
+/// <remarks>
+/// Posts in a season that isn't finished are changed on My spots instead (<see cref="MySpotsService"/>): straight away until
+/// they're revealed, and from then on a new link is a request here too (<see cref="RequestNewLinkAsync"/>, #155).
+/// </remarks>
 public sealed partial class PostLinkService(
     AdventDbContext db,
     AdventSchedule schedule,
@@ -153,27 +156,71 @@ public sealed partial class PostLinkService(
             return PostLinkOutcome.NothingChanged;
         }
 
-        var requester = await db.Contributors
-            .Where(c => c.Id == contributorId)
-            .Select(c => new { c.GithubLogin, c.DisplayName, c.Email, c.EmailVerifiedAt })
-            .SingleAsync(cancellationToken);
-        if (requester.Email is null || requester.EmailVerifiedAt is null)
+        return await RequestAsync(contributorId, changes, form.Note, cancellationToken);
+    }
+
+    /// <summary>
+    /// Asks for a new link to one of the contributor's revealed posts in a season that isn't finished, and emails the organizers
+    /// (#155). From its reveal, a post's link only changes once an organizer has checked the new one, as an older post's does,
+    /// because every link we've shared goes there. My spots asks when they change it.
+    /// </summary>
+    public async Task<PostLinkOutcome> RequestNewLinkAsync(int contributorId, int slotId, string newUrl, CancellationToken cancellationToken = default)
+    {
+        var post = (await PostsAsync(db.Slots.Where(s => s.Id == slotId && s.ContributorId == contributorId), cancellationToken)).SingleOrDefault();
+        if (post is null || !schedule.IsRevealed(post.Year, post.Day) || schedule.IsFinished(post.Year))
+        {
+            return PostLinkOutcome.NotFound;
+        }
+
+        var url = newUrl.Trim();
+        return url == post.PostUrl ? PostLinkOutcome.NothingChanged : await RequestAsync(contributorId, [(post, url)], note: null, cancellationToken);
+    }
+
+    /// <summary>
+    /// Why the contributor can't ask for new links now, or null if they can. They have one request at a time, we email them at
+    /// their verified address, and each request emails the organizers, so there are only <see cref="MaxPerHour"/> an hour.
+    /// </summary>
+    public async Task<PostLinkOutcome?> CheckRequesterAsync(int contributorId, CancellationToken cancellationToken = default)
+    {
+        if (await db.PostLinkRequests.AnyAsync(r => r.ContributorId == contributorId && r.Status == PostLinkRequestStatus.Pending, cancellationToken))
+        {
+            return PostLinkOutcome.AlreadyRequested;
+        }
+
+        if (!await db.Contributors.AnyAsync(c => c.Id == contributorId && c.Email != null && c.EmailVerifiedAt != null, cancellationToken))
         {
             return PostLinkOutcome.NoVerifiedEmail;
         }
 
-        var now = timeProvider.GetUtcNow();
-        var hourAgo = now.AddHours(-1);
-        if (await db.PostLinkRequests.CountAsync(r => r.ContributorId == contributorId && r.SubmittedAt > hourAgo, cancellationToken) >= MaxPerHour)
+        var hourAgo = timeProvider.GetUtcNow().AddHours(-1);
+        return await db.PostLinkRequests.CountAsync(r => r.ContributorId == contributorId && r.SubmittedAt > hourAgo, cancellationToken) >= MaxPerHour
+            ? PostLinkOutcome.TooMany
+            : null;
+    }
+
+    /// <summary>The contributor's request waiting for an organizer, if it has a new link for this spot: the link.</summary>
+    public Task<string?> GetPendingLinkAsync(int contributorId, int slotId, CancellationToken cancellationToken = default) =>
+        db.PostLinkChanges
+            .Where(c => c.SlotId == slotId && db.PostLinkRequests.Any(r => r.Id == c.RequestId && r.ContributorId == contributorId && r.Status == PostLinkRequestStatus.Pending))
+            .Select(c => c.NewUrl)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    private async Task<PostLinkOutcome> RequestAsync(int contributorId, IReadOnlyList<(LinkedPost Post, string NewUrl)> changes, string? note, CancellationToken cancellationToken)
+    {
+        if (await CheckRequesterAsync(contributorId, cancellationToken) is { } refused)
         {
-            return PostLinkOutcome.TooMany;
+            return refused;
         }
 
+        var requester = await db.Contributors
+            .Where(c => c.Id == contributorId)
+            .Select(c => new { c.GithubLogin, c.DisplayName, c.Email })
+            .SingleAsync(cancellationToken);
         var request = new PostLinkRequest
         {
             ContributorId = contributorId,
-            Note = string.IsNullOrWhiteSpace(form.Note) ? null : form.Note.Trim(),
-            SubmittedAt = now,
+            Note = string.IsNullOrWhiteSpace(note) ? null : note.Trim(),
+            SubmittedAt = timeProvider.GetUtcNow(),
             Status = PostLinkRequestStatus.Pending,
             Changes = [.. changes.Select(c => new PostLinkChange { SlotId = c.Post.SlotId, OldUrl = c.Post.PostUrl, NewUrl = c.NewUrl })],
         };
@@ -184,6 +231,9 @@ public sealed partial class PostLinkService(
         }
         catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
         {
+            // My spots shares the context, so nothing is left to be saved again.
+            db.Entry(request).State = EntityState.Detached;
+            request.Changes.ForEach(change => db.Entry(change).State = EntityState.Detached);
             return PostLinkOutcome.AlreadyRequested;
         }
 
@@ -193,7 +243,7 @@ public sealed partial class PostLinkService(
             requester.DisplayName,
             request.Note,
             [.. changes.Select(c => new PostLinkEmailChange(c.Post.Year, c.Post.Day, c.Post.Part, c.Post.SlotsPerDay, c.Post.Title, c.Post.PostUrl, c.NewUrl))]);
-        await SendAsync(request.Id, "new request", PostLinkEmails.NewRequest(details, site.Value), new EmailRecipient(site.Value.ContactEmail, "C# Advent organizers"), requester.Email, cancellationToken);
+        await SendAsync(request.Id, "new request", PostLinkEmails.NewRequest(details, site.Value), new EmailRecipient(site.Value.ContactEmail, "C# Advent organizers"), requester.Email!, cancellationToken);
         return PostLinkOutcome.Requested;
     }
 
