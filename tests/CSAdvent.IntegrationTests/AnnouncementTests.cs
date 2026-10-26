@@ -8,10 +8,16 @@ namespace CSAdvent.IntegrationTests;
 
 /// <summary>
 /// The announcements list (#49): signing up with a confirmed address through the plain, rate-limited form, and organizers'
-/// announcements delivered to it. Uses season 2125 for the "sign-ups are open" email.
+/// announcements delivered to it. Uses season 2125 for the "sign-ups are open" email, whose sign-ups open at 9 AM Eastern on
+/// November 15, 2125. Announcements run at fixed times, never "today", so the tests don't depend on the real clock (#198).
 /// </summary>
 public sealed partial class AnnouncementTests(AppHostFixture fixture)
 {
+    private const int Year = 2125;
+
+    /// <summary>9 AM Eastern Standard Time on November 15, 2125.</summary>
+    private static readonly DateTimeOffset SignUpsOpenAt = new(2125, 11, 15, 14, 0, 0, TimeSpan.Zero);
+
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
     [Fact]
@@ -96,12 +102,14 @@ public sealed partial class AnnouncementTests(AppHostFixture fixture)
         var sent = await organizer.PostFormAsync(page, "send", new() { ["Send.Confirm"] = "true" });
         Assert.Equal($"{page}?done=sent", TestBrowser.PathOf(sent.Headers.Location!));
 
-        await RunAnnouncementsAsync();
+        // A January afternoon: no sign-ups opening, no invitations and no daily posts, only the announcement.
+        var january = new DateTimeOffset(2126, 1, 15, 17, 0, 0, TimeSpan.Zero);
+        await RunAnnouncementsAsync(january);
         var email = await fixture.WaitForEmailAsync("announce-reader@example.com", "An announcement for the readers");
         Assert.Contains("Second paragraph.", email.Html);
 
         // A second run sends nothing more to the same subscriber.
-        await RunAnnouncementsAsync();
+        await RunAnnouncementsAsync(january.AddMinutes(5));
         var id = int.Parse(page.Split('/')[^1], CultureInfo.InvariantCulture);
         await using (var db = await fixture.CreateDbContextAsync())
         {
@@ -119,25 +127,33 @@ public sealed partial class AnnouncementTests(AppHostFixture fixture)
     [Fact]
     public async Task TheSignUpsEmailIsQueuedOnceWhenSignUpsOpen()
     {
-        await TestSeasons.EnsureAsync(fixture, 2125, claimsOpen: true);
+        // An hour before sign-ups open, it isn't queued yet.
+        await RunAnnouncementsAsync(SignUpsOpenAt.AddHours(-1));
+        Assert.Empty(await SignUpsEmailsAsync());
 
-        await RunAnnouncementsAsync(year: 2125);
-        await RunAnnouncementsAsync(year: 2125);
-
-        await using var db = await fixture.CreateDbContextAsync();
-        var queued = await db.Announcements.Where(a => a.Kind == AnnouncementKind.SignUpsOpen && a.SeasonYear == 2125).ToListAsync(CancellationToken);
+        // At noon on the day they open it's queued, and the next run doesn't queue it again.
+        await RunAnnouncementsAsync(SignUpsOpenAt.AddHours(3));
+        await RunAnnouncementsAsync(SignUpsOpenAt.AddHours(3).AddMinutes(5));
+        var queued = await SignUpsEmailsAsync();
         Assert.Equal("C# Advent 2125 sign-ups are open", Assert.Single(queued).Subject);
         Assert.NotNull(queued[0].SentAt);
     }
 
-    /// <summary>Runs announcements at noon Eastern today, after the morning send time, whatever time the tests run.</summary>
-    private async Task RunAnnouncementsAsync(int? year = null)
+    private async Task<List<Announcement>> SignUpsEmailsAsync()
     {
-        var eastern = TimeZoneInfo.FindSystemTimeZoneById("America/New_York");
-        var today = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, eastern).Date;
-        var noon = new DateTimeOffset(today.AddHours(12), eastern.GetUtcOffset(today.AddHours(12))).ToUniversalTime();
+        await using var db = await fixture.CreateDbContextAsync();
+        return await db.Announcements.AsNoTracking().Where(a => a.Kind == AnnouncementKind.SignUpsOpen && a.SeasonYear == Year).ToListAsync(CancellationToken);
+    }
+
+    /// <summary>
+    /// Runs announcements as if it were <paramref name="at"/>, with season 2125 as the season whose sign-ups are announced, so
+    /// which season is current (the other tests' seasons) makes no difference.
+    /// </summary>
+    private async Task RunAnnouncementsAsync(DateTimeOffset at)
+    {
+        await TestSeasons.EnsureAsync(fixture, Year, claimsOpen: false, season => season.ClaimsOpenAt = SignUpsOpenAt);
         using var client = fixture.CreateWebClient();
-        var query = $"at={Uri.EscapeDataString(noon.ToString("O", CultureInfo.InvariantCulture))}{(year is { } y ? $"&year={y}" : "")}";
+        var query = $"at={Uri.EscapeDataString(at.ToString("O", CultureInfo.InvariantCulture))}&year={Year}";
         var response = await client.PostAsync($"/dev/announcements/run?{query}", null, CancellationToken);
         response.EnsureSuccessStatusCode();
     }

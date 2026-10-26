@@ -156,7 +156,7 @@ public sealed partial class ClaimPageTests(AppHostFixture fixture)
         Assert.Contains("December 20, 2097 (post 2)", received.Text);
 
         // Replying to the organizers' copy reaches the contributor.
-        var notice = await fixture.WaitForEmailAsync("hello@csadvent.christmas", "New C# Advent request: Grace Hopper for December 20");
+        var notice = await fixture.WaitForEmailAsync("hello@csadvent.christmas", "New C# Advent request: Grace Hopper for December 20", containing: "claim-grace@example.com");
         Assert.Equal("claim-grace@example.com", Assert.Single(notice.ReplyTo).Address);
         await using var db = await fixture.CreateDbContextAsync();
         var requestId = await db.ClaimRequests.Where(r => r.Contributor.GithubUserId == 6009).Select(r => r.Id).SingleAsync(CancellationToken);

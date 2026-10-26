@@ -1,3 +1,4 @@
+using System.Net.Sockets;
 using System.Text.RegularExpressions;
 using CSAdvent.Web.Content;
 using CSAdvent.Web.Data;
@@ -148,6 +149,76 @@ public sealed partial class ContentTests(AppHostFixture fixture)
     }
 
     [Fact]
+    public async Task RefreshingALogoNeverReachesAPrivateAddressAndKeepsTheOneItHad()
+    {
+        // A calendar whose address is on this machine, as an organizer might type one for the container network or the cloud
+        // metadata endpoint. A listener there counts every connection Refresh makes to it: there must be none (#199).
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var connections = 0;
+        var accepting = Task.Run(async () =>
+        {
+            while (true)
+            {
+                using var client = await listener.AcceptTcpClientAsync(CancellationToken);
+                Interlocked.Increment(ref connections);
+            }
+        }, CancellationToken);
+        var url = $"http://127.0.0.1:{((IPEndPoint)listener.LocalEndpoint).Port}/advent";
+
+        await TestSeasons.EnsureAsync(fixture, 2621, claimsOpen: false);
+        int id;
+        await using (var db = await fixture.CreateDbContextAsync())
+        {
+            var season = await db.Seasons.Include(s => s.OtherAdvents).SingleAsync(s => s.Year == 2621, CancellationToken);
+            season.OtherAdvents.Add(new OtherAdvent { Name = "Private Advent 2621", Url = url, SortOrder = 1 });
+            await db.SaveChangesAsync(CancellationToken);
+            id = season.OtherAdvents.Single().Id;
+        }
+
+        try
+        {
+            using var organizer = await fixture.SignInAsync("organizer", AppHostFixture.OrganizerGitHubId);
+            const string page = "/manage/other-advents?year=2621";
+            var uploaded = await UploadLogoAsync(organizer, await organizer.GetStringAsync(page, CancellationToken), 2621, id, Convert.FromBase64String(Png200));
+            Assert.Equal($"{page}&logo=uploaded", TestBrowser.PathOf(uploaded.Headers.Location!));
+            var logo = LogoLink().Match(await organizer.GetStringAsync(page, CancellationToken)).Value;
+
+            // Someone who isn't an organizer can't refresh it.
+            using (var nosy = await fixture.SignInAsync("content-logo-nosy", 262101))
+            {
+                var refused = await PostRefreshAsync(nosy, await nosy.GetStringAsync("/announcements", CancellationToken), 2621, id);
+                Assert.StartsWith("/access-denied", TestBrowser.PathOf(refused.Headers.Location!));
+            }
+
+            // Refresh says it found nothing, never connects, and keeps the uploaded logo.
+            var refreshed = await PostRefreshAsync(organizer, await organizer.GetStringAsync(page, CancellationToken), 2621, id);
+            Assert.Equal($"{page}&logo=not-found", TestBrowser.PathOf(refreshed.Headers.Location!));
+            Assert.Equal(0, Volatile.Read(ref connections));
+            Assert.Equal(logo, LogoLink().Match(await organizer.GetStringAsync(page, CancellationToken)).Value);
+            await using (var db = await fixture.CreateDbContextAsync())
+            {
+                var row = await db.OtherAdventLogos.AsNoTracking().SingleAsync(l => l.Url == url, CancellationToken);
+                Assert.True(row.IsUploaded);
+                Assert.NotNull(row.LastAttemptAt);
+            }
+
+            // A calendar that isn't on that season's list is a 404.
+            var unknown = await PostRefreshAsync(organizer, await organizer.GetStringAsync(page, CancellationToken), 2621, id + 100_000);
+            Assert.Equal(HttpStatusCode.NotFound, unknown.StatusCode);
+        }
+        finally
+        {
+            // Taken off again, for the same reason as in OrganizersUploadLogosAndTheSiteServesThemAsItsOwnPngs.
+            await using var db = await fixture.CreateDbContextAsync();
+            await db.OtherAdvents.Where(a => a.Id == id).ExecuteDeleteAsync(CancellationToken.None);
+            await db.OtherAdventLogos.Where(l => l.Url == url).ExecuteDeleteAsync(CancellationToken.None);
+            listener.Stop();
+            await Assert.ThrowsAnyAsync<Exception>(() => accepting);
+        }
+    }
+
+    [Fact]
     public async Task ReplicasNeverFetchTheSameLogoTwice()
     {
         const string url = "https://example.com/logo-race-2500";
@@ -202,6 +273,15 @@ public sealed partial class ContentTests(AppHostFixture fixture)
 
             return new HttpResponseMessage(System.Net.HttpStatusCode.NotFound);
         }
+    }
+
+    private static async Task<HttpResponseMessage> PostRefreshAsync(HttpClient browser, string page, int year, int id)
+    {
+        var token = System.Net.WebUtility.HtmlDecode(AntiforgeryToken().Match(page).Groups["token"].Value);
+        return await browser.PostAsync(
+            "/manage/other-advents/logo/refresh",
+            new FormUrlEncodedContent([new("__RequestVerificationToken", token), new("Year", $"{year}"), new("Id", $"{id}")]),
+            CancellationToken);
     }
 
     private static async Task<HttpResponseMessage> UploadLogoAsync(HttpClient browser, string page, int year, int id, byte[] image)

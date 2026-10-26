@@ -17,6 +17,9 @@ public readonly record struct EmailBudget(int Total, int ListUnderCeiling, int L
 
     /// <summary>How much list mail can go once <paramref name="others"/> other emails have been taken this pass, which count towards the ceiling too.</summary>
     public int ListRoom(int others) => Math.Max(0, Math.Min(Math.Min(ListUnderCeiling - others, ListThisMinute), Total - others));
+
+    /// <summary>The budget, but no more than <paramref name="most"/> in all.</summary>
+    public EmailBudget AtMost(int most) => this with { Total = Math.Min(Total, most) };
 }
 
 /// <summary>What a pass did.</summary>
@@ -29,6 +32,12 @@ public sealed record EmailQueuePass(int Sent, int Retrying, int Failed, int Expi
 
     /// <summary>The email service asked us to slow down: nothing more goes before this.</summary>
     public DateTimeOffset? PausedUntil { get; init; }
+
+    /// <summary>
+    /// It sent as many as a pass may (<see cref="EmailQueueOptions.MaxPerPass"/>), so there may be more due: the worker starts
+    /// the next pass straight away.
+    /// </summary>
+    public bool More { get; init; }
 }
 
 /// <summary>Told when the queue gives up on an email (it failed for good, or expired unsent), for senders that need to know.</summary>
@@ -82,7 +91,10 @@ public sealed partial class EmailQueueDrain(
         }
 
         var pass = EmailQueuePass.Nothing with { Expired = expired.Count };
-        var budget = EmailBudget.From(options.Value, await store.CountSentAsync(now, cancellationToken));
+
+        // No more than a pass's worth, so whatever's queued meanwhile, transactional emails first, goes in the next pass, a
+        // moment later, rather than after a long batch of list mail (#198).
+        var budget = EmailBudget.From(options.Value, await store.CountSentAsync(now, cancellationToken)).AtMost(options.Value.MaxPerPass);
         if (budget.Total == 0)
         {
             return pass;
@@ -134,7 +146,7 @@ public sealed partial class EmailQueueDrain(
             pass = pass with { Sent = pass.Sent + 1 };
         }
 
-        return pass;
+        return pass with { More = pass.Sent >= options.Value.MaxPerPass };
     }
 
     /// <summary>The email as the transport takes it.</summary>

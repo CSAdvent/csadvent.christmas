@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Net;
+using System.Text.RegularExpressions;
 using CSAdvent.Web.Content;
 using CSAdvent.Web.Data;
 using Microsoft.EntityFrameworkCore;
@@ -7,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 namespace CSAdvent.IntegrationTests;
 
 /// <summary>The hidden test season: only testers see it, it follows a rehearsal, and resetting it leaves nothing behind.</summary>
-public sealed class SeasonTestingTests(AppHostFixture fixture)
+public sealed partial class SeasonTestingTests(AppHostFixture fixture)
 {
     private const string Page = "/manage/testing";
     private const int TestYear = Season.TestYear;
@@ -176,12 +177,12 @@ public sealed class SeasonTestingTests(AppHostFixture fixture)
             await db.SaveChangesAsync(CancellationToken);
         }
 
-        await RunRemindersAsync();
+        await RunRemindersAsync(todayIs: 17);
         await fixture.WaitForEmailAsync("rae-rehearsal@example.com", "Your C# Advent post is due in 2 days (December 20)");
 
         // Moving to the next day on the same real day sends that day's reminder: it isn't taken as already sent.
         await organizer.PostFormAsync(Page, "move", new() { ["Move.TodayIs"] = "18" });
-        await RunRemindersAsync();
+        await RunRemindersAsync(todayIs: 18);
         await fixture.WaitForEmailAsync("rae-rehearsal@example.com", "Your C# Advent post is due tomorrow (December 20)");
     }
 
@@ -200,7 +201,7 @@ public sealed class SeasonTestingTests(AppHostFixture fixture)
             await db.SaveChangesAsync(CancellationToken);
         }
 
-        await RunRemindersAsync();
+        await RunRemindersAsync(todayIs: 12);
 
         await fixture.WaitForEmailAsync("theo-rehearsal@example.com", "Day 13 of C# Advent: Rehearsing day thirteen");
     }
@@ -309,6 +310,29 @@ public sealed class SeasonTestingTests(AppHostFixture fixture)
     }
 
     [Fact]
+    public async Task RemovingATesterHidesTheTestSeasonFromThem()
+    {
+        using var organizer = await TestSeasonAsync(todayIs: 0);
+        await organizer.PostFormAsync(Page, "tester", new() { ["Tester.Login"] = "testing-rita" });
+        using var tester = await fixture.SignInAsync("testing-rita", 8205);
+        Assert.Contains("You're invited to test C# Advent.", await tester.GetStringAsync("/about", CancellationToken));
+        Assert.Equal(HttpStatusCode.OK, (await tester.GetAsync($"/claim/{TestYear}/20/1", CancellationToken)).StatusCode);
+
+        // A tester can't remove anyone, themselves included (#199).
+        var refused = await PostRemoveTesterAsync(tester, "/about", "testing-rita");
+        Assert.StartsWith("/access-denied", TestBrowser.PathOf(refused.Headers.Location!));
+        Assert.True(await IsTesterAsync("testing-rita"));
+
+        // The organizer's Remove button takes them off straight away, whatever the case of the login it posts.
+        var removed = await PostRemoveTesterAsync(organizer, Page, "Testing-Rita");
+        Assert.Equal($"{Page}?done=removed", TestBrowser.PathOf(removed.Headers.Location!));
+        Assert.False(await IsTesterAsync("testing-rita"));
+        Assert.DoesNotContain("testing-rita", await organizer.GetStringAsync(Page, CancellationToken));
+        Assert.DoesNotContain("test C# Advent", await tester.GetStringAsync("/about", CancellationToken));
+        Assert.Equal(HttpStatusCode.NotFound, (await tester.GetAsync($"/claim/{TestYear}/20/1", CancellationToken)).StatusCode);
+    }
+
+    [Fact]
     public async Task TheTestSeasonsYearCantBeARealSeason()
     {
         using var organizer = await fixture.SignInAsync("organizer", AppHostFixture.OrganizerGitHubId);
@@ -318,15 +342,39 @@ public sealed class SeasonTestingTests(AppHostFixture fixture)
         Assert.Contains("Enter a year from 2017 to 8999.", await response.Content.ReadAsStringAsync(CancellationToken));
     }
 
-    /// <summary>
-    /// Runs the reminders at 3 PM Eastern today, whatever time the tests run: after they're all due, including a daily email
-    /// that waits until 2 PM for a day's missing post.
-    /// </summary>
-    private async Task RunRemindersAsync()
+    /// <summary>Posts a tester's Remove button, a plain form, with an antiforgery token from <paramref name="tokenPage"/>.</summary>
+    private static async Task<HttpResponseMessage> PostRemoveTesterAsync(HttpClient browser, string tokenPage, string login)
     {
+        var token = AntiforgeryToken().Match(await browser.GetStringAsync(tokenPage, CancellationToken)).Groups["token"].Value;
+        return await browser.PostAsync(
+            "/manage/testing/testers/remove",
+            new FormUrlEncodedContent([new("__RequestVerificationToken", WebUtility.HtmlDecode(token)), new("Login", login)]),
+            CancellationToken);
+    }
+
+    private async Task<bool> IsTesterAsync(string login)
+    {
+        await using var db = await fixture.CreateDbContextAsync();
+        return await db.SeasonTesters.AnyAsync(t => t.SeasonYear == TestYear && t.GithubLogin == login, CancellationToken);
+    }
+
+    /// <summary>
+    /// Runs the reminders at 3 PM Eastern on the real day that is the rehearsal's day <paramref name="todayIs"/> (0 is
+    /// December 1): after they're all due, including a daily email that waits until 2 PM for a day's missing post. The day
+    /// comes from the rehearsal as it was saved, not from today's date, which may have changed since if midnight Eastern
+    /// passed (#198).
+    /// </summary>
+    private async Task RunRemindersAsync(int todayIs)
+    {
+        DateOnly startsOn;
+        await using (var db = await fixture.CreateDbContextAsync())
+        {
+            startsOn = await db.Seasons.Where(s => s.Year == TestYear).Select(s => s.RehearsalStartsOn!.Value).SingleAsync(CancellationToken);
+        }
+
         var eastern = TimeZoneInfo.FindSystemTimeZoneById("America/New_York");
-        var today = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, eastern).Date;
-        var afternoon = new DateTimeOffset(today.AddHours(15), eastern.GetUtcOffset(today.AddHours(15)));
+        var day = startsOn.AddDays(todayIs).ToDateTime(new TimeOnly(15, 0));
+        var afternoon = new DateTimeOffset(day, eastern.GetUtcOffset(day));
         using var client = fixture.CreateWebClient();
         var response = await client.PostAsync($"/dev/reminders/run?at={Uri.EscapeDataString(afternoon.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture))}", null, CancellationToken);
         response.EnsureSuccessStatusCode();
@@ -348,4 +396,7 @@ public sealed class SeasonTestingTests(AppHostFixture fixture)
         await organizer.PostFormAsync(Page, "move", new() { ["Move.TodayIs"] = day });
         return organizer;
     }
+
+    [GeneratedRegex("<input[^>]*name=\"__RequestVerificationToken\"[^>]*value=\"(?<token>[^\"]+)\"")]
+    private static partial Regex AntiforgeryToken();
 }

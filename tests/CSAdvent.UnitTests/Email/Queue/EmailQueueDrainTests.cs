@@ -34,6 +34,12 @@ public sealed class EmailQueueDrainTests
         _clock,
         NullLogger<EmailQueueDrain>.Instance);
 
+    private async Task<(int Sent, bool More)> SentAndMoreAsync(EmailQueueOptions options)
+    {
+        var pass = await Drain(options).RunAsync(CancellationToken);
+        return (pass.Sent, pass.More);
+    }
+
     private void Queue(int count, EmailPriority priority = EmailPriority.Urgent)
     {
         for (var i = 0; i < count; i++)
@@ -76,6 +82,33 @@ public sealed class EmailQueueDrainTests
     }
 
     [Fact]
+    public async Task APassSendsNoMoreThanItsShareAndSaysThereIsMore()
+    {
+        // Limits as high as development's: still no more than a pass's worth at a time (#198).
+        var options = new EmailQueueOptions { PerMinute = 10_000, PerHour = 100_000, ListPerHour = 100_000, MaxPerPass = 10 };
+        Queue(15);
+
+        Assert.Equal((10, true), await SentAndMoreAsync(options));
+        Assert.Equal((5, false), await SentAndMoreAsync(options));
+        Assert.Equal((0, false), await SentAndMoreAsync(options));
+    }
+
+    [Fact]
+    public async Task ATransactionalEmailQueuedBehindListMailGoesInTheNextPass()
+    {
+        var options = new EmailQueueOptions { PerMinute = 10_000, PerHour = 100_000, ListPerHour = 100_000, MaxPerPass = 10 };
+        Queue(30, EmailPriority.Invitation);
+        await Drain(options).RunAsync(CancellationToken);
+
+        // A claim comes in while 20 invitations are still waiting: it doesn't wait for them.
+        var claim = _store.Add(Now, EmailPriority.Urgent);
+        await Drain(options).RunAsync(CancellationToken);
+
+        Assert.Equal(claim.Subject, _transport.Sent[10].Subject);
+        Assert.Equal(20, _transport.Sent.Count);
+    }
+
+    [Fact]
     public async Task TheLimitsCountWhatEveryReplicaSent()
     {
         // Sent by another replica 30 seconds ago: the same table counts them.
@@ -115,7 +148,7 @@ public sealed class EmailQueueDrainTests
     [Fact]
     public async Task ListMailOnlyGetsWhatsLeftUnderItsShareOfTheHour()
     {
-        var options = new EmailQueueOptions { PerMinute = 90, PerHour = 90, ListPerHour = 50 };
+        var options = new EmailQueueOptions { PerMinute = 90, PerHour = 90, ListPerHour = 50, MaxPerPass = 90 };
         Queue(60, EmailPriority.Announcement);
         Queue(10, EmailPriority.Urgent);
 

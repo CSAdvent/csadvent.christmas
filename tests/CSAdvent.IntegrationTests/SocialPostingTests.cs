@@ -16,6 +16,14 @@ public sealed partial class SocialPostingTests(AppHostFixture fixture)
 {
     private const string Page = "/manage/social?year=2025&day=8";
 
+    /// <summary>
+    /// When the seasons whose sign-ups are already open opened: 9 AM Eastern (daylight time) on October 1, 2026, in the past
+    /// for the pages, which go by the real clock. The automatic posts run at a fixed time after it, never "today" (#198).
+    /// </summary>
+    private static readonly DateTimeOffset SignUpsOpenedAt = new(2026, 10, 1, 13, 0, 0, TimeSpan.Zero);
+
+    private static readonly TimeZoneInfo EasternTime = TimeZoneInfo.FindSystemTimeZoneById("America/New_York");
+
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
     [Fact]
@@ -116,23 +124,90 @@ public sealed partial class SocialPostingTests(AppHostFixture fixture)
     public async Task ATestPostGoesOutWithoutMarkingAnything()
     {
         using var organizer = await fixture.SignInAsync("organizer", AppHostFixture.OrganizerGitHubId);
-
-        // Only Facebook's marks are counted: the other test classes mark Bluesky and Mastodon while this runs (#122), and
-        // every Facebook mark comes from this class, whose tests run one at a time.
-        int before;
-        await using (var db = await fixture.CreateDbContextAsync())
-        {
-            before = await db.SocialPosts.CountAsync(p => p.Platform == SocialPlatform.Facebook, CancellationToken);
-        }
+        var startedAt = DateTimeOffset.UtcNow;
 
         var sent = await PostPlatformFormAsync(organizer, "/manage/social/test", SocialPlatform.Facebook, mode: null);
 
+        var finishedAt = DateTimeOffset.UtcNow;
         Assert.Equal(Page, TestBrowser.PathOf(sent.Headers.Location!));
         Assert.Contains("(only logged: dry run)", await organizer.GetStringAsync(Page, CancellationToken));
         await using (var db = await fixture.CreateDbContextAsync())
         {
-            Assert.Equal(before, await db.SocialPosts.CountAsync(p => p.Platform == SocialPlatform.Facebook, CancellationToken));
+            // It's recorded as the platform's test post, and no post was marked while it went out. Only those moments count,
+            // not every Facebook post there is, which other test classes can add to while this runs (#122, #198).
+            var setting = await db.SocialPlatformSettings.AsNoTracking().SingleAsync(s => s.Platform == SocialPlatform.Facebook, CancellationToken);
+            Assert.InRange(setting.TestedAt!.Value, startedAt, finishedAt);
+            Assert.False(await db.SocialPosts.AnyAsync(p => p.Platform == SocialPlatform.Facebook && p.At >= startedAt && p.At <= finishedAt, CancellationToken));
         }
+    }
+
+    [Fact]
+    public async Task AnOrganizerRetriesAFailedPostAndItGoesOut()
+    {
+        // December 11, 2025's post 1 failed on Facebook three times, so automatic posting has stopped trying (#199).
+        const string page = "/manage/social?year=2025&day=11";
+        int slotId;
+        await using (var db = await fixture.CreateDbContextAsync())
+        {
+            slotId = await db.Slots.Where(s => s.SeasonYear == 2025 && s.Day == 11 && s.Part == 1).Select(s => s.Id).SingleAsync(CancellationToken);
+            db.SocialPosts.Add(new SocialPost
+            {
+                SlotId = slotId,
+                Platform = SocialPlatform.Facebook,
+                Status = SocialPostStatus.Failed,
+                At = DateTimeOffset.UtcNow.AddHours(-2),
+                MarkedBy = "automation",
+                Attempts = 3,
+                Error = "Facebook answered 500 (Internal Server Error)",
+            });
+            await db.SaveChangesAsync(CancellationToken);
+        }
+
+        using var organizer = await fixture.SignInAsync("organizer", AppHostFixture.OrganizerGitHubId);
+        Assert.Contains("Automatic posting failed (3 tries): Facebook answered 500 (Internal Server Error)", System.Net.WebUtility.HtmlDecode(await organizer.GetPageAsync(page)));
+
+        // Someone who isn't an organizer can't retry it.
+        using (var nosy = await fixture.SignInAsync("social-retry-nosy", 262501))
+        {
+            var refused = await PostSlotFormAsync(nosy, "/announcements", "/manage/social/retry", slotId, page);
+            Assert.StartsWith("/access-denied", TestBrowser.PathOf(refused.Headers.Location!));
+            Assert.Equal(SocialPostStatus.Failed, (await FacebookPostAsync(slotId)).Status);
+        }
+
+        // Retry now posts it (dry run), as a fresh first try, and comes back to the page without an error.
+        var retried = await PostSlotFormAsync(organizer, page, "/manage/social/retry", slotId, page);
+        Assert.Equal(page, TestBrowser.PathOf(retried.Headers.Location!));
+        var post = await FacebookPostAsync(slotId);
+        Assert.Equal((SocialPostStatus.Posted, 1, "automation", (string?)null), (post.Status, post.Attempts, post.MarkedBy, post.Error));
+        Assert.Contains("Posted automatically", await organizer.GetPageAsync(page));
+
+        // Pressing it again, once it's posted, posts nothing more.
+        await PostSlotFormAsync(organizer, page, "/manage/social/retry", slotId, page);
+        Assert.Equal(post.At, (await FacebookPostAsync(slotId)).At);
+    }
+
+    [Fact]
+    public async Task CheckingAPlatformsCredentialsRecordsTheResult()
+    {
+        using var organizer = await fixture.SignInAsync("organizer", AppHostFixture.OrganizerGitHubId);
+        var startedAt = DateTimeOffset.UtcNow;
+
+        // The dry run's stand-in accepts any check (#199).
+        var checkedFacebook = await PostPlatformFormAsync(organizer, "/manage/social/check", SocialPlatform.Facebook, mode: null);
+
+        Assert.Equal(Page, TestBrowser.PathOf(checkedFacebook.Headers.Location!));
+        await using (var db = await fixture.CreateDbContextAsync())
+        {
+            var setting = await db.SocialPlatformSettings.AsNoTracking().SingleAsync(s => s.Platform == SocialPlatform.Facebook, CancellationToken);
+            Assert.True(setting.CheckedAt >= startedAt, $"It was last checked at {setting.CheckedAt:O}, before this test.");
+            Assert.Null(setting.CheckError);
+        }
+
+        Assert.Contains("they work.", await organizer.GetPageAsync(Page));
+
+        // Without an organizer's antiforgery token, nothing's checked.
+        var forged = await organizer.PostAsync("/manage/social/check", new FormUrlEncodedContent([new("Platform", "Facebook"), new("ReturnUrl", Page.TrimStart('/'))]), CancellationToken);
+        Assert.Equal(HttpStatusCode.BadRequest, forged.StatusCode);
     }
 
     [Fact]
@@ -161,8 +236,7 @@ public sealed partial class SocialPostingTests(AppHostFixture fixture)
     [Fact]
     public async Task TheSignUpsPostGoesOutAutomaticallyOnceOnTheDay()
     {
-        // Season 2126's sign-ups opened yesterday.
-        await TestSeasons.EnsureAsync(fixture, 2126, claimsOpen: true);
+        await TestSeasons.EnsureAsync(fixture, 2126, claimsOpen: false, season => season.ClaimsOpenAt = SignUpsOpenedAt);
         using var organizer = await fixture.SignInAsync("organizer", AppHostFixture.OrganizerGitHubId);
         await SetModeAsync(organizer, SocialPlatform.Facebook, SocialPostingMode.Automatic);
         try
@@ -196,14 +270,13 @@ public sealed partial class SocialPostingTests(AppHostFixture fixture)
     public async Task TheComingSoonPostCountsDownAndCanGoOutAgain()
     {
         // Season 2127's sign-ups open at midnight Eastern, 8 days from today.
-        var eastern = TimeZoneInfo.FindSystemTimeZoneById("America/New_York");
-        var opens = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, eastern).Date.AddDays(8);
-        await TestSeasons.EnsureAsync(fixture, 2127, claimsOpen: false, season => season.ClaimsOpenAt = new DateTimeOffset(opens, eastern.GetUtcOffset(opens)).ToUniversalTime());
+        var opens = TodayInEastern().AddDays(8);
+        await TestSeasons.EnsureAsync(fixture, 2127, claimsOpen: false, season => season.ClaimsOpenAt = Eastern(opens));
         using var organizer = await fixture.SignInAsync("organizer", AppHostFixture.OrganizerGitHubId);
 
         var page = await organizer.GetStringAsync("/manage/social/signups?year=2127", CancellationToken);
-        Assert.Contains("C# Advent 2127 sign-ups open in 8 days", page);
-        Assert.Contains(string.Create(CultureInfo.InvariantCulture, $"Sign-ups open at midnight Eastern on {opens:MMMM d}, in 8 days."), page);
+        AssertContainsDaysUntil(page, opens, days => $"C# Advent 2127 sign-ups open in {days} days");
+        AssertContainsDaysUntil(page, opens, days => string.Create(CultureInfo.InvariantCulture, $"Sign-ups open at midnight Eastern on {opens:MMMM d}, in {days} days."));
 
         await SetModeAsync(organizer, SocialPlatform.Facebook, SocialPostingMode.Automatic);
         try
@@ -229,14 +302,13 @@ public sealed partial class SocialPostingTests(AppHostFixture fixture)
     public async Task TheSignUpsPageSaysWhenSignUpsOpenWhateverTheTime()
     {
         // Season 2300's sign-ups open at 9 AM Eastern, 8 days from today.
-        var eastern = TimeZoneInfo.FindSystemTimeZoneById("America/New_York");
-        var opens = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, eastern).Date.AddDays(8).AddHours(9);
-        await TestSeasons.EnsureAsync(fixture, 2300, claimsOpen: false, season => season.ClaimsOpenAt = new DateTimeOffset(opens, eastern.GetUtcOffset(opens)).ToUniversalTime());
+        var opens = TodayInEastern().AddDays(8).AddHours(9);
+        await TestSeasons.EnsureAsync(fixture, 2300, claimsOpen: false, season => season.ClaimsOpenAt = Eastern(opens));
         using var organizer = await fixture.SignInAsync("organizer", AppHostFixture.OrganizerGitHubId);
 
         var page = await organizer.GetStringAsync("/manage/social/signups?year=2300", CancellationToken);
 
-        Assert.Contains(string.Create(CultureInfo.InvariantCulture, $"Sign-ups open at 9 AM Eastern on {opens:MMMM d}, in 8 days."), page);
+        AssertContainsDaysUntil(page, opens, days => string.Create(CultureInfo.InvariantCulture, $"Sign-ups open at 9 AM Eastern on {opens:MMMM d}, in {days} days."));
     }
 
     [Fact]
@@ -294,8 +366,8 @@ public sealed partial class SocialPostingTests(AppHostFixture fixture)
     [Fact]
     public async Task AnInterruptedSeasonPostWaitsForAnOrganizerToCheck()
     {
-        // Season 2521's sign-ups opened yesterday, and its "sign-ups are open" post to Facebook was interrupted 20 minutes ago.
-        await TestSeasons.EnsureAsync(fixture, 2521, claimsOpen: true);
+        // Season 2521's sign-ups are open, and its "sign-ups are open" post to Facebook was interrupted 20 minutes ago.
+        await TestSeasons.EnsureAsync(fixture, 2521, claimsOpen: false, season => season.ClaimsOpenAt = SignUpsOpenedAt);
         await using (var db = await fixture.CreateDbContextAsync())
         {
             db.SeasonSocialPosts.Add(new SeasonSocialPost
@@ -413,6 +485,39 @@ public sealed partial class SocialPostingTests(AppHostFixture fixture)
         return new DateTimeOffset(local, eastern.GetUtcOffset(local)).ToUniversalTime();
     }
 
+    /// <summary>Today's date in Eastern time, by the real clock, which is what the pages count days from.</summary>
+    private static DateTime TodayInEastern() => TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, EasternTime).Date;
+
+    /// <summary>
+    /// Asserts the page says <paramref name="text"/> for the days from today until <paramref name="opens"/>: 8, as the test
+    /// set it up, or one fewer if midnight Eastern passed between setting it up and the page counting them (#198).
+    /// </summary>
+    private static void AssertContainsDaysUntil(string page, DateTime opens, Func<int, string> text)
+    {
+        var expected = new[] { 8, (opens.Date - TodayInEastern()).Days }.Distinct().Select(text).ToList();
+        Assert.True(expected.Any(page.Contains), $"The page doesn't say \"{string.Join("\" or \"", expected)}\".");
+    }
+
+    private async Task<SocialPost> FacebookPostAsync(int slotId)
+    {
+        await using var db = await fixture.CreateDbContextAsync();
+        return await db.SocialPosts.AsNoTracking().SingleAsync(p => p.SlotId == slotId && p.Platform == SocialPlatform.Facebook, CancellationToken);
+    }
+
+    /// <summary>Posts one of the social page's plain per-entry forms, with an antiforgery token from <paramref name="tokenPage"/>.</summary>
+    private async Task<HttpResponseMessage> PostSlotFormAsync(HttpClient browser, string tokenPage, string action, int slotId, string returnTo)
+    {
+        var html = await browser.GetStringAsync(tokenPage, CancellationToken);
+        var fields = new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = System.Net.WebUtility.HtmlDecode(AntiforgeryToken().Match(html).Groups["token"].Value),
+            ["SlotId"] = slotId.ToString(CultureInfo.InvariantCulture),
+            ["Platform"] = nameof(SocialPlatform.Facebook),
+            ["ReturnUrl"] = returnTo.TrimStart('/'),
+        };
+        return await browser.PostAsync(action, new FormUrlEncodedContent(fields), CancellationToken);
+    }
+
     private async Task<int[]> PostedAsync(int[] slots)
     {
         await using var db = await fixture.CreateDbContextAsync();
@@ -423,12 +528,10 @@ public sealed partial class SocialPostingTests(AppHostFixture fixture)
             .ToArrayAsync(CancellationToken);
     }
 
-    /// <summary>Runs the "sign-ups are open" posts at noon Eastern today, after the morning send time.</summary>
+    /// <summary>Runs the "sign-ups are open" posts at noon Eastern on the day sign-ups opened (<see cref="SignUpsOpenedAt"/>).</summary>
     private async Task<int> RunSignUpsAsync(int year)
     {
-        var eastern = TimeZoneInfo.FindSystemTimeZoneById("America/New_York");
-        var today = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, eastern).Date;
-        var noon = new DateTimeOffset(today.AddHours(12), eastern.GetUtcOffset(today.AddHours(12))).ToUniversalTime();
+        var noon = SignUpsOpenedAt.AddHours(3);
         using var client = fixture.CreateWebClient();
         var response = await client.PostAsync($"/dev/social/signups/run?at={Uri.EscapeDataString(noon.ToString("O", CultureInfo.InvariantCulture))}&year={year}", null, CancellationToken);
         response.EnsureSuccessStatusCode();
