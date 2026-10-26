@@ -9,7 +9,6 @@ using CSAdvent.Web.Reminders;
 using CSAdvent.Web.Retrospectives;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Npgsql;
 
 namespace CSAdvent.Web.Social.Posting;
 
@@ -191,7 +190,7 @@ public sealed partial class SeasonSocialService(
         {
             await db.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        catch (DbUpdateException exception) when (exception.IsUniqueViolation())
         {
             // Posted automatically at the same moment: it's marked either way.
         }

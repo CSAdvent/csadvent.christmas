@@ -29,12 +29,7 @@ public enum SampleEmailOutcome
 /// the organizers' inbox, or a signed-in tester), never to an address typed in. It goes through the email queue like
 /// everything else, first in line, so a sample proves the queue is sending too.
 /// </summary>
-public sealed partial class SampleEmailService(
-    AdventDbContext db,
-    EmailComposer composer,
-    IEmailSender sender,
-    IOptions<SiteOptions> site,
-    ILogger<SampleEmailService> logger)
+public sealed class SampleEmailService(AdventDbContext db, EmailComposer composer, IOptions<SiteOptions> site)
 {
     /// <summary>Starts every sample's subject, so nobody mistakes it for the real thing.</summary>
     public const string SubjectPrefix = "[Sample] ";
@@ -72,23 +67,14 @@ public sealed partial class SampleEmailService(
 
         var content = entry.Sample(site.Value);
         // Whatever the email is, an organizer is waiting for this one, and it isn't about anyone's spot or list.
-        var email = await composer.ComposeAsync(
+        return await composer.TrySendAsync(
             content with { Subject = SubjectPrefix + content.Subject, Priority = EmailPriority.Urgent, SendBefore = null, Reference = null },
-            new EmailRecipient(address));
-        try
-        {
-            await sender.SendAsync(email, cancellationToken);
-            return SampleEmailOutcome.Sent;
-        }
-        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
-        {
-            LogSendFailed(exception, key);
-            return SampleEmailOutcome.Failed;
-        }
+            new EmailRecipient(address),
+            "a sample",
+            cancellationToken)
+            ? SampleEmailOutcome.Sent
+            : SampleEmailOutcome.Failed;
     }
-
-    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't queue the sample {Key} email")]
-    private partial void LogSendFailed(Exception exception, string key);
 }
 
 public sealed class SampleEmailForm

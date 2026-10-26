@@ -8,7 +8,6 @@ using CSAdvent.Web.Retention;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Npgsql;
 
@@ -134,7 +133,7 @@ public sealed class ExpectedErrorTests(AppHostFixture fixture)
                 .AddScoped<ContactRetention>()
                 // Deleting unconfirmed subscribers, the worker's second step, only uses the database and the clock.
                 .AddScoped(provider => new AnnouncementSubscriptions(
-                    provider.GetRequiredService<AdventDbContext>(), null!, null!, null!, null!, null!, TimeProvider.System, NullLogger<AnnouncementSubscriptions>.Instance))
+                    provider.GetRequiredService<AdventDbContext>(), null!, null!, null!, null!, TimeProvider.System))
                 // Saving the steps' runs (#172) finds no table either, which never fails a step.
                 .AddSingleton<IJobHeartbeatStore, JobHeartbeatStore>()
                 .AddSingleton<JobRuns>()

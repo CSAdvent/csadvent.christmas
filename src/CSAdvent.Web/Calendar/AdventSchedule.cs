@@ -1,3 +1,4 @@
+using System.Globalization;
 using CSAdvent.Web.Data;
 using CSAdvent.Web.SeasonTesting;
 using Microsoft.Extensions.Options;
@@ -17,11 +18,22 @@ public sealed class AdventSchedule
     public AdventSchedule(IOptions<AdventOptions> options, TimeProvider timeProvider, TestSeasons? testSeasons = null)
     {
         TimeZone = TimeZoneInfo.FindSystemTimeZoneById(options.Value.TimeZone);
+        TimeZoneName = options.Value.TimeZoneName;
         _timeProvider = timeProvider;
         _testSeasons = testSeasons;
     }
 
     public TimeZoneInfo TimeZone { get; }
+
+    /// <summary>What a time in <see cref="TimeZone"/> is called in emails and on pages, such as "Eastern".</summary>
+    public string TimeZoneName { get; }
+
+    /// <summary>A moment as emails and pages give it, in the reveal time zone: "10:00 AM Eastern on December 6".</summary>
+    public string Describe(DateTimeOffset moment)
+    {
+        var local = ToLocalTime(moment);
+        return string.Create(CultureInfo.InvariantCulture, $"{local:h:mm tt} {TimeZoneName} on {local:MMMM d}");
+    }
 
     /// <summary>The date of a day of Advent: December {day}, or the matching day of the test season's rehearsal.</summary>
     public DateOnly GetDate(int year, int day)

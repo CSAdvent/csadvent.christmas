@@ -3,7 +3,6 @@ using CSAdvent.Web.Data;
 using CSAdvent.Web.SeasonTesting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Npgsql;
 
 namespace CSAdvent.Web.Claims;
 
@@ -165,7 +164,7 @@ public sealed class ClaimService(
         {
             await db.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        catch (DbUpdateException exception) when (exception.IsUniqueViolation())
         {
             // The unique index on pending requests: this contributor asked for this slot at the same moment.
             return ClaimOutcome.AlreadyRequested;

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using CSAdvent.Web.Email;
 
 namespace CSAdvent.Web.Content;
 
@@ -13,6 +14,9 @@ public sealed class SiteOptions
     [Required(ErrorMessage = "Site:ContactEmail is required. It's shown on the privacy and terms pages.")]
     [EmailAddress(ErrorMessage = "Site:ContactEmail must be an email address.")]
     public string ContactEmail { get; set; } = "";
+
+    /// <summary>The organizers' inbox (<see cref="ContactEmail"/>) as an email recipient, for everything the site tells them.</summary>
+    public EmailRecipient OrganizersInbox => new(ContactEmail, "C# Advent organizers");
 
     /// <summary>The site's public address, for links and images in emails, which can't be relative.</summary>
     [Required(ErrorMessage = "Site:BaseUrl is required. Emails use it for their links.")]

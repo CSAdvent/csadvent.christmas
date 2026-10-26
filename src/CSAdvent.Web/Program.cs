@@ -51,6 +51,9 @@ builder.Services.AddOptions<AdventOptions>()
     .Validate(
         options => TimeZoneInfo.TryFindSystemTimeZoneById(options.TimeZone, out _),
         $"{AdventOptions.SectionName}:TimeZone must be a time zone ID, such as America/New_York.")
+    .Validate(
+        options => !string.IsNullOrWhiteSpace(options.TimeZoneName),
+        $"{AdventOptions.SectionName}:TimeZoneName must say what emails call the time zone, such as Eastern.")
     .ValidateOnStart();
 builder.Services.AddOptions<SiteOptions>()
     .BindConfiguration(SiteOptions.SectionName)

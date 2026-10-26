@@ -206,4 +206,24 @@ public sealed class AdventScheduleTests
     [InlineData(26)]
     public void RejectsDaysOutsideAdvent(int day) =>
         Assert.Throws<ArgumentOutOfRangeException>(() => CreateSchedule().GetRevealTime(2026, day));
+
+    [Fact]
+    public void DescribesAMomentInTheRevealTimeZone()
+    {
+        var schedule = CreateSchedule();
+
+        // 3 PM UTC on December 6 is 10 AM Eastern; 5 AM UTC is midnight, the start of the day.
+        Assert.Equal("10:00 AM Eastern on December 6", schedule.Describe(new DateTimeOffset(2026, 12, 6, 15, 0, 0, TimeSpan.Zero)));
+        Assert.Equal("12:00 AM Eastern on December 7", schedule.Describe(new DateTimeOffset(2026, 12, 7, 5, 0, 0, TimeSpan.Zero)));
+        Assert.Equal("1:30 PM Eastern on November 20", schedule.Describe(new DateTimeOffset(2026, 11, 20, 18, 30, 0, TimeSpan.Zero)));
+    }
+
+    [Fact]
+    public void DescribesTimesInTheConfiguredTimeZoneByItsName()
+    {
+        var schedule = new AdventSchedule(Options.Create(new AdventOptions { TimeZone = "Europe/London", TimeZoneName = "UK time" }), TimeProvider.System);
+
+        Assert.Equal("UK time", schedule.TimeZoneName);
+        Assert.Equal("3:00 PM UK time on December 6", schedule.Describe(new DateTimeOffset(2026, 12, 6, 15, 0, 0, TimeSpan.Zero)));
+    }
 }

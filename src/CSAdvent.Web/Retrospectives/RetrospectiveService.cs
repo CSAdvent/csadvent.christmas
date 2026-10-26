@@ -3,7 +3,6 @@ using System.Globalization;
 using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Data;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 
 namespace CSAdvent.Web.Retrospectives;
 
@@ -186,7 +185,7 @@ public sealed class RetrospectiveService(AdventDbContext db, AdventSchedule sche
         {
             return RetrospectiveOutcome.ChangedByOthers;
         }
-        catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        catch (DbUpdateException exception) when (exception.IsUniqueViolation())
         {
             // Another organizer generated it at the same moment.
             return RetrospectiveOutcome.ChangedByOthers;

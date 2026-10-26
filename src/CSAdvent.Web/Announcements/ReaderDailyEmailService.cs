@@ -6,7 +6,6 @@ using CSAdvent.Web.Email.Queue;
 using CSAdvent.Web.Reminders;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Npgsql;
 
 namespace CSAdvent.Web.Announcements;
 
@@ -25,16 +24,14 @@ public sealed record ReaderDayProgress(int Year, int Day, QueueProgress Queue);
 /// A day's email only goes out on that day: one the queue hasn't sent by midnight expires, rather than bring yesterday's posts
 /// late. Turning off the daily posts takes back any still waiting. Never for the test season.
 /// </remarks>
-public sealed partial class ReaderDailyEmailService(
+public sealed class ReaderDailyEmailService(
     AdventDbContext db,
     AdventSchedule schedule,
     DailyPosts dailyPosts,
     AnnouncementSubscriptions subscriptions,
     EmailComposer composer,
-    IEmailSender sender,
     EmailOutbox outbox,
-    IOptions<SiteOptions> site,
-    ILogger<ReaderDailyEmailService> logger)
+    IOptions<SiteOptions> site)
 {
     /// <summary>What the email queue knows a day's copies by (<see cref="EmailOutbox.GetProgressAsync"/>, unsubscribing).</summary>
     public static string Reference(int year, int day) => string.Create(System.Globalization.CultureInfo.InvariantCulture, $"daily-posts:{year}:{day}");
@@ -100,6 +97,13 @@ public sealed partial class ReaderDailyEmailService(
 
     private async Task<bool> DeliverAsync(DailyEdition edition, int subscriberId, string email, DateTimeOffset now, CancellationToken cancellationToken)
     {
+        // Written before the copy is recorded, so nothing is recorded if its unsubscribe link can't be made.
+        var content = ReminderEmails.DailyForReaders(edition.Day, edition.Posts, site.Value, subscriptions.DailyPostsStopLink(subscriberId)) with
+        {
+            SendBefore = schedule.GetDayEndTime(edition.Year, edition.Day),
+            Reference = Reference(edition.Year, edition.Day),
+        };
+
         // Recorded first: the unique index means only one run or replica queues each copy.
         var delivery = new DailyPostDelivery { SeasonYear = edition.Year, Day = edition.Day, SubscriberId = subscriberId, SentAt = now };
         db.DailyPostDeliveries.Add(delivery);
@@ -107,32 +111,20 @@ public sealed partial class ReaderDailyEmailService(
         {
             await db.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation or PostgresErrorCodes.ForeignKeyViolation })
+        catch (DbUpdateException exception) when (exception.IsUniqueViolation() || exception.IsForeignKeyViolation())
         {
             // Another run sent it, or they unsubscribed just now.
             db.Entry(delivery).State = EntityState.Detached;
             return false;
         }
 
-        try
+        if (await composer.TrySendAsync(content, new EmailRecipient(email, email), $"day {edition.Day} of {edition.Year} for subscriber {subscriberId}", cancellationToken))
         {
-            var content = ReminderEmails.DailyForReaders(edition.Day, edition.Posts, site.Value, subscriptions.DailyPostsStopLink(subscriberId)) with
-            {
-                SendBefore = schedule.GetDayEndTime(edition.Year, edition.Day),
-                Reference = Reference(edition.Year, edition.Day),
-            };
-            await sender.SendAsync(await composer.ComposeAsync(content, new EmailRecipient(email, email)), cancellationToken);
             return true;
         }
-        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
-        {
-            // Without the address: the logs never carry personal details. A later run tries again.
-            LogDeliveryFailed(exception, edition.Year, edition.Day, subscriberId);
-            await db.DailyPostDeliveries.Where(d => d.Id == delivery.Id).ExecuteDeleteAsync(cancellationToken);
-            return false;
-        }
-    }
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't queue day {Day} of C# Advent {Year} for subscriber {SubscriberId}; a later run will try again")]
-    private partial void LogDeliveryFailed(Exception exception, int year, int day, int subscriberId);
+        // A later run tries again.
+        await db.DailyPostDeliveries.Where(d => d.Id == delivery.Id).ExecuteDeleteAsync(cancellationToken);
+        return false;
+    }
 }

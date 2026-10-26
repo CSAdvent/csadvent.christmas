@@ -56,27 +56,13 @@ public sealed record StoppedPost(SocialPlatform Platform, string Name, string? T
 /// platform saying so (Unconfirmed, including a post a restart interrupted), or it failed its last automatic try. Otherwise
 /// they'd only find out by looking at the social page. Not for a try an organizer made themselves, which shows on their page.
 /// </summary>
-public sealed partial class SocialPostingAlerts(
-    EmailComposer composer,
-    IEmailSender sender,
-    IOptions<SiteOptions> site,
-    ILogger<SocialPostingAlerts> logger)
+public sealed class SocialPostingAlerts(EmailComposer composer, IOptions<SiteOptions> site)
 {
     private const string ForOrganizers = "You're getting this email because you're a C# Advent organizer.";
 
-    public async Task StoppedAsync(StoppedPost post, CancellationToken cancellationToken)
-    {
-        try
-        {
-            var organizers = new EmailRecipient(site.Value.ContactEmail, "C# Advent organizers");
-            await sender.SendAsync(await composer.ComposeAsync(Stopped(post, site.Value), organizers), cancellationToken);
-        }
-        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
-        {
-            // The post's row says what happened either way, on the social page.
-            LogAlertFailed(exception, post.Platform);
-        }
-    }
+    /// <summary>Tells the organizers. If it can't be queued, the post's row says what happened anyway, on the social page.</summary>
+    public Task StoppedAsync(StoppedPost post, CancellationToken cancellationToken) =>
+        composer.TrySendAsync(Stopped(post, site.Value), site.Value.OrganizersInbox, $"posting to {post.Platform}", cancellationToken);
 
     /// <summary>The email: <see cref="Unconfirmed"/> or <see cref="GaveUp"/>.</summary>
     public static EmailContent Stopped(StoppedPost post, SiteOptions site) => post.MayHavePosted ? Unconfirmed(post, site) : GaveUp(post, site);
@@ -126,7 +112,4 @@ public sealed partial class SocialPostingAlerts(
     private static string What(StoppedPost post) => post.Title is { } title ? $"{post.Name} (“{title}”)" : post.Name;
 
     private static string Page(StoppedPost post, SiteOptions site) => $"{site.BaseUrl.TrimEnd('/')}/{post.Page}";
-
-    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't queue the email telling the organizers that posting to {Platform} stopped")]
-    private partial void LogAlertFailed(Exception exception, SocialPlatform platform);
 }

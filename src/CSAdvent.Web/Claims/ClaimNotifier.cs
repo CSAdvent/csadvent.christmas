@@ -26,12 +26,7 @@ public interface IClaimNotifier
 /// Emails contributors and organizers about claim requests, through the email queue (#152). The request is already saved
 /// when these run, so an email that can't be queued is logged (without personal details) and never undoes or blocks it.
 /// </summary>
-public sealed partial class EmailClaimNotifier(
-    AdventDbContext db,
-    EmailComposer composer,
-    IEmailSender sender,
-    IOptions<SiteOptions> site,
-    ILogger<EmailClaimNotifier> logger) : IClaimNotifier
+public sealed class EmailClaimNotifier(AdventDbContext db, EmailComposer composer, IOptions<SiteOptions> site) : IClaimNotifier
 {
     public async Task ClaimRequestedAsync(int claimRequestId, int year, int day, int part, CancellationToken cancellationToken)
     {
@@ -41,11 +36,10 @@ public sealed partial class EmailClaimNotifier(
         }
 
         var contributor = new EmailRecipient(claim.Email, claim.DisplayName);
-        await SendAsync(claimRequestId, "request received", ClaimEmails.Received(claim, site.Value), contributor, replyTo: null, cancellationToken);
+        await composer.TrySendAsync(ClaimEmails.Received(claim, site.Value), contributor, About(claimRequestId), cancellationToken);
 
         // Organizers can reply straight to the contributor.
-        var organizers = new EmailRecipient(site.Value.ContactEmail, "C# Advent organizers");
-        await SendAsync(claimRequestId, "new request", ClaimEmails.NewRequest(claim, site.Value), organizers, replyTo: claim.Email, cancellationToken);
+        await composer.TrySendAsync(ClaimEmails.NewRequest(claim, site.Value), site.Value.OrganizersInbox, claim.Email, About(claimRequestId), cancellationToken);
     }
 
     public async Task ClaimApprovedAsync(int claimRequestId, int year, int day, int part, int requestedDay, int requestedPart, CancellationToken cancellationToken)
@@ -55,12 +49,10 @@ public sealed partial class EmailClaimNotifier(
             return;
         }
 
-        await SendAsync(
-            claimRequestId,
-            "request approved",
+        await composer.TrySendAsync(
             ClaimEmails.Approved(claim with { RequestedDay = requestedDay, RequestedPart = requestedPart }, site.Value),
             new EmailRecipient(claim.Email, claim.DisplayName),
-            replyTo: null,
+            About(claimRequestId),
             cancellationToken);
     }
 
@@ -71,12 +63,10 @@ public sealed partial class EmailClaimNotifier(
             return;
         }
 
-        await SendAsync(
-            claimRequestId,
-            "request declined",
+        await composer.TrySendAsync(
             ClaimEmails.Declined(claim, reason, site.Value),
             new EmailRecipient(claim.Email, claim.DisplayName),
-            replyTo: null,
+            About(claimRequestId),
             cancellationToken);
     }
 
@@ -98,24 +88,5 @@ public sealed partial class EmailClaimNotifier(
                 r.Slot.Season.SlotsPerDay))
             .SingleOrDefaultAsync(cancellationToken);
 
-    private async Task SendAsync(
-        int claimRequestId,
-        string kind,
-        EmailContent content,
-        EmailRecipient to,
-        string? replyTo,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            await sender.SendAsync(await composer.ComposeAsync(content, to, replyTo), cancellationToken);
-        }
-        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
-        {
-            LogSendFailed(exception, kind, claimRequestId);
-        }
-    }
-
-    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't queue the {Kind} email for claim request {ClaimRequestId}")]
-    private partial void LogSendFailed(Exception exception, string kind, int claimRequestId);
+    private static string About(int claimRequestId) => $"claim request {claimRequestId}";
 }

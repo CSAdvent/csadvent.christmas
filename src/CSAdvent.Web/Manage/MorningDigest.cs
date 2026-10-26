@@ -6,7 +6,6 @@ using CSAdvent.Web.Email;
 using CSAdvent.Web.Reminders;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Npgsql;
 using static CSAdvent.Web.Email.EmailBlocks;
 
 namespace CSAdvent.Web.Manage;
@@ -26,15 +25,13 @@ namespace CSAdvent.Web.Manage;
 /// <item>It never names a post, or links to it, before its reveal: tomorrow's spots say only whether their post is in.</item>
 /// </list>
 /// </summary>
-public sealed partial class MorningDigest(
+public sealed class MorningDigest(
     AdventDbContext db,
     AdventSchedule schedule,
     TodayService reports,
     EmailComposer composer,
-    IEmailSender sender,
     IOptions<ReminderOptions> options,
-    IOptions<SiteOptions> site,
-    ILogger<MorningDigest> logger)
+    IOptions<SiteOptions> site)
 {
     private const string ForOrganizers = "You're getting this email because you're a C# Advent organizer.";
 
@@ -86,33 +83,31 @@ public sealed partial class MorningDigest(
             return false;
         }
 
+        // It's about today, so it's no use tomorrow.
+        var content = Email(report, season, site.Value) with { SendBefore = schedule.GetDayEndTime(year, day.Day) };
+
         var record = new SentReminder { Kind = ReminderKind.AdminMorningDigest, RunDate = runDate, SlotId = slotId, SentAt = now };
         db.SentReminders.Add(record);
         try
         {
             await db.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        catch (DbUpdateException exception) when (exception.IsUniqueViolation())
         {
             // Another run (or replica) recorded it at the same moment.
             db.Entry(record).State = EntityState.Detached;
             return false;
         }
 
-        try
+        if (!await composer.TrySendAsync(content, site.Value.OrganizersInbox, $"the {year} morning digest", cancellationToken))
         {
-            // It's about today, so it's no use tomorrow.
-            var content = Email(report, season, site.Value) with { SendBefore = schedule.GetDayEndTime(year, day.Day) };
-            await sender.SendAsync(await composer.ComposeAsync(content, new EmailRecipient(site.Value.ContactEmail, "C# Advent organizers")), cancellationToken);
-            return true;
-        }
-        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
-        {
-            LogSendFailed(exception, year);
+            // A later run tries again.
             db.SentReminders.Remove(record);
             await db.SaveChangesAsync(CancellationToken.None);
             return false;
         }
+
+        return true;
     }
 
     /// <summary>The digest of one season's day: the same as its part of the Today panel, without what isn't public yet.</summary>
@@ -259,7 +254,4 @@ public sealed partial class MorningDigest(
     private static string LowerFirst(string label) => label.Length == 0 ? label : char.ToLowerInvariant(label[0]) + label[1..];
 
     private static string Plural(int count, string noun) => count == 1 ? $"1 {noun}" : $"{Count(count)} {noun}s";
-
-    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't queue the organizers' morning digest for {Year}; a later run will try again")]
-    private partial void LogSendFailed(Exception exception, int year);
 }

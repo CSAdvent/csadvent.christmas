@@ -11,7 +11,6 @@ using CSAdvent.Web.Jobs;
 using CSAdvent.Web.Social.Posting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Npgsql;
 
 namespace CSAdvent.Web.Backups;
 
@@ -85,7 +84,6 @@ public sealed partial class BackupService(
     AdventDbContext db,
     AdventSchedule schedule,
     EmailComposer composer,
-    IEmailSender sender,
     BlurbChecker blurbs,
     IOptions<BackupOptions> options,
     IOptions<SocialPostingOptions> posting,
@@ -385,7 +383,7 @@ public sealed partial class BackupService(
         {
             await db.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        catch (DbUpdateException exception) when (exception.IsUniqueViolation())
         {
             // Another backup accepted first (the one-taker index).
             return BackupOfferOutcome.TakenByOthers;
@@ -509,7 +507,7 @@ public sealed partial class BackupService(
             await db.SaveChangesAsync(cancellationToken);
             return round;
         }
-        catch (DbUpdateException exception) when (exception is DbUpdateConcurrencyException || exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        catch (DbUpdateException exception) when (exception is DbUpdateConcurrencyException || exception.IsUniqueViolation())
         {
             db.ChangeTracker.Clear();
             return null;
@@ -553,22 +551,21 @@ public sealed partial class BackupService(
         {
             await db.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        catch (DbUpdateException exception) when (exception.IsUniqueViolation())
         {
             // Another run (or replica) asked them at the same moment.
             db.Entry(offer).State = EntityState.Detached;
             return BackupRun.None;
         }
 
-        var answerBy = schedule.ToLocalTime(offer.ExpiresAt);
         var ask = BackupEmails.Ask(
             candidate.Name,
             SpotOf(slot),
             reason,
-            string.Create(CultureInfo.InvariantCulture, $"{answerBy:h:mm tt} Eastern on {answerBy:MMMM d}"),
+            schedule.Describe(offer.ExpiresAt),
             $"{Site}/backups/offers/{offer.Id}",
             site.Value,
-            reason is BackupReason.BlurbMissing ? Eastern(GetBlurbDeadline(slot)) : null);
+            reason is BackupReason.BlurbMissing ? schedule.Describe(GetBlurbDeadline(slot)) : null);
 
         // Once their time's up the next backup is asked too, so an ask still waiting in the queue by then is dropped.
         if (!await SendAsync(ask with { SendBefore = offer.ExpiresAt, Reference = OfferReference(offer.Id) }, new EmailRecipient(candidate.Email, candidate.Name), "backup ask", slot.Id, cancellationToken))
@@ -710,37 +707,16 @@ public sealed partial class BackupService(
             .SingleOrDefaultAsync(o => o.Id == offerId && o.Substitute.ContributorId == contributorId, cancellationToken);
 
     /// <summary>Queues the email. False if it couldn't be queued (the database failed), which is logged.</summary>
-    private async Task<bool> SendAsync(EmailContent content, EmailRecipient to, string kind, int slotId, CancellationToken cancellationToken)
-    {
-        try
-        {
-            await sender.SendAsync(await composer.ComposeAsync(content, to), cancellationToken);
-            return true;
-        }
-        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
-        {
-            LogSendFailed(exception, kind, slotId);
-            return false;
-        }
-    }
+    private Task<bool> SendAsync(EmailContent content, EmailRecipient to, string kind, int slotId, CancellationToken cancellationToken) =>
+        composer.TrySendAsync(content, to, $"{kind} for slot {slotId}", cancellationToken);
 
     private static BackupSpot SpotOf(Slot slot) => new(slot.SeasonYear, slot.Day, slot.Part, slot.Season.SlotsPerDay);
 
-    /// <summary>A time as emails give it: "10:00 AM Eastern on December 6".</summary>
-    private string Eastern(DateTimeOffset moment)
-    {
-        var local = schedule.ToLocalTime(moment);
-        return string.Create(CultureInfo.InvariantCulture, $"{local:h:mm tt} Eastern on {local:MMMM d}");
-    }
-
-    private EmailRecipient Organizers => new(site.Value.ContactEmail, "C# Advent organizers");
+    private EmailRecipient Organizers => site.Value.OrganizersInbox;
 
     private string Site => site.Value.BaseUrl.TrimEnd('/');
 
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-
-    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't queue the {Kind} email for slot {SlotId}")]
-    private partial void LogSendFailed(Exception exception, string kind, int slotId);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Backup offer {OfferId}'s ask for slot {SlotId} couldn't be sent, so the next backup is being asked")]
     private partial void LogAskUndelivered(int offerId, int slotId);

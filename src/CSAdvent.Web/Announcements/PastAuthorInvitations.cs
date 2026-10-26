@@ -6,7 +6,6 @@ using CSAdvent.Web.Email.Queue;
 using CSAdvent.Web.Reminders;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Npgsql;
 
 namespace CSAdvent.Web.Announcements;
 
@@ -48,15 +47,13 @@ public sealed record InvitationStatus(int Year, DateTimeOffset? StartsAt, DateTi
 /// same morning), anyone with a spot or a pending request in the new season, and anyone who unsubscribed from optional
 /// emails. The invitation is optional, so it carries the unsubscribe link.
 /// </remarks>
-public sealed partial class PastAuthorInvitationService(
+public sealed class PastAuthorInvitationService(
     AdventDbContext db,
     AdventSchedule schedule,
     EmailComposer composer,
-    IEmailSender sender,
     EmailOutbox outbox,
     IOptions<ReminderOptions> reminders,
-    IOptions<SiteOptions> site,
-    ILogger<PastAuthorInvitationService> logger)
+    IOptions<SiteOptions> site)
 {
     /// <summary>What the email queue knows a season's invitations by.</summary>
     public static string Reference(int year) => string.Create(System.Globalization.CultureInfo.InvariantCulture, $"invitations:{year}");
@@ -203,28 +200,21 @@ public sealed partial class PastAuthorInvitationService(
         {
             await db.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        catch (DbUpdateException exception) when (exception.IsUniqueViolation())
         {
             db.Entry(invitation).State = EntityState.Detached;
             return false;
         }
 
-        try
+        // Once sign-ups close, it's no use.
+        var email = PastAuthorEmails.Invitation(author, year, site.Value) with { SendBefore = EndsAt(year, schedule), Reference = Reference(year) };
+        if (await composer.TrySendAsync(email, new EmailRecipient(author.Address, author.Name), $"a past author's invitation to {year}", cancellationToken))
         {
-            // Once sign-ups close, it's no use.
-            var email = PastAuthorEmails.Invitation(author, year, site.Value) with { SendBefore = EndsAt(year, schedule), Reference = Reference(year) };
-            await sender.SendAsync(await composer.ComposeAsync(email, new EmailRecipient(author.Address, author.Name)), cancellationToken);
             return true;
         }
-        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
-        {
-            // Without the address: the logs never carry personal details. A later run tries again.
-            LogInvitationFailed(exception, year);
-            await db.PastAuthorInvitations.Where(i => i.Id == invitation.Id).ExecuteDeleteAsync(cancellationToken);
-            return false;
-        }
-    }
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't queue a past author's invitation to C# Advent {Year}; a later run will try again")]
-    private partial void LogInvitationFailed(Exception exception, int year);
+        // A later run tries again.
+        await db.PastAuthorInvitations.Where(i => i.Id == invitation.Id).ExecuteDeleteAsync(cancellationToken);
+        return false;
+    }
 }

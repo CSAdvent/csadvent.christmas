@@ -33,20 +33,21 @@ internal sealed class ServicesOnAClock(AdventDbContext db, DateTimeOffset now)
 
     public AdventSchedule Schedule => new(Options.Create(new AdventOptions { TimeZone = "America/New_York" }), Clock);
 
-    public PostLinkService PostLinks() => new(db, Schedule, Clock, Composer, Sent, Site, NullLogger<PostLinkService>.Instance);
+    public PostLinkService PostLinks() => new(db, Schedule, Clock, Composer, Site);
 
     /// <summary>Backups that can't check a blurb, which nothing here needs.</summary>
     public BackupService Backups() =>
-        new(db, Schedule, Composer, Sent, null!, Options.Create(new BackupOptions()), Posting, Site, NullLogger<BackupService>.Instance);
+        new(db, Schedule, Composer, null!, Options.Create(new BackupOptions()), Posting, Site, NullLogger<BackupService>.Instance);
 
     public MySpotsService MySpots() =>
-        new(db, Schedule, Clock, Composer, Sent, Backups(), PostLinks(), Site, Posting, Options.Create(new BlurbOptions()), NullLogger<MySpotsService>.Instance);
+        new(db, Schedule, Clock, Composer, Backups(), PostLinks(), Site, Posting, Options.Create(new BlurbOptions()));
 
-    private static EmailComposer Composer => new(
+    private EmailComposer Composer => new(
         new ServiceCollection().BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
         NullLoggerFactory.Instance,
         Site,
-        new EmailOptOutLinks(new EphemeralDataProtectionProvider(), Site));
+        new EmailOptOutLinks(new EphemeralDataProtectionProvider(), Site),
+        Sent);
 }
 
 internal sealed class RecordedEmails : IEmailSender

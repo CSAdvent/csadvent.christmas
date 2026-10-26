@@ -5,7 +5,6 @@ using CSAdvent.Web.Content;
 using CSAdvent.Web.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Npgsql;
 
 namespace CSAdvent.Web.Social;
 
@@ -140,7 +139,7 @@ public sealed class SocialService(
         {
             await db.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        catch (DbUpdateException exception) when (exception.IsUniqueViolation())
         {
             // Another organizer marked it at the same moment; it's marked either way.
         }
