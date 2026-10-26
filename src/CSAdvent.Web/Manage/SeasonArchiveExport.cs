@@ -17,7 +17,7 @@ public sealed class SeasonArchiveExport(AdventDbContext db, AdventSchedule sched
     public async Task<ArchivedSeason?> GetAsync(int year, CancellationToken cancellationToken = default)
     {
         // Finished means its last day is over, so every post in it has been revealed.
-        if (year == Season.TestYear || !schedule.IsDayOver(year, Season.DaysInAdvent))
+        if (year == Season.TestYear || !schedule.IsFinished(year))
         {
             return null;
         }
