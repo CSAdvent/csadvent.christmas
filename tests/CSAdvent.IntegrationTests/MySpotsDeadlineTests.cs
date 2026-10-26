@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using CSAdvent.Web.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -5,9 +6,10 @@ namespace CSAdvent.IntegrationTests;
 
 /// <summary>
 /// What My spots tells contributors in season 2483 (#175): each spot's deadlines, the blurb in one format at a time, their
-/// backup asks and the backup list, and their spots and requests marked on the calendar.
+/// backup asks and the backup list, and their spots and requests marked on the calendar. Other classes' seasons are on the
+/// page too (their backup lists are open), so assertions about the backup list look only at this season's.
 /// </summary>
-public sealed class MySpotsDeadlineTests(AppHostFixture fixture)
+public sealed partial class MySpotsDeadlineTests(AppHostFixture fixture)
 {
     private const int Year = 2483;
 
@@ -29,7 +31,7 @@ public sealed class MySpotsDeadlineTests(AppHostFixture fixture)
         Assert.Contains($"name=\"blurb-format-{Year}\"", page);
 
         // Not on the backup list yet, and its sign-ups are open.
-        Assert.Contains($"<a href=\"backups/{Year}\" class=\"font-medium text-advent-700 underline\">Join the backup list</a>", page);
+        Assert.Contains($"<a href=\"backups/{Year}\" class=\"font-medium text-advent-700 underline\">Join the backup list</a>", BackupBox(page));
     }
 
     [Fact]
@@ -60,12 +62,12 @@ public sealed class MySpotsDeadlineTests(AppHostFixture fixture)
             offerId = offer.Id;
         }
 
-        var page = await browser.GetPageAsync("/my-spots");
+        var box = BackupBox(await browser.GetPageAsync("/my-spots"));
 
-        Assert.Contains("We&#x27;ve asked you to fill December 9 &#xB7; Post 1.", page);
-        Assert.Contains($"href=\"backups/offers/{offerId}\"", page);
-        Assert.Contains("on the backup list. We&#x27;ll email you if a spot needs you.", page);
-        Assert.DoesNotContain("Join the backup list", page);
+        Assert.Contains("We&#x27;ve asked you to fill December 9 &#xB7; Post 1.", box);
+        Assert.Contains($"href=\"backups/offers/{offerId}\"", box);
+        Assert.Contains("on the backup list. We&#x27;ll email you if a spot needs you.", box);
+        Assert.DoesNotContain("Join the backup list", box);
     }
 
     [Fact]
@@ -105,6 +107,17 @@ public sealed class MySpotsDeadlineTests(AppHostFixture fixture)
         Assert.Equal([(12, 2)], marks.Mine);
         Assert.Equal([(13, 1)], marks.Requested);
     }
+
+    /// <summary>This season's box in the page's Backup posters section, which has no other boxes inside it.</summary>
+    private static string BackupBox(string page)
+    {
+        var box = BackupBoxes().Matches(page).SingleOrDefault(m => m.Groups["year"].Value == Year.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        Assert.NotNull(box);
+        return box.Value;
+    }
+
+    [GeneratedRegex("<div id=\"backups-(?<year>\\d+)\".*?</div>", RegexOptions.Singleline)]
+    private static partial Regex BackupBoxes();
 
     private async Task<int> GiveSpotAsync(long githubUserId, int day, int part)
     {

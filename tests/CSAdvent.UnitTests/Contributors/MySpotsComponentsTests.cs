@@ -111,6 +111,7 @@ public sealed class MySpotsComponentsTests : BunitContext
         Assert.Contains("You're standing by for December 12 · Post 2.", box.Markup);
         Assert.Equal(["backups/offers/7", "backups/offers/8", "backups/2026"], box.FindAll("a").Select(a => a.GetAttribute("href")));
         Assert.Contains("You're number 2 on the backup list.", box.Markup);
+        Assert.Equal("backups-2026", box.Find("div").Id);
     }
 
     [Fact]

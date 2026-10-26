@@ -2,7 +2,7 @@
    way to join it. Asks also come by email, but this way they can't be missed. *@
 @using CSAdvent.Web.Backups
 
-<div class="rounded-xl p-4 ring-1 @(Standing.Offers.Count > 0 ? "bg-advent-50 ring-advent-200" : "ring-slate-200")">
+<div id="backups-@Standing.Year" class="rounded-xl p-4 ring-1 @(Standing.Offers.Count > 0 ? "bg-advent-50 ring-advent-200" : "ring-slate-200")">
     <p class="font-semibold text-slate-900">@Season</p>
 
     @if (Standing.Offers.Count > 0)
