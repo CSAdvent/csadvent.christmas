@@ -129,19 +129,19 @@ public static class EmailCatalog
         new(
             "post-links-new-request",
             "Someone asked for new post links",
-            "Right after a signed-in contributor asks for new links to posts on their account from finished seasons.",
+            "Right after a signed-in contributor asks for new links to posts on their account: older posts, or a post of this season's after its reveal (from My spots).",
             "The organizers (Site:ContactEmail). Replies go to the contributor.",
             site => PostLinkEmails.NewRequest(SamplePostLinks, site)),
         new(
             "post-links-approved",
             "Post links changed",
-            "When an organizer approves a request for new links to someone's older posts.",
+            "When an organizer approves a request for new links to someone's posts.",
             "The contributor, at their verified GitHub email. Replies go to the organizers.",
             site => PostLinkEmails.Approved(SamplePostLinks, site)),
         new(
             "post-links-declined",
             "Post links not changed",
-            "When an organizer declines a request for new links to someone's older posts.",
+            "When an organizer declines a request for new links to someone's posts.",
             "The contributor, at their verified GitHub email. Replies go to the organizers.",
             site => PostLinkEmails.Declined(SamplePostLinks, site)),
         new(
@@ -150,6 +150,14 @@ public static class EmailCatalog
             "When an author gives up their spot from their My spots page.",
             "The organizers (Site:ContactEmail).",
             site => SpotEmails.DroppedOut(new DropoutDetails("Ada Lovelace", 2026, 3, 1, 2), site)),
+        new(
+            "post-changed",
+            "An author changed a revealed post",
+            "When an author changes their post's title or summary on My spots after it's revealed. A new link waits for an organizer instead (Someone asked for new post links).",
+            "The organizers (Site:ContactEmail).",
+            site => SpotEmails.PostChanged(
+                new PostChangeDetails(42, "Ada Lovelace", 2026, 3, 1, 2, "Pattern matchnig all the way down", "Pattern matching all the way down", null, "Switch expressions, list patterns and more."),
+                site)),
         new(
             "backup-signed-up",
             "Joined the backup list",

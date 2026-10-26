@@ -56,7 +56,7 @@ public static class SearchEndpoints
                 .ToListAsync(cancellationToken);
 
             var pages = PublicPages.Select(page => new SitemapPage(page, null))
-                .Concat(seasons.Where(schedule.IsSeasonOver).Order().Select(year => new SitemapPage($"archive/{year}", schedule.GetDate(year, Season.DaysInAdvent))))
+                .Concat(seasons.Where(schedule.IsLastDayRevealed).Order().Select(year => new SitemapPage($"archive/{year}", schedule.GetDate(year, Season.DaysInAdvent))))
                 .Concat(retrospectives.Select(r => new SitemapPage(
                     RetrospectiveLinks.Page(r.SeasonYear),
                     DateOnly.FromDateTime(schedule.ToLocalTime(r.UpdatedAt > r.PublishedAt!.Value ? r.UpdatedAt : r.PublishedAt.Value).DateTime))))

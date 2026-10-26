@@ -1,6 +1,7 @@
 @page "/my-spots"
 @attribute [Authorize]
 @using CSAdvent.Web.Auth
+@using CSAdvent.Web.Backups
 @using CSAdvent.Web.Blurbs
 @using CSAdvent.Web.Components.Contributors
 @using CSAdvent.Web.Components.Manage
@@ -10,6 +11,8 @@
 @inject PostClaimService PostClaims
 @inject PostLinkService PostLinks
 @inject BlurbQueries Blurbs
+@inject BackupListService BackupList
+@inject SeasonAdminService Seasons
 @inject Microsoft.Extensions.Options.IOptions<SiteOptions> Site
 
 <PageTitle>My spots · C# Advent</PageTitle>
@@ -35,44 +38,26 @@
         <div class="mt-8 max-w-2xl rounded-xl bg-slate-50 p-5 ring-1 ring-slate-200">
             <p class="font-medium text-slate-900">You don't have a spot yet.</p>
             <p class="mt-2 text-slate-600">
-                @(overview.PendingRequests.Count > 0
-                    ? "Your request is waiting for the organizers. We'll email you once they've decided."
-                    : "Pick an open day on the calendar to request one. If an organizer added you by hand, make sure the verified email on your GitHub account is the one you gave them.")
+                @if (overview.PendingRequests.Count > 0)
+                {
+                    <text>Your request is waiting for the organizers. We'll email you once they've decided.</text>
+                }
+                else
+                {
+                    <text>Pick an open day on</text> <a href="" class="font-medium text-advent-700 underline">the calendar</a> <text>
+                    to request one. If an organizer added you by hand, make sure the verified email on your GitHub account is the one
+                    you gave them.</text>
+                }
             </p>
         </div>
     }
     else
     {
-        @foreach (var season in overview.Spots.Where(s => BlurbRules.AppliesTo(s.Year)).GroupBy(s => s.Year))
-        {
-            var blurb = SuggestedBlurb.For(season.Key, season.First().SlotsPerDay);
-            <section class="mt-8 max-w-3xl rounded-xl bg-advent-50 p-5 ring-1 ring-advent-100">
-                <h2 class="font-semibold text-slate-900">Open your post with the C# Advent blurb</h2>
-                <p class="mt-1 text-sm text-slate-700">
-                    Start your post by saying it's part of the @season.Key C# Advent calendar, with a link to csadvent.christmas. Any
-                    wording is fine, as long as it says that and links back. We check every post from the day before it's revealed,
-                    and a post without it by the time it's announced goes to a backup poster. Here's one ready to paste:
-                </p>
-                <dl class="mt-4 flex flex-col gap-3 text-sm">
-                    @foreach (var (format, text) in new[] { ("Text", blurb.Text), ("Markdown", blurb.Markdown), ("HTML", blurb.Html) })
-                    {
-                        var id = $"blurb-{season.Key}-{format.ToLowerInvariant()}";
-                        <div>
-                            <dt class="flex items-center justify-between gap-2 font-medium text-slate-700">
-                                @format
-                                <button type="button" data-copy="@id" class="rounded-md bg-white px-2 py-1 text-xs font-semibold text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50">Copy</button>
-                            </dt>
-                            <dd><pre id="@id" class="mt-1 whitespace-pre-wrap break-words rounded-lg bg-white p-3 font-mono text-xs text-slate-800 ring-1 ring-slate-200">@text</pre></dd>
-                        </div>
-                    }
-                </dl>
-            </section>
-        }
-
         <ul class="mt-8 flex max-w-3xl flex-col gap-4">
             @foreach (var spot in overview.Spots)
             {
-                <li class="flex flex-wrap items-center justify-between gap-4 rounded-xl p-5 ring-1 ring-slate-200">
+                var checksBlurb = BlurbRules.AppliesTo(spot.Year) && Blurbs.IsEnabled;
+                <li class="flex flex-wrap items-start justify-between gap-4 rounded-xl p-5 ring-1 ring-slate-200">
                     <div>
                         <p class="font-semibold text-slate-900">@spot.Spot</p>
                         <p class="mt-1 text-sm text-slate-600">
@@ -86,7 +71,11 @@
                                 <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">Needs your post's title and URL</span>
                             }
                         </p>
-                        @if (spot.Status is EntryStatus.Ready && BlurbRules.AppliesTo(spot.Year) && Blurbs.IsEnabled && !spot.IsDayOver)
+                        @if (_pendingLinks?.Changes.Any(c => c.SlotId == spot.SlotId) == true)
+                        {
+                            <p class="mt-1 text-sm text-slate-600">Your new link is waiting for an organizer.</p>
+                        }
+                        @if (spot.Status is EntryStatus.Ready && checksBlurb && !spot.IsDayOver)
                         {
                             <PostBlurbCheck SlotId="spot.SlotId" Year="spot.Year" IsRevealed="spot.IsRevealed" State="_blurbs.GetValueOrDefault(spot.SlotId)" ReturnUrl="my-spots" />
                         }
@@ -94,6 +83,7 @@
                         {
                             <p class="mt-1 text-sm text-slate-500">@(spot.Traffic.Any ? Traffic(spot.Traffic) : "No visits or clicks counted yet.")</p>
                         }
+                        <SpotDeadlineList Spot="spot" ChecksBlurb="checksBlurb" />
                     </div>
                     @if (!spot.IsDayOver || spot.Status is EntryStatus.Ready)
                     {
@@ -104,6 +94,11 @@
                 </li>
             }
         </ul>
+
+        @foreach (var season in overview.Spots.Where(s => BlurbRules.AppliesTo(s.Year) && !s.IsDayOver).GroupBy(s => s.Year))
+        {
+            <SuggestedBlurbBox Year="season.Key" SlotsPerDay="season.First().SlotsPerDay" />
+        }
     }
 
     @if (overview.PendingRequests.Count > 0)
@@ -132,6 +127,19 @@
                 </li>
             }
         </ul>
+    }
+
+    @if (_backups.Count > 0)
+    {
+        <section class="mt-12 max-w-3xl">
+            <h2 class="text-xl font-semibold text-slate-900">Backup posters</h2>
+            <div class="mt-4 flex flex-col gap-3">
+                @foreach (var standing in _backups)
+                {
+                    <BackupStanding Standing="standing" />
+                }
+            </div>
+        </section>
     }
 
     @if (_history.Count > 0)
@@ -254,6 +262,7 @@
     private IReadOnlyList<ClaimablePost> _pendingPosts = [];
     private IReadOnlyList<ClaimablePost> _found = [];
     private PostLinkReview? _pendingLinks;
+    private List<MyBackups> _backups = [];
     private string? _suggestedName;
 
     /// <summary>A search for older posts by author name.</summary>
@@ -289,6 +298,26 @@
         _pendingPosts = await PostClaims.GetPendingAsync(user.GetContributorId() ?? 0);
         _found = await PostClaims.SearchAsync(user.GetContributorId() ?? 0, Find);
         _pendingLinks = await PostLinks.GetPendingAsync(user.GetContributorId() ?? 0);
+
+        // The backup lists they're on, and those of their seasons and the current one, where there's an ask to answer, a place,
+        // or a list to join.
+        var years = _overview.Spots.Select(s => s.Year)
+            .Concat(_overview.PendingRequests.Select(r => r.Year))
+            .Concat(await BackupList.GetListYearsAsync(user.GetContributorId() ?? 0))
+            .ToHashSet();
+        if (await Seasons.GetCurrentYearAsync() is { } current)
+        {
+            years.Add(current);
+        }
+
+        foreach (var year in years.Order())
+        {
+            if (await BackupList.GetMineAsync(user.GetContributorId() ?? 0, year) is { } standing
+                && (standing.Offers.Count > 0 || standing.Membership is not null || standing.Availability is BackupSignupAvailability.Open))
+            {
+                _backups.Add(standing);
+            }
+        }
 
         // Their name is the likeliest search, until they've searched for something else.
         _suggestedName = user.GetDisplayName();

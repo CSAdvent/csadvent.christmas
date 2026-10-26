@@ -68,8 +68,8 @@ public sealed class HomeService(AdventDbContext db, AdventSchedule schedule, Sea
             return new HomePlan(shown.Year, LastYear: null, NextSeason: null);
         }
 
-        var last = seasonsInOrder.LastOrDefault(s => schedule.IsSeasonOver(s.Year));
-        var next = seasonsInOrder.FirstOrDefault(s => !schedule.IsSeasonOver(s.Year));
+        var last = seasonsInOrder.LastOrDefault(s => schedule.IsFinished(s.Year));
+        var next = seasonsInOrder.FirstOrDefault(s => !schedule.IsFinished(s.Year));
         return new HomePlan(CalendarYear: null, last?.Year, next is null ? null : Upcoming(next, schedule));
     }
 

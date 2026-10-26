@@ -56,17 +56,36 @@ public sealed class AdventScheduleTests
     }
 
     [Fact]
-    public void ASeasonIsOverOnceItsLastDayIsRevealed()
+    public void ASeasonIsInTheArchiveOnceItsLastDayIsRevealed()
     {
         var clock = new FakeTimeProvider(new DateTimeOffset(2026, 12, 24, 23, 59, 59, TimeSpan.FromHours(-5)));
         var schedule = CreateSchedule(clock);
 
-        Assert.False(schedule.IsSeasonOver(2026));
-        Assert.True(schedule.IsSeasonOver(2025));
+        Assert.False(schedule.IsLastDayRevealed(2026));
+        Assert.True(schedule.IsLastDayRevealed(2025));
 
         clock.Advance(TimeSpan.FromSeconds(1));
 
-        Assert.True(schedule.IsSeasonOver(2026));
+        Assert.True(schedule.IsLastDayRevealed(2026));
+    }
+
+    [Fact]
+    public void ASeasonIsFinishedOnceItsLastDayIsOver()
+    {
+        // Noon on Christmas Day: the last day is revealed, and its authors can still add their posts on My spots.
+        var clock = new FakeTimeProvider(new DateTimeOffset(2026, 12, 25, 12, 0, 0, TimeSpan.FromHours(-5)));
+        var schedule = CreateSchedule(clock);
+
+        Assert.True(schedule.IsLastDayRevealed(2026));
+        Assert.False(schedule.IsFinished(2026));
+        Assert.True(schedule.IsFinished(2025));
+
+        clock.SetUtcNow(new DateTimeOffset(2026, 12, 25, 23, 59, 59, TimeSpan.FromHours(-5)));
+        Assert.False(schedule.IsFinished(2026));
+
+        // Midnight on December 26.
+        clock.Advance(TimeSpan.FromSeconds(1));
+        Assert.True(schedule.IsFinished(2026));
     }
 
     [Fact]
@@ -147,12 +166,13 @@ public sealed class AdventScheduleTests
     [Fact]
     public void TheCalendarStaysUpUntilTheEndOfDecember()
     {
-        // Christmas Day, after the last reveal: the season is over, but people are still reading.
+        // Christmas Day, after the last reveal: the calendar is complete, and people are still reading.
         var clock = new FakeTimeProvider(new DateTimeOffset(2026, 12, 25, 9, 0, 0, TimeSpan.FromHours(-5)));
         var schedule = CreateSchedule(clock);
         var opensAt = new DateTimeOffset(2026, 11, 1, 0, 0, 0, TimeSpan.FromHours(-4));
 
-        Assert.True(schedule.IsSeasonOver(2026));
+        Assert.True(schedule.IsLastDayRevealed(2026));
+        Assert.False(schedule.IsFinished(2026));
         Assert.True(schedule.IsCalendarShown(2026, opensAt));
 
         clock.SetUtcNow(new DateTimeOffset(2026, 12, 31, 23, 59, 59, TimeSpan.FromHours(-5)));

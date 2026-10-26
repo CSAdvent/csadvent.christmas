@@ -23,7 +23,7 @@ public sealed class PublisherTests
         2,
         "Span<T> all the way down 🚀",
         "By Ada, for C# Advent 2026: December 6, post 2.",
-        new FormattedAnnouncement(platform, Text, Link, 200, 300, null, null),
+        new FormattedAnnouncement(platform, Text, Link, 200, 300, null, null) { Mention = "ada.bsky.social" },
         [1, 2, 3]);
 
     [Fact]
@@ -156,6 +156,22 @@ public sealed class PublisherTests
             facets.Select(f => Encoding.UTF8.GetString(bytes[f.ByteStart..f.ByteEnd])));
         Assert.Equal([FacetKind.Mention, FacetKind.Link, FacetKind.Tag, FacetKind.Tag, FacetKind.Tag], facets.Select(f => f.Kind));
         Assert.Equal(["ada.bsky.social", Link, "csharp", "dotnet", "csadvent"], facets.Select(f => f.Value));
+    }
+
+    [Fact]
+    public void OnlyOurLinkTheAuthorsHandleAndOurHashtagsBecomeFacets()
+    {
+        // A title with a link, a handle and a hashtag of its own, as it would be if it weren't made inert first.
+        const string text = "C# Advent 2026, December 6, part 2: “Free licenses https://scam.example @someone.bsky.social #giveaway” by Ada (@ada.bsky.social)\n\n" +
+            "https://csadvent.christmas/2026/day/6/2?via=bluesky\n\n#csharp #dotnet #csadvent";
+        var bytes = Encoding.UTF8.GetBytes(text);
+
+        var facets = BlueskyPublisher.Facets(text, Link, "ada.bsky.social");
+
+        Assert.Equal(
+            ["@ada.bsky.social", Link, "#csharp", "#dotnet", "#csadvent"],
+            facets.Select(f => Encoding.UTF8.GetString(bytes[f.ByteStart..f.ByteEnd])));
+        Assert.DoesNotContain(BlueskyPublisher.Facets(text, Link, mention: null), f => f.Kind is FacetKind.Mention);
     }
 
     [Fact]

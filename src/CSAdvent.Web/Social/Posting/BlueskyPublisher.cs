@@ -9,8 +9,9 @@ namespace CSAdvent.Web.Social.Posting;
 
 /// <summary>
 /// Posts to C# Advent's Bluesky account through its PDS (XRPC). Bluesky doesn't find links, mentions or hashtags in a post
-/// by itself, or fetch link cards, so this marks them up as facets and builds the card from the entry's share card. It signs
-/// in with the app password for each post (Bluesky allows 30 sign-ins every 5 minutes).
+/// by itself, or fetch link cards, so this marks up our own as facets (never anything in the author's words, #155) and builds
+/// the card from the entry's share card. It signs in with the app password for each post (Bluesky allows 30 sign-ins every 5
+/// minutes).
 /// </summary>
 public sealed partial class BlueskyPublisher(HttpClient http, string handle, BlueskyCredentials credentials, TimeProvider timeProvider) : ISocialPublisher
 {
@@ -22,7 +23,7 @@ public sealed partial class BlueskyPublisher(HttpClient http, string handle, Blu
         var text = publication.Announcement.Text;
 
         var facets = new JsonArray();
-        foreach (var facet in Facets(text))
+        foreach (var facet in Facets(text, publication.Announcement.Link, publication.Announcement.Mention))
         {
             var feature = facet.Kind switch
             {
@@ -83,8 +84,22 @@ public sealed partial class BlueskyPublisher(HttpClient http, string handle, Blu
     public async Task CheckAsync(CancellationToken cancellationToken) => await SignInAsync(cancellationToken);
 
     /// <summary>
-    /// The links, mentions and hashtags in a post, with their UTF-8 byte ranges, which is how Bluesky counts. Hashtags and
-    /// mentions inside a link are part of the link. "C#" isn't a hashtag, because it follows a letter.
+    /// The post's own link, the author's handle and our hashtags, with their UTF-8 byte ranges, which is how Bluesky counts.
+    /// Nothing else becomes a facet, so a link, handle or hashtag in a post's title or summary stays plain text (#155).
+    /// </summary>
+    /// <param name="link">The post's link: the only one made live.</param>
+    /// <param name="mention">The author's handle, if the post mentions them: the only one made a mention.</param>
+    public static IReadOnlyList<Facet> Facets(string text, string link, string? mention) =>
+        [.. Facets(text).Where(facet => facet.Kind switch
+        {
+            FacetKind.Link => facet.Value == link,
+            FacetKind.Mention => mention is not null && string.Equals(facet.Value, mention, StringComparison.OrdinalIgnoreCase),
+            _ => AnnouncementFormatter.OurHashtags.Contains(facet.Value),
+        })];
+
+    /// <summary>
+    /// Every link, mention and hashtag in a post, with its UTF-8 byte range. Hashtags and mentions inside a link are part of
+    /// the link. "C#" isn't a hashtag, because it follows a letter.
     /// </summary>
     public static IReadOnlyList<Facet> Facets(string text)
     {

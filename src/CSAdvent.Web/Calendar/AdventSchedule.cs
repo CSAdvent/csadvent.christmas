@@ -63,8 +63,17 @@ public sealed class AdventSchedule
 
     public bool IsDayOver(int year, int day) => _timeProvider.GetUtcNow() >= GetDayEndTime(year, day);
 
-    /// <summary>A season is over, and in the archive, once its last day is revealed.</summary>
-    public bool IsSeasonOver(int year) => IsRevealed(year, Season.DaysInAdvent);
+    /// <summary>
+    /// Whether the season's last day is revealed: its calendar is complete, and it's in the archive. It isn't
+    /// <see cref="IsFinished"/> yet, so the last day's authors can still add their posts on My spots.
+    /// </summary>
+    public bool IsLastDayRevealed(int year) => IsRevealed(year, Season.DaysInAdvent);
+
+    /// <summary>
+    /// Whether the season is finished, and history: once its last day is over, at the end of December 25 (or of its
+    /// rehearsal's last day). Until then its spots are managed on My spots, and its posts aren't anyone's history yet.
+    /// </summary>
+    public bool IsFinished(int year) => IsDayOver(year, Season.DaysInAdvent);
 
     /// <summary>
     /// When the home page starts showing a season's calendar: when its sign-ups open, or at the first reveal if that's

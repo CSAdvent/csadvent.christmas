@@ -84,7 +84,7 @@ public sealed class AuthorService(AdventDbContext db, AdventSchedule schedule, G
 
         // Unlinked authors are the archive's: a season still running links its authors when their claims are approved.
         var unlinked = spots
-            .Where(s => s.ContributorId is null && s.PostUrl is not null && schedule.IsSeasonOver(s.SeasonYear))
+            .Where(s => s.ContributorId is null && s.PostUrl is not null && schedule.IsFinished(s.SeasonYear))
             .GroupBy(s => Key(s.AuthorName))
             .Select(group => new AuthorRow(
                 null,
@@ -209,7 +209,7 @@ public sealed class AuthorService(AdventDbContext db, AdventSchedule schedule, G
     public async Task UnlinkAsync(int contributorId, CancellationToken cancellationToken = default)
     {
         var finished = (await db.Slots.Where(s => s.ContributorId == contributorId).Select(s => new { s.Id, s.SeasonYear }).ToListAsync(cancellationToken))
-            .Where(s => schedule.IsSeasonOver(s.SeasonYear))
+            .Where(s => schedule.IsFinished(s.SeasonYear))
             .Select(s => s.Id)
             .ToList();
         await db.Slots.Where(s => finished.Contains(s.Id)).ExecuteUpdateAsync(s => s.SetProperty(x => x.ContributorId, (int?)null), cancellationToken);
@@ -288,7 +288,7 @@ public sealed class AuthorService(AdventDbContext db, AdventSchedule schedule, G
     }
 
     private async Task<List<AuthorPost>> UnlinkedPostsAsync(CancellationToken cancellationToken) =>
-        [.. (await PostsAsync(db.Slots.Where(s => s.ContributorId == null && s.PostUrl != null), cancellationToken)).Where(p => schedule.IsSeasonOver(p.Year))];
+        [.. (await PostsAsync(db.Slots.Where(s => s.ContributorId == null && s.PostUrl != null), cancellationToken)).Where(p => schedule.IsFinished(p.Year))];
 
     private static async Task<List<AuthorPost>> PostsAsync(IQueryable<Slot> slots, CancellationToken cancellationToken) =>
         await slots

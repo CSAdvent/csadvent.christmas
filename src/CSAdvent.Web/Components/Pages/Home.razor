@@ -1,10 +1,12 @@
 ﻿@page "/"
+@using CSAdvent.Web.Auth
 @using Microsoft.Extensions.Options
 @inject HomeService HomeService
 @inject ContentService Content
 @inject AdventSchedule Schedule
 @inject IOptions<SiteOptions> Site
 @inject IOptions<CSAdvent.Web.Social.SocialAccountsOptions> Accounts
+@inject CSAdvent.Web.Contributors.MySpotsService MySpots
 
 <PageTitle>@Title</PageTitle>
 <SocialMeta Title="@Title"
@@ -46,12 +48,20 @@ else if (_home is not null)
     [SupplyParameterFromQuery]
     public string? Error { get; set; }
 
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationState { get; set; } = null!;
+
     protected override async Task OnInitializedAsync()
     {
         _home = await HomeService.GetAsync();
         if (_home.IsBetweenSeasons)
         {
             _message = await Content.GetAsync(ContentCatalog.BetweenSeasons);
+        }
+        else if ((await AuthenticationState).User.GetContributorId() is { } contributorId)
+        {
+            // A signed-in contributor sees their own spots and requests marked (#175). Everyone else gets the same page.
+            _home = _home with { Calendar = _home.Calendar! with { Marks = await MySpots.GetCalendarMarksAsync(contributorId, _home.Calendar.Year) } };
         }
     }
 }

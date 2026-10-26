@@ -103,7 +103,7 @@ public sealed partial class PastAuthorInvitationService(
             .. requesting.SelectMany(r => new[] { r.Request, r.Account }),
         ];
         return Plan(
-            spots.Where(s => schedule.IsSeasonOver(s.Year)),
+            spots.Where(s => schedule.IsFinished(s.Year)),
             skipped.OfType<string>().Select(EmailOptOutLinks.Normalize).ToHashSet(StringComparer.Ordinal),
             invited.Concat(optedOut).ToHashSet(StringComparer.Ordinal));
     }

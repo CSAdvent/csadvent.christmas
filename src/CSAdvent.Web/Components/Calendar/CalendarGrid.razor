@@ -53,6 +53,10 @@
                                 }
                             </p>
                         }
+                        @if (Calendar.Marks.IsMine(day.Day, entry.Part))
+                        {
+                            <p class="mb-1.5"><a href="my-spots" class="rounded-full bg-advent-100 px-2 py-0.5 text-xs font-semibold text-advent-800 hover:bg-advent-200">Your spot</a></p>
+                        }
                         @if (entry.HasPost)
                         {
                             <a href="@EntryLinks.Go(Calendar.Year, day.Day, entry.Part, "calendar")" class="font-medium text-advent-700 underline decoration-advent-200 decoration-1 underline-offset-2 hover:text-advent-800 hover:decoration-advent-700">@TitleStart(entry.PostTitle)<span class="whitespace-nowrap">@TitleEnd(entry.PostTitle)<svg class="ml-1 inline size-3" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 13 13 7M8 7h5v5" /></svg></span></a>
@@ -70,6 +74,10 @@
                             <p class="text-sm text-slate-600">
                                 <span aria-hidden="true">🎁</span> Claimed by <Author Entry="entry" />
                             </p>
+                        }
+                        else if (Calendar.Marks.IsRequested(day.Day, entry.Part))
+                        {
+                            <p class="text-sm text-slate-600">You've requested this spot. <a href="my-spots" class="font-medium text-advent-700 underline">See My spots</a></p>
                         }
                         else if (Calendar.AreClaimsOpen)
                         {

@@ -201,6 +201,54 @@ public sealed class AnnouncementTests
             SocialPostingService.Description(day, entry with { Summary = "Switch expressions and more" }));
     }
 
+    [Theory]
+    [InlineData("Ask @someone", "Ask @|someone")]
+    [InlineData("#giveaway: free licenses", "#|giveaway: free licenses")]
+    [InlineData("C# 14 and F#", "C# 14 and F#")]
+    [InlineData("Free at https://scam.example/x", "Free at https:|//scam.|example/x")]
+    [InlineData("Minimal APIs in ASP.NET Core, e.g. in C# 14.0", "Minimal APIs in ASP.|NET Core, e.|g. in C# 14.0")]
+    public void TheAuthorsWordsAreMadeInert(string text, string inert) =>
+        Assert.Equal(inert.Replace('|', '\u2060'), AnnouncementFormatter.Inert(text));
+
+    [Fact]
+    public void TheAuthorsWordsNeverBecomeLinksMentionsOrHashtags()
+    {
+        var announcement = new Announcement(2026, 6, 2, 2, "Free licenses at scam.example https://scam.example @someone #giveaway", "Eve @eve", Accounts, "https://csadvent.christmas")
+        {
+            Summary = "More at evil.example",
+        };
+
+        foreach (var platform in Enum.GetValues<SocialPlatform>())
+        {
+            var formatted = AnnouncementFormatter.Format(announcement, platform, Ours);
+
+            // Readers see the words as they were...
+            Assert.Contains("Free licenses at scam.example https://scam.example @someone #giveaway", formatted.Text.Replace("\u2060", ""));
+
+            // ...but no platform finds a link, mention or hashtag in them. (Culture-aware comparisons skip the word joiner.)
+            Assert.DoesNotContain("scam.example", formatted.Text, StringComparison.Ordinal);
+            Assert.DoesNotContain("://scam", formatted.Text, StringComparison.Ordinal);
+            Assert.DoesNotContain("@someone", formatted.Text, StringComparison.Ordinal);
+            Assert.DoesNotContain("@eve", formatted.Text, StringComparison.Ordinal);
+            Assert.DoesNotContain("#giveaway", formatted.Text, StringComparison.Ordinal);
+            Assert.DoesNotContain("evil.example", formatted.Text, StringComparison.Ordinal);
+        }
+
+        // Our own parts are as they were: X still mentions the author, and Bluesky only marks up ours.
+        var x = AnnouncementFormatter.Format(announcement, SocialPlatform.X, Ours);
+        Assert.Contains("(@AdaCodes)", x.Text);
+        var bluesky = AnnouncementFormatter.Format(announcement, SocialPlatform.Bluesky, Ours);
+        Assert.Equal("ada.bsky.social", bluesky.Mention);
+        Assert.Equal(
+            ["ada.bsky.social", bluesky.Link, "csharp", "dotnet", "csadvent"],
+            BlueskyPublisher.Facets(bluesky.Text, bluesky.Link, bluesky.Mention).Select(f => f.Value));
+    }
+
+    [Fact]
+    public void XNoLongerCountsATitlesDomainAsALink() =>
+        // "ASP.NET" was a 23-character link; inert, it's itself plus the word joiner, which X counts twice.
+        Assert.Equal(30, AnnouncementFormatter.XLength(AnnouncementFormatter.Inert("Minimal APIs in ASP.NET Core")));
+
     [Fact]
     public void AuthorsWithoutAccountsAreSimplyNamed()
     {

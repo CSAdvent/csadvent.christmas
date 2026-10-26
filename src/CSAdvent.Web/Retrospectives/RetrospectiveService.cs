@@ -52,13 +52,13 @@ public sealed class RetrospectiveService(AdventDbContext db, AdventSchedule sche
             .ToListAsync(cancellationToken);
 
         return [.. seasons
-            .Where(s => schedule.IsSeasonOver(s.Year))
+            .Where(s => schedule.IsFinished(s.Year))
             .Select(s => new RetrospectiveSeason(s.Year, s.Posts, s.Retrospective?.UpdatedAt, s.Retrospective?.PublishedAt))];
     }
 
     /// <summary>Whether the season can have a retrospective: it exists, it's real, and it's over.</summary>
     public async Task<bool> IsFinishedSeasonAsync(int year, CancellationToken cancellationToken = default) =>
-        year != Season.TestYear && schedule.IsSeasonOver(year) && await db.Seasons.AnyAsync(s => s.Year == year, cancellationToken);
+        year != Season.TestYear && schedule.IsFinished(year) && await db.Seasons.AnyAsync(s => s.Year == year, cancellationToken);
 
     /// <summary>The season's retrospective, published or not, for the organizers.</summary>
     public Task<Retrospective?> GetAsync(int year, CancellationToken cancellationToken = default) =>
@@ -87,7 +87,7 @@ public sealed class RetrospectiveService(AdventDbContext db, AdventSchedule sche
             .Where(s => s.Year == year && s.Year != Season.TestYear)
             .Select(s => new { s.SlotsPerDay, s.ClaimsOpenAt, Spots = s.Slots.Count })
             .SingleOrDefaultAsync(cancellationToken);
-        if (season is null || !schedule.IsSeasonOver(year))
+        if (season is null || !schedule.IsFinished(year))
         {
             return null;
         }

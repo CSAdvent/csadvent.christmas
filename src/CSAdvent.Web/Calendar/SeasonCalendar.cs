@@ -16,14 +16,17 @@ public sealed record SeasonCalendar(
 
     public int SpotCount => Days.Sum(day => day.Entries.Count);
 
-    /// <summary>Every day has been revealed: the season is over.</summary>
-    public bool IsFinished => Days.Count > 0 && Days.All(day => day.Entries.All(entry => entry.IsRevealed));
+    /// <summary>Every day has been revealed: the calendar is complete (<see cref="AdventSchedule.IsLastDayRevealed"/>).</summary>
+    public bool IsComplete => Days.Count > 0 && Days.All(day => day.Entries.All(entry => entry.IsRevealed));
 
     /// <summary>Spots nobody has claimed whose day hasn't been revealed yet, so they can still be claimed.</summary>
     public int OpenSpotCount => Days.Sum(day => day.Entries.Count(entry => entry.IsOpen && !entry.IsRevealed));
 
     /// <summary>When the calendar was put together: what "now" means for its reveals.</summary>
     public DateTimeOffset GeneratedAt { get; init; }
+
+    /// <summary>The signed-in contributor's own spots and requests, on the home page (#175). None anywhere else.</summary>
+    public CalendarMarks Marks { get; init; } = CalendarMarks.None;
 
     /// <summary>How close the next reveal has to be for its day to count down to it, as "tomorrow" on the old site did.</summary>
     public static readonly TimeSpan CountdownWithin = TimeSpan.FromHours(24);
@@ -58,6 +61,16 @@ public sealed record SeasonCalendar(
 }
 
 public sealed record CalendarDay(int Day, DateTimeOffset RevealsAt, bool IsToday, IReadOnlyList<CalendarEntry> Entries);
+
+/// <summary>Which spots on a calendar are the signed-in contributor's, and which they've asked for (#175).</summary>
+public sealed record CalendarMarks(IReadOnlySet<(int Day, int Part)> Mine, IReadOnlySet<(int Day, int Part)> Requested)
+{
+    public static readonly CalendarMarks None = new(new HashSet<(int, int)>(), new HashSet<(int, int)>());
+
+    public bool IsMine(int day, int part) => Mine.Contains((day, part));
+
+    public bool IsRequested(int day, int part) => Requested.Contains((day, part));
+}
 
 public sealed record CalendarEntry(int Part, bool IsRevealed, string? AuthorName, string? AuthorUrl, string? PostTitle, string? PostUrl)
 {
