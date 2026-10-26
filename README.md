@@ -68,6 +68,7 @@ You can also run the AppHost without the Aspire CLI, with `dotnet run --project 
   ```
 
 - 🛡️ Organizers are listed by GitHub user ID in `Accounts:Admins` (`src/CSAdvent.Web/appsettings.json`)
+- 🔒 GitHub sign-in uses **PKCE**. A sign-in lasts 14 days after the last visit, and an organizer's 12 hours from signing in. Cookies are always Secure in production; locally they follow the request, so plain `http` keeps working
 
 ## 🗄️ Database Migrations
 
@@ -174,7 +175,7 @@ dotnet test
 A hidden test season lets invited testers try everything for real on the live site, at any time of year, without touching the real seasons.
 
 - 🚦 **Create the test season** at `/manage/testing` with the date that stands in for December 1
-- 👥 **Invite testers** by GitHub login. Only they and the organizers can see it; to everyone else it doesn't exist
+- 👥 **Invite testers** by GitHub login. The first time they visit signed in, the invitation becomes theirs by GitHub user ID, so it stays theirs if they rename their login and nobody else can take it. Only they and the organizers can see the test season; to everyone else it doesn't exist
 - 🔀 **Test mode** puts the test calendar on a tester's home page. Testers get an invitation to switch, and a banner to switch back
 - ⏩ **Rehearse December any time:** reveals, reminders, the daily email and backup asks follow the rehearsal. Move it to jump ahead, or send what's due straight away
 - 🧹 **Reset the test season** to delete everything done in it: every spot is open again, and the requests, backups, emails, visits and social marks are gone
@@ -201,13 +202,13 @@ A hidden test season lets invited testers try everything for real on the live si
 
 ## ☁️ Deploying to Azure
 
-Production runs on **Azure Container Apps** with **Azure Database for PostgreSQL** (Flexible Server, PostgreSQL 18, Burstable B1ms, 14-day point-in-time backups; restoring is in [the runbook](docs/runbook.md)), **Application Insights**, the **Azure DNS** zone for csadvent.christmas, and **Azure Communication Services** for email, with **Azure Monitor alerts** that email the organizers when something fails. All of it is modeled in the AppHost, so one `aspire deploy` creates everything. The blurb check uses Claude through Anthropic's API, with a key (below).
+Production runs on **Azure Container Apps** with **Azure Database for PostgreSQL** (Flexible Server, PostgreSQL 18, Burstable B1ms, 14-day point-in-time backups; restoring is in [the runbook](docs/runbook.md)), **Application Insights**, the **Azure DNS** zone for csadvent.christmas, and **Azure Communication Services** for email, with **Azure Monitor alerts** that email the organizers when something fails. All of it is modeled in the AppHost, so one `aspire deploy` creates everything. The keys that protect sign-in cookies and email links are kept in the database, encrypted with a key in **Azure Key Vault** that only the site can use, and the deploy creates that too. The blurb check uses Claude through Anthropic's API, with a key (below).
 
 Email can't be sent until the sending domain is verified, which happens after the nameserver switch below.
 
 ### 🤖 Deploying from GitHub Actions
 
-[`deploy.yml`](.github/workflows/deploy.yml) deploys every push to `main` once CI has passed on it (a push that only changes documentation runs neither, and a push already overtaken by newer code on `main` is skipped), and **Run workflow** in the Actions tab redeploys `main` by hand, or an earlier commit of `main` given its SHA (rolling back is in [the runbook](docs/runbook.md)). It signs in to Azure with GitHub's OIDC token (no Azure password is stored), runs `aspire deploy`, then checks the site. `aspire deploy` runs the database migrations job, and waits for it to succeed, before it updates the site (#151), so a failed migration leaves the previous version serving. Deploys never overlap.
+[`deploy.yml`](.github/workflows/deploy.yml) deploys every push to `main` once CI has passed on it (a push that only changes documentation runs neither, and a push already overtaken by newer code on `main` is skipped), and **Run workflow** in the Actions tab redeploys `main` by hand, or an earlier commit of `main` given its SHA (rolling back is in [the runbook](docs/runbook.md)). It signs in to Azure with GitHub's OIDC token (no Azure password is stored), runs `aspire deploy`, then checks the site and that the new revision is the one serving. `aspire deploy` runs the database migrations job, and waits for it to succeed, before it updates the site (#151), so a failed migration leaves the previous version serving. Deploys never overlap.
 
 One-time setup (`<sub>` is the subscription ID):
 
