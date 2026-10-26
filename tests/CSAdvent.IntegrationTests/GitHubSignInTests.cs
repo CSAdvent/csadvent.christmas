@@ -168,6 +168,8 @@ public sealed class GitHubSignInTests(AppHostFixture fixture)
             builder.Services.AddDbContext<AdventDbContext>(options => options.UseNpgsql(connectionString));
             builder.Services.AddSingleton(TimeProvider.System);
             builder.Services.AddScoped<ProfileService>();
+            builder.Services.AddSingleton<Web.SeasonTesting.TestSeasons>();
+            builder.Services.AddScoped<Web.SeasonTesting.TesterInvitations>();
             builder.Services.AddHttpClient<GitHubUsers>(GitHubUsers.Configure).ConfigurePrimaryHttpMessageHandler(() => github.Handler());
             builder.Services.AddAntiforgery();
             builder.Services.AddDataProtection().UseEphemeralDataProtectionProvider();
