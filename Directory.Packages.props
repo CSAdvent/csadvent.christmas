@@ -27,8 +27,8 @@
     <PackageVersion Include="Anthropic" Version="13.3.0" />
     <PackageVersion Include="Azure.Communication.Email" Version="1.1.0" />
     <PackageVersion Include="Azure.Identity" Version="1.21.0" />
-    <PackageVersion Include="MailKit" Version="4.18.1" />
-    <PackageVersion Include="Markdig" Version="1.4.2" />
+    <PackageVersion Include="MailKit" Version="4.18.2" />
+    <PackageVersion Include="Markdig" Version="1.5.0" />
     <PackageVersion Include="SkiaSharp" Version="4.153.1" />
     <!-- Skia's native library for Linux containers, without a fontconfig dependency (the card fonts are embedded) -->
     <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.153.1" />
@@ -39,9 +39,9 @@
     <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="10.11.0" />
     <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.20.1" />
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.20.1" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.20.0" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.20.0" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.20.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.20.1" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.20.1" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.20.1" />
   </ItemGroup>
   <ItemGroup Label="Testing">
     <PackageVersion Include="Aspire.Hosting.Testing" Version="13.6.2" />
