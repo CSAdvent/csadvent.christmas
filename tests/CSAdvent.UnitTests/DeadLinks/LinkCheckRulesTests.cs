@@ -76,6 +76,20 @@ public sealed class LinkCheckRulesTests
     }
 
     [Fact]
+    public void ALinkedInPostIsNeverFoundDead()
+    {
+        // LinkedIn answers checks like ours with a 404 even when the post is up, so its answers are never failures.
+        var post = new Uri("https://www.linkedin.com/pulse/some-post");
+        var state = New;
+        for (var check = 0; check < 5; check++)
+        {
+            state = LinkCheckRules.After(state, LinkProbes.FromResponse(404, "Not Found", post, post), Now.AddDays(check * 3), Options, 0);
+        }
+
+        Assert.Equal((LinkStatus.Refused, 0, (DateTimeOffset?)null), (state.Status, state.Failures, state.DeadSince));
+    }
+
+    [Fact]
     public void FewerFailuresCanBeEnough()
     {
         var options = new LinkCheckOptions { FailuresBeforeDead = 1 };

@@ -23,7 +23,7 @@ public sealed class LinkProbeTests
     [InlineData(401, LinkOutcome.Refused)]
     [InlineData(403, LinkOutcome.Refused)]
     [InlineData(429, LinkOutcome.Refused)]
-    [InlineData(999, LinkOutcome.Failed)]
+    [InlineData(999, LinkOutcome.Refused)]
     public void EachAnswerCountsTheWayItShould(int status, LinkOutcome outcome) =>
         Assert.Equal(outcome, LinkProbes.FromResponse(status, "Reason", Post, Post).Outcome);
 
@@ -60,6 +60,46 @@ public sealed class LinkProbeTests
         Assert.Equal("The site's certificate isn't valid.", LinkProbes.FromException(new HttpRequestException("SSL", new AuthenticationException()), Post).Detail);
         Assert.Equal("The site didn't answer in time.", LinkProbes.FromException(new TaskCanceledException(), Post).Detail);
         Assert.Equal("The site couldn't be reached.", LinkProbes.FromException(new HttpRequestException("Connection refused"), Post).Detail);
+    }
+
+    [Fact]
+    public void LinkedInsRequestDeniedIsCantCheckFromAnySite()
+    {
+        var denied = LinkProbes.FromResponse(LinkProbes.RequestDenied, "Request denied", Post, Post);
+
+        Assert.Equal(LinkProbe.Refused("The site turned the check away (999 Request denied)."), denied);
+    }
+
+    [Theory]
+    [InlineData("https://www.linkedin.com/pulse/implementing-quantum-simulator-q-c-andr%C3%A9s-paz/?published=t")]
+    [InlineData("https://linkedin.com/pulse/some-post")]
+    [InlineData("https://uk.LinkedIn.com/pulse/some-post")]
+    public void ASiteWhoseAnswersCantBeTrustedIsNeverAFailure(string url)
+    {
+        var post = new Uri(url);
+
+        var notFound = LinkProbes.FromResponse(404, "Not Found", post, post);
+        Assert.Equal(LinkOutcome.Refused, notFound.Outcome);
+        Assert.Equal($"{post.Host} doesn't answer checks like ours reliably, so there's no telling. The page answered 404 Not Found.", notFound.Detail);
+        Assert.Equal(LinkOutcome.Refused, LinkProbes.FromResponse(500, "Internal Server Error", post, post).Outcome);
+        Assert.Equal(LinkOutcome.Refused, LinkProbes.FromResponse(200, "OK", post, new Uri(post, "/")).Outcome);
+        Assert.Equal(LinkOutcome.Refused, LinkProbes.FromException(new HttpRequestException("No such host", new SocketException((int)SocketError.HostNotFound)), post).Outcome);
+        Assert.Equal(LinkOutcome.Refused, LinkProbes.FromException(new TaskCanceledException(), post).Outcome);
+
+        // A page that loads still counts as working.
+        Assert.Equal(LinkOutcome.Loaded, LinkProbes.FromResponse(200, "OK", post, post).Outcome);
+        Assert.True(LinkProbes.IsUntrusted(post));
+    }
+
+    [Theory]
+    [InlineData("https://notlinkedin.com/pulse/post")]
+    [InlineData("https://linkedin.com.example.net/post")]
+    public void OnlyThoseSitesAreUntrusted(string url)
+    {
+        var post = new Uri(url);
+
+        Assert.False(LinkProbes.IsUntrusted(post));
+        Assert.Equal(LinkOutcome.Failed, LinkProbes.FromResponse(404, "Not Found", post, post).Outcome);
     }
 
     [Theory]

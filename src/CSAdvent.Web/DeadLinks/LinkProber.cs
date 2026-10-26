@@ -38,41 +38,70 @@ public interface ILinkProber
 public static class LinkProbes
 {
     /// <summary>
+    /// Sites whose answers to an automated check can't be trusted, by host (any subdomain too). They answer requests like ours
+    /// with a 404, LinkedIn's own 999 or a sign-in wall even when the post is up (a live LinkedIn article answered 404 to a plain
+    /// <c>curl -I</c>, #201), so a failure from them would wrongly mark a live post dead and send its readers to an old copy.
+    /// Their answers only ever count as "can't check"; a page that loads still counts as working. Add a site here only with
+    /// evidence that it does this.
+    /// </summary>
+    public static readonly IReadOnlyList<string> UntrustedHosts = ["linkedin.com"];
+
+    /// <summary>
+    /// LinkedIn's non-standard "request denied" status for automated requests. It says nothing about the post, wherever it
+    /// comes from, so it's "can't check" too.
+    /// </summary>
+    public const int RequestDenied = 999;
+
+    /// <summary>
     /// What a response means. A 404 or 410 is gone, and so is a post that now redirects to its site's home page, which is what
-    /// many blogs do with posts they've removed. Other refusals (401, 403, 429, a bot wall) say nothing about the post, and a
-    /// 5xx or a redirect that never ends is the site being down.
+    /// many blogs do with posts they've removed. Other refusals (401, 403, 429, 999, a bot wall) say nothing about the post,
+    /// and a 5xx or a redirect that never ends is the site being down. Nothing from an <see cref="UntrustedHosts"/> site is a
+    /// failure.
     /// </summary>
     public static LinkProbe FromResponse(int status, string? reason, Uri requested, Uri final)
     {
         var answered = $"{status} {reason}".Trim();
-        return status switch
+        return Trusting(requested, status switch
         {
             >= 200 and < 300 when IsRedirectHome(requested, final) => LinkProbe.Failed($"It now redirects to the home page of {final.Host}."),
             >= 200 and < 300 => LinkProbe.Loaded(),
             404 or 410 => LinkProbe.Failed($"The page answered {answered}."),
             >= 300 and < 400 => LinkProbe.Failed("It redirects too many times."),
-            >= 400 and < 500 => LinkProbe.Refused($"The site turned the check away ({answered})."),
+            >= 400 and < 500 or RequestDenied => LinkProbe.Refused($"The site turned the check away ({answered})."),
             _ => LinkProbe.Failed($"The site answered {answered}."),
-        };
+        });
     }
 
-    /// <summary>Why a request didn't get an answer: a site whose address no longer exists, a bad certificate, or no answer.</summary>
+    /// <summary>
+    /// Why a request didn't get an answer: a site whose address no longer exists, a bad certificate, or no answer. Nothing from
+    /// an <see cref="UntrustedHosts"/> site is a failure.
+    /// </summary>
     public static LinkProbe FromException(Exception exception, Uri url)
     {
         if (Find<SocketException>(exception) is { SocketErrorCode: SocketError.HostNotFound or SocketError.NoData })
         {
-            return LinkProbe.Failed($"The site's address, {url.Host}, doesn't exist any more.");
+            return Trusting(url, LinkProbe.Failed($"The site's address, {url.Host}, doesn't exist any more."));
         }
 
         if (Find<AuthenticationException>(exception) is not null)
         {
-            return LinkProbe.Failed("The site's certificate isn't valid.");
+            return Trusting(url, LinkProbe.Failed("The site's certificate isn't valid."));
         }
 
-        return exception is TaskCanceledException or TimeoutException
+        return Trusting(url, exception is TaskCanceledException or TimeoutException
             ? LinkProbe.Failed("The site didn't answer in time.")
-            : LinkProbe.Failed("The site couldn't be reached.");
+            : LinkProbe.Failed("The site couldn't be reached."));
     }
+
+    /// <summary>Whether the post is on a site whose answers to our checks can't be trusted (<see cref="UntrustedHosts"/>).</summary>
+    public static bool IsUntrusted(Uri url) =>
+        UntrustedHosts.Any(host => url.Host.Equals(host, StringComparison.OrdinalIgnoreCase) || url.Host.EndsWith($".{host}", StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>A failure from an untrusted site, as "can't check", saying what it answered.</summary>
+    private static LinkProbe Trusting(Uri requested, LinkProbe probe) =>
+        probe.Outcome == LinkOutcome.Failed && IsUntrusted(requested)
+            ? LinkProbe.Refused($"{requested.Host} doesn't answer checks like ours reliably, so there's no telling. {probe.Detail}")
+            : probe;
 
     /// <summary>A post that now lands on its site's home page (or another site's), rather than on a page of its own.</summary>
     public static bool IsRedirectHome(Uri requested, Uri final) =>
