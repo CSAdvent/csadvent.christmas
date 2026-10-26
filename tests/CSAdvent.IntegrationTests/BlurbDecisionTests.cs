@@ -114,6 +114,9 @@ public sealed partial class BlurbDecisionTests(AppHostFixture fixture)
         await RunAsync(year, "2463-12-17T15:30:00Z");
         var standingBy = await fixture.WaitForEmailAsync(Organizers, "C# Advent, December 17: a backup is standing by for a post without the blurb");
         Assert.Contains("They take the spot at 11:30 AM Eastern on December 17", standingBy.Text);
+
+        // They're told once.
+        Assert.Equal(0, (await RunAsync(year, "2463-12-17T15:45:00Z")).Emailed);
         Assert.Equal(0, (await RunBackupsAsync(year, "2463-12-17T16:29:00Z")).Used);
         Assert.Equal(1, (await RunBackupsAsync(year, "2463-12-17T16:30:00Z")).Used);
         await using var db = await fixture.CreateDbContextAsync();

@@ -120,7 +120,7 @@ public sealed class ContactRetention(AdventDbContext db, AdventSchedule schedule
         {
             await db.BlurbSelfChecks.Where(c => c.CheckedAt < checkedBefore).ExecuteDeleteAsync(cancellationToken);
         }
-        catch (Exception exception) when (EmailOutbox.IsMissingTable(exception))
+        catch (Exception exception) when (MissingSchema.IsMissingTableOrColumn(exception))
         {
             // The worker runs this as the app starts, which can be before the deploy's migrations create the table.
         }

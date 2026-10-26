@@ -300,7 +300,11 @@ public sealed partial class BlurbCheckService(
     /// </summary>
     private async Task<int> TellOrganizersBackupStandingByAsync(BlurbCheck check, Slot slot, DateTimeOffset now, CancellationToken cancellationToken)
     {
-        if (check.DecidedBy is not null || check.DeadlineEmailedAt is not null)
+        // Every run gets here while a backup stands by, so it checks first rather than leave it to the unique index, whose
+        // refusals EF Core logs as errors (#157).
+        var runDate = schedule.GetDate(slot.SeasonYear, slot.Day);
+        if (check.DecidedBy is not null || check.DeadlineEmailedAt is not null
+            || await db.SentReminders.RecordedSlots(ReminderKind.AdminBlurbBackupStandingBy, runDate).ContainsAsync(slot.Id, cancellationToken))
         {
             return 0;
         }
@@ -319,7 +323,7 @@ public sealed partial class BlurbCheckService(
         var record = new SentReminder
         {
             Kind = ReminderKind.AdminBlurbBackupStandingBy,
-            RunDate = schedule.GetDate(slot.SeasonYear, slot.Day),
+            RunDate = runDate,
             SlotId = slot.Id,
             SentAt = now,
         };

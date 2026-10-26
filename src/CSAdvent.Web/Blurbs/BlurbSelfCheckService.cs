@@ -1,6 +1,5 @@
 using CSAdvent.Web.Contributors;
 using CSAdvent.Web.Data;
-using CSAdvent.Web.Email.Queue;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -82,7 +81,7 @@ public sealed partial class BlurbSelfCheckService(
                 return SelfCheckOutcome.Paused;
             }
         }
-        catch (Exception exception) when (EmailOutbox.IsMissingTable(exception))
+        catch (Exception exception) when (MissingSchema.IsMissingTableOrColumn(exception))
         {
             // The minute between a deploy and its migrations: no limits to go by yet, so no checks either.
             return SelfCheckOutcome.Paused;
