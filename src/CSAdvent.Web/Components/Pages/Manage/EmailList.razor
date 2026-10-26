@@ -69,30 +69,32 @@
     </p>
 </section>
 
-<table class="mt-8 w-full text-left text-sm">
-    <thead class="border-b border-slate-200 text-slate-500">
-        <tr>
-            <th class="py-2 pr-4 font-medium">Email</th>
-            <th class="py-2 pr-4 font-medium">When</th>
-            <th class="py-2 pr-4 font-medium">To</th>
-            <th class="py-2 font-medium"><span class="sr-only">Preview</span></th>
-        </tr>
-    </thead>
-    <tbody class="divide-y divide-slate-100">
-        @foreach (var entry in EmailCatalog.Entries)
-        {
-            <tr class="align-top">
-                <td class="py-2 pr-4 font-semibold text-slate-900">@entry.Name</td>
-                <td class="py-2 pr-4 text-slate-600">@entry.When</td>
-                <td class="py-2 pr-4 text-slate-600">@entry.To</td>
-                <td class="whitespace-nowrap py-2 text-right">
-                    <a href="@($"manage/emails/{entry.Key}")" target="_blank" class="text-advent-700 underline">Preview</a>
-                    · <a href="@($"manage/emails/{entry.Key}/text")" target="_blank" class="text-advent-700 underline">Text</a>
-                </td>
+<div class="relative mt-8 overflow-x-auto">
+    <table class="w-full text-left text-sm">
+        <thead class="border-b border-slate-200 text-slate-500">
+            <tr>
+                <th class="py-2 pr-4 font-medium">Email</th>
+                <th class="py-2 pr-4 font-medium">When</th>
+                <th class="py-2 pr-4 font-medium">To</th>
+                <th class="py-2 font-medium"><span class="sr-only">Preview</span></th>
             </tr>
-        }
-    </tbody>
-</table>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+            @foreach (var entry in EmailCatalog.Entries)
+            {
+                <tr class="align-top">
+                    <td class="py-2 pr-4 font-semibold text-slate-900">@entry.Name</td>
+                    <td class="py-2 pr-4 text-slate-600">@entry.When</td>
+                    <td class="py-2 pr-4 text-slate-600">@entry.To</td>
+                    <td class="whitespace-nowrap py-2 text-right">
+                        <a href="@($"manage/emails/{entry.Key}")" target="_blank" class="text-advent-700 underline">Preview</a>
+                        · <a href="@($"manage/emails/{entry.Key}/text")" target="_blank" class="text-advent-700 underline">Text</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
 
 @code {
     private IReadOnlyList<SampleRecipient> _recipients = [];

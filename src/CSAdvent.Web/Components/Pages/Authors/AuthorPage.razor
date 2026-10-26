@@ -36,7 +36,7 @@
                 @foreach (var post in season)
                 {
                     <li class="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
-                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">@post.Spot</p>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">@post.Spot</p>
                         <a href="@post.Page" class="mt-1 inline-block font-semibold text-advent-700 underline decoration-advent-200 underline-offset-2 hover:decoration-advent-700">@post.Title</a>
                         @if (post.Summary is { } summary)
                         {

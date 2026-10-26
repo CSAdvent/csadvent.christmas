@@ -18,4 +18,15 @@ public static class ReturnUrl
             && !returnUrl.Any(char.IsControl)
             ? returnUrl
             : "/";
+
+    /// <summary>
+    /// Adds <c>name=value</c> to a URL's query string, before its fragment if it has one, such as the <c>#id</c> of the item
+    /// an organizer's button was on, so the page comes back to it (#170).
+    /// </summary>
+    public static string WithQuery(string url, string name, string value)
+    {
+        var hash = url.IndexOf('#', StringComparison.Ordinal);
+        var (path, fragment) = hash < 0 ? (url, "") : (url[..hash], url[hash..]);
+        return $"{path}{(path.Contains('?', StringComparison.Ordinal) ? '&' : '?')}{name}={value}{fragment}";
+    }
 }

@@ -89,48 +89,50 @@
 }
 else
 {
-    <table class="mt-8 w-full text-left text-sm">
-        <thead class="border-b border-slate-200 text-slate-500">
-            <tr>
-                <th class="py-2 pr-4 font-medium">Subject</th>
-                <th class="py-2 pr-4 font-medium">From</th>
-                <th class="py-2 font-medium">Status</th>
-            </tr>
-        </thead>
-        <tbody class="divide-y divide-slate-100">
-            @foreach (var row in _rows)
-            {
-                <tr class="align-top">
-                    <td class="py-3 pr-4"><a href="manage/announcements/@row.Id" class="font-semibold text-slate-900 hover:text-advent-700 hover:underline">@row.Subject</a></td>
-                    <td class="py-3 pr-4 text-slate-600">@(row.Kind is CSAdvent.Web.Data.AnnouncementKind.SignUpsOpen ? "Automatic" : row.CreatedBy)</td>
-                    <td class="py-3 text-slate-600">
-                        @if (row.IsDraft)
-                        {
-                            <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">Draft</span>
-                        }
-                        else if (row.FinishedAt is null)
-                        {
-                            <span>Queuing: @row.Delivered of @row.Recipients so far</span>
-                        }
-                        else if (row.Queue.Waiting > 0)
-                        {
-                            <span>Sending: @row.Queue.Sent of @row.Delivered sent, @row.Queue.Waiting waiting in the <a href="manage/emails/queue" class="text-advent-700 underline">email queue</a></span>
-                        }
-                        else
-                        {
-                            <span>
-                                Sent to @Plural(row.Delivered - row.Queue.NotSent, "subscriber"), all queued <LocalTime Value="row.FinishedAt.Value" />
-                                @if (row.Queue.NotSent > 0)
-                                {
-                                    <text>. @row.Queue.NotSent couldn't be sent: see the <a href="manage/emails/queue" class="text-advent-700 underline">email queue</a>.</text>
-                                }
-                            </span>
-                        }
-                    </td>
+    <div class="relative mt-8 overflow-x-auto">
+        <table class="w-full text-left text-sm">
+            <thead class="border-b border-slate-200 text-slate-500">
+                <tr>
+                    <th class="py-2 pr-4 font-medium">Subject</th>
+                    <th class="py-2 pr-4 font-medium">From</th>
+                    <th class="py-2 font-medium">Status</th>
                 </tr>
-            }
-        </tbody>
-    </table>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                @foreach (var row in _rows)
+                {
+                    <tr class="align-top">
+                        <td class="py-3 pr-4"><a href="manage/announcements/@row.Id" class="font-semibold text-slate-900 hover:text-advent-700 hover:underline">@row.Subject</a></td>
+                        <td class="py-3 pr-4 text-slate-600">@(row.Kind is CSAdvent.Web.Data.AnnouncementKind.SignUpsOpen ? "Automatic" : row.CreatedBy)</td>
+                        <td class="py-3 text-slate-600">
+                            @if (row.IsDraft)
+                            {
+                                <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">Draft</span>
+                            }
+                            else if (row.FinishedAt is null)
+                            {
+                                <span>Queuing: @row.Delivered of @row.Recipients so far</span>
+                            }
+                            else if (row.Queue.Waiting > 0)
+                            {
+                                <span>Sending: @row.Queue.Sent of @row.Delivered sent, @row.Queue.Waiting waiting in the <a href="manage/emails/queue" class="text-advent-700 underline">email queue</a></span>
+                            }
+                            else
+                            {
+                                <span>
+                                    Sent to @Plural(row.Delivered - row.Queue.NotSent, "subscriber"), all queued <LocalTime Value="row.FinishedAt.Value" />
+                                    @if (row.Queue.NotSent > 0)
+                                    {
+                                        <text>. @row.Queue.NotSent couldn't be sent: see the <a href="manage/emails/queue" class="text-advent-700 underline">email queue</a>.</text>
+                                    }
+                                </span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
 }
 
 @code {

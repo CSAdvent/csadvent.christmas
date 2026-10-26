@@ -20,7 +20,10 @@
 {
     <div class="flex flex-wrap items-baseline justify-between gap-4">
         <h1 class="text-3xl font-bold tracking-tight text-slate-900">Announcements for December @day.Day, @day.Year</h1>
-        <a href="manage/social/signups" class="text-sm font-medium text-advent-700 underline">Sign-ups posts →</a>
+        <p class="flex flex-wrap gap-x-4 gap-y-1 text-sm font-medium">
+            <a href="@($"{DayLink(day.Year, day.Day)}#platforms")" class="text-advent-700 underline">How each platform is posted ↓</a>
+            <a href="manage/social/signups" class="text-advent-700 underline">Sign-ups posts →</a>
+        </p>
     </div>
     <PastSeasonNotice Year="day.Year" />
     <p class="mt-2 max-w-3xl text-slate-600">
@@ -32,8 +35,6 @@
     {
         <p class="mt-4 rounded-xl bg-red-50 p-4 font-medium text-red-800 ring-1 ring-red-200" role="alert">@error</p>
     }
-
-    <SocialPostingPanel Platforms="_platforms" ReturnUrl="@DayLink(day.Year, day.Day)" />
 
     <nav aria-label="Days" class="mt-6 flex flex-wrap gap-1 text-sm font-medium">
         @for (var d = 1; d <= Season.DaysInAdvent; d++)
@@ -78,10 +79,12 @@
                 @foreach (var platform in entry.Platforms.Where(p => ModeOf(p.Platform) is not SocialPostingMode.Off))
                 {
                     var id = $"announcement-{entry.SlotId}-{platform.Platform}";
+                    // Its buttons come back to it, not to the top of the page (#170).
+                    var back = $"{DayLink(day.Year, day.Day)}#{id}-card";
                     var posted = entry.Posted.GetValueOrDefault(platform.Platform);
                     var automatic = _platforms.Single(p => p.Platform == platform.Platform).IsAutomatic && day.Year != Season.TestYear;
                     var byAutomation = posted?.MarkedBy == SocialPostingService.Automation;
-                    <article class="flex flex-col rounded-xl p-4 ring-1 @(posted is { Status: SocialPostStatus.Posted } ? "bg-green-50 ring-green-200" : "bg-white ring-slate-200")">
+                    <article id="@($"{id}-card")" class="flex min-w-0 scroll-mt-4 flex-col rounded-xl p-4 ring-1 @(posted is { Status: SocialPostStatus.Posted } ? "bg-green-50 ring-green-200" : "bg-white ring-slate-200")">
                         <header class="flex items-center justify-between gap-2">
                             <h3 class="font-semibold text-slate-900">@platform.Platform</h3>
                             @if (platform.Limit is { } limit)
@@ -138,7 +141,7 @@
                                     <AntiforgeryToken />
                                     <input type="hidden" name="SlotId" value="@entry.SlotId" />
                                     <input type="hidden" name="Platform" value="@platform.Platform" />
-                                    <input type="hidden" name="ReturnUrl" value="@DayLink(day.Year, day.Day)" />
+                                    <input type="hidden" name="ReturnUrl" value="@back" />
                                     <span>
                                         Posted by @posted.MarkedBy, <LocalTime Value="posted.At" />
                                         @if (posted.PostUrl is { } postUrl)
@@ -157,7 +160,7 @@
                                         <AntiforgeryToken />
                                         <input type="hidden" name="SlotId" value="@entry.SlotId" />
                                         <input type="hidden" name="Platform" value="@platform.Platform" />
-                                        <input type="hidden" name="ReturnUrl" value="@DayLink(day.Year, day.Day)" />
+                                        <input type="hidden" name="ReturnUrl" value="@back" />
                                         <span>Automatic posting failed (@Plural(posted.Attempts, "try", "tries")): @posted.Error</span>
                                         <button type="submit" class="rounded-md bg-white px-2 py-1 font-medium text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50">Retry now</button>
                                     </form>
@@ -170,8 +173,8 @@
                                     <AntiforgeryToken />
                                     <input type="hidden" name="SlotId" value="@entry.SlotId" />
                                     <input type="hidden" name="Platform" value="@platform.Platform" />
-                                    <input type="hidden" name="ReturnUrl" value="@DayLink(day.Year, day.Day)" />
-                                    <input type="url" name="PostUrl" placeholder="Link to the post (optional)" maxlength="500" class="min-w-0 flex-1 rounded-lg border border-slate-300 px-2 py-1" />
+                                    <input type="hidden" name="ReturnUrl" value="@back" />
+                                    <input type="url" name="PostUrl" placeholder="Link to the post (optional)" aria-label="@($"Link to the {platform.Platform} post (optional)")" maxlength="500" class="min-w-0 flex-1 rounded-lg border border-slate-300 px-2 py-1" />
                                     <button type="submit" disabled="@(!day.IsRevealed)" class="rounded-lg px-3 py-1.5 font-semibold text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">Mark as posted</button>
                                 </form>
                             }
@@ -181,6 +184,11 @@
             </div>
         </section>
     }
+
+    @* After the posts, which are what organizers come for each day, and its buttons come back here. *@
+    <div id="platforms" class="mt-12 scroll-mt-4">
+        <SocialPostingPanel Platforms="_platforms" ReturnUrl="@($"{DayLink(day.Year, day.Day)}#platforms")" />
+    </div>
 }
 else if (_loaded)
 {

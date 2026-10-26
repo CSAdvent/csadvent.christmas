@@ -43,7 +43,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <TailwindSource Include="$(TailwindInput);**\*.razor;**\*.cs" Exclude="bin\**;obj\**" />
+    <TailwindSource Include="$(TailwindInput);**\*.razor;**\*.cs;wwwroot\js\*.js" Exclude="bin\**;obj\**" />
   </ItemGroup>
 
   <Target Name="DownloadTailwind" Condition="!Exists('$(TailwindExecutable)')">

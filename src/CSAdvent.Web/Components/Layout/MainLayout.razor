@@ -2,8 +2,12 @@
 @using CSAdvent.Web.Social
 @using Microsoft.Extensions.Options
 @inject IOptions<SocialAccountsOptions> Accounts
+@inject NavigationManager Navigation
 
 <div class="flex min-h-screen flex-col">
+    @* For keyboards and screen readers: the first thing Tab reaches, kept above the top of the page until it has focus. It
+       links to the page's own address, because a bare "#main" would go to the home page: links resolve against <base href>. *@
+    <a href="@($"{Navigation.ToBaseRelativePath(Navigation.Uri)}#main")" class="absolute top-2 left-2 z-50 -translate-y-20 rounded-lg bg-white px-4 py-2 font-semibold text-advent-700 shadow-lg focus:translate-y-0">Skip to the main content</a>
     <TestingBanner />
     <header class="relative isolate overflow-hidden text-white">
         <picture>
@@ -38,7 +42,7 @@
         </div>
     </header>
 
-    <main class="mx-auto w-full max-w-6xl flex-1 px-2 py-6 sm:px-4 sm:py-10">
+    <main id="main" tabindex="-1" class="mx-auto w-full max-w-6xl flex-1 px-2 py-6 outline-none sm:px-4 sm:py-10">
         <div class="rounded-2xl bg-white/95 p-5 shadow-xl ring-1 ring-black/5 backdrop-blur-sm sm:p-8">
             @Body
         </div>
@@ -50,7 +54,8 @@
                 <p>C# Advent: a community calendar of C# content, every December since 2017.</p>
                 @if (Accounts.Value.Profiles().Any())
                 {
-                    <p class="mt-1">
+                    @* Wrapping, because nothing between the links would let a phone's narrow screen break the line. *@
+                    <p class="mt-1 flex flex-wrap gap-y-1">
                         Follow C# Advent:
                         @foreach (var (name, url) in Accounts.Value.Profiles())
                         {
@@ -61,7 +66,7 @@
                 }
             </div>
             <nav aria-label="Site">
-                <ul class="flex gap-4">
+                <ul class="flex flex-wrap gap-x-4 gap-y-1">
                     <li><a href="others" class="underline hover:text-white">Other Advents</a></li>
                     <li><a href="announcements" class="underline hover:text-white">Announcements by email</a></li>
                     <li><a href="privacy" class="underline hover:text-white">Privacy</a></li>

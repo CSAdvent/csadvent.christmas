@@ -23,33 +23,35 @@
     }
     else
     {
-        <table class="mt-6 w-full text-left text-sm">
-            <thead class="border-b border-slate-200 text-slate-500">
-                <tr>
-                    <th class="py-2 pr-4 font-medium">#</th>
-                    <th class="py-2 pr-4 font-medium">Name</th>
-                    <th class="py-2 pr-4 font-medium">GitHub</th>
-                    <th class="py-2 pr-4 font-medium">Email</th>
-                    <th class="py-2 pr-4 font-medium">Notes</th>
-                    <th class="py-2 pr-4 font-medium">Signed up</th>
-                    <th class="py-2 font-medium">Status</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100">
-                @foreach (var entry in _entries)
-                {
-                    <tr class="align-top">
-                        <td class="py-2 pr-4">@(entry.Position?.ToString() ?? "–")</td>
-                        <td class="py-2 pr-4 font-medium text-slate-900">@entry.Name</td>
-                        <td class="py-2 pr-4">@entry.GithubLogin</td>
-                        <td class="py-2 pr-4">@entry.Email</td>
-                        <td class="py-2 pr-4 text-slate-600">@entry.Notes</td>
-                        <td class="py-2 pr-4 whitespace-nowrap"><LocalTime Value="entry.SignedUpAt" /></td>
-                        <td class="py-2 whitespace-nowrap">@entry.Status</td>
+        <div class="relative mt-6 overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead class="border-b border-slate-200 text-slate-500">
+                    <tr>
+                        <th class="py-2 pr-4 font-medium">#</th>
+                        <th class="py-2 pr-4 font-medium">Name</th>
+                        <th class="py-2 pr-4 font-medium">GitHub</th>
+                        <th class="py-2 pr-4 font-medium">Email</th>
+                        <th class="py-2 pr-4 font-medium">Notes</th>
+                        <th class="py-2 pr-4 font-medium">Signed up</th>
+                        <th class="py-2 font-medium">Status</th>
                     </tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    @foreach (var entry in _entries)
+                    {
+                        <tr class="align-top">
+                            <td class="py-2 pr-4">@(entry.Position?.ToString() ?? "–")</td>
+                            <td class="py-2 pr-4 font-medium text-slate-900">@entry.Name</td>
+                            <td class="py-2 pr-4">@entry.GithubLogin</td>
+                            <td class="py-2 pr-4">@entry.Email</td>
+                            <td class="py-2 pr-4 text-slate-600">@entry.Notes</td>
+                            <td class="py-2 pr-4 whitespace-nowrap"><LocalTime Value="entry.SignedUpAt" /></td>
+                            <td class="py-2 whitespace-nowrap">@entry.Status</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     }
 }
 else if (_loaded)

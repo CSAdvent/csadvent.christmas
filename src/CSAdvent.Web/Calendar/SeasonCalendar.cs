@@ -74,7 +74,8 @@ public sealed record CalendarMarks(IReadOnlySet<(int Day, int Part)> Mine, IRead
 
 public sealed record CalendarEntry(int Part, bool IsRevealed, string? AuthorName, string? AuthorUrl, string? PostTitle, string? PostUrl)
 {
-    public bool HasPost => PostUrl is not null;
+    /// <summary>The post's title and URL are both in: the calendar links the title to the post, so it needs both, like its page.</summary>
+    public bool HasPost => PostUrl is not null && !string.IsNullOrWhiteSpace(PostTitle);
 
     /// <summary>The entry has a page of its own: it's revealed, with a post, a title and an author (#167).</summary>
     public bool HasPage => PostUrl is not null && PostTitle is not null && AuthorName is not null;

@@ -24,7 +24,8 @@
     <form method="post" action="announcements/subscribe" class="mt-4 flex flex-wrap items-end gap-3">
         <AntiforgeryToken />
         <input type="hidden" name="ReturnUrl" value="@ReturnTo" />
-        <label class="flex min-w-64 flex-1 flex-col text-sm font-medium text-slate-700">
+        @* 16rem wide where there's room, so the button wraps below it, and narrower on the smallest phones. *@
+        <label class="flex min-w-0 grow basis-64 flex-col text-sm font-medium text-slate-700">
             Email
             <input type="email" name="Email" required maxlength="254" autocomplete="email" class="mt-1 rounded-lg border border-slate-300 bg-white px-3 py-2 font-normal" />
         </label>

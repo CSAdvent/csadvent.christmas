@@ -77,31 +77,33 @@
     {
         <h2 class="mt-10 text-xl font-semibold text-slate-900">Past seasons</h2>
         <p class="mt-1 text-slate-600">Open a past season to see its entries, requests, backup posters and announcements.</p>
-        <table class="mt-4 w-full text-left text-sm">
-            <thead class="border-b border-slate-200 text-slate-500">
-                <tr>
-                    <th class="py-2 pr-4 font-medium">Season</th>
-                    <th class="py-2 pr-4 font-medium">Posts</th>
-                    <th class="py-2 font-medium"><span class="sr-only">Details</span></th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100">
-                @foreach (var season in _past)
-                {
+        <div class="relative mt-4 overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead class="border-b border-slate-200 text-slate-500">
                     <tr>
-                        <td class="py-2 pr-4 font-semibold text-slate-900">@season.Year</td>
-                        <td class="py-2 pr-4">@season.Posts</td>
-                        <td class="py-2 text-right">
-                            <a href="manage/entries?year=@season.Year" class="text-advent-700 underline">Entries</a>
-                            · <a href="manage/requests?year=@season.Year&status=approved" class="text-advent-700 underline">Requests</a>
-                            · <a href="manage/backups?year=@season.Year" class="text-advent-700 underline">Backups</a>
-                            · <a href="manage/social?year=@season.Year" class="text-advent-700 underline">Social</a>
-                            · <a href="archive/@season.Year" class="text-advent-700 underline">Archive</a>
-                        </td>
+                        <th class="py-2 pr-4 font-medium">Season</th>
+                        <th class="py-2 pr-4 font-medium">Posts</th>
+                        <th class="py-2 font-medium"><span class="sr-only">Details</span></th>
                     </tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    @foreach (var season in _past)
+                    {
+                        <tr>
+                            <td class="py-2 pr-4 font-semibold text-slate-900">@season.Year</td>
+                            <td class="py-2 pr-4">@season.Posts</td>
+                            <td class="py-2 text-right">
+                                <a href="manage/entries?year=@season.Year" class="text-advent-700 underline">Entries</a>
+                                · <a href="manage/requests?year=@season.Year&status=approved" class="text-advent-700 underline">Requests</a>
+                                · <a href="manage/backups?year=@season.Year" class="text-advent-700 underline">Backups</a>
+                                · <a href="manage/social?year=@season.Year" class="text-advent-700 underline">Social</a>
+                                · <a href="archive/@season.Year" class="text-advent-700 underline">Archive</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     }
 }
 

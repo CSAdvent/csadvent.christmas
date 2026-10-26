@@ -64,12 +64,13 @@
     {
         <EditForm Model="Form" FormName="claim" OnValidSubmit="SubmitAsync" hidden="@(!CanRequest)" class="mt-8 flex max-w-2xl flex-col gap-6">
             <DataAnnotationsValidator />
-            <ValidationSummary class="rounded-xl bg-red-50 p-4 text-sm ring-1 ring-red-200" />
+            <div role="alert" class="[&:not(:has(li))]:hidden"><ValidationSummary class="rounded-xl bg-red-50 p-4 text-sm ring-1 ring-red-200" /></div>
 
             <div>
                 <label for="display-name" class="block font-medium text-slate-800">Name</label>
-                <InputText id="display-name" @bind-Value="Form!.DisplayName" maxlength="50" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" />
-                <p class="mt-1 text-sm text-slate-500">Shown publicly on the calendar.</p>
+                <InputText id="display-name" @bind-Value="Form!.DisplayName" maxlength="50" aria-describedby="display-name-help display-name-error" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" />
+                <p id="display-name-help" class="mt-1 text-sm text-slate-500">Shown publicly on the calendar.</p>
+                <div id="display-name-error"><ValidationMessage For="() => Form!.DisplayName" /></div>
             </div>
 
             <div>
@@ -80,63 +81,86 @@
 
             <div>
                 <label for="link" class="block font-medium text-slate-800">Your website or blog <span class="font-normal text-slate-500">(optional)</span></label>
-                <InputText id="link" type="url" @bind-Value="Form!.Link" maxlength="200" placeholder="https://" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" />
-                <p class="mt-1 text-sm text-slate-500">
+                <InputText id="link" type="url" @bind-Value="Form!.Link" maxlength="200" placeholder="https://" aria-describedby="link-help link-error" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" />
+                <p id="link-help" class="mt-1 text-sm text-slate-500">
                     On the calendar, your <strong>name</strong> links here, or to your GitHub profile if you leave it blank. It isn't
                     your article (you'll add that later, and the article title links to it), and it isn't a social media profile:
                     add those below.
                 </p>
+                <div id="link-error"><ValidationMessage For="() => Form!.Link" /></div>
             </div>
 
             <div>
                 <label for="comments" class="block font-medium text-slate-800">Comments <span class="font-normal text-slate-500">(optional)</span></label>
-                <InputText id="comments" @bind-Value="Form!.Comments" maxlength="200" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" />
-                <p class="mt-1 text-sm text-slate-500">Anything the organizers should know, such as a second-choice date.</p>
+                <InputText id="comments" @bind-Value="Form!.Comments" maxlength="200" aria-describedby="comments-help comments-error" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" />
+                <p id="comments-help" class="mt-1 text-sm text-slate-500">Anything the organizers should know, such as a second-choice date.</p>
+                <div id="comments-error"><ValidationMessage For="() => Form!.Comments" /></div>
             </div>
 
             <fieldset class="rounded-xl p-4 ring-1 ring-slate-200">
                 <legend class="px-1 font-medium text-slate-800">Social accounts <span class="font-normal text-slate-500">(optional)</span></legend>
                 <p class="text-sm text-slate-600"><strong>If you add an account, we'll tag you there when we post about your article on that service</strong>, and link to it from your article's page here. Leave any blank that you don't use. They're saved to your <a href="profile" class="text-advent-700 underline">profile</a> for next time.</p>
                 <div class="mt-4 grid gap-4 sm:grid-cols-2">
-                    <label class="flex flex-col text-sm font-medium text-slate-700">
-                        Bluesky
-                        <InputText @bind-Value="Form!.Bluesky" maxlength="253" placeholder="you.bsky.social" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
-                    </label>
-                    <label class="flex flex-col text-sm font-medium text-slate-700">
-                        Mastodon
-                        <InputText @bind-Value="Form!.Mastodon" maxlength="100" placeholder="@("@you@mastodon.social")" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
-                    </label>
-                    <label class="flex flex-col text-sm font-medium text-slate-700">
-                        LinkedIn
-                        <InputText @bind-Value="Form!.LinkedIn" maxlength="200" placeholder="https://www.linkedin.com/in/you" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
-                    </label>
-                    <label class="flex flex-col text-sm font-medium text-slate-700">
-                        Facebook
-                        <InputText @bind-Value="Form!.Facebook" maxlength="200" placeholder="https://www.facebook.com/you" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
-                    </label>
-                    <label class="flex flex-col text-sm font-medium text-slate-700">
-                        Reddit
-                        <InputText @bind-Value="Form!.Reddit" maxlength="40" placeholder="u/you" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
-                    </label>
-                    <label class="flex flex-col text-sm font-medium text-slate-700">
-                        X
-                        <InputText @bind-Value="Form!.X" maxlength="100" placeholder="@("@you")" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
-                    </label>
+                    <div>
+                        <label class="flex flex-col text-sm font-medium text-slate-700">
+                            Bluesky
+                            <InputText @bind-Value="Form!.Bluesky" maxlength="253" placeholder="you.bsky.social" aria-describedby="bluesky-error" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                        </label>
+                        <div id="bluesky-error"><ValidationMessage For="() => Form!.Bluesky" /></div>
+                    </div>
+                    <div>
+                        <label class="flex flex-col text-sm font-medium text-slate-700">
+                            Mastodon
+                            <InputText @bind-Value="Form!.Mastodon" maxlength="100" placeholder="@("@you@mastodon.social")" aria-describedby="mastodon-error" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                        </label>
+                        <div id="mastodon-error"><ValidationMessage For="() => Form!.Mastodon" /></div>
+                    </div>
+                    <div>
+                        <label class="flex flex-col text-sm font-medium text-slate-700">
+                            LinkedIn
+                            <InputText @bind-Value="Form!.LinkedIn" maxlength="200" placeholder="https://www.linkedin.com/in/you" aria-describedby="linkedin-error" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                        </label>
+                        <div id="linkedin-error"><ValidationMessage For="() => Form!.LinkedIn" /></div>
+                    </div>
+                    <div>
+                        <label class="flex flex-col text-sm font-medium text-slate-700">
+                            Facebook
+                            <InputText @bind-Value="Form!.Facebook" maxlength="200" placeholder="https://www.facebook.com/you" aria-describedby="facebook-error" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                        </label>
+                        <div id="facebook-error"><ValidationMessage For="() => Form!.Facebook" /></div>
+                    </div>
+                    <div>
+                        <label class="flex flex-col text-sm font-medium text-slate-700">
+                            Reddit
+                            <InputText @bind-Value="Form!.Reddit" maxlength="40" placeholder="u/you" aria-describedby="reddit-error" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                        </label>
+                        <div id="reddit-error"><ValidationMessage For="() => Form!.Reddit" /></div>
+                    </div>
+                    <div>
+                        <label class="flex flex-col text-sm font-medium text-slate-700">
+                            X
+                            <InputText @bind-Value="Form!.X" maxlength="100" placeholder="@("@you")" aria-describedby="x-error" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                        </label>
+                        <div id="x-error"><ValidationMessage For="() => Form!.X" /></div>
+                    </div>
                 </div>
             </fieldset>
 
             <div class="flex flex-col gap-4 rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
-                <label class="flex items-start gap-3">
-                    <InputCheckbox @bind-Value="Form!.AgreeToTiming" class="mt-1 size-4" />
-                    <span>
-                        I'll publish my post on December @Day.
-                        <details class="mt-1 text-sm text-slate-600">
-                            <summary class="cursor-pointer text-advent-700">What this means</summary>
-                            Things happen, and sometimes people need to back out. If you can't deliver your post, let the organizers
-                            know as soon as you can. If your post isn't ready in time, your spot may go to someone on the backup list.
-                        </details>
-                    </span>
-                </label>
+                <div>
+                    <label class="flex items-start gap-3">
+                        <InputCheckbox @bind-Value="Form!.AgreeToTiming" aria-describedby="timing-error" class="mt-1 size-4" />
+                        <span>
+                            I'll publish my post on December @Day.
+                            <details class="mt-1 text-sm text-slate-600">
+                                <summary class="cursor-pointer text-advent-700">What this means</summary>
+                                Things happen, and sometimes people need to back out. If you can't deliver your post, let the organizers
+                                know as soon as you can. If your post isn't ready in time, your spot may go to someone on the backup list.
+                            </details>
+                        </span>
+                    </label>
+                    <div id="timing-error" class="ml-7"><ValidationMessage For="() => Form!.AgreeToTiming" /></div>
+                </div>
                 @if (BlurbRules.AppliesTo(Year))
                 {
                     var blurb = SuggestedBlurb.For(Year, _slot!.SlotsPerDay);
@@ -154,22 +178,25 @@
                         </p>
                     </div>
                 }
-                <label class="flex items-start gap-3">
-                    <InputCheckbox @bind-Value="Form!.AgreeToTerms" class="mt-1 size-4" />
-                    <span>
-                        I agree to the terms.
-                        <details class="mt-1 text-sm text-slate-600">
-                            <summary class="cursor-pointer text-advent-700">What you're agreeing to</summary>
-                            Your post is about C#, it's your own work, and it opens with the C# Advent blurb, linking back to the
-                            calendar. We email you only about
-                            C# Advent and never sell your information. Emails about your spot always come; the rest have a
-                            link to unsubscribe. We keep your email address after the season to tell you when the next one
-                            opens; ask us and we'll delete it.
-                            Read the full <a href="terms" target="_blank" class="text-advent-700 underline">terms</a> and
-                            <a href="privacy" target="_blank" class="text-advent-700 underline">privacy page</a> (they open in a new tab).
-                        </details>
-                    </span>
-                </label>
+                <div>
+                    <label class="flex items-start gap-3">
+                        <InputCheckbox @bind-Value="Form!.AgreeToTerms" aria-describedby="terms-error" class="mt-1 size-4" />
+                        <span>
+                            I agree to the terms.
+                            <details class="mt-1 text-sm text-slate-600">
+                                <summary class="cursor-pointer text-advent-700">What you're agreeing to</summary>
+                                Your post is about C#, it's your own work, and it opens with the C# Advent blurb, linking back to the
+                                calendar. We email you only about
+                                C# Advent and never sell your information. Emails about your spot always come; the rest have a
+                                link to unsubscribe. We keep your email address after the season to tell you when the next one
+                                opens; ask us and we'll delete it.
+                                Read the full <a href="terms" target="_blank" class="text-advent-700 underline">terms</a> and
+                                <a href="privacy" target="_blank" class="text-advent-700 underline">privacy page</a> (they open in a new tab).
+                            </details>
+                        </span>
+                    </label>
+                    <div id="terms-error" class="ml-7"><ValidationMessage For="() => Form!.AgreeToTerms" /></div>
+                </div>
             </div>
 
             <div>

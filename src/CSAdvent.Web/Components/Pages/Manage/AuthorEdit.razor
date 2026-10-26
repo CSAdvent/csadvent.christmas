@@ -145,45 +145,47 @@
         }
         else
         {
-            <table class="mt-4 w-full text-left text-sm">
-                <thead class="border-b border-slate-200 text-slate-500">
-                    <tr>
-                        <th class="py-2 pr-4 font-medium">Spot</th>
-                        <th class="py-2 pr-4 font-medium">Post</th>
-                        <th class="py-2 pr-4 font-medium">Name on the calendar</th>
-                        <th class="py-2 font-medium"><span class="sr-only">Edit</span></th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                    @foreach (var post in author.Posts)
-                    {
-                        <tr class="align-top">
-                            <td class="py-3 pr-4 whitespace-nowrap">@post.Spot</td>
-                            <td class="py-3 pr-4">
-                                @if (post.PostUrl is { } url)
-                                {
-                                    <a href="@url" class="text-advent-700 underline">@(post.PostTitle ?? url)</a>
-                                }
-                                else
-                                {
-                                    <span class="text-slate-500">No post yet</span>
-                                }
-                            </td>
-                            <td class="py-3 pr-4">
-                                @if (post.AuthorUrl is { } link)
-                                {
-                                    <a href="@link" class="text-advent-700 underline">@post.AuthorName</a>
-                                }
-                                else
-                                {
-                                    @post.AuthorName
-                                }
-                            </td>
-                            <td class="py-3"><a href="manage/entries/@post.SlotId" class="font-medium text-advent-700 hover:underline">Edit</a></td>
+            <div class="relative mt-4 overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead class="border-b border-slate-200 text-slate-500">
+                        <tr>
+                            <th class="py-2 pr-4 font-medium">Spot</th>
+                            <th class="py-2 pr-4 font-medium">Post</th>
+                            <th class="py-2 pr-4 font-medium">Name on the calendar</th>
+                            <th class="py-2 font-medium"><span class="sr-only">Edit</span></th>
                         </tr>
-                    }
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        @foreach (var post in author.Posts)
+                        {
+                            <tr class="align-top">
+                                <td class="py-3 pr-4 whitespace-nowrap">@post.Spot</td>
+                                <td class="py-3 pr-4">
+                                    @if (post.PostUrl is { } url)
+                                    {
+                                        <a href="@url" class="text-advent-700 underline">@(post.PostTitle ?? url)</a>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-slate-500">No post yet</span>
+                                    }
+                                </td>
+                                <td class="py-3 pr-4">
+                                    @if (post.AuthorUrl is { } link)
+                                    {
+                                        <a href="@link" class="text-advent-700 underline">@post.AuthorName</a>
+                                    }
+                                    else
+                                    {
+                                        @post.AuthorName
+                                    }
+                                </td>
+                                <td class="py-3"><a href="manage/entries/@post.SlotId" class="font-medium text-advent-700 hover:underline">Edit</a></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
         }
     </section>
 

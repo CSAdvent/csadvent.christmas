@@ -73,6 +73,7 @@ builder.Services.AddScoped<SeasonAdminService>();
 builder.Services.AddScoped<SeasonArchiveExport>();
 builder.Services.AddScoped<ClaimReviewService>();
 builder.Services.AddScoped<EntryAdminService>();
+builder.Services.AddScoped<OrganizerAttention>();
 builder.Services.AddScoped<MySpotsService>();
 builder.Services.AddScoped<PostClaimService>();
 builder.Services.AddScoped<PostLinkService>();

@@ -1,9 +1,10 @@
 /*
   Tailwind CSS source. The build turns this into wwwroot/app.css (see build/Tailwind.targets); don't edit that file.
-  Classes are picked up from the Razor components.
+  Classes are picked up from the Razor components, and from the scripts (copy.js adds sr-only).
 */
 @import "tailwindcss" source(none);
 @source "../Components";
+@source "../wwwroot/js";
 
 @theme {
   /* Sampled from the C# Advent logo: the background square (600) and the snowflake (400). */
@@ -24,6 +25,11 @@
   a {
     @apply underline-offset-2;
   }
+
+  /* A long word, such as "Parallel.ForEachAsync" in a post's title, wraps rather than running off a phone's screen. */
+  body {
+    @apply wrap-break-word;
+  }
 }
 
 @layer components {
@@ -36,8 +42,19 @@
     @apply outline outline-1 outline-red-600;
   }
 
+  /* Those outlines replace the browser's focus ring, so a focused field gets a thicker one, set off from it. */
+  .valid.modified:not([type="checkbox"]):focus-visible,
+  .invalid:focus-visible {
+    @apply outline-2 outline-offset-2;
+  }
+
   .validation-message {
     @apply text-sm text-red-700;
+  }
+
+  /* A field's own message (ValidationMessage), under the field. The summary's are list items. */
+  div.validation-message {
+    @apply mt-1;
   }
 
   .blazor-error-boundary {

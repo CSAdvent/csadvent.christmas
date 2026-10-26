@@ -62,7 +62,7 @@
                 <dt class="text-slate-500">Email</dt>
                 <dd><a href="mailto:@request.Email" class="text-advent-700 underline">@request.Email</a></dd>
                 <dt class="text-slate-500">Link</dt>
-                <dd>@if (request.Link is not null) { <a href="@request.Link" class="text-advent-700 underline">@request.Link</a> } else { <span class="text-slate-400">None</span> }</dd>
+                <dd>@if (request.Link is not null) { <a href="@request.Link" class="text-advent-700 underline">@request.Link</a> } else { <span class="text-slate-500">None</span> }</dd>
                 <dt class="text-slate-500">Comments</dt>
                 <dd class="text-slate-900">@(request.Comments ?? "None")</dd>
                 @if (request.Socials.Any)

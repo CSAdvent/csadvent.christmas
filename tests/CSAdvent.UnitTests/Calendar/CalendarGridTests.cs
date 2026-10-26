@@ -178,4 +178,38 @@ public sealed class CalendarGridTests : BunitContext
         Assert.Contains("Today", grid.Find("#december-10").TextContent);
         Assert.DoesNotContain("Today", grid.Find("#december-11").TextContent);
     }
+
+    [Fact]
+    public void ARevealedPostWithoutATitleIsNotAnEmptyLink()
+    {
+        var season = CalendarFixtures.BuildSeason(ClaimsOpened);
+        var slot = season.Slots.Single(s => s is { Day: 9, Part: 1 });
+        slot.AuthorName = "Dee";
+        slot.PostUrl = "https://example.com/dee";
+        var calendar = Web.Calendar.SeasonCalendar.From(season, CalendarFixtures.Schedule(CalendarFixtures.December10));
+
+        var day9 = Render<CalendarGrid>(p => p.Add(c => c.Calendar, calendar)).Find("#december-9");
+
+        Assert.Empty(day9.QuerySelectorAll("a[href^='go/']"));
+        Assert.Contains("No post", day9.TextContent);
+        Assert.Equal(1, calendar.PostCount);
+    }
+
+    [Fact]
+    public void TheCountdownSaysWhenInEasternTimeForTheScriptToAddTheVisitorsOwn()
+    {
+        var day11 = Render<CalendarGrid>(p => p.Add(c => c.Calendar, CalendarFixtures.Calendar(ClaimsOpened))).Find("#december-11");
+
+        Assert.Contains("At midnight Eastern", day11.TextContent);
+        Assert.Equal("2026-12-11T00:00:00.0000000-05:00", day11.QuerySelector("[data-reveal-local]")!.GetAttribute("data-reveal-local"));
+    }
+
+    [Fact]
+    public void LabelsAreDarkEnoughToRead()
+    {
+        // slate-400 is about 2.6:1 on white (#169).
+        var grid = Render<CalendarGrid>(p => p.Add(c => c.Calendar, CalendarFixtures.Calendar(ClaimsOpened)));
+
+        Assert.DoesNotContain("text-slate-400", grid.Markup);
+    }
 }
