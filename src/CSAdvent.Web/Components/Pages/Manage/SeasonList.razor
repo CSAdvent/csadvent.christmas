@@ -85,6 +85,7 @@ else if (Done == "saved")
                     @if (season.IsFinished)
                     {
                         <a href="manage/entries?year=@season.Year" class="text-slate-500 underline">Finished</a>
+                        <a href="@SeasonArchiveEndpoints.Link(season.Year)" download="@($"{season.Year}.json")" class="ml-3 text-advent-700 underline" title="For Data/Archive in the repository: see the runbook">Download @(season.Year).json</a>
                     }
                     else
                     {

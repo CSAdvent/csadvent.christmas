@@ -20,8 +20,11 @@ public sealed class OtherAdventLogoWorker(IServiceScopeFactory scopeFactory, Tim
                 var logos = scope.ServiceProvider.GetRequiredService<OtherAdventLogoService>();
                 foreach (var url in await logos.FindMissingAsync(stoppingToken))
                 {
-                    var result = await logos.FetchAsync(url, stoppingToken);
-                    logger.LogInformation("Logo for {Url}: {Result}.", url, result);
+                    // Null when another replica took it first.
+                    if (await logos.FetchIfMissingAsync(url, stoppingToken) is { } result)
+                    {
+                        logger.LogInformation("Logo for {Url}: {Result}.", url, result);
+                    }
                 }
             }
             catch (Exception exception) when (!stoppingToken.IsCancellationRequested)

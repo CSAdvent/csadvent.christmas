@@ -59,7 +59,17 @@ public sealed partial class QueueingEmailSender(
         catch (Exception exception) when (EmailOutbox.IsMissingTable(exception))
         {
             LogSentDirectly(email.Kind ?? UnknownKind);
-            await transport.SendAsync(email, cancellationToken);
+            try
+            {
+                await transport.SendAsync(email, cancellationToken);
+            }
+            catch (Exception failure) when (!cancellationToken.IsCancellationRequested)
+            {
+                // Callers log what's thrown, and a transport's message can quote the recipient's address (#168), so they get
+                // the queue's description of it instead.
+                throw new EmailNotSentException(EmailFailures.Describe(failure));
+            }
+
             return;
         }
 
@@ -77,3 +87,6 @@ public sealed partial class QueueingEmailSender(
     [LoggerMessage(Level = LogLevel.Information, Message = "Sent a {Kind} email straight away: the email queue's table isn't there yet")]
     private partial void LogSentDirectly(string kind);
 }
+
+/// <summary>An email sent straight away that didn't go, described by <see cref="EmailFailures.Describe"/>: never with an address.</summary>
+public sealed class EmailNotSentException(string description) : Exception(description);

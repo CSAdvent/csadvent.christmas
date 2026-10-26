@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 using CSAdvent.Web.Claims;
 using CSAdvent.Web.Data;
+using CSAdvent.Web.Entries;
 using CSAdvent.Web.Manage;
 using Microsoft.EntityFrameworkCore;
 
@@ -48,8 +49,8 @@ public sealed class ProfileService(AdventDbContext db, GitHubUsers github, TimeP
         return new ProfileForm
         {
             Name = contributor.DisplayName ?? latest?.AuthorName ?? fallbackName ?? contributor.GithubLogin,
-            // An archive post's link can be a social media profile, which the website field doesn't take.
-            Link = contributor.WebsiteUrl ?? (SocialAccounts.IsSocialProfile(latest?.AuthorUrl) ? null : latest?.AuthorUrl),
+            // An archive post's link can be a social media profile, which the website field doesn't take, or where they signed up.
+            Link = contributor.WebsiteUrl ?? (SocialAccounts.IsSocialProfile(latest?.AuthorUrl) ? null : AuthorLinks.Website(latest?.AuthorUrl)),
             Bluesky = contributor.BlueskyHandle,
             Mastodon = contributor.MastodonHandle,
             LinkedIn = contributor.LinkedInUrl,

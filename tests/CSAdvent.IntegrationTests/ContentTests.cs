@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using CSAdvent.Web.Content;
 using CSAdvent.Web.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace CSAdvent.IntegrationTests;
 
@@ -19,8 +20,12 @@ public sealed partial class ContentTests(AppHostFixture fixture)
 
         Assert.Contains("<h2>History</h2>", page);
         Assert.Contains("#csharp and #csadvent", page);
-        Assert.Contains("https://github.com/CalvinAllen.png", page);
         Assert.Contains("https://github.com/mgroves", page);
+
+        // The photos come from our own site, so visitors' browsers never ask GitHub (#168), and only organizers' are served.
+        Assert.Contains("src=\"about/photos/calvinallen\"", page);
+        Assert.DoesNotContain(".png?size=", page);
+        Assert.Equal(System.Net.HttpStatusCode.NotFound, (await client.GetAsync("/about/photos/octocat", CancellationToken)).StatusCode);
 
         // Matt started C# Advent and still hosts it, so he's featured first.
         Assert.Contains("Founder and host</p>", page);
@@ -140,6 +145,63 @@ public sealed partial class ContentTests(AppHostFixture fixture)
 
         var rejected = await UploadLogoAsync(organizer, html, 2117, id, "<svg/>"u8.ToArray());
         Assert.Equal($"{page}&logo=invalid", TestBrowser.PathOf(rejected.Headers.Location!));
+    }
+
+    [Fact]
+    public async Task ReplicasNeverFetchTheSameLogoTwice()
+    {
+        const string url = "https://example.com/logo-race-2500";
+        var handler = new LogoSite();
+        await using var first = await fixture.CreateDbContextAsync();
+        await using var second = await fixture.CreateDbContextAsync();
+        OtherAdventLogoService Replica(AdventDbContext db) =>
+            new(db, new LogoFetcher(new HttpClient(handler), NullLogger<LogoFetcher>.Instance), TimeProvider.System);
+
+        try
+        {
+            // Both add the site's row at once without tripping the unique index, and only one of them claims and fetches it.
+            var results = await Task.WhenAll(Replica(first).FetchIfMissingAsync(url, CancellationToken), Replica(second).FetchIfMissingAsync(url, CancellationToken));
+
+            Assert.Equal(new LogoResult?[] { LogoResult.Saved, null }, results.OrderBy(r => r is null));
+            Assert.Equal(1, handler.PagesFetched);
+            await using var db = await fixture.CreateDbContextAsync();
+            Assert.NotNull(await db.OtherAdventLogos.Where(l => l.Url == url).Select(l => l.Png).SingleAsync(CancellationToken));
+
+            // Once it has a logo, the background fetch leaves it alone.
+            Assert.Null(await Replica(db).FetchIfMissingAsync(url, CancellationToken));
+            Assert.Equal(1, handler.PagesFetched);
+        }
+        finally
+        {
+            await using var db = await fixture.CreateDbContextAsync();
+            await db.OtherAdventLogos.Where(l => l.Url == url).ExecuteDeleteAsync(CancellationToken.None);
+        }
+    }
+
+    /// <summary>A calendar's site with no icon links on its home page, only a /favicon.ico.</summary>
+    private sealed class LogoSite : HttpMessageHandler
+    {
+        private int _pagesFetched;
+
+        public int PagesFetched => _pagesFetched;
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            // Slow enough that the two replicas' fetches would overlap.
+            await Task.Delay(200, cancellationToken);
+            if (request.RequestUri!.AbsolutePath == "/favicon.ico")
+            {
+                return new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new ByteArrayContent(Convert.FromBase64String(Png200)) };
+            }
+
+            if (request.RequestUri.AbsolutePath == "/logo-race-2500")
+            {
+                Interlocked.Increment(ref _pagesFetched);
+                return new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new StringContent("<html><head></head></html>") };
+            }
+
+            return new HttpResponseMessage(System.Net.HttpStatusCode.NotFound);
+        }
     }
 
     private static async Task<HttpResponseMessage> UploadLogoAsync(HttpClient browser, string page, int year, int id, byte[] image)

@@ -15,7 +15,7 @@ public sealed record ContactDeletion(int ClaimRequests, int Substitutes, int Con
 /// <summary>
 /// Keeps the privacy page's retention promise. Once a season's deletion time has passed (February 1 after it), its claim
 /// requests (with their comments) and its backup list are deleted, and so is the email of every contributor who has never had
-/// a spot and hasn't signed in since. <b>Authors keep their email addresses</b>, on their account and on their spots, so they
+/// a spot, hasn't signed in since and has no post claim or link request waiting. <b>Authors keep their email addresses</b>, on their account and on their spots, so they
 /// can hear about the next season. The public calendar is left as it is. Requests to add an older post to someone's account
 /// go <see cref="PostClaimsKeptFor"/> after an organizer decides them, and requests for new links to someone's older posts go
 /// <see cref="PostLinkRequestsKeptFor"/> after they're decided or withdrawn, whatever the season. Emails in the email queue
@@ -71,12 +71,15 @@ public sealed class ContactRetention(AdventDbContext db, AdventSchedule schedule
             .ExecuteDeleteAsync(cancellationToken);
 
         // Every sign-in stores a freshly verified email, so anyone who has signed in since the latest deletion time keeps theirs,
-        // and so does anyone who has had a spot: authors are told about the next season.
+        // and so does anyone who has had a spot: authors are told about the next season. So does anyone still waiting on a
+        // request to add an older post to their account, or for new links, because the answer goes to that address (#181).
         var cutoff = schedule.GetContactDeletionTime(expired.Max());
         var contributorEmails = await db.Contributors
             .Where(c => c.Email != null
                 && (c.EmailVerifiedAt == null || c.EmailVerifiedAt < cutoff)
-                && !db.Slots.Any(s => s.ContributorId == c.Id && s.SeasonYear != Season.TestYear))
+                && !db.Slots.Any(s => s.ContributorId == c.Id && s.SeasonYear != Season.TestYear)
+                && !db.PostClaimRequests.Any(r => r.ContributorId == c.Id && r.Status == PostClaimStatus.Pending)
+                && !db.PostLinkRequests.Any(r => r.ContributorId == c.Id && r.Status == PostLinkRequestStatus.Pending))
             .ExecuteUpdateAsync(
                 setters => setters
                     .SetProperty(c => c.Email, (string?)null)

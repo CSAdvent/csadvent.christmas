@@ -7,7 +7,6 @@
       "day": 1,
       "part": 1,
       "authorName": "Hilary Weaver-Robb",
-      "authorUrl": "https://twitter.com/g33klady/status/933356947377672192",
       "postTitle": "Combining Integration and UI Automation in C#",
       "postUrl": "https://g33klady.com/2017/12/01/c-advent-calendar-combining-integration-and-ui-automation-in-c/"
     },
@@ -15,7 +14,6 @@
       "day": 2,
       "part": 1,
       "authorName": "Jamie Rees",
-      "authorUrl": "https://crosscuttingconcerns.com/The-First-C-Advent-Calendar#comment-3628115098",
       "postTitle": "Open Source, 2 years retrospective",
       "postUrl": "https://www.jamietech.com/2017/12/01/open-source-software-a-year-in-review/"
     },
@@ -23,7 +21,6 @@
       "day": 3,
       "part": 1,
       "authorName": "Lucas Lansky",
-      "authorUrl": "https://crosscuttingconcerns.com/The-First-C-Advent-Calendar#comment-3627797005",
       "postTitle": "Analyzing unit-ness of white-box tests using OpenCover",
       "postUrl": "https://programming.lansky.name/analysing-unitness/"
     },
@@ -31,7 +28,6 @@
       "day": 4,
       "part": 1,
       "authorName": "Andrei Ignat",
-      "authorUrl": "https://twitter.com/ignatandrei/status/933251272051798023",
       "postTitle": "AOP with Roslyn–part 3–custom code at beginning of each method",
       "postUrl": "http://msprogrammer.serviciipeweb.ro/2017/12/04/aop-with-roslynpart-3custom-code-at-beginning-of-each-method/"
     },
@@ -39,7 +35,6 @@
       "day": 5,
       "part": 1,
       "authorName": "Baskar rao Dsn",
-      "authorUrl": "https://twitter.com/baskarmib/status/932795335667339267",
       "postTitle": "Quick Actions in Visual Studio 2017",
       "postUrl": "https://baskarrao.wordpress.com/2017/12/02/quick-actions-in-visual-studio-2017/"
     },
@@ -47,7 +42,6 @@
       "day": 6,
       "part": 1,
       "authorName": "Bill Sempf",
-      "authorUrl": "https://twitter.com/sempf/status/933088868399833088",
       "postTitle": "Coding for an encrypted service",
       "postUrl": "http://sempf.net/post/day-6-of-c-advent-coding-for-an-encrypted-service"
     },
@@ -55,7 +49,6 @@
       "day": 7,
       "part": 1,
       "authorName": "Brant Burnett",
-      "authorUrl": "https://twitter.com/btburnett3/status/932746840411398147",
       "postTitle": "Who says C# interfaces can't have implementations?",
       "postUrl": "http://btburnett.com/2017/12/who-says-c-interfaces-cant-have-implementations.html"
     },
@@ -63,7 +56,6 @@
       "day": 8,
       "part": 1,
       "authorName": "Lee Englestone",
-      "authorUrl": "https://crosscuttingconcerns.com/The-First-C-Advent-Calendar#comment-3627732127",
       "postTitle": "Creating Alexa Skills with Web-API and hosting on Microsoft Azure",
       "postUrl": "http://www.manchesterdeveloper.com/blog/post/Creating-Alexa-Skills-with-Web-API-and-hosting-on-Microsoft-Azure"
     },
@@ -71,7 +63,6 @@
       "day": 9,
       "part": 1,
       "authorName": "James Hickey",
-      "authorUrl": "https://crosscuttingconcerns.com/The-First-C-Advent-Calendar#comment-3628044485",
       "postTitle": "Deck the Halls With Strategy Pattern Implementations in C#: Basic to Advanced",
       "postUrl": "https://blog.jamesmichaelhickey.com/strategy-pattern-implementations/"
     },
@@ -79,7 +70,6 @@
       "day": 10,
       "part": 1,
       "authorName": "Carl Layton",
-      "authorUrl": "https://crosscuttingconcerns.com/The-First-C-Advent-Calendar#comment-3628051487",
       "postTitle": "Using C# dynamic Keyword To Replace Data Transfer Objects",
       "postUrl": "http://carlserver.com/blog/post/using-c%23-dynamic-keyword-to-replace-data-transfer-objects"
     },
@@ -87,7 +77,6 @@
       "day": 11,
       "part": 1,
       "authorName": "James Curran",
-      "authorUrl": "https://crosscuttingconcerns.com/The-First-C-Advent-Calendar#comment-3626600999",
       "postTitle": "An Exercise in Refactoring - Specification Pattern",
       "postUrl": "https://honestillusion.com/2017/12/11/Refactoring-specification-pattern.html"
     },
@@ -95,7 +84,6 @@
       "day": 12,
       "part": 1,
       "authorName": "Andrew Lock",
-      "authorUrl": "https://twitter.com/andrewlocknet/status/932965987405778944",
       "postTitle": "Creating a .NET Standard Roslyn Analyzer in Visual Studio 2017",
       "postUrl": "https://andrewlock.net/creating-a-roslyn-analyzer-in-visual-studio-2017/"
     },
@@ -111,7 +99,6 @@
       "day": 14,
       "part": 1,
       "authorName": "Gérald Barré (aka Meziantou)",
-      "authorUrl": "https://crosscuttingconcerns.com/The-First-C-Advent-Calendar#comment-3626720595",
       "postTitle": "Interpolated strings: advanced usages",
       "postUrl": "https://www.meziantou.net/2017/12/14/interpolated-strings-advanced-usages"
     },
@@ -119,7 +106,6 @@
       "day": 15,
       "part": 1,
       "authorName": "Baskar rao Dsn",
-      "authorUrl": "https://twitter.com/baskarmib/status/932795335667339267",
       "postTitle": "Using BenchMarkDotNet for Performance BenchMarking",
       "postUrl": "https://baskarrao.wordpress.com/2017/12/15/using-benchmarkdotnet-for-performance-benchmarking/"
     },
@@ -127,7 +113,6 @@
       "day": 16,
       "part": 1,
       "authorName": "Chris Bohatka",
-      "authorUrl": "https://twitter.com/cjb5790/status/932966339928576002",
       "postTitle": "Breaking Down Dependency Injection and Inversion of Control in C# with SimpleInjector",
       "postUrl": "http://chris.bohatka.com/breaking-down-dependency-injection-and-inversion-of-control-in-csharp-with-simpleinjector/"
     },
@@ -135,7 +120,6 @@
       "day": 17,
       "part": 1,
       "authorName": "David Pine",
-      "authorUrl": "https://twitter.com/davidpine7/status/932814815650775046",
       "postTitle": "C# Special Edition",
       "postUrl": "http://davidpine.net/blog/csharp-special-edition/"
     },
@@ -143,7 +127,6 @@
       "day": 18,
       "part": 1,
       "authorName": "Barret Blake",
-      "authorUrl": "https://twitter.com/BarretBlake/status/932991783839191040",
       "postTitle": "Using C# and Azure Cognitive Services Text Analytics to Identify and Relate Text Documents",
       "postUrl": "https://barretblake.com/2017/12/c-advent-calendar-2017-using-c-and-azure-cognitive-services-to-identify-and-relate-text-documents/"
     },
@@ -151,7 +134,6 @@
       "day": 19,
       "part": 1,
       "authorName": "Ed Charbeneau",
-      "authorUrl": "https://crosscuttingconcerns.com/The-First-C-Advent-Calendar#comment-3626786134",
       "postTitle": "5 .NET Standard Features You Shouldn’t Miss",
       "postUrl": "https://developer.telerik.com/topics/net/5-net-standard-features-shouldnt-miss/"
     },
@@ -159,7 +141,6 @@
       "day": 20,
       "part": 1,
       "authorName": "Kevin Miller",
-      "authorUrl": "https://crosscuttingconcerns.com/The-First-C-Advent-Calendar#comment-3626602960",
       "postTitle": "Things you Should do with Strings While You’re Coworkers are on Holiday and No One is Checking the Production Code Branch",
       "postUrl": "http://structuredsight.com/2017/12/20/things-you-should-do-with-strings-while-youre-coworkers-are-on-holiday-and-no-one-is-checking-the-production-code-branch/"
     },
@@ -167,7 +148,6 @@
       "day": 21,
       "part": 1,
       "authorName": "Angus Kinsey",
-      "authorUrl": "https://crosscuttingconcerns.com/The-First-C-Advent-Calendar#comment-3626892215",
       "postTitle": "What makes C# great?",
       "postUrl": "https://centare.com/blog/2017/12/c_sharp_panel/"
     },
@@ -175,7 +155,6 @@
       "day": 22,
       "part": 1,
       "authorName": "Jim Wilcox",
-      "authorUrl": "https://crosscuttingconcerns.com/The-First-C-Advent-Calendar#comment-3625841934",
       "postTitle": "Unloading the UI Thread in C# on Windows 10 + UWP",
       "postUrl": "http://granitestatehacker.kataire.com/2017/12/unloading-ui-thread-in-c-on-windows-10.html"
     },
@@ -183,7 +162,6 @@
       "day": 23,
       "part": 1,
       "authorName": "Duane Newman",
-      "authorUrl": "https://crosscuttingconcerns.com/The-First-C-Advent-Calendar#comment-3626997997",
       "postTitle": "All I want for Christmas is a C# Build System",
       "postUrl": "http://duanenewman.net/blog/post/all-i-want-for-christmas-is-a-c-sharp-build-system/"
     },
@@ -191,7 +169,6 @@
       "day": 24,
       "part": 1,
       "authorName": "Calvin Allen",
-      "authorUrl": "https://twitter.com/_CalvinAllen/status/932737704185532416",
       "postTitle": "Live Unit Testing in Visual Studio 2017",
       "postUrl": "https://www.calvinallen.net/archive/2017/12/24/live-unit-testing-in-visual-studio-2017/"
     },

@@ -48,14 +48,15 @@ public sealed class GitHubSignInTests
     }
 
     [Fact]
-    public void FallsBackToAnotherVerifiedEmail()
+    public void NeverFallsBackToAnotherVerifiedEmail()
     {
+        // The privacy page promises the primary address, and only once it's verified (#168).
         string? email = GitHubSignIn.SelectVerifiedEmail([
             new("unverified@example.com", Primary: true, Verified: false),
             new("verified@example.com", Primary: false, Verified: true),
         ]);
 
-        Assert.Equal("verified@example.com", email);
+        Assert.Null(email);
     }
 
     [Fact]

@@ -25,6 +25,7 @@ using CSAdvent.Web.Retrospectives;
 using CSAdvent.Web.SeasonTesting;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Options;
+using OpenTelemetry.Instrumentation.Http;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -63,6 +64,7 @@ builder.Services.AddOptions<ClaimOptions>()
     .ValidateDataAnnotations()
     .ValidateOnStart();
 builder.Services.AddScoped<SeasonAdminService>();
+builder.Services.AddScoped<SeasonArchiveExport>();
 builder.Services.AddScoped<ClaimReviewService>();
 builder.Services.AddScoped<EntryAdminService>();
 builder.Services.AddScoped<MySpotsService>();
@@ -78,6 +80,10 @@ builder.Services.AddScoped<RetrospectiveService>();
 builder.Services.AddScoped<SocialService>();
 builder.Services.AddScoped<ContentService>();
 builder.Services.AddScoped<OtherAdventsService>();
+
+// The organizers' photos on the About page, fetched from GitHub by the site rather than by visitors' browsers (#168).
+builder.Services.AddSingleton(services => new OrganizerPhotos(
+    OrganizerPhotos.CreateClient(), services.GetRequiredService<IOptionsMonitor<SiteOptions>>(), services.GetRequiredService<TimeProvider>()));
 
 // Other Advents logos, fetched from each calendar's site. The fetcher has its own client rather than one from the factory,
 // so it skips the default retries: a missing icon is normal, and the worker asks again the next day.
@@ -108,7 +114,11 @@ if (builder.Configuration.GetValue("SocialPosting:PostInBackground", defaultValu
 builder.AddEmail();
 builder.Services.AddScoped<IClaimNotifier, EmailClaimNotifier>();
 builder.Services.AddScoped<SampleEmailService>();
-builder.Services.AddHttpClient<GitHubUsers>(GitHubUsers.Configure);
+
+// GitHub logins are in these requests' addresses, so they're kept out of the telemetry (#168): the client's request logs
+// ("Sending HTTP request GET https://api.github.com/users/…") are off, and the tracing redacts its spans' addresses.
+builder.Services.AddHttpClient<GitHubUsers>(GitHubUsers.Configure).RemoveAllLoggers();
+builder.Services.Configure<HttpClientTraceInstrumentationOptions>(GitHubTelemetry.Configure);
 builder.Services.AddScoped<AuthorService>();
 
 // Post link reminders and the daily "today's posts" email, sent each morning in the reveal time zone.
@@ -240,6 +250,8 @@ app.MapAnnouncements();
 app.MapSocial();
 app.MapLegacyRedirects();
 app.MapContentAdmin();
+app.MapOrganizerPhotos();
+app.MapSeasonArchive();
 app.MapOtherAdventLogos();
 app.MapSeasonTesting();
 app.MapAuthors();
