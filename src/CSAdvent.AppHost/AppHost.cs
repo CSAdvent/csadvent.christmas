@@ -256,10 +256,11 @@ if (isTesting)
     // standard output as Information, which AppHostFixture filters out (#177), and of its standard error as Error, which it
     // keeps. So the console logger writes Warning and up to standard error, without the color codes the relayed lines would
     // spell out as text. A failed command's SQL stays out, as the migrations' does: the error that follows it has the
-    // exception.
+    // exception. That one's an argument, because an environment variable with dots in its name never reached the web app
+    // on CI's Linux runner.
     web.WithEnvironment("Logging__Console__LogToStandardErrorThreshold", "Warning");
     web.WithEnvironment("Logging__Console__FormatterOptions__ColorBehavior", "Disabled");
-    web.WithEnvironment("Logging__Console__LogLevel__Microsoft.EntityFrameworkCore.Database.Command", "None");
+    web.WithArgs("--Logging:Console:LogLevel:Microsoft.EntityFrameworkCore.Database.Command=None");
 }
 else
 {
