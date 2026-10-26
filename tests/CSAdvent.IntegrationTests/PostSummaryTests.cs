@@ -83,7 +83,8 @@ public sealed class PostSummaryTests(AppHostFixture fixture)
         Assert.Equal($"/manage/entries/{slot.Id}?done=saved", TestBrowser.PathOf(saved.Headers.Location));
 
         using var reader = fixture.CreateWebClient();
-        var page = await reader.GetPageAsync($"/2019/day/{slot.Day}/{slot.Part}");
+        using var preview = fixture.CreateLinkPreview();
+        var page = await preview.GetPageAsync($"/2019/day/{slot.Day}/{slot.Part}");
         Assert.Contains("<p class=\"mt-3 text-xl text-slate-600\">Wombats tour the 2019 archive</p>", page);
         Assert.Contains("<meta name=\"description\" content=\"Wombats tour the 2019 archive. By ", page);
 

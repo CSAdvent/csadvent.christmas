@@ -23,7 +23,8 @@ public sealed class PostClaimTests(AppHostFixture fixture)
         using var reader = fixture.CreateWebClient();
         var claimPage = $"/my-spots/claim/2022/{first.Day}/{first.Part}";
 
-        Assert.Contains($"href=\"{claimPage.TrimStart('/')}\"", await reader.GetPageAsync($"/2022/day/{first.Day}/{first.Part}"));
+        // Their author page asks (readers go straight to the post, so its entry page no longer does).
+        Assert.Contains("href=\"my-spots?find=Pat%20Claimant#older-posts\"", await reader.GetPageAsync("/authors/name/pat%20claimant"));
 
         // Their name finds both posts.
         var found = WebUtility.HtmlDecode(await pat.GetPageAsync("/my-spots?find=pat+claimant"));
@@ -67,7 +68,8 @@ public sealed class PostClaimTests(AppHostFixture fixture)
 
         Assert.Contains("Your C# Advent history", await pat.GetPageAsync("/my-spots"));
         Assert.Contains("It's already on your account", WebUtility.HtmlDecode(await pat.GetPageAsync(claimPage)));
-        Assert.DoesNotContain("Add it to your account", await reader.GetPageAsync($"/2022/day/{first.Day}/{first.Part}"));
+        // Their posts are on their account now, so the name page moves to the account's, which doesn't ask.
+        Assert.DoesNotContain("my-spots?find=", await reader.GetPageAsync("/authors/name/pat%20claimant"));
     }
 
     [Fact]

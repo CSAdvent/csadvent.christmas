@@ -1,13 +1,12 @@
 @page "/{Year:int}/day/{Day:int}/{Part:int}"
 @using System.Globalization
 @using CSAdvent.Web.Cards
-@using CSAdvent.Web.Data
 @using CSAdvent.Web.Entries
-@using Microsoft.Extensions.Options
 @inject EntryService Entries
 @inject NavigationManager Navigation
-@inject IOptions<SiteOptions> Site
 
+@* Once the post is revealed, only link previews (for its card) and organizers get this page: everyone else following its link
+   goes straight to the post, counted as a click (EntryEndpoints.UseEntryRedirects). *@
 @if (_entry is { IsRevealed: true } entry)
 {
     <PageTitle>@entry.PostTitle · C# Advent @entry.Year</PageTitle>
@@ -18,7 +17,6 @@
                 ImageAlt="@($"{entry.PostTitle} by {entry.AuthorName}, C# Advent {entry.Year}, December {entry.Day}")">
         @* Only once it's revealed, like everything else about the post (#5). *@
         <meta property="article:published_time" content="@StructuredData.Iso(entry.RevealsAt)" />
-        <JsonLd Data="StructuredData.Entry(entry, Site.Value.BaseUrl, Description(entry), CardLinks.Entry(CardEndpoints.CardFor(entry)))" />
     </SocialMeta>
 
     <nav class="mb-6 text-sm font-medium">
@@ -106,15 +104,6 @@
             or <a href="archive" class="text-advent-700 underline">every past season</a>, and follow every new post with the
             <a href="rss" class="text-advent-700 underline">RSS feed</a>.
         </p>
-
-        @if (entry is { IsSeasonFinished: true, IsLinked: false } && entry.Year != Season.TestYear)
-        {
-            <p class="mt-4 text-sm text-slate-500">
-                Did you write this post?
-                <a href="@CSAdvent.Web.Contributors.PostClaimLinks.Claim(entry.Year, entry.Day, entry.Part)" class="text-advent-700 underline">Add it to your account</a>
-                to see it in your C# Advent history.
-            </p>
-        }
     </article>
 }
 else if (_entry is { } upcoming)
@@ -146,24 +135,16 @@ else if (_entry is { } upcoming)
     [SupplyParameterFromQuery]
     public string? Via { get; set; }
 
-    [CascadingParameter]
-    private HttpContext? HttpContext { get; set; }
-
     /// <summary>A click keeps the tag the visit arrived with, so it's credited to the same platform.</summary>
     private string ClickVia => EntryVia.Normalize(Via) ?? "site";
 
+    // Nothing is counted here: link previews and organizers aren't readers, and readers never get the page once it's revealed.
     protected override async Task OnInitializedAsync()
     {
         _entry = await Entries.GetAsync(Year, Day, Part);
         if (_entry is null)
         {
             Navigation.NotFound();
-            return;
-        }
-
-        if (_entry.IsRevealed && HttpContext is { } context && EntryTraffic.IsPerson(context.Request))
-        {
-            await Entries.RecordAsync(_entry.SlotId, EntryHitKind.View, Via);
         }
     }
 

@@ -101,7 +101,8 @@ public sealed partial class RetrospectiveTests(AppHostFixture fixture)
 
         var mySpots = await author.GetPageAsync("/my-spots");
 
-        Assert.Contains("1 visit, 4 clicks through to your post", mySpots);
+        // Clicks, and visits to the post's page from before readers went straight to the post.
+        Assert.Contains("4 clicks through to your post, and 1 visit to its page here until October 2026", mySpots);
         Assert.Contains("Only you see these for your posts", mySpots);
     }
 

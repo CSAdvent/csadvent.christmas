@@ -1,7 +1,6 @@
 using System.Text.Json.Nodes;
 using CSAdvent.UnitTests.Calendar;
 using CSAdvent.Web.Content;
-using CSAdvent.Web.Entries;
 using CSAdvent.Web.Social;
 
 namespace CSAdvent.UnitTests.Content;
@@ -9,12 +8,6 @@ namespace CSAdvent.UnitTests.Content;
 public sealed class StructuredDataTests
 {
     private const string Site = "https://csadvent.christmas/";
-
-    private static readonly DateTimeOffset Revealed = new(2026, 12, 6, 0, 0, 0, TimeSpan.FromHours(-5));
-
-    private static EntryView Entry(bool isRevealed = true) => isRevealed
-        ? new(1, 2026, 6, 2, 2, true, Revealed, "Spans </script> & you", "https://example.com/spans", "Ada Lovelace", "https://ada.dev", [], [], IsInArchive: false)
-        : new(1, 2026, 6, 2, 2, false, Revealed, null, null, null, null, [], [], IsInArchive: false);
 
     [Fact]
     public void TheSiteIsPublishedByCSharpAdventWithItsAccounts()
@@ -48,30 +41,9 @@ public sealed class StructuredDataTests
     }
 
     [Fact]
-    public void ARevealedEntryIsTheAuthorsPostDescribedByItsPageHere()
-    {
-        var post = StructuredData.Entry(Entry(), Site, "By Ada Lovelace.", "cards/2026/6/2.jpg?v=1");
-
-        Assert.Equal("BlogPosting", (string?)post["@type"]);
-        Assert.Equal("Spans </script> & you", (string?)post["headline"]);
-        // The author's own post is the original; our page is about it.
-        Assert.Equal("https://example.com/spans", (string?)post["url"]);
-        Assert.Equal("https://csadvent.christmas/2026/day/6/2", (string?)post["mainEntityOfPage"]);
-        Assert.Equal("2026-12-06T00:00:00-05:00", (string?)post["datePublished"]);
-        Assert.Equal("Ada Lovelace", (string?)post["author"]!["name"]);
-        Assert.Equal("https://ada.dev", (string?)post["author"]!["url"]);
-        Assert.Equal("https://csadvent.christmas/cards/2026/6/2.jpg?v=1", (string?)post["image"]);
-        Assert.Equal("C# Advent 2026", (string?)post["isPartOf"]!["name"]);
-    }
-
-    [Fact]
-    public void NothingDescribesAnEntryBeforeItsReveal() =>
-        Assert.Throws<ArgumentException>(() => StructuredData.Entry(Entry(isRevealed: false), Site, "", "images/social-card.jpg"));
-
-    [Fact]
     public void TheJsonCantCloseItsScriptElement()
     {
-        var json = StructuredData.Serialize(StructuredData.Entry(Entry(), Site, "<b>", "cards/2026/6/2.jpg"));
+        var json = StructuredData.Serialize(new JsonObject { ["headline"] = "Spans </script> & you" });
 
         Assert.DoesNotContain("<", json);
         Assert.DoesNotContain(">", json);

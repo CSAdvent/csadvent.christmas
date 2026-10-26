@@ -6,31 +6,41 @@ using Microsoft.EntityFrameworkCore;
 namespace CSAdvent.IntegrationTests;
 
 /// <summary>
-/// What search engines see: links to entry pages from the calendar (#167), titles and structured data (#195), and nothing
-/// about a post before its reveal (#5). Reads the seeded 2023 archive (from December 15 on, which no other test changes) and
-/// uses season 2440, which isn't revealed.
+/// What search engines see: the calendar's links, which go through the tracked redirects to the authors' posts, titles and
+/// structured data (#195), and nothing about a post before its reveal (#5). Crawlers following an entry page's link go
+/// straight to the post like readers (decided 2026-10-26). Reads the seeded 2023 archive (from December 15 on, which no other
+/// test changes) and uses season 2440, which isn't revealed.
 /// </summary>
 public sealed class SearchAppearanceTests(AppHostFixture fixture)
 {
     private const string Site = "https://localhost:7092";
+    private const string Googlebot = "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)";
 
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
     [Fact]
-    public async Task TheArchiveLinksEachPostsPageAndCrawlersMayFollowTheRedirect()
+    public async Task CrawlersFollowTheArchivesLinksAndEntryPagesToThePosts()
     {
         var slot = await FindPostAsync();
         using var browser = fixture.CreateBrowser();
+        browser.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", Googlebot);
 
+        // The title goes through /go, and the label isn't a link: the entry's page would lead to the post too.
         var archive = await browser.GetPageAsync("/archive/2023");
-        Assert.Contains($"href=\"2023/day/{slot.Day}/{slot.Part}\"", archive);
         Assert.Contains($"href=\"go/2023/{slot.Day}/{slot.Part}?via=calendar\"", archive);
+        Assert.DoesNotContain($"href=\"2023/day/{slot.Day}/{slot.Part}\"", archive);
 
-        // Crawlers follow /go to the authors' posts, but the redirect itself is never listed.
-        Assert.DoesNotContain("/go", await browser.GetStringAsync("/robots.txt", CancellationToken));
-        var go = await browser.GetAsync($"/go/2023/{slot.Day}/{slot.Part}", CancellationToken);
-        Assert.Equal(HttpStatusCode.Redirect, go.StatusCode);
-        Assert.Equal("noindex", Assert.Single(go.Headers.GetValues("X-Robots-Tag")));
+        // Crawlers follow /go and entry pages to the authors' posts, but the redirects themselves are never listed.
+        var robots = await browser.GetStringAsync("/robots.txt", CancellationToken);
+        Assert.DoesNotContain("/go", robots);
+        Assert.DoesNotContain("/day", robots);
+        foreach (var path in new[] { $"/go/2023/{slot.Day}/{slot.Part}", $"/2023/day/{slot.Day}/{slot.Part}" })
+        {
+            var response = await browser.GetAsync(path, CancellationToken);
+            Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+            Assert.Equal(slot.PostUrl, response.Headers.Location!.OriginalString);
+            Assert.Equal("noindex", Assert.Single(response.Headers.GetValues("X-Robots-Tag")));
+        }
     }
 
     [Fact]
@@ -52,7 +62,7 @@ public sealed class SearchAppearanceTests(AppHostFixture fixture)
     }
 
     [Fact]
-    public async Task ASeasonIsAnEventAndARevealedEntryIsTheAuthorsPost()
+    public async Task ASeasonIsAnEventAndAnEntryPageHasOnlyItsPreviewTags()
     {
         var slot = await FindPostAsync();
         using var browser = fixture.CreateBrowser();
@@ -63,17 +73,12 @@ public sealed class SearchAppearanceTests(AppHostFixture fixture)
         Assert.Equal("2023-12-26T00:00:00-05:00", (string?)season["endDate"]);
         Assert.Equal($"{Site}/archive/2023", (string?)season["url"]);
 
-        var page = await browser.GetPageAsync($"/2023/day/{slot.Day}/{slot.Part}?via=bluesky");
-        var published = $"2023-12-{slot.Day:00}T00:00:00-05:00";
-        Assert.Contains($"<meta property=\"article:published_time\" content=\"{published}\"", page);
-        var post = Assert.Single(await JsonLdAsync(page));
-        Assert.Equal("BlogPosting", (string?)post["@type"]);
-        Assert.Equal(slot.PostTitle, (string?)post["headline"]);
-        Assert.Equal(slot.PostUrl, (string?)post["url"]);
-        Assert.Equal($"{Site}/2023/day/{slot.Day}/{slot.Part}", (string?)post["mainEntityOfPage"]);
-        Assert.Equal(published, (string?)post["datePublished"]);
-        Assert.Equal(slot.AuthorName, (string?)post["author"]!["name"]);
-        Assert.StartsWith($"{Site}/cards/2023/{slot.Day}/{slot.Part}.jpg?v=", (string?)post["image"]);
+        // Only link previews (and organizers) get an entry's page now, and they read its Open Graph tags, so it has no
+        // structured data: search engines go straight to the author's post.
+        using var preview = fixture.CreateLinkPreview();
+        var page = await preview.GetPageAsync($"/2023/day/{slot.Day}/{slot.Part}?via=bluesky");
+        Assert.Contains($"<meta property=\"article:published_time\" content=\"2023-12-{slot.Day:00}T00:00:00-05:00\"", page);
+        Assert.Empty(await JsonLdAsync(page));
     }
 
     [Fact]

@@ -38,8 +38,9 @@ public sealed record MyRequest(int Id, int Year, int Day, int Part, int SlotsPer
 public sealed record MySpotsOverview(IReadOnlyList<MySpot> Spots, IReadOnlyList<MyRequest> PendingRequests);
 
 /// <summary>
-/// How a post did: visits to its entry page and clicks through to the post, counted since 2026 without bots or link previews.
-/// Only its author sees these for their own posts; the public only sees season totals and the most-read posts.
+/// How a post did: clicks through to the post from our links, counted since 2026 without bots or link previews, and the visits
+/// to its entry page counted until October 2026, when those links started going straight to the post. Only its author sees
+/// these for their own posts; the public only sees season totals and the most-read posts.
 /// </summary>
 public sealed record PostTraffic(int Views, int Clicks)
 {

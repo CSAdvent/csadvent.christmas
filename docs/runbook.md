@@ -152,6 +152,9 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
     it timed out, the connection dropped or the platform had a server error, or the app restarted mid-post. It may be up,
     so it isn't tried again by itself. Look for it on C# Advent's account: if it's there, **Mark as posted** (paste its
     link); if it isn't, **Retry now**. Bluesky looks for an earlier try's post before posting again, so it just retries.
+  - **Links go straight to the post:** a social post (or RSS item) links the entry's page on our site, so the preview shows
+    our card, but readers following it land on the author's post, counted as a click. Signed in as an organizer, you get
+    the entry's page instead; open a link in a private window to see what readers get.
 - **The daily email** goes to everyone with a spot as soon as both of the day's posts are in, from 9 AM, or at 2 PM with
   whichever are, leaving out any without the blurb. Announcement subscribers who asked for the daily posts are queued the
   same email at the same time, and get it after the authors, as list mail (before any announcement), until midnight, when

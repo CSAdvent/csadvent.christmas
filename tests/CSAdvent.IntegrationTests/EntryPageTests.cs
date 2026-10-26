@@ -5,7 +5,8 @@ namespace CSAdvent.IntegrationTests;
 
 /// <summary>
 /// Entry pages, their preview tags, and the tracked "Read the post" redirect, using the seeded history (revealed long
-/// ago) and a far-future test season (not revealed).
+/// ago) and a far-future test season (not revealed). A revealed entry's page is for link previews (and organizers): readers
+/// go straight to the post (<see cref="EntryRedirectTests"/>).
 /// </summary>
 public sealed class EntryPageTests(AppHostFixture fixture)
 {
@@ -17,9 +18,9 @@ public sealed class EntryPageTests(AppHostFixture fixture)
     public async Task ARevealedEntryHasItsOwnPageWithPreviewTags()
     {
         var (slot, sibling) = await FindDayWithTwoPostsAsync(2020);
-        using var client = fixture.CreateWebClient();
+        using var preview = fixture.CreateLinkPreview();
 
-        var page = await client.GetStringAsync($"/2020/day/{slot.Day}/{slot.Part}?via=bluesky", CancellationToken);
+        var page = await preview.GetPageAsync($"/2020/day/{slot.Day}/{slot.Part}?via=bluesky");
 
         Assert.Contains(Encode(slot.PostTitle!), page);
         Assert.Contains(Encode(slot.AuthorName!), page);
@@ -40,7 +41,7 @@ public sealed class EntryPageTests(AppHostFixture fixture)
     }
 
     [Fact]
-    public async Task VisitsAndClicksAreCountedForPeopleOnlyWithTheirSource()
+    public async Task ClicksAreCountedForPeopleOnlyWithTheirSource()
     {
         var (slot, _) = await FindDayWithTwoPostsAsync(2021);
         var page = $"/2021/day/{slot.Day}/{slot.Part}";
@@ -48,28 +49,31 @@ public sealed class EntryPageTests(AppHostFixture fixture)
 
         using (var person = CreateBrowser(Browser))
         {
-            await person.GetAsync($"{page}?via=mastodon", CancellationToken);
+            // The entry page's link (from our Mastodon post, say) goes straight to the post, counted as a click.
+            var followed = await person.GetAsync($"{page}?via=mastodon", CancellationToken);
+            Assert.Equal(HttpStatusCode.Redirect, followed.StatusCode);
+            Assert.Equal(slot.PostUrl, followed.Headers.Location!.OriginalString);
 
             // Blazor's enhanced navigation fetched the link before loading it as a page (#150). Only the page load counts.
-            using var enhanced = new HttpRequestMessage(HttpMethod.Get, $"{go}?via=mastodon");
+            using var enhanced = new HttpRequestMessage(HttpMethod.Get, $"{go}?via=calendar");
             enhanced.Headers.TryAddWithoutValidation("Accept", "text/html; blazor-enhanced-nav=on");
             Assert.Equal(HttpStatusCode.Redirect, (await person.SendAsync(enhanced, CancellationToken)).StatusCode);
 
-            var click = await person.GetAsync($"{go}?via=mastodon", CancellationToken);
+            var click = await person.GetAsync($"{go}?via=calendar", CancellationToken);
             Assert.Equal(HttpStatusCode.Redirect, click.StatusCode);
             Assert.Equal(slot.PostUrl, click.Headers.Location!.OriginalString);
         }
 
-        // Link previews and scripts get the same responses but aren't counted.
-        using (var previewer = CreateBrowser("facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)"))
+        // Link previews get the page and the redirect but aren't counted.
+        using (var previewer = fixture.CreateLinkPreview())
         {
-            await previewer.GetAsync(page, CancellationToken);
+            Assert.Equal(HttpStatusCode.OK, (await previewer.GetAsync(page, CancellationToken)).StatusCode);
             Assert.Equal(HttpStatusCode.Redirect, (await previewer.GetAsync(go, CancellationToken)).StatusCode);
         }
 
         await using var db = await fixture.CreateDbContextAsync();
         var hits = await db.EntryHits.Where(h => h.SlotId == slot.Id).OrderBy(h => h.Id).ToListAsync(CancellationToken);
-        Assert.Equal([(EntryHitKind.View, "mastodon"), (EntryHitKind.Click, "mastodon")], hits.Select(h => (h.Kind, h.Via)));
+        Assert.Equal([(EntryHitKind.Click, "mastodon"), (EntryHitKind.Click, "calendar")], hits.Select(h => (h.Kind, h.Via)));
     }
 
     [Fact]
@@ -110,6 +114,8 @@ public sealed class EntryPageTests(AppHostFixture fixture)
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/2019/day/{day}/{part}", CancellationToken)).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/go/2019/{day}/{part}", CancellationToken)).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/2019/day/26/1", CancellationToken)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/go/2019/26/1", CancellationToken)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/99999/day/1/1", CancellationToken)).StatusCode);
     }
 
     [Fact]
@@ -142,8 +148,9 @@ public sealed class EntryPageTests(AppHostFixture fixture)
             Assert.True((await card.Content.ReadAsByteArrayAsync(CancellationToken)).Length < 1_000_000);
         }
 
-        // By the versioned link the entry page gives out, it never changes, so it's kept for good (#186).
-        var page = await client.GetStringAsync($"/2023/day/{slot.Day}/{slot.Part}", CancellationToken);
+        // By the versioned link the entry page gives link previews, it never changes, so it's kept for good (#186).
+        using var preview = fixture.CreateLinkPreview();
+        var page = await preview.GetPageAsync($"/2023/day/{slot.Day}/{slot.Part}");
         var link = System.Text.RegularExpressions.Regex.Match(page, "<meta property=\"og:image\" content=\"https://localhost:7092(?<path>[^\"]+)\"").Groups["path"].Value;
         var versioned = await client.GetAsync(WebUtility.HtmlDecode(link), CancellationToken);
         Assert.Equal(HttpStatusCode.OK, versioned.StatusCode);

@@ -246,6 +246,10 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
 
+// Readers following an entry page's link go straight to the post, and link previews and organizers get the page. After
+// sign-in, so organizers are known, and ahead of the page.
+app.UseEntryRedirects();
+
 app.MapStaticAssets();
 app.MapAccounts();
 app.MapEmailPreviews();

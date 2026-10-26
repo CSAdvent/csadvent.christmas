@@ -15,8 +15,9 @@ namespace CSAdvent.Web.Retrospectives;
 /// <param name="BackupsSteppedIn">Spots a backup poster took (only known until the season's contact details are deleted).</param>
 /// <param name="Requests">Requests for spots (likewise).</param>
 /// <param name="RequestsFirstDay">Requests in the first 24 hours after sign-ups opened.</param>
-/// <param name="Views">Visits to the season's entry pages.</param>
-/// <param name="Clicks">Clicks through to the season's posts, from the calendar or an entry page.</param>
+/// <param name="Views">Visits to the season's entry pages, only counted until October 2026, when our links started going straight
+/// to the posts.</param>
+/// <param name="Clicks">Clicks through to the season's posts, from any link we published.</param>
 /// <param name="ClicksPerDay">Clicks on each day of December: December 1 first. Empty without traffic.</param>
 /// <param name="ClicksBySource">Clicks by where the link came from (<c>?via=</c>), most first.</param>
 /// <param name="MostRead">The ten most-clicked posts.</param>

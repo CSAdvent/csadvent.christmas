@@ -27,17 +27,17 @@ public sealed partial class EntryNavigationTests(AppHostFixture fixture)
                 .Select(s => (s.Day, s.Part))];
         }
 
-        using var reader = fixture.CreateWebClient();
+        using var preview = fixture.CreateLinkPreview();
         var (before, middle, after) = (posts[19], posts[20], posts[21]);
-        var page = await reader.GetPageAsync($"/2020/day/{middle.Day}/{middle.Part}");
+        var page = await preview.GetPageAsync($"/2020/day/{middle.Day}/{middle.Part}");
         Assert.Contains($"href=\"2020/day/{before.Day}/{before.Part}\" rel=\"prev\"", page);
         Assert.Contains($"href=\"2020/day/{after.Day}/{after.Part}\" rel=\"next\"", page);
 
-        var first = await reader.GetPageAsync($"/2020/day/{posts[0].Day}/{posts[0].Part}");
+        var first = await preview.GetPageAsync($"/2020/day/{posts[0].Day}/{posts[0].Part}");
         Assert.DoesNotContain("rel=\"prev\"", first);
         Assert.Contains($"href=\"2020/day/{posts[1].Day}/{posts[1].Part}\" rel=\"next\"", first);
 
-        var last = await reader.GetPageAsync($"/2020/day/{posts[^1].Day}/{posts[^1].Part}");
+        var last = await preview.GetPageAsync($"/2020/day/{posts[^1].Day}/{posts[^1].Part}");
         Assert.Contains($"href=\"2020/day/{posts[^2].Day}/{posts[^2].Part}\" rel=\"prev\"", last);
         Assert.DoesNotContain("rel=\"next\"", last);
     }

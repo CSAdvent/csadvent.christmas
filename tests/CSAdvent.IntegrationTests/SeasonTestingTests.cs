@@ -52,9 +52,18 @@ public sealed class SeasonTestingTests(AppHostFixture fixture)
             await db.SaveChangesAsync(CancellationToken);
         }
 
-        Assert.Contains("Testing in production", await tester.GetStringAsync($"/{TestYear}/day/3/1", CancellationToken));
+        // Testers following its link go straight to the post, like readers, and organizers get its page. Nobody else finds it,
+        // link previews included.
+        var followed = await tester.GetAsync($"/{TestYear}/day/3/1", CancellationToken);
+        Assert.Equal(HttpStatusCode.Redirect, followed.StatusCode);
+        Assert.Equal("https://example.com/testing-in-production", followed.Headers.Location!.OriginalString);
+        Assert.Contains("Testing in production", await organizer.GetStringAsync($"/{TestYear}/day/3/1", CancellationToken));
         Assert.Equal(HttpStatusCode.NotFound, (await stranger.GetAsync($"/{TestYear}/day/3/1", CancellationToken)).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await anonymous.GetAsync($"/{TestYear}/day/3/1", CancellationToken)).StatusCode);
+        using (var preview = fixture.CreateLinkPreview())
+        {
+            Assert.Equal(HttpStatusCode.NotFound, (await preview.GetAsync($"/{TestYear}/day/3/1", CancellationToken)).StatusCode);
+        }
         Assert.Equal(HttpStatusCode.NotFound, (await anonymous.GetAsync($"/cards/{TestYear}/3/1.jpg", CancellationToken)).StatusCode);
         Assert.DoesNotContain("Testing in production", await tester.GetStringAsync("/rss", CancellationToken));
 

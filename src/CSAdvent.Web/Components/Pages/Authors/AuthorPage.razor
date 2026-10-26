@@ -51,6 +51,17 @@
             </ul>
         </section>
     }
+
+    @if (NameKey is not null)
+    {
+        @* These posts aren't on anyone's account, so their author can ask for them (#120). Entry pages used to ask, but readers
+           go straight to the post now. *@
+        <p class="mt-10 max-w-3xl text-sm text-slate-500">
+            Are you @author.Name?
+            <a href="@CSAdvent.Web.Contributors.PostClaimLinks.Find(author.Name)" class="text-advent-700 underline">Add these posts to your account</a>
+            to see them in your C# Advent history.
+        </p>
+    }
 }
 
 @code {

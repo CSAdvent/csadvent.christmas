@@ -23,22 +23,18 @@ public sealed class CalendarGridTests : BunitContext
     }
 
     [Fact]
-    public void LabelsLinkRevealedPostsToTheirPages()
+    public void LabelsArePlainTextBecauseThePostsPageGoesToThePostToo()
     {
         var grid = Render<CalendarGrid>(p => p.Add(c => c.Calendar, CalendarFixtures.Calendar(ClaimsOpened)));
 
-        // A link search engines can follow to the entry's page (#167), while the title goes through the tracked redirect.
-        var label = grid.Find("#december-10 li > p:first-child a");
-        Assert.Equal("Post 1", label.TextContent);
-        Assert.Equal("2026/day/10/1", label.GetAttribute("href"));
-
-        // Not a spot without a post, and nothing before the reveal (#5).
-        Assert.Single(grid.FindAll("#december-10 a[href^='2026/day/']"));
-        Assert.Empty(grid.FindAll("#december-11 a[href^='2026/day/']"));
+        // The entry page's link goes straight to the post now (decided 2026-10-26), like the title, so the label isn't a link.
+        Assert.Equal("Post 1", grid.Find("#december-10 li > p:first-child").TextContent);
+        Assert.Empty(grid.FindAll("a[href*='/day/']"));
+        Assert.Equal("go/2026/10/1?via=calendar", Assert.Single(grid.FindAll("#december-10 a")).GetAttribute("href"));
     }
 
     [Fact]
-    public void WithOnePostADayTheDayLinksThePostsPage()
+    public void WithOnePostADayTheDayIsPlainTextToo()
     {
         var season = Web.Data.Season.Create(2017, slotsPerDay: 1, CalendarFixtures.December10);
         var slot = season.Slots.Single(s => s.Day == 3);
@@ -47,10 +43,10 @@ public sealed class CalendarGridTests : BunitContext
         slot.PostUrl = "https://example.com/first";
         var calendar = Web.Calendar.SeasonCalendar.From(season, CalendarFixtures.Schedule(CalendarFixtures.December10));
 
-        var grid = Render<CalendarGrid>(p => p.Add(c => c.Calendar, calendar));
+        var day3 = Render<CalendarGrid>(p => p.Add(c => c.Calendar, calendar)).Find("#december-3");
 
-        Assert.Equal("2017/day/3/1", grid.Find("#december-3 h2 a").GetAttribute("href"));
-        Assert.Empty(grid.FindAll("#december-4 h2 a"));
+        Assert.Empty(day3.QuerySelectorAll("h2 a"));
+        Assert.Equal("go/2017/3/1?via=calendar", Assert.Single(day3.QuerySelectorAll("a")).GetAttribute("href"));
     }
 
     [Fact]
