@@ -115,7 +115,9 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 - **"Your post is due"** emails go at 9 AM, 7, 5, 3, 2 and 1 days before an author's day, while their spot has no
   post link. The last two warn that a backup poster may take the spot.
 - **Backup posters** are asked one at a time from 6 PM the evening before a day whose link is still missing. Each has
-  4 hours to answer. You get an email if nobody's left, and then the spot needs you at `/manage/entries`.
+  4 hours to answer. You get an email if nobody's left, and then the spot needs you at `/manage/entries`. If the spot
+  needs a backup again later, for a new author or a new reason (dropped in November, then the new author's link is
+  missing in December, say), everyone's asked again, and you hear again if nobody takes it (#153).
 - **The last call** goes out on the day, 3 hours before the post is announced (7 AM for post 1, 11 AM for post 2),
   if the link still hasn't arrived.
 - **The blurb check** starts the day before each post's reveal, and authors can press **Check my post** on My spots any
@@ -541,7 +543,10 @@ a sample to everyone.
      `union traces, exceptions | where timestamp > ago(1h) and severityLevel >= 3 | order by timestamp desc`, and read the
      message and `customDimensions.CategoryName`.
   2. Background runs try again by themselves (every few minutes, or hourly for retention), so one error that clears is
-     usually nothing. One that keeps coming back needs a fix.
+     usually nothing. One that keeps coming back needs a fix. Each step runs on its own (#147), so a failing blurb check
+     never stops the reminders or backup asks, and the blurb check and backup asks go a post at a time: "… failed for
+     slot N" is only that spot, and the rest went ahead. `/manage`'s **Background jobs** says which step is failing and
+     since when.
   3. "Gave up on … email" means the email queue tried an email 6 times over about 2 hours 20 minutes. It's on
      `/manage/emails/queue` with the email service's answer: fix the cause, then **Retry** (or **Retry all**).
 
@@ -587,7 +592,10 @@ a sample to everyone.
 - **The uptime check** says the site is down, or its certificate is about to expire:
   1. Open the site and `/health` yourself.
   2. **Unhealthy**: the site can't reach the database (look at the server in the portal, and the database alerts).
-  3. **No answer**: look at the `web` container app's revisions in the portal, and at the last deploy in GitHub Actions.
+  3. **Degraded** (the keyword monitor): a background job step on the server that answered hasn't succeeded for too long
+     (#172): four of its runs and at least 30 minutes, an hour for the reminders and backup asks. The site itself still
+     works. See "A background job stopped", under If Something Breaks.
+  4. **No answer**: look at the `web` container app's revisions in the portal, and at the last deploy in GitHub Actions.
 
 ### 📟 Setting Up the Uptime Check (by Hand, Once)
 
@@ -596,9 +604,12 @@ need to be on it.
 
 1. Add an **HTTP(S) monitor** for `https://csadvent.christmas/health` every 5 minutes. It answers 200 when everything's
    fine and 503 when the database is down, and never redirects.
-2. Turn on the **certificate expiry** reminder if the plan has one, and the domain expiry one too.
-3. Alert **both organizers** by email and by the service's phone app.
-4. **Set up:** UptimeRobot's free tier, on Calvin's account, alerting Calvin.
+2. Add a **keyword monitor** for the same address, every 5 minutes, that alerts when the response **contains `Degraded`**:
+   a background job has stopped succeeding (#172). Degraded still answers 200, on purpose (Unhealthy would take the site
+   out of service), so the HTTP monitor can't see it. The answer is only ever `Healthy`, `Degraded` or `Unhealthy`.
+3. Turn on the **certificate expiry** reminder if the plan has one, and the domain expiry one too.
+4. Alert **both organizers** by email and by the service's phone app.
+5. **Set up:** UptimeRobot's free tier, on Calvin's account, alerting Calvin. **To do:** the keyword monitor (step 2).
 
 ### 💰 A Budget Alert (Optional, by Hand)
 
@@ -623,6 +634,12 @@ alerts to both organizers at 80% and 100%. It's free, and only warns: nothing is
   nor a daily cap, so logs are kept for the Log Analytics workspace's default of 30 days, and nothing stops ingestion: the
   budget alert (above) is what warns about the cost. SQL statements aren't logged (#157); each one is still a `postgresql`
   dependency.
+- **A background job stopped** (reminders, backup asks or social posts that should have gone didn't, or `/health` says
+  Degraded): `/manage`'s **Background jobs** lists every step with when it last succeeded and failed, on any server, and
+  says **Late** or **Last run failed**. Search the logs for the step's name ("Backup asks failed", say) to see why. Each
+  step runs on its own, so the others carry on meanwhile. If a step is late on one server only (`/health` is Degraded now
+  and then, and `/manage` looks fine), restart the `web` container app's active revision in the portal. Right after a
+  deploy, `/manage` only shows the server's own runs until the migrations job has run.
 - **Emails not arriving:** check `/manage/emails/queue` (waiting, the hour's sends, failed), send a sample from
   `/manage/emails`, and look at the Communication Service in Azure.
 - **Every post says "Couldn't check":** Claude isn't answering. Each entry's page says why (a rate limit, an expired key,

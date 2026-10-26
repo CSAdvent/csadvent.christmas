@@ -1,11 +1,14 @@
 using System.Globalization;
 using System.Net.Http.Json;
+using CSAdvent.Web.Announcements;
 using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Data;
+using CSAdvent.Web.Jobs;
 using CSAdvent.Web.Retention;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Npgsql;
 
@@ -71,10 +74,12 @@ public sealed class ExpectedErrorTests(AppHostFixture fixture)
         Assert.Equal(new BackupRun(0, 0, 0, 0), await RunBackupsAsync(year, "2401-12-08T12:15:00Z"));
         Assert.Equal(new BackupRun(0, 0, 0, 0), await RunBackupsAsync(year, "2401-12-09T09:00:00Z"));
 
-        // The email goes to the organizers' inbox, which every test shares, so it's counted in the queue instead.
+        // The email goes to the organizers' inbox, which every test shares, so it's counted in the queue instead. It's
+        // recorded on the spot's round of asks (#153), which an update claims, so nothing is inserted for an index to refuse.
         await using var db = await fixture.CreateDbContextAsync();
         Assert.Equal(1, await db.EmailOutbox.CountAsync(e => e.Kind == "backup-none-left" && e.Text.Contains("December 9, 2401"), CancellationToken));
-        Assert.Equal(1, await db.SentReminders.CountAsync(r => r.Kind == ReminderKind.AdminBackupsExhausted && r.Slot!.SeasonYear == year, CancellationToken));
+        var round = await db.BackupRounds.SingleAsync(r => r.Slot.SeasonYear == year, CancellationToken);
+        Assert.NotNull(round.NobodyLeftAt);
     }
 
     [Fact]
@@ -127,17 +132,24 @@ public sealed class ExpectedErrorTests(AppHostFixture fixture)
                 .AddSingleton(Options.Create(new AdventOptions { TimeZone = "America/New_York" }))
                 .AddSingleton<AdventSchedule>()
                 .AddScoped<ContactRetention>()
+                // Deleting unconfirmed subscribers, the worker's second step, only uses the database and the clock.
+                .AddScoped(provider => new AnnouncementSubscriptions(
+                    provider.GetRequiredService<AdventDbContext>(), null!, null!, null!, null!, null!, TimeProvider.System, NullLogger<AnnouncementSubscriptions>.Instance))
+                // Saving the steps' runs (#172) finds no table either, which never fails a step.
+                .AddSingleton<IJobHeartbeatStore, JobHeartbeatStore>()
+                .AddSingleton<JobRuns>()
                 .AddLogging()
                 .BuildServiceProvider();
 
+            // Each step logs its own warning (#147).
             var missingTable = await RunRetentionOnceAsync(services);
-            Assert.Equal(LogLevel.Warning, missingTable.Level);
-            Assert.Equal(PostgresErrorCodes.UndefinedTable, PostgresErrorOf(missingTable.Exception).SqlState);
+            Assert.All(missingTable, entry => Assert.Equal(LogLevel.Warning, entry.Level));
+            Assert.Equal([PostgresErrorCodes.UndefinedTable, PostgresErrorCodes.UndefinedTable], missingTable.Select(e => PostgresErrorOf(e.Exception).SqlState));
 
             await ExecuteAsync(deployed, "CREATE TABLE post_claim_requests (id integer PRIMARY KEY)");
             var missingColumn = await RunRetentionOnceAsync(services);
-            Assert.Equal(LogLevel.Warning, missingColumn.Level);
-            Assert.Equal(PostgresErrorCodes.UndefinedColumn, PostgresErrorOf(missingColumn.Exception).SqlState);
+            Assert.All(missingColumn, entry => Assert.Equal(LogLevel.Warning, entry.Level));
+            Assert.Equal([PostgresErrorCodes.UndefinedColumn, PostgresErrorCodes.UndefinedTable], missingColumn.Select(e => PostgresErrorOf(e.Exception).SqlState));
         }
         finally
         {
@@ -189,22 +201,14 @@ public sealed class ExpectedErrorTests(AppHostFixture fixture)
         return response;
     }
 
-    /// <summary>Starts the retention worker, which runs straight away, and returns what it logged about that run.</summary>
-    private static async Task<(LogLevel Level, Exception? Exception)> RunRetentionOnceAsync(IServiceProvider services)
+    /// <summary>Runs the retention worker's steps once, as it does when it starts, and returns what it logged, a step at a time.</summary>
+    private static async Task<IReadOnlyList<(LogLevel Level, Exception? Exception)>> RunRetentionOnceAsync(IServiceProvider services)
     {
         var logger = new RecordingLogger<ContactRetentionWorker>();
-        using var worker = new ContactRetentionWorker(services.GetRequiredService<IServiceScopeFactory>(), TimeProvider.System, logger);
-        await worker.StartAsync(CancellationToken);
-        try
-        {
-            await logger.Logged.WaitAsync(TimeSpan.FromSeconds(30), CancellationToken);
-        }
-        finally
-        {
-            await worker.StopAsync(CancellationToken.None);
-        }
-
-        return Assert.Single(logger.Entries);
+        using var worker = new ContactRetentionWorker(services.GetRequiredService<IServiceScopeFactory>(), services.GetRequiredService<JobRuns>(), TimeProvider.System, logger);
+        await worker.RunOnceAsync(CancellationToken);
+        Assert.Equal(2, logger.Entries.Count);
+        return logger.Entries;
     }
 
     private static PostgresException PostgresErrorOf(Exception? exception) =>
@@ -278,13 +282,10 @@ public sealed class ExpectedErrorTests(AppHostFixture fixture)
         }
     }
 
-    /// <summary>Keeps what a worker logs, and says when it first logs anything.</summary>
+    /// <summary>Keeps what a worker logs.</summary>
     private sealed class RecordingLogger<T> : ILogger<T>
     {
-        private readonly TaskCompletionSource _logged = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly List<(LogLevel Level, Exception? Exception)> _entries = [];
-
-        public Task Logged => _logged.Task;
 
         public IReadOnlyList<(LogLevel Level, Exception? Exception)> Entries
         {
@@ -307,8 +308,6 @@ public sealed class ExpectedErrorTests(AppHostFixture fixture)
             {
                 _entries.Add((logLevel, exception));
             }
-
-            _logged.TrySetResult();
         }
     }
 
