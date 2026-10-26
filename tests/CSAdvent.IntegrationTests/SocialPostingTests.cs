@@ -9,7 +9,8 @@ namespace CSAdvent.IntegrationTests;
 
 /// <summary>
 /// Automatic posting (#61), in dry-run mode: the tests never reach a real account. Uses Facebook (SocialTests marks Bluesky
-/// and Mastodon by hand) and a December 2025 day no other test reads.
+/// and Mastodon by hand) and a December 2025 day no other test reads, and seasons 2640 and 2641 for runs at a time the real
+/// clock hasn't reached (#184).
 /// </summary>
 public sealed partial class SocialPostingTests(AppHostFixture fixture)
 {
@@ -45,6 +46,65 @@ public sealed partial class SocialPostingTests(AppHostFixture fixture)
             Assert.Equal(slots, await PostedAsync(slots));
 
             Assert.Contains("Posted automatically", await organizer.GetStringAsync(Page, CancellationToken));
+        }
+        finally
+        {
+            await SetModeAsync(organizer, SocialPlatform.Facebook, SocialPostingMode.Manual);
+        }
+    }
+
+    [Fact]
+    public async Task ARunPostsAtTheTimeItsGivenNotTheRealClock()
+    {
+        // Season 2640's December 3, post 1 has passed its blurb check. By the real clock its reveal is centuries away, but the
+        // run says it's that morning, and everything it decides follows the run's time (#184).
+        await TestSeasons.EnsureAsync(fixture, 2640, claimsOpen: false, season =>
+        {
+            var slot = season.Slots.Single(s => s is { Day: 3, Part: 1 });
+            slot.AuthorName = "Grace Hopper";
+            slot.PostTitle = "Compilers for the holidays";
+            slot.PostUrl = "https://example.com/compilers-2640";
+        });
+        int slotId;
+        await using (var db = await fixture.CreateDbContextAsync())
+        {
+            var slot = await db.Slots.SingleAsync(s => s.SeasonYear == 2640 && s.Day == 3 && s.Part == 1, CancellationToken);
+            slotId = slot.Id;
+            db.BlurbChecks.Add(new BlurbCheck { SlotId = slotId, PostUrl = slot.PostUrl!, Status = BlurbStatus.Passed, StatusSince = DateTimeOffset.UtcNow });
+            await db.SaveChangesAsync(CancellationToken);
+        }
+
+        using var organizer = await fixture.SignInAsync("organizer", AppHostFixture.OrganizerGitHubId);
+        await SetModeAsync(organizer, SocialPlatform.Facebook, SocialPostingMode.Automatic);
+        try
+        {
+            Assert.Equal(0, (await RunAtAsync(Eastern(new DateTime(2640, 12, 3, 9, 30, 0)))).Posted);
+            Assert.Equal(1, (await RunAtAsync(Eastern(new DateTime(2640, 12, 3, 10, 30, 0)))).Posted);
+            Assert.Equal([slotId], await PostedAsync([slotId]));
+        }
+        finally
+        {
+            await SetModeAsync(organizer, SocialPlatform.Facebook, SocialPostingMode.Manual);
+        }
+    }
+
+    [Fact]
+    public async Task TheSignUpsPostGoesOutAtTheTimeTheRunIsGiven()
+    {
+        // Season 2641's sign-ups open at midnight Eastern on November 1, 2641: centuries away by the real clock, but that
+        // morning by the run's (#184).
+        await TestSeasons.EnsureAsync(fixture, 2641, claimsOpen: false, season => season.ClaimsOpenAt = Eastern(new DateTime(2641, 11, 1)));
+        using var organizer = await fixture.SignInAsync("organizer", AppHostFixture.OrganizerGitHubId);
+        await SetModeAsync(organizer, SocialPlatform.Facebook, SocialPostingMode.Automatic);
+        try
+        {
+            Assert.Equal(0, await RunSignUpsAtAsync(2641, Eastern(new DateTime(2641, 11, 1, 8, 0, 0))));
+            Assert.Equal(1, await RunSignUpsAtAsync(2641, Eastern(new DateTime(2641, 11, 1, 10, 0, 0))));
+            Assert.Equal(0, await RunSignUpsAtAsync(2641, Eastern(new DateTime(2641, 11, 1, 10, 5, 0))));
+
+            await using var db = await fixture.CreateDbContextAsync();
+            var post = await db.SeasonSocialPosts.SingleAsync(p => p.SeasonYear == 2641, CancellationToken);
+            Assert.Equal((SeasonPostKind.SignUpsOpen, SocialPostStatus.Posted), (post.Kind, post.Status));
         }
         finally
         {
@@ -328,6 +388,29 @@ public sealed partial class SocialPostingTests(AppHostFixture fixture)
         var response = await client.PostAsync($"/dev/social/run?at={Uri.EscapeDataString(at)}", null, CancellationToken);
         response.EnsureSuccessStatusCode();
         return (await response.Content.ReadFromJsonAsync<RunResult>(CancellationToken))!;
+    }
+
+    private async Task<RunResult> RunAtAsync(DateTimeOffset at)
+    {
+        using var client = fixture.CreateWebClient();
+        var response = await client.PostAsync($"/dev/social/run?at={Uri.EscapeDataString(at.ToString("O", CultureInfo.InvariantCulture))}", null, CancellationToken);
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<RunResult>(CancellationToken))!;
+    }
+
+    private async Task<int> RunSignUpsAtAsync(int year, DateTimeOffset at)
+    {
+        using var client = fixture.CreateWebClient();
+        var response = await client.PostAsync($"/dev/social/signups/run?at={Uri.EscapeDataString(at.ToString("O", CultureInfo.InvariantCulture))}&year={year}", null, CancellationToken);
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<SignUpsRun>(CancellationToken))!.Posted;
+    }
+
+    /// <summary>A time in the reveal time zone, as UTC.</summary>
+    private static DateTimeOffset Eastern(DateTime local)
+    {
+        var eastern = TimeZoneInfo.FindSystemTimeZoneById("America/New_York");
+        return new DateTimeOffset(local, eastern.GetUtcOffset(local)).ToUniversalTime();
     }
 
     private async Task<int[]> PostedAsync(int[] slots)

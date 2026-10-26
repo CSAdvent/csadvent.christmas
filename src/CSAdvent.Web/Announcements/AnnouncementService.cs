@@ -151,7 +151,7 @@ public sealed class AnnouncementService(
     /// <param name="signUpsYear">The season whose sign-ups to announce, instead of the current one (for the tests).</param>
     public async Task<int> RunAsync(DateTimeOffset now, int? signUpsYear = null, CancellationToken cancellationToken = default)
     {
-        var year = signUpsYear ?? await seasons.GetCurrentYearAsync(cancellationToken);
+        var year = signUpsYear ?? await seasons.GetCurrentYearAsync(now, cancellationToken);
         if (await SignUpsOpeningAsync(now, year, cancellationToken) is { } openingYear)
         {
             await QueueSignUpsOpenAsync(openingYear, now, cancellationToken);

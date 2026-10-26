@@ -50,7 +50,11 @@ public sealed class SocialService(
     IOptions<SiteOptions> site,
     IOptions<SocialAccountsOptions> accounts)
 {
-    public async Task<AnnouncementDay> GetDayAsync(int year, int day, CancellationToken cancellationToken = default)
+    public Task<AnnouncementDay> GetDayAsync(int year, int day, CancellationToken cancellationToken = default) =>
+        GetDayAsync(year, day, schedule.Now, cancellationToken);
+
+    /// <summary>The day's announcements as they stand at <paramref name="now"/>, for automatic posting's runs (#184).</summary>
+    public async Task<AnnouncementDay> GetDayAsync(int year, int day, DateTimeOffset now, CancellationToken cancellationToken = default)
     {
         var slots = await db.Slots
             .AsNoTracking()
@@ -86,14 +90,14 @@ public sealed class SocialService(
                 s.Author,
                 [.. Enum.GetValues<SocialPlatform>().Select(platform => AnnouncementFormatter.Format(announcement, platform, accounts.Value))],
                 posts.Where(p => p.SlotId == s.Id).ToDictionary(p => p.Platform),
-                checks is null ? null : checks.GetValueOrDefault(s.Id, new BlurbState(BlurbStatus.Waiting, null, schedule.Now, null, null, false)))
+                checks is null ? null : checks.GetValueOrDefault(s.Id, new BlurbState(BlurbStatus.Waiting, null, now, null, null, false)))
             {
                 Summary = s.Summary,
             };
         });
 
         var slotsPerDay = await db.Seasons.Where(s => s.Year == year).Select(s => s.SlotsPerDay).SingleOrDefaultAsync(cancellationToken);
-        return new AnnouncementDay(year, day, slotsPerDay, schedule.IsRevealed(year, day), schedule.GetRevealTime(year, day), [.. entries]);
+        return new AnnouncementDay(year, day, slotsPerDay, schedule.IsRevealed(year, day, now), schedule.GetRevealTime(year, day), [.. entries]);
     }
 
     /// <summary>Records that an entry was posted on a platform (or updates the record). Not before the entry's reveal.</summary>

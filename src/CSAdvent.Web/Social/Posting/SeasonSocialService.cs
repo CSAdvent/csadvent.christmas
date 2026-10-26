@@ -54,7 +54,7 @@ public sealed partial class SeasonSocialService(
             return null;
         }
 
-        var (opensAt, areOpen, daysUntil) = await TimingAsync(year, cancellationToken);
+        var (opensAt, areOpen, daysUntil) = await TimingAsync(year, schedule.Now, cancellationToken);
         var platforms = (await modes.GetAsync(cancellationToken)).Where(p => p.Mode is not SocialPostingMode.Off).ToList();
         var posts = await db.SeasonSocialPosts.AsNoTracking().Where(p => p.SeasonYear == year).OrderByDescending(p => p.At).ToListAsync(cancellationToken);
 
@@ -94,14 +94,18 @@ public sealed partial class SeasonSocialService(
     /// Posts it now on a platform that can post automatically: "soon" while sign-ups are still to come, "open" once they're
     /// open, and the retrospective once it's published (those two only once). Returns null when it can't be posted.
     /// </summary>
-    public async Task<PostOutcome?> PostAsync(int year, SeasonPostKind kind, SocialPlatform platform, string postedBy, CancellationToken cancellationToken = default)
+    public Task<PostOutcome?> PostAsync(int year, SeasonPostKind kind, SocialPlatform platform, string postedBy, CancellationToken cancellationToken = default) =>
+        PostAsync(year, kind, platform, postedBy, timeProvider.GetUtcNow(), cancellationToken);
+
+    /// <summary>Posts it as of <paramref name="now"/>: a run's time, or an organizer's real one.</summary>
+    private async Task<PostOutcome?> PostAsync(int year, SeasonPostKind kind, SocialPlatform platform, string postedBy, DateTimeOffset now, CancellationToken cancellationToken)
     {
         if (year == Season.TestYear || publishers.For(platform) is not { } publisher)
         {
             return null;
         }
 
-        var (opensAt, areOpen, daysUntil) = await TimingAsync(year, cancellationToken);
+        var (opensAt, areOpen, daysUntil) = await TimingAsync(year, now, cancellationToken);
         FormattedAnnouncement announcement;
         string description;
         byte[] card;
@@ -128,7 +132,6 @@ public sealed partial class SeasonSocialService(
             return null;
         }
 
-        var now = timeProvider.GetUtcNow();
         if (await ClaimAsync(year, kind, platform, postedBy, now, cancellationToken) is not { } claimId)
         {
             return PostOutcome.Skipped;
@@ -211,7 +214,7 @@ public sealed partial class SeasonSocialService(
         // Any season and kind: an organizer's Post now can be interrupted too (#161).
         await GiveUpOnInterruptedAsync(cancellationToken);
 
-        if ((year ?? await seasons.GetCurrentYearAsync(cancellationToken)) is not { } season || season == Season.TestYear
+        if ((year ?? await seasons.GetCurrentYearAsync(now, cancellationToken)) is not { } season || season == Season.TestYear
             || !schedule.IsTimeToAnnounceSignUps(
                 await db.Seasons.Where(s => s.Year == season).Select(s => s.ClaimsOpenAt).SingleOrDefaultAsync(cancellationToken), now, reminders.Value.SendAt))
         {
@@ -222,7 +225,7 @@ public sealed partial class SeasonSocialService(
         var sent = 0;
         foreach (var platform in (await modes.GetAsync(cancellationToken)).Where(p => p.IsAutomatic && !posted.Contains(p.Platform)))
         {
-            if (await PostAsync(season, SeasonPostKind.SignUpsOpen, platform.Platform, SocialPostingService.Automation, cancellationToken) is PostOutcome.Posted)
+            if (await PostAsync(season, SeasonPostKind.SignUpsOpen, platform.Platform, SocialPostingService.Automation, now, cancellationToken) is PostOutcome.Posted)
             {
                 sent++;
             }
@@ -231,11 +234,11 @@ public sealed partial class SeasonSocialService(
         return sent;
     }
 
-    private async Task<(DateTimeOffset? OpensAt, bool AreOpen, int? DaysUntil)> TimingAsync(int year, CancellationToken cancellationToken)
+    private async Task<(DateTimeOffset? OpensAt, bool AreOpen, int? DaysUntil)> TimingAsync(int year, DateTimeOffset now, CancellationToken cancellationToken)
     {
         var opensAt = await db.Seasons.Where(s => s.Year == year).Select(s => s.ClaimsOpenAt).SingleOrDefaultAsync(cancellationToken);
-        var areOpen = schedule.AreClaimsOpen(opensAt);
-        int? daysUntil = !areOpen && opensAt is { } opens && LocalDate(opens).DayNumber - schedule.Today.DayNumber is var days and >= 1 ? days : null;
+        var areOpen = schedule.AreClaimsOpen(opensAt, now);
+        int? daysUntil = !areOpen && opensAt is { } opens && LocalDate(opens).DayNumber - schedule.DateOf(now).DayNumber is var days and >= 1 ? days : null;
         return (opensAt, areOpen, daysUntil);
     }
 

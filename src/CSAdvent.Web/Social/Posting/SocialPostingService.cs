@@ -94,12 +94,12 @@ public sealed partial class SocialPostingService(
         var run = SocialPostingRun.None;
         foreach (var year in years)
         {
-            if (schedule.GetDayOfAdvent(year, today) is not { } day || !schedule.IsRevealed(year, day))
+            if (schedule.GetDayOfAdvent(year, today) is not { } day || !schedule.IsRevealed(year, day, now))
             {
                 continue;
             }
 
-            var announcements = await social.GetDayAsync(year, day, cancellationToken);
+            var announcements = await social.GetDayAsync(year, day, now, cancellationToken);
             foreach (var entry in announcements.Entries.Where(e => time >= options.Value.TimeFor(e.Part) && e.CanAnnounce))
             {
                 foreach (var platform in automatic)
@@ -122,14 +122,14 @@ public sealed partial class SocialPostingService(
             .Where(s => s.Id == slotId && s.SeasonYear != Season.TestYear)
             .Select(s => new { s.SeasonYear, s.Day })
             .SingleOrDefaultAsync(cancellationToken);
-        if (slot is null || !schedule.IsRevealed(slot.SeasonYear, slot.Day)
+        if (slot is null || !schedule.IsRevealed(slot.SeasonYear, slot.Day, now)
             || !await db.SocialPosts.AnyAsync(p => p.SlotId == slotId && p.Platform == platform
                 && (p.Status == SocialPostStatus.Failed || p.Status == SocialPostStatus.Unconfirmed), cancellationToken))
         {
             return null;
         }
 
-        var announcements = await social.GetDayAsync(slot.SeasonYear, slot.Day, cancellationToken);
+        var announcements = await social.GetDayAsync(slot.SeasonYear, slot.Day, now, cancellationToken);
         return announcements.Entries.SingleOrDefault(e => e.SlotId == slotId) is { } entry
             ? await PostAsync(announcements, entry, platform, now, byOrganizer: true, cancellationToken)
             : null;

@@ -59,7 +59,11 @@ public sealed class PastAuthorInvitationService(
     public static string Reference(int year) => string.Create(System.Globalization.CultureInfo.InvariantCulture, $"invitations:{year}");
 
     /// <summary>The past authors who'd be invited to the season now: not yet invited, and not skipped for any reason.</summary>
-    public async Task<IReadOnlyList<PastAuthor>> GetRecipientsAsync(int year, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<PastAuthor>> GetRecipientsAsync(int year, CancellationToken cancellationToken = default) =>
+        GetRecipientsAsync(year, schedule.Now, cancellationToken);
+
+    /// <summary>The past authors who'd be invited at <paramref name="now"/>: the authors of seasons finished by then (#184).</summary>
+    public async Task<IReadOnlyList<PastAuthor>> GetRecipientsAsync(int year, DateTimeOffset now, CancellationToken cancellationToken = default)
     {
         if (year == Season.TestYear)
         {
@@ -100,7 +104,7 @@ public sealed class PastAuthorInvitationService(
             .. requesting.SelectMany(r => new[] { r.Request, r.Account }),
         ];
         return Plan(
-            spots.Where(s => schedule.IsFinished(s.Year)),
+            spots.Where(s => schedule.IsFinished(s.Year, now)),
             skipped.OfType<string>().Select(EmailOptOutLinks.Normalize).ToHashSet(StringComparer.Ordinal),
             invited.Concat(optedOut).ToHashSet(StringComparer.Ordinal));
     }
@@ -148,7 +152,7 @@ public sealed class PastAuthorInvitationService(
         }
 
         var queued = 0;
-        foreach (var author in (await GetRecipientsAsync(year, cancellationToken)).Take(budget))
+        foreach (var author in (await GetRecipientsAsync(year, now, cancellationToken)).Take(budget))
         {
             if (await InviteAsync(year, author, now, cancellationToken))
             {
