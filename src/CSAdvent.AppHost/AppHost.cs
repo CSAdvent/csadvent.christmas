@@ -244,8 +244,10 @@ if (isTesting)
     web.WithEnvironment("Announcements__SubscribeLimit", "1000");
     web.WithEnvironment("Announcements__SendInBackground", "false");
 
-    // The tests never reach out to the Other Advents calendars' real sites.
+    // The tests never reach out to the Other Advents calendars' real sites, or to authors' posts for the dead-link check
+    // (#201), which the tests run themselves on the stand-in pages, through the development endpoint.
     web.WithEnvironment("OtherAdvents__FetchLogosInBackground", "false");
+    web.WithEnvironment("LinkChecks__CheckInBackground", "false");
 }
 else
 {

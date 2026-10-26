@@ -11,7 +11,7 @@ public static class EntryEndpoints
     public static WebApplication MapEntries(this WebApplication app)
     {
         // "Read the post", the calendar's titles and the daily email: counts the click (people only, nothing personal) and
-        // sends the reader on to the author's post.
+        // sends the reader on to the author's post, or to its archived copy once the dead-link check has found it gone (#201).
         app.MapGet("/go/{year:int}/{day:int}/{part:int}", async (int year, int day, int part, string? via, HttpContext context, EntryService entries) =>
         {
             context.Response.Headers["X-Robots-Tag"] = "noindex";
@@ -75,9 +75,10 @@ public static class EntryEndpoints
     }
 
     /// <summary>
-    /// Counts a person's click and sends them on to the entry's own post. Only a revealed entry's own post URL is ever a
-    /// destination, so neither link can be used as an open redirect. Crawlers may follow it to the post (#167), but never list
-    /// the redirect itself, and nobody keeps it, because the post's link can change.
+    /// Counts a person's click and sends them on to the entry's own post, or to its archived copy once the dead-link check has
+    /// found it gone (<see cref="EntryService.DestinationAsync"/>, #201). Only a revealed entry's own post URL, or the copy kept
+    /// for it, is ever a destination, so neither link can be used as an open redirect. Crawlers may follow it to the post
+    /// (#167), but never list the redirect itself, and nobody keeps it, because the post's link (or its fate) can change.
     /// </summary>
     private static async Task<IResult> ToThePostAsync(HttpContext context, EntryService entries, int slotId, string postUrl, string? via)
     {
@@ -88,7 +89,9 @@ public static class EntryEndpoints
             await entries.RecordAsync(slotId, EntryHitKind.Click, via, context.RequestAborted);
         }
 
-        return Results.Redirect(postUrl);
+        // A post the dead-link check has found gone sends readers to its archived copy instead (#201), from every link.
+        var destination = await entries.DestinationAsync(slotId, postUrl, context.RequestAborted);
+        return Results.Redirect(destination.Url);
     }
 
     /// <summary>The year, day and part in an entry page's address.</summary>

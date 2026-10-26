@@ -1,28 +1,24 @@
 @using System.Globalization
+@using CSAdvent.Web.Retrospectives
 
-@* The home page between seasons: thanks for the last season, when the next one opens, and the way into the archive. *@
+@*
+    The home page between seasons (#200). It leads with the next season: when its sign-ups open, what C# Advent is, and how to
+    take part. Then the thanks for the last season, a way in for past authors, and the archive.
+*@
 <section class="max-w-3xl">
-    @if (LastSeason is { } last)
-    {
-        <h1 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Thanks for C# Advent @last.Year!</h1>
-        <p class="mt-2 text-lg text-slate-600">@Summary(last)</p>
-    }
-    else
-    {
-        <h1 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">C# Advent</h1>
-        <p class="mt-2 text-lg text-slate-600">Two new C# posts every day from December 1st to December 25th, written by the C# community.</p>
-    }
+    <h1 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">@Heading</h1>
+    <p class="mt-2 text-lg text-slate-600">Two new C# posts every day from December 1 to 25, written by the C# community.</p>
 
     @if (NextSeason?.DaysUntilSignUps is { } days)
     {
-        <div class="mt-8 rounded-2xl bg-advent-600 p-6 text-white shadow" role="status">
+        <div class="mt-6 rounded-2xl bg-advent-600 p-6 text-white shadow" role="status">
             <p class="text-3xl font-bold tracking-tight">@Countdown(days)</p>
-            <p class="mt-1 text-advent-100">@Opening(NextSeason)</p>
+            <p class="mt-1 text-advent-100">@Opening</p>
         </div>
     }
     else
     {
-        <p class="mt-6 rounded-xl bg-slate-50 p-4 font-medium text-slate-800 ring-1 ring-slate-200" role="status">@Opening(NextSeason)</p>
+        <p class="mt-6 rounded-xl bg-slate-50 p-4 font-medium text-slate-800 ring-1 ring-slate-200" role="status">@Opening</p>
     }
 
     @if (NextSeason is { } upcoming && upcoming.Year != CSAdvent.Web.Data.Season.TestYear)
@@ -39,35 +35,110 @@
         </p>
     }
 
-    @if (!string.IsNullOrWhiteSpace(Message))
+    <section aria-labelledby="take-part" class="mt-10">
+        <h2 id="take-part" class="text-xl font-semibold text-slate-900">How to take part</h2>
+        <ol class="mt-3 list-decimal space-y-2 pl-6 text-slate-700">
+            <li><strong class="text-slate-900">Request a day</strong> once sign-ups open: sign in with GitHub and pick an open day. You don't need a topic yet.</li>
+            <li><strong class="text-slate-900">Write about C#</strong>, in English: a blog post, a video, or anything else you can link to, opening with a line that says it's part of C# Advent.</li>
+            <li><strong class="text-slate-900">Publish it on your day</strong>, and we'll share it with everyone following along.</li>
+        </ol>
+        <p class="mt-3 text-slate-600">
+            Can't promise a day? Join the backup list once sign-ups open, and fill in if someone drops out. The
+            <a href="about" class="text-advent-700 underline">About page</a> has more, and the
+            <a href="terms" class="text-advent-700 underline">terms</a> have the rules.
+        </p>
+    </section>
+
+    @if (Subscribe is not null)
     {
-        <div class="mt-8 text-lg"><MarkdownBlock Text="@Message" /></div>
+        <div class="mt-8">@Subscribe</div>
     }
 
-    <div class="mt-8 flex flex-wrap gap-3">
-        @if (LastSeason is { } season)
-        {
-            <a href="archive/@season.Year" class="rounded-lg bg-advent-600 px-5 py-3 font-semibold text-white shadow hover:bg-advent-700">Read C# Advent @season.Year</a>
-        }
-        <a href="archive" class="rounded-lg bg-white px-5 py-3 font-semibold text-advent-700 shadow-sm ring-1 ring-slate-200 hover:ring-advent-400">Every season since 2017</a>
-    </div>
+    @if (LastSeason is { } last)
+    {
+        <section aria-labelledby="thanks" class="mt-12 border-t border-slate-200 pt-8">
+            <h2 id="thanks" class="text-2xl font-bold tracking-tight text-slate-900">Thanks for C# Advent @last.Year!</h2>
+            <p class="mt-2 text-lg text-slate-600">@Summary(last)</p>
 
-    <p class="mt-6 text-slate-600">
+            @if (!string.IsNullOrWhiteSpace(Message))
+            {
+                <div class="mt-4 text-lg"><MarkdownBlock Text="@Message" /></div>
+            }
+
+            <div class="mt-6 flex flex-wrap gap-3">
+                <a href="archive/@last.Year" class="rounded-lg bg-advent-600 px-5 py-3 font-semibold text-white shadow hover:bg-advent-700">Read C# Advent @last.Year</a>
+                @if (last.HasRetrospective)
+                {
+                    <a href="@RetrospectiveLinks.Page(last.Year)" class="rounded-lg bg-white px-5 py-3 font-semibold text-advent-700 shadow-sm ring-1 ring-slate-200 hover:ring-advent-400">Look back at @last.Year</a>
+                }
+                <a href="archive" class="rounded-lg bg-white px-5 py-3 font-semibold text-advent-700 shadow-sm ring-1 ring-slate-200 hover:ring-advent-400">Every season since 2017</a>
+            </div>
+        </section>
+    }
+    else
+    {
+        if (!string.IsNullOrWhiteSpace(Message))
+        {
+            <div class="mt-10 text-lg"><MarkdownBlock Text="@Message" /></div>
+        }
+
+        <div class="mt-6 flex flex-wrap gap-3">
+            <a href="archive" class="rounded-lg bg-white px-5 py-3 font-semibold text-advent-700 shadow-sm ring-1 ring-slate-200 hover:ring-advent-400">Every season since 2017</a>
+        </div>
+    }
+
+    <section aria-labelledby="past-authors" class="mt-10 rounded-xl bg-slate-50 p-5 ring-1 ring-slate-200">
+        <h2 id="past-authors" class="text-lg font-semibold text-slate-900">Wrote for C# Advent before?</h2>
+        @if (IsSignedIn)
+        {
+            <p class="mt-1 text-slate-600">
+                <a href="my-spots" class="font-medium text-advent-700 underline">See your C# Advent history</a> and how your posts did,
+                on My spots.
+            </p>
+        }
+        else
+        {
+            <p class="mt-1 text-slate-600">
+                <a href="@SignInToMySpots" class="font-medium text-advent-700 underline">Sign in with GitHub</a> to see your C# Advent
+                history and how your posts did.
+            </p>
+        }
+    </section>
+
+    <p class="mt-8 text-slate-600">
         Subscribe to the <a href="rss" class="text-advent-700 underline">RSS feed</a> for every new post, or try some
         <a href="others" class="text-advent-700 underline">other developer advent calendars</a>.
     </p>
 </section>
 
 @code {
+    /// <summary>Sign in, then straight to My spots, where a past author's history is.</summary>
+    internal const string SignInToMySpots = "signin?returnUrl=%2Fmy-spots";
+
     [Parameter]
     public FinishedSeason? LastSeason { get; set; }
 
     [Parameter]
     public UpcomingSeason? NextSeason { get; set; }
 
-    /// <summary>The organizers' message (the <see cref="ContentCatalog.BetweenSeasons"/> block).</summary>
+    /// <summary>The organizers' message (the <see cref="ContentCatalog.BetweenSeasons"/> block), shown with the thanks.</summary>
     [Parameter]
     public string? Message { get; set; }
+
+    /// <summary>Whether the visitor is signed in, so past authors are sent to My spots rather than to sign in.</summary>
+    [Parameter]
+    public bool IsSignedIn { get; set; }
+
+    /// <summary>The announcements sign-up form, after how to take part.</summary>
+    [Parameter]
+    public RenderFragment? Subscribe { get; set; }
+
+    /// <summary>The season coming next: the one that's been created, or the one after the last.</summary>
+    private int? NextYear => NextSeason?.Year ?? LastSeason?.Year + 1;
+
+    private string Heading => NextYear is { } year && year != CSAdvent.Web.Data.Season.TestYear
+        ? string.Create(CultureInfo.InvariantCulture, $"C# Advent {year}")
+        : "C# Advent";
 
     private static string Summary(FinishedSeason season) =>
         string.Create(CultureInfo.InvariantCulture, $"{Plural(season.PostCount, "post")} from {Plural(season.AuthorCount, "author")}, December 1 to 25, {season.Year}.");
@@ -79,13 +150,13 @@
         _ => string.Create(CultureInfo.InvariantCulture, $"{days} days until sign-ups open!"),
     };
 
-    private string Opening(UpcomingSeason? next) => next switch
+    /// <summary>When sign-ups open, under the heading that names the season.</summary>
+    private string Opening => NextSeason switch
     {
         { SignUpsOpenOn: { } opensOn } =>
-            string.Create(CultureInfo.InvariantCulture, $"Sign-ups for C# Advent {next.Year} open on {opensOn.ToString("MMMM d", CultureInfo.InvariantCulture)}."),
-        { } => $"We'll announce when sign-ups for C# Advent {next.Year} open, here and on social media.",
-        null when LastSeason is { } last => $"We'll announce C# Advent {last.Year + 1} here and on social media.",
-        null => "We'll announce the next C# Advent here and on social media.",
+            string.Create(CultureInfo.InvariantCulture, $"Sign-ups open on {opensOn.ToString("MMMM d", CultureInfo.InvariantCulture)}."),
+        _ when NextYear is not null => "We'll announce when sign-ups open, here and on social media.",
+        _ => "We'll announce the next C# Advent here and on social media.",
     };
 
     private static string Plural(int count, string noun) =>

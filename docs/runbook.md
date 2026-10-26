@@ -18,13 +18,14 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 | November 1 | Sign-ups open; the announcements list, past authors and the Automatic social platforms hear about it at 9 AM | Automatic, once the season is scheduled; LinkedIn and Reddit by hand from `/manage/social/signups` |
 | November | Approve requests, watch the backup list | Organizers |
 | Any time | Check requests to add older posts to people's accounts, and for new links to older posts (each one emails the organizers) | Organizers |
+| Any time | Look over the dead links page now and then: give moved posts their new link (readers already get a saved copy where there is one) | Automatic check; organizers fix |
 | From 7 days before each day | "Your post is due" reminders, then a last call on the day | Automatic |
 | By November 30 | Raise the site to 2 replicas and pause Dependabot, in one pull request, and merge any database migrations (December, below) | Organizers |
 | December 1–26 | Schema freeze: no pull requests with database migrations (December, below) | Organizers |
 | December 1–25 | Reveals at midnight, announcements at 10 AM and 2 PM, the daily email once both posts are in (from 9 AM, 2 PM at the latest) | Automatic, plus LinkedIn and Reddit by hand |
 | December 1–25 | Decide on posts the blurb check can't settle, and keep an author before a backup takes their spot if the check got it wrong, before their announcement | Organizers, when emailed |
 | December 27 | Back to 1 replica, and Dependabot back on (After Advent, below) | Organizers |
-| December 31 | The calendar moves to the archive, and the home page thanks everyone | Automatic |
+| December 31 | The calendar moves to the archive, and the home page turns to next year's season and thanks everyone for this one | Automatic |
 | Late December–January | Write, publish and share the season's retrospective | Organizers |
 | January | Save the season to the archive files in the repository (After Advent, below) | Organizers |
 | February 1 | The season's requests and backup list are deleted (authors' emails are kept) | Automatic |
@@ -202,8 +203,19 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 - **December 27:** undo the December changes in one pull request: `Web:MinReplicas` back to `1`, and both
   `open-pull-requests-limit` lines in `.github/dependabot.yml` back to `5`. Then merge the dependency updates that arrive.
   The schema freeze is over, so migrations can merge again.
-- **December 31:** the calendar leaves the home page for the archive, and the between-seasons page thanks everyone
-  and links to it.
+- **December 31:** the calendar leaves the home page for the archive. The between-seasons page leads with next year's
+  season ("C# Advent 2027", how to take part, the announcements box), then thanks everyone for this one, linking its
+  archive, and its retrospective once that's published. Create next year's season whenever you like: the page shows when
+  its sign-ups open as soon as they're scheduled.
+- **Dead links (from December 26, all year):** once a season is over, its posts join the dead-link check, a few posts
+  every 15 minutes, each about once a month. A post that fails three checks in a row, days apart, is dead, and readers
+  following its link get the Wayback Machine's saved copy, if it has one. Every so often (in January, say, with the archive
+  files), open `/manage/authors/dead-links` (linked from Authors):
+  - **A post that moved:** give it its **New link** (search for the title, or ask the author). Every link we've published
+    follows it at once.
+  - **No saved copy:** paste one of your own into **Saved copy** if you find one (archive.today, say), or leave it.
+  - **A false alarm** (a site that only refuses checks like ours): **It works**. **It's gone** is for a page the check
+    can't tell is gone, such as a domain that's been sold.
 - **The retrospective (late December or early January, before February 1):** at `/manage/retrospectives`, open the
   season and press **Generate the draft**. It's a whole post written from the season's numbers: posts, first-time and
   returning authors, clicks, the ten most-read posts. Rewrite it as you like, check the preview, and **Publish**. It goes
@@ -890,3 +902,24 @@ default subscription.
    else you saved from either server. They hold authors' email addresses and the data protection keys, and the keys made
    before #193 aren't encrypted, so until they're revoked (After Advent) a copy could be used to make an organizer's
    cookie (#193). Empty the recycle bin or trash too.
+
+### 📦 No Logical Backups (Decided 2026-10-26)
+
+A scheduled `pg_dump` to Blob Storage (the optional part of #182) was weighed and left out. The point-in-time backups cover
+any mistake noticed within 14 days, a deleted server can be restored for 5 days after, and each finished season's calendar
+is in the repository's archive files (After Advent), so the history no longer depends on the database. A dump would add a
+storage account, a scheduled Container Apps job with an image of its own (the `postgres` image has no way to upload),
+credentials to rotate, and a restore that would need trying every year, for two volunteers. It would also keep deleted
+email addresses for as long as the dumps are kept, longer than the privacy page's 14 days.
+
+If that changes (a season's data lost between its December and the January export, say), the plan is:
+
+1. **Cheapest first:** raise `BackupRetentionDays` in `AppHost.cs` from 14 to 35 (Azure's most). Backup storage up to
+   the server's 32 GB is free, so check the server's **Backup Storage Used** metric first, and change the privacy page's
+   "14 days" in the same pull request.
+2. **Then, if a copy outside the server is still wanted:** a daily step in the web app (no new image), claimed once a day
+   across replicas, that copies the tables with Npgsql's `COPY … TO STDOUT` into one gzip file and uploads it with the web
+   identity (`DefaultAzureCredential`, Storage Blob Data Contributor) to a storage account added with
+   `AddAzureStorage("backups")` (publish mode only), with a lifecycle rule deleting blobs after 30 days. Restoring would be
+   a new database from the migrations bundle, then `\copy` each table in. Update the privacy page (30 days) in the same
+   pull request, and validate with `aspire publish --environment PublishCheck` and `az bicep build`.

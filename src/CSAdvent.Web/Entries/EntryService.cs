@@ -64,6 +64,24 @@ public sealed record EntryView(
 
     /// <summary>The author's public page, with all of their posts (#203). None for the test season.</summary>
     public string? AuthorPage { get; init; }
+
+    /// <summary>Where readers following its link go (#201): the post, or its archived copy once it's gone. Null before the reveal.</summary>
+    public PostDestination? Destination { get; init; }
+}
+
+/// <summary>
+/// Where readers following a post's link go (#201): the author's post, or, once the dead-link check has found it gone, its
+/// archived copy if it has one. Every redirect to a post (<c>EntryEndpoints.ToThePostAsync</c>, which <c>/go</c> and entry
+/// links share) sends readers to <see cref="Url"/>.
+/// </summary>
+/// <param name="IsGone">The post is gone from its site, by the dead-link check or an organizer.</param>
+/// <param name="ArchivedUrl">Its archived copy, while it's gone.</param>
+public sealed record PostDestination(int SlotId, string PostUrl, bool IsGone = false, string? ArchivedUrl = null)
+{
+    /// <summary>The archived copy while the post is gone, if it has one; otherwise the post.</summary>
+    public string Url => IsGone && ArchivedUrl is { } copy ? copy : PostUrl;
+
+    public bool IsArchivedCopy => Url != PostUrl;
 }
 
 /// <summary>
@@ -153,6 +171,7 @@ public sealed partial class EntryService(AdventDbContext db, AdventSchedule sche
             Previous = previous,
             Next = next,
             AuthorPage = year == Season.TestYear ? null : AuthorPageLinks.For(slot.GithubLogin, slot.AuthorName),
+            Destination = await DestinationAsync(slot.Id, slot.PostUrl, cancellationToken),
         };
     }
 
@@ -188,6 +207,28 @@ public sealed partial class EntryService(AdventDbContext db, AdventSchedule sche
         // The reveal is checked once the spot is known to exist (here, not in SQL, #5), so an address that isn't a spot, such
         // as December 26, is just not found.
         return slot is null || !schedule.IsRevealed(year, day) ? null : (slot.Id, slot.PostUrl!, slot.HasTitle);
+    }
+
+    /// <summary>
+    /// Where readers following the post's link go (#201): the post, or its archived copy if the dead-link check has found it
+    /// gone (only for its current address, so a new link is never sent to an old copy). Every redirect to a post asks this.
+    /// Before the deploy's migrations add the table, every post is where it says (#225).
+    /// </summary>
+    public async Task<PostDestination> DestinationAsync(int slotId, string postUrl, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var gone = await db.LinkChecks
+                .AsNoTracking()
+                .Where(c => c.SlotId == slotId && c.PostUrl == postUrl && c.Status == LinkStatus.Dead)
+                .Select(c => new { c.ArchivedUrl })
+                .SingleOrDefaultAsync(cancellationToken);
+            return new PostDestination(slotId, postUrl, gone is not null, gone?.ArchivedUrl);
+        }
+        catch (Exception exception) when (!cancellationToken.IsCancellationRequested && MissingSchema.IsMissingTableOrColumn(exception))
+        {
+            return new PostDestination(slotId, postUrl);
+        }
     }
 
     /// <summary>

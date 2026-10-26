@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using CSAdvent.Web.Auth;
 using CSAdvent.Web.Backups;
 using CSAdvent.Web.Blurbs;
 using CSAdvent.Web.Calendar;
@@ -6,8 +7,11 @@ using CSAdvent.Web.Content;
 using CSAdvent.Web.Contributors;
 using CSAdvent.Web.Data;
 using CSAdvent.Web.Email;
+using CSAdvent.Web.Entries;
+using CSAdvent.Web.SeasonTesting;
 using CSAdvent.Web.Social.Posting;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -38,6 +42,16 @@ internal sealed class ServicesOnAClock(AdventDbContext db, DateTimeOffset now)
     /// <summary>Backups that can't check a blurb, which nothing here needs.</summary>
     public BackupService Backups() =>
         new(db, Schedule, Composer, null!, Options.Create(new BackupOptions()), Posting, Site, NullLogger<BackupService>.Instance);
+
+    /// <summary>Entry pages and the redirect to each post, for nobody signed in (no request, so the test season is hidden).</summary>
+    public EntryService Entries() => new(
+        db,
+        Schedule,
+        Clock,
+        new SeasonAccess(new CSAdvent.Web.SeasonTesting.TestSeasons(EmptyServices), new HttpContextAccessor(), new OptionsMonitor<AccountOptions>(new OptionsFactory<AccountOptions>([], []), [], new OptionsCache<AccountOptions>())),
+        NullLogger<EntryService>.Instance);
+
+    private static IServiceScopeFactory EmptyServices => new ServiceCollection().BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
 
     public MySpotsService MySpots() =>
         new(db, Schedule, Clock, Composer, Backups(), PostLinks(), Site, Posting, Options.Create(new BlurbOptions()));

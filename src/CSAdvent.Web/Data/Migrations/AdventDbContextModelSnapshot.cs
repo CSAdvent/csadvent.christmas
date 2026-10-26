@@ -16,7 +16,7 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261026205716_StoreTestersByGitHubUserId";
+    public override string LastMigrationId => "20261026213926_AddLinkChecks";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -846,6 +846,102 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                     .HasName("pk_job_heartbeats");
 
                 b.ToTable("job_heartbeats");
+            });
+
+        modelBuilder.Entity("CSAdvent.Web.Data.LinkCheck", b =>
+            {
+                var id = b.Property<int>("Id")
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("integer")
+                    .HasColumnName("id");
+
+                NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(id);
+
+                b.Property<DateTimeOffset?>("ArchiveCheckedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("archive_checked_at");
+
+                b.Property<string>("ArchivedBy")
+                    .HasMaxLength(39)
+                    .HasColumnType("character varying(39)")
+                    .HasColumnName("archived_by");
+
+                b.Property<string>("ArchivedUrl")
+                    .HasMaxLength(1000)
+                    .HasColumnType("character varying(1000)")
+                    .HasColumnName("archived_url");
+
+                b.Property<DateTimeOffset?>("CheckedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("checked_at");
+
+                b.Property<DateTimeOffset?>("DeadSince")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("dead_since");
+
+                b.Property<DateTimeOffset?>("DecidedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("decided_at");
+
+                b.Property<string>("DecidedBy")
+                    .HasMaxLength(39)
+                    .HasColumnType("character varying(39)")
+                    .HasColumnName("decided_by");
+
+                b.Property<string>("Detail")
+                    .HasMaxLength(500)
+                    .HasColumnType("character varying(500)")
+                    .HasColumnName("detail");
+
+                b.Property<DateTimeOffset?>("FailingSince")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("failing_since");
+
+                b.Property<int>("Failures")
+                    .HasColumnType("integer")
+                    .HasColumnName("failures");
+
+                b.Property<DateTimeOffset?>("LeasedUntil")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("leased_until");
+
+                b.Property<DateTimeOffset>("NextCheckAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("next_check_at");
+
+                b.Property<string>("PostUrl")
+                    .IsRequired()
+                    .HasMaxLength(500)
+                    .HasColumnType("character varying(500)")
+                    .HasColumnName("post_url");
+
+                b.Property<int>("SlotId")
+                    .HasColumnType("integer")
+                    .HasColumnName("slot_id");
+
+                b.Property<string>("Status")
+                    .IsRequired()
+                    .HasMaxLength(20)
+                    .HasColumnType("character varying(20)")
+                    .HasColumnName("status");
+
+                b.HasKey("Id")
+                    .HasName("pk_link_checks");
+
+                b.HasIndex("NextCheckAt")
+                    .HasDatabaseName("ix_link_checks_next_check_at");
+
+                b.HasIndex("SlotId")
+                    .IsUnique()
+                    .HasDatabaseName("ix_link_checks_slot_id");
+
+                b.HasIndex("Status")
+                    .HasDatabaseName("ix_link_checks_status");
+
+                b.ToTable("link_checks", t =>
+                    {
+                        t.HasCheckConstraint("ck_link_checks_archived_url", "archived_url ~* '^https?://'");
+                    });
             });
 
         modelBuilder.Entity("CSAdvent.Web.Data.OtherAdvent", b =>
@@ -2016,6 +2112,18 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                     .OnDelete(DeleteBehavior.Cascade)
                     .IsRequired()
                     .HasConstraintName("fk_entry_hits_slots_slot_id");
+
+                b.Navigation("Slot");
+            });
+
+        modelBuilder.Entity("CSAdvent.Web.Data.LinkCheck", b =>
+            {
+                b.HasOne("CSAdvent.Web.Data.Slot", "Slot")
+                    .WithMany()
+                    .HasForeignKey("SlotId")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired()
+                    .HasConstraintName("fk_link_checks_slots_slot_id");
 
                 b.Navigation("Slot");
             });

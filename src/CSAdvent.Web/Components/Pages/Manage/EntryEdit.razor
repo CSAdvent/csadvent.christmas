@@ -1,7 +1,9 @@
 @page "/manage/entries/{SlotId:int}"
 @using CSAdvent.Web.Blurbs
+@using CSAdvent.Web.DeadLinks
 @inject EntryAdminService Entries
 @inject BlurbQueries Blurbs
+@inject LinkCheckService LinkChecks
 @inject CSAdvent.Web.Backups.BackupListService Backups
 @inject AdventSchedule Schedule
 @inject NavigationManager Navigation
@@ -100,12 +102,41 @@
     <div id="blurb" class="scroll-mt-4">
         <BlurbPanel Details="_blurb" ReturnUrl="@($"manage/entries/{SlotId}#blurb")" Action="@BlurbDone" />
     </div>
+
+    @* The dead-link check (#201), for a revealed post in a real season. *@
+    @if (entry.IsRevealed && entry.Values.PostUrl is not null && entry.Values.AuthorName is not null && entry.Year != Season.TestYear)
+    {
+        <section id="link-check" class="mt-12 max-w-3xl scroll-mt-4 rounded-xl p-5 ring-1 ring-slate-200">
+            <h2 class="font-semibold text-slate-900">Dead-link check</h2>
+            @if (_linkCheck is { } linkCheck)
+            {
+                <div class="mt-2">
+                    <LinkCheckCard Row="linkCheck" ReturnUrl="@($"manage/entries/{SlotId}#link-check")" Done="@LinkCheckDone.For(LinksDone, SlotId)" />
+                </div>
+            }
+            else
+            {
+                <p class="mt-2 text-sm text-slate-600">
+                    Not checked yet. Posts are checked about once a month once their season is over, and again from scratch when
+                    their link changes. The <a href="@LinkCheckService.DeadLinksPage" class="text-advent-700 underline">dead links page</a>
+                    lists every dead post.
+                </p>
+                <form method="post" action="manage/links/check" class="mt-3 text-sm">
+                    <AntiforgeryToken />
+                    <input type="hidden" name="SlotId" value="@SlotId" />
+                    <input type="hidden" name="ReturnUrl" value="@($"manage/entries/{SlotId}#link-check")" />
+                    <button type="submit" class="rounded-lg px-3 py-1.5 font-medium text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50">Check now</button>
+                </form>
+            }
+        </section>
+    }
 }
 
 @code {
     private EntryDetails? _entry;
     private BlurbDetails? _blurb;
     private List<CSAdvent.Web.Backups.SpotBackupOffer> _offers = [];
+    private LinkCheckRow? _linkCheck;
     private bool _claimed;
     private bool _releasePosted;
     private string? _error;
@@ -119,6 +150,10 @@
     /// <summary>What a blurb button just did.</summary>
     [SupplyParameterFromQuery(Name = "blurb")]
     public string? BlurbDone { get; set; }
+
+    /// <summary>What a dead-link button just did (#201): <c>checked-42</c>.</summary>
+    [SupplyParameterFromQuery(Name = "links")]
+    public string? LinksDone { get; set; }
 
     [SupplyParameterFromForm(FormName = "entry")]
     private EntryForm? Form { get; set; }
@@ -142,6 +177,7 @@
         Form ??= _entry.Values;
         _blurb = await Blurbs.GetAsync(SlotId);
         _offers = await Backups.ListOffersAsync(SlotId);
+        _linkCheck = await LinkChecks.GetAsync(SlotId);
     }
 
     private async Task SaveAsync() => await HandleAsync(await Entries.SaveAsync(SlotId, Form!));

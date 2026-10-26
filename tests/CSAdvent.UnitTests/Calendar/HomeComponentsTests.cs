@@ -1,6 +1,7 @@
 using Bunit;
 using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Components.Home;
+using Microsoft.AspNetCore.Components;
 
 namespace CSAdvent.UnitTests.Calendar;
 
@@ -46,20 +47,71 @@ public sealed class HomeComponentsTests : BunitContext
     }
 
     [Fact]
-    public void BetweenSeasonsThanksEveryoneForTheLastSeason()
+    public void BetweenSeasonsItLeadsWithTheNextSeason()
     {
         var page = Render<OffSeason>(p => p
             .Add(c => c.LastSeason, new FinishedSeason(2025, PostCount: 50, AuthorCount: 47))
             .Add(c => c.NextSeason, new UpcomingSeason(2026, new DateOnly(2026, 11, 1), DaysUntilSignUps: null))
             .Add(c => c.Message, "See you **next December**!"));
 
-        Assert.Equal("Thanks for C# Advent 2025!", page.Find("h1").TextContent);
-        Assert.Contains("50 posts from 47 authors", page.Markup);
-        Assert.Equal("Sign-ups for C# Advent 2026 open on November 1.", page.Find("[role=status]").TextContent);
-        Assert.Contains("<strong>next December</strong>", page.Markup);
+        // The next season first (#200): when its sign-ups open, what C# Advent is, and how to take part.
+        Assert.Equal("C# Advent 2026", page.Find("h1").TextContent);
+        Assert.Equal("Sign-ups open on November 1.", page.Find("[role=status]").TextContent);
+        Assert.Contains("Two new C# posts every day from December 1 to 25", page.Find("h1 + p").TextContent);
+        Assert.Equal(["How to take part", "Thanks for C# Advent 2025!", "Wrote for C# Advent before?"], page.FindAll("h2").Select(h => h.TextContent));
+        Assert.Equal(3, page.FindAll("#take-part ~ ol li").Count);
+
+        // Then the thanks for the last season, with the organizers' message.
+        var thanks = page.Find("section[aria-labelledby=thanks]");
+        Assert.Contains("50 posts from 47 authors", thanks.TextContent);
+        Assert.Contains("<strong>next December</strong>", thanks.InnerHtml);
+
         Assert.Equal(
-            ["calendar/2026/sign-ups.ics", "calendar/2026/starts.ics", "archive/2025", "archive", "rss", "others"],
+            ["calendar/2026/sign-ups.ics", "calendar/2026/starts.ics", "about", "terms", "archive/2025", "archive", OffSeason.SignInToMySpots, "rss", "others"],
             page.FindAll("a").Select(a => a.GetAttribute("href")));
+    }
+
+    [Fact]
+    public void TheThanksLinkToAPublishedRetrospective()
+    {
+        var page = Render<OffSeason>(p => p
+            .Add(c => c.LastSeason, new FinishedSeason(2025, 50, 47, HasRetrospective: true))
+            .Add(c => c.NextSeason, new UpcomingSeason(2026, new DateOnly(2026, 11, 1), DaysUntilSignUps: null)));
+
+        var link = page.Find("section[aria-labelledby=thanks] a[href='archive/2025/retrospective']");
+        Assert.Equal("Look back at 2025", link.TextContent);
+    }
+
+    [Fact]
+    public void WithoutARetrospectiveTheThanksOnlyLinkTheArchive()
+    {
+        var page = Render<OffSeason>(p => p.Add(c => c.LastSeason, new FinishedSeason(2025, 50, 47)));
+
+        Assert.Empty(page.FindAll("a[href$='/retrospective']"));
+    }
+
+    [Fact]
+    public void PastAuthorsAreAskedToSignInForTheirHistory()
+    {
+        var signedOut = Render<OffSeason>(p => p.Add(c => c.LastSeason, new FinishedSeason(2025, 50, 47)));
+        var invitation = signedOut.Find("section[aria-labelledby=past-authors]");
+        Assert.Contains("Sign in with GitHub to see your C# Advent history and how your posts did.", System.Text.RegularExpressions.Regex.Replace(invitation.TextContent, @"\s+", " "));
+        Assert.Equal("signin?returnUrl=%2Fmy-spots", invitation.QuerySelector("a")!.GetAttribute("href"));
+
+        // Once they're signed in, it's straight to My spots.
+        var signedIn = Render<OffSeason>(p => p.Add(c => c.LastSeason, new FinishedSeason(2025, 50, 47)).Add(c => c.IsSignedIn, true));
+        Assert.Equal("my-spots", signedIn.Find("section[aria-labelledby=past-authors] a").GetAttribute("href"));
+    }
+
+    [Fact]
+    public void TheSubscribeBoxComesAfterHowToTakePart()
+    {
+        var page = Render<OffSeason>(p => p
+            .Add(c => c.LastSeason, new FinishedSeason(2025, 50, 47))
+            .Add(c => c.Subscribe, (RenderFragment)(builder => builder.AddMarkupContent(0, "<div id=\"announcements\">Subscribe</div>"))));
+
+        var order = page.FindAll("#take-part, #announcements, #thanks").Select(e => e.Id);
+        Assert.Equal(["take-part", "announcements", "thanks"], order);
     }
 
     [Fact]
@@ -94,15 +146,28 @@ public sealed class HomeComponentsTests : BunitContext
 
         var status = page.Find("[role=status]");
         Assert.Equal(expected, status.QuerySelector("p")!.TextContent);
-        Assert.Contains("Sign-ups for C# Advent 2026 open on November 1.", status.TextContent);
+        Assert.Contains("Sign-ups open on November 1.", status.TextContent);
+        Assert.Equal("C# Advent 2026", page.Find("h1").TextContent);
     }
 
     [Fact]
-    public void BeforeTheNextSeasonExistsItPromisesAnAnnouncement()
+    public void BeforeTheNextSeasonIsScheduledItPromisesAnAnnouncement()
+    {
+        var page = Render<OffSeason>(p => p
+            .Add(c => c.LastSeason, new FinishedSeason(2025, 50, 47))
+            .Add(c => c.NextSeason, new UpcomingSeason(2026, SignUpsOpenOn: null, DaysUntilSignUps: null)));
+
+        Assert.Equal("C# Advent 2026", page.Find("h1").TextContent);
+        Assert.Equal("We'll announce when sign-ups open, here and on social media.", page.Find("[role=status]").TextContent);
+    }
+
+    [Fact]
+    public void BeforeTheNextSeasonExistsItIsTheOneAfterTheLast()
     {
         var page = Render<OffSeason>(p => p.Add(c => c.LastSeason, new FinishedSeason(2026, 50, 47)));
 
-        Assert.Equal("We'll announce C# Advent 2027 here and on social media.", page.Find("[role=status]").TextContent);
+        Assert.Equal("C# Advent 2027", page.Find("h1").TextContent);
+        Assert.Equal("We'll announce when sign-ups open, here and on social media.", page.Find("[role=status]").TextContent);
     }
 
     [Fact]
@@ -111,7 +176,9 @@ public sealed class HomeComponentsTests : BunitContext
         var page = Render<OffSeason>();
 
         Assert.Equal("C# Advent", page.Find("h1").TextContent);
-        Assert.Equal(["archive", "rss", "others"], page.FindAll("a").Select(a => a.GetAttribute("href")));
+        Assert.Equal("We'll announce the next C# Advent here and on social media.", page.Find("[role=status]").TextContent);
+        Assert.Empty(page.FindAll("#thanks"));
+        Assert.Equal(["about", "terms", "archive", OffSeason.SignInToMySpots, "rss", "others"], page.FindAll("a").Select(a => a.GetAttribute("href")));
     }
 
     [Fact]

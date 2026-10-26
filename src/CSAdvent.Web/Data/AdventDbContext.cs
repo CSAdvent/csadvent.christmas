@@ -65,6 +65,9 @@ public sealed class AdventDbContext(DbContextOptions<AdventDbContext> options) :
 
     public DbSet<BlurbSelfCheck> BlurbSelfChecks => Set<BlurbSelfCheck>();
 
+    /// <summary>Whether each published post is still at its address, and its archived copy if it isn't (#201).</summary>
+    public DbSet<LinkCheck> LinkChecks => Set<LinkCheck>();
+
     public DbSet<PastAuthorInvitation> PastAuthorInvitations => Set<PastAuthorInvitation>();
 
     /// <summary>Every email the site sends, queued for <see cref="Email.Queue.EmailOutboxWorker"/> (#152).</summary>
