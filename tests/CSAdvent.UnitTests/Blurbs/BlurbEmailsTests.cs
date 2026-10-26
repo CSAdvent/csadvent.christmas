@@ -51,6 +51,27 @@ public sealed class BlurbEmailsTests
     }
 
     [Fact]
+    public void TheOrganizersCanKeepTheAuthorBeforeABackupTakesTheSpot()
+    {
+        var email = BlurbEmails.BackupStandingBy(
+            Post,
+            new BlurbBackup("Bo Backup", "Collection expressions everywhere", "https://example.com/collections"),
+            "There's no link to csadvent.christmas near the top of the post.",
+            "10:00 AM Eastern on December 6",
+            Site);
+        var text = Text(email);
+
+        Assert.Equal("C# Advent, December 6: a backup is standing by for a post without the blurb", email.Subject);
+        Assert.False(email.Transactional);
+        Assert.Contains("There's no link to csadvent.christmas near the top of the post.", text);
+        Assert.Contains("Bo Backup is standing by with Collection expressions everywhere", text);
+        Assert.Contains("They take the spot at 10:00 AM Eastern on December 6, unless the author adds the blurb first.", text);
+        Assert.Contains("Either one keeps the author", text);
+        var button = Assert.Single(email.Body.OfType<ButtonBlock>());
+        Assert.Equal(("Keep the author", "https://csadvent.christmas/manage/entries/42#blurb"), (button.Label, button.Url));
+    }
+
+    [Fact]
     public void BackupsHearTheyNeedTheBlurbToo()
     {
         var spot = new BackupSpot(2026, 12, 2, 2);

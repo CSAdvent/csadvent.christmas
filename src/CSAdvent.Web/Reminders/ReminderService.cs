@@ -43,7 +43,11 @@ public sealed partial class ReminderService(
     IOptions<SiteOptions> site,
     ILogger<ReminderService> logger)
 {
-    public async Task<ReminderRun> RunAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
+    public Task<ReminderRun> RunAsync(DateTimeOffset now, CancellationToken cancellationToken = default) =>
+        RunAsync(now, onlyYear: null, cancellationToken);
+
+    /// <param name="onlyYear">Only this season ("send due now" on <c>/manage/testing</c> runs only the test season, #162).</param>
+    public async Task<ReminderRun> RunAsync(DateTimeOffset now, int? onlyYear, CancellationToken cancellationToken = default)
     {
         var local = schedule.ToLocalTime(now).DateTime;
         var time = TimeOnly.FromDateTime(local);
@@ -52,7 +56,7 @@ public sealed partial class ReminderService(
         var today = DateOnly.FromDateTime(local);
         var earliestReminder = options.Value.DaysBefore.Max();
         var years = (await db.Seasons.Select(s => s.Year).ToListAsync(cancellationToken))
-            .Where(year => today >= FirstDay(year).AddDays(-earliestReminder) && today <= LastDay(year))
+            .Where(year => (onlyYear is null || year == onlyYear) && today >= FirstDay(year).AddDays(-earliestReminder) && today <= LastDay(year))
             .ToList();
 
         var run = ReminderRun.None;

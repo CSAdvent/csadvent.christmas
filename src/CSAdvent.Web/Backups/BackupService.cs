@@ -64,8 +64,9 @@ public sealed record BackupOfferView(
 /// <item>it still has no post link at <see cref="BackupOptions.AskFrom"/> on the evening before its day: a backup who accepts
 /// takes it at the reveal (midnight), unless the original author's link arrives first</item>
 /// <item>on its day, its post doesn't open with the C# Advent blurb (#128): a backup whose own post has it takes the spot at
-/// the deadline (its announcement), unless the original author adds the blurb first, or straight away if an organizer asked
-/// for a backup</item>
+/// the deadline (its announcement), unless the original author adds the blurb first or the organizers keep them, and never
+/// sooner than <see cref="BackupOptions.OrganizersNotice"/> after the organizers heard the backup is standing by (#148); or
+/// straight away if an organizer asked for a backup</item>
 /// </list>
 /// Each backup has <see cref="BackupOptions.AnswerWithin"/> before the next is asked too; anyone asked can accept while the
 /// spot still needs a post. When everybody's been asked, the organizers hear about it once.
@@ -119,12 +120,19 @@ public sealed partial class BackupService(
 
     /// <summary>
     /// Whether a backup who accepted takes the spot now: a dropped spot straight away, a missing link at the reveal, and a missing
-    /// blurb at its deadline, or straight away once an organizer asked for a backup.
+    /// blurb straight away once an organizer asked for a backup, or else at its deadline once the organizers have had their say
+    /// (#148): one decided it, they were told at the deadline that nobody had taken it, or they heard a backup is standing by at
+    /// least <see cref="BackupOptions.OrganizersNotice"/> ago.
     /// </summary>
-    private bool IsDue(BackupReason reason, Slot slot, BlurbCheck? blurb, DateTimeOffset now) => reason switch
+    /// <param name="organizersTold">When the organizers heard that a backup is standing by, if they have.</param>
+    private bool IsDue(BackupReason reason, Slot slot, BlurbCheck? blurb, DateTimeOffset? organizersTold, DateTimeOffset now) => reason switch
     {
         BackupReason.DroppedOut => true,
-        BackupReason.BlurbMissing => now >= GetBlurbDeadline(slot) || blurb?.BackupRequestedAt is not null,
+        BackupReason.BlurbMissing => blurb?.BackupRequestedAt is not null
+            || (now >= GetBlurbDeadline(slot)
+                && (blurb?.DecidedBy is not null
+                    || blurb?.DeadlineEmailedAt is not null
+                    || (organizersTold is { } told && now >= told + options.Value.OrganizersNotice))),
         _ => now >= schedule.GetRevealTime(slot.SeasonYear, slot.Day),
     };
 
@@ -133,6 +141,15 @@ public sealed partial class BackupService(
         slot.PostUrl is null
             ? Task.FromResult<BlurbCheck?>(null)
             : db.BlurbChecks.AsNoTracking().SingleOrDefaultAsync(c => c.SlotId == slot.Id && c.PostUrl == slot.PostUrl, cancellationToken);
+
+    /// <summary>For a missing blurb: when the organizers heard that a backup is standing by (<see cref="BlurbCheckService"/>).</summary>
+    private async Task<DateTimeOffset?> OrganizersToldAsync(Slot slot, BackupReason reason, CancellationToken cancellationToken) =>
+        reason is not BackupReason.BlurbMissing
+            ? null
+            : await db.SentReminders
+                .Where(r => r.SlotId == slot.Id && r.Kind == ReminderKind.AdminBlurbBackupStandingBy)
+                .Select(r => (DateTimeOffset?)r.SentAt)
+                .FirstOrDefaultAsync(cancellationToken);
 
     /// <summary>
     /// Moves every spot along: closes offers that aren't needed, uses acceptances that are due, and asks the next backups.
@@ -264,7 +281,7 @@ public sealed partial class BackupService(
         // Filling in for a missing blurb on the day, their post has to be out already and have the blurb itself. Anything the
         // models can't settle is accepted, and the post is checked again once it's on the calendar.
         if (reason is BackupReason.BlurbMissing && Uri.TryCreate(form.PostUrl?.Trim(), UriKind.Absolute, out var postUrl)
-            && (await blurbs.CheckAsync(offer.Slot.SeasonYear, postUrl, unchanged: null, cancellationToken)).Outcome.Status is BlurbStatus.Missing)
+            && (await blurbs.CheckAsync(offer.Slot.SeasonYear, postUrl, form.PostTitle, unchanged: null, cancellationToken)).Outcome.Status is BlurbStatus.Missing)
         {
             return BackupOfferOutcome.MissingBlurb;
         }
@@ -285,7 +302,7 @@ public sealed partial class BackupService(
             return BackupOfferOutcome.TakenByOthers;
         }
 
-        if (IsDue(reason, offer.Slot, blurb, now))
+        if (IsDue(reason, offer.Slot, blurb, await OrganizersToldAsync(offer.Slot, reason, cancellationToken), now))
         {
             var others = await db.BackupOffers
                 .Where(o => o.SlotId == offer.SlotId && o.Id != offer.Id && o.Status == BackupOfferStatus.Asked)
@@ -335,7 +352,9 @@ public sealed partial class BackupService(
 
         if (open.FirstOrDefault(o => o.Status is BackupOfferStatus.Accepted) is { } accepted)
         {
-            return IsDue(stillNeeded, slot, blurb, now) ? await UseAsync(slot, accepted, open.Where(o => o != accepted), stillNeeded, cancellationToken) : BackupRun.None;
+            return IsDue(stillNeeded, slot, blurb, await OrganizersToldAsync(slot, stillNeeded, cancellationToken), now)
+                ? await UseAsync(slot, accepted, open.Where(o => o != accepted), stillNeeded, cancellationToken)
+                : BackupRun.None;
         }
 
         // A missing link isn't chased until the evening before, or a missing blurb until the reveal.

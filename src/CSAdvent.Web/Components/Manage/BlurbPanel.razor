@@ -4,7 +4,7 @@
 
 @if (Details is { Applies: true } details)
 {
-    <section class="mt-12 max-w-3xl rounded-xl p-5 ring-1 ring-slate-200">
+    <section id="blurb" class="mt-12 max-w-3xl rounded-xl p-5 ring-1 ring-slate-200">
         <h2 class="font-semibold text-slate-900">C# Advent blurb</h2>
 
         @if (!details.Enabled)
@@ -23,7 +23,7 @@
             }
 
             <p class="mt-3 flex flex-wrap items-center gap-2 text-sm">
-                <span class="rounded-full px-2 py-0.5 text-xs font-semibold @Labels.Badge(details.State?.Status ?? BlurbStatus.Waiting)">@Labels.For(details.State?.Status ?? BlurbStatus.Waiting)</span>
+                <span class="rounded-full px-2 py-0.5 text-xs font-semibold @Labels.Badge(details.State?.Status ?? BlurbStatus.Waiting)">@(details.State?.Label ?? Labels.NotChecked)</span>
                 @if (details.State is { } state)
                 {
                     <span class="text-slate-700">@state.Detail</span>
@@ -41,6 +41,16 @@
                     <span class="font-medium text-slate-800">You asked for a backup: the next one who accepts takes the spot straight away.</span>
                 }
             </p>
+
+            @if (details.StandingBy is { } backup && details.State?.BackupRequested != true)
+            {
+                @* #148: the organizers can keep the author before a backup takes the spot. *@
+                <p class="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900 ring-1 ring-amber-200">
+                    <strong>@backup.Name is standing by</strong> with <a href="@backup.PostUrl" class="underline">@(backup.PostTitle ?? backup.PostUrl)</a>,
+                    to take the spot from the deadline, unless the author adds the blurb first. To keep the author: <strong>Mark as
+                    passed</strong> if the blurb is there, or <strong>Announce anyway</strong>.
+                </p>
+            }
 
             @if (details.State is { Quote: { Length: > 0 } } or { Reason: not null })
             {

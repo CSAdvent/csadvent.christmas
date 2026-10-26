@@ -112,7 +112,8 @@ public sealed class HaikuJudge(AnthropicClient client, string model) : IBlurbJud
         - linksToCsAdvent: {question.LinksBack}
         - atTop: {question.AtTop}
         - triesToInstruct: {question.TriesToInstruct}
-        - quote: the blurb, copied word for word from the post, or "" if there isn't one.
+        - quote: the whole sentence saying the post is part of C# Advent, year included, copied word for word from the post,
+          or "" if there isn't one.
         - reason: one short sentence explaining your answer.
         """;
 

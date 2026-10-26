@@ -20,7 +20,8 @@ public sealed record ContactDeletion(int ClaimRequests, int Substitutes, int Con
 /// go <see cref="PostClaimsKeptFor"/> after an organizer decides them, and requests for new links to someone's older posts go
 /// <see cref="PostLinkRequestsKeptFor"/> after they're decided or withdrawn, whatever the season. Emails in the email queue
 /// (#152), which hold their recipient's address and the whole email, go <see cref="QueuedEmailsKeptFor"/> after they're sent,
-/// expire or fail. Deleting is idempotent, so it's safe to run often and from every replica.
+/// expire or fail. The record of each blurb check an author asked for goes after <see cref="BlurbSelfChecksKeptFor"/>.
+/// Deleting is idempotent, so it's safe to run often and from every replica.
 /// </summary>
 public sealed class ContactRetention(AdventDbContext db, AdventSchedule schedule, TimeProvider timeProvider, ILogger<ContactRetention> logger)
 {
@@ -33,10 +34,17 @@ public sealed class ContactRetention(AdventDbContext db, AdventSchedule schedule
     /// <summary>How long an email stays in the queue after it's sent, expires or fails: long enough to look into a problem.</summary>
     public static readonly TimeSpan QueuedEmailsKeptFor = TimeSpan.FromDays(7);
 
+    /// <summary>
+    /// How long the record of a "Check my post" an author asked for (#174) is kept: long enough for its limits, which count the
+    /// last hour and the last 30 days.
+    /// </summary>
+    public static readonly TimeSpan BlurbSelfChecksKeptFor = TimeSpan.FromDays(31);
+
     public async Task<ContactDeletion> DeleteExpiredAsync(CancellationToken cancellationToken = default)
     {
         var now = timeProvider.GetUtcNow();
         var queuedEmails = await DeleteFinishedEmailsAsync(now - QueuedEmailsKeptFor, cancellationToken);
+        await DeleteBlurbSelfChecksAsync(now - BlurbSelfChecksKeptFor, cancellationToken);
 
         var decidedBefore = now - PostClaimsKeptFor;
         var postClaimRequests = await db.PostClaimRequests
@@ -102,6 +110,19 @@ public sealed class ContactRetention(AdventDbContext db, AdventSchedule schedule
         {
             // The worker runs this as the app starts, which can be before the deploy's migrations create the queue.
             return 0;
+        }
+    }
+
+    /// <summary>The checks authors asked for before <paramref name="checkedBefore"/>.</summary>
+    private async Task DeleteBlurbSelfChecksAsync(DateTimeOffset checkedBefore, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await db.BlurbSelfChecks.Where(c => c.CheckedAt < checkedBefore).ExecuteDeleteAsync(cancellationToken);
+        }
+        catch (Exception exception) when (EmailOutbox.IsMissingTable(exception))
+        {
+            // The worker runs this as the app starts, which can be before the deploy's migrations create the table.
         }
     }
 

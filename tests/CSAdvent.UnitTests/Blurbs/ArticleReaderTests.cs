@@ -88,4 +88,22 @@ public sealed class ArticleReaderTests
         Assert.Equal(first.Hash, same.Hash);
         Assert.NotEqual(first.Hash, changed.Hash);
     }
+
+    [Fact]
+    public void KeepsWhatThePageCallsItselfWhereverItIs()
+    {
+        var opening = ArticleReader.Read(
+            """
+            <html><head><title>Span&lt;T&gt; · My blog</title><meta property="og:title" content="Span&lt;T&gt; all the way down"></head>
+            <body>
+              <header><h1>Span&lt;T&gt;   all the way down</h1></header>
+              <article><p>Let's slice some memory.</p></article>
+            </body></html>
+            """,
+            Page,
+            2000);
+
+        Assert.Equal("Let's slice some memory.", opening.Text);
+        Assert.Equal(["Span<T> · My blog", "Span<T> all the way down"], opening.Titles);
+    }
 }

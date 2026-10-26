@@ -32,6 +32,21 @@ public sealed class BlurbOptions
     /// <summary>How long before its reveal a post is first looked at, in case its author publishes early.</summary>
     public TimeSpan CheckFrom { get; set; } = TimeSpan.FromDays(1);
 
+    /// <summary>
+    /// How long before its deadline a post whose page doesn't load, or doesn't seem to be the post, stops counting as not
+    /// published yet, and goes to the organizers (#159). Many authors publish on the morning of their day.
+    /// </summary>
+    public TimeSpan PublishedBy { get; set; } = TimeSpan.FromHours(3);
+
+    /// <summary>
+    /// "Check my post" (#174): how many of the checks authors ask for can go to Claude in 30 days, across everyone, so they can't
+    /// use up the Anthropic workspace's spend limit ($25 a month) that December's own checks need. A check costs about $0.0005.
+    /// Checks that don't need Claude (the page doesn't load, has no link back, or hasn't changed since Claude last answered)
+    /// don't count.
+    /// </summary>
+    [Range(0, 100_000)]
+    public int SelfChecksPerMonth { get; set; } = 2000;
+
     public bool HasApiKey => !string.IsNullOrWhiteSpace(ApiKey);
 
     /// <summary>Whether posts are checked at all: with an API key, or with the stand-in.</summary>

@@ -19,6 +19,12 @@ public sealed record PostOpening(string Text, IReadOnlyList<OpeningLink> Links)
     public string Hash { get; } = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(Text)));
 
     public bool IsEmpty => string.IsNullOrWhiteSpace(Text);
+
+    /// <summary>
+    /// What the page calls itself: its <c>title</c>, <c>og:title</c> and top headings, wherever they are on the page, so a post
+    /// whose heading sits outside its article can still be recognized (#148).
+    /// </summary>
+    public IReadOnlyList<string> Titles { get; init; } = [];
 }
 
 /// <summary>
@@ -56,10 +62,11 @@ public static partial class ArticleReader
     public static PostOpening Read(string html, Uri page, int maxCharacters)
     {
         var document = new HtmlParser().ParseDocument(html);
+        var titles = TitlesOf(document);
         var root = Containers.Select(document.QuerySelector).FirstOrDefault(e => e is not null && HasText(e)) ?? document.Body;
         if (root is null)
         {
-            return new PostOpening("", []);
+            return new PostOpening("", []) { Titles = titles };
         }
 
         foreach (var element in root.QuerySelectorAll(Ignored).ToList())
@@ -78,10 +85,19 @@ public static partial class ArticleReader
 
         var writer = new OpeningWriter(page, maxCharacters);
         writer.Walk(root);
-        return writer.Finish();
+        return writer.Finish() with { Titles = titles };
     }
 
     private static bool HasText(IElement element) => !string.IsNullOrWhiteSpace(element.TextContent);
+
+    /// <summary>The page's title, its Open Graph and Twitter titles, and its first few top headings.</summary>
+    private static List<string> TitlesOf(AngleSharp.Html.Dom.IHtmlDocument document) =>
+        [.. new[] { document.Title }
+            .Concat(document.QuerySelectorAll("meta[property='og:title'], meta[name='twitter:title']").Select(meta => meta.GetAttribute("content")))
+            .Concat(document.QuerySelectorAll("h1").Take(5).Select(heading => heading.TextContent))
+            .Select(title => Collapse(title ?? "").Trim())
+            .Where(title => title.Length > 0)
+            .Distinct()];
 
     /// <summary>Collapses runs of whitespace into one space.</summary>
     public static string Collapse(string text) => Whitespace().Replace(text, " ");

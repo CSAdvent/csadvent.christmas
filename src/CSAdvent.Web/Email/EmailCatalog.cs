@@ -213,21 +213,27 @@ public static class EmailCatalog
         new(
             "blurb-missing",
             "Please add the C# Advent blurb",
-            "From a post's reveal (it's checked from the day before), once each time it's found without the blurb: no link to csadvent.christmas near the top, Claude says it's missing, or an organizer marks it missing.",
+            "From a post's reveal (it's checked from the day before), once each time it's found without the blurb: no link to csadvent.christmas near the top of a page that's clearly the post, Claude says it's missing, or an organizer marks it missing.",
             "The author. Replies go to the organizers.",
             site => BlurbEmails.Missing("Ada Lovelace", SampleBlurbPost, "There's no link to csadvent.christmas near the top of the post.", site)),
         new(
             "blurb-needs-decision",
             "A post's blurb needs a decision",
-            "From a post's reveal, when Claude is unsure about its blurb, or the post seems to talk to it. Once per post.",
+            "From a post's reveal, when Claude is unsure about its blurb, or the post seems to talk to it; or from 3 hours before its deadline, when its page has no link to csadvent.christmas and doesn't seem to be the post (it needs JavaScript, say). Once per post.",
             "The organizers.",
             site => BlurbEmails.NeedsDecision(SampleBlurbPost, CSAdvent.Web.Data.BlurbStatus.NeedsDecision, "Claude found the blurb, but its quote of it isn't in the post.", site)),
         new(
             "blurb-could-not-check",
             "A post couldn't be checked",
-            "From a post's reveal, when its page hasn't loaded, or Claude hasn't answered, for 30 minutes. Once per post.",
+            "When a post's page still doesn't load 3 hours before its deadline (it may not be published yet until then), or from its reveal when Claude hasn't answered, after 30 minutes. Once per post.",
             "The organizers.",
             site => BlurbEmails.NeedsDecision(SampleBlurbPost, CSAdvent.Web.Data.BlurbStatus.CouldNotCheck, "The post's page answered 404 Not Found.", site)),
+        new(
+            "blurb-backup-standing-by",
+            "A backup is standing by for a post without the blurb",
+            "From a post's reveal, once a backup accepts a spot whose post the check found without the blurb (not when an organizer marked it missing or asked for a backup). Once per spot; the backup takes the spot no sooner than an hour later.",
+            "The organizers.",
+            site => BlurbEmails.BackupStandingBy(SampleBlurbPost, new BlurbBackup("Grace Hopper", "Collection expressions everywhere", "https://example.com/collections"), "There's no link to csadvent.christmas near the top of the post.", "10:00 AM Eastern on December 6", site)),
         new(
             "blurb-deadline",
             "No blurb and no backup",

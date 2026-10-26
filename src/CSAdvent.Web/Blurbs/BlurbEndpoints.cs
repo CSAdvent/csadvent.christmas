@@ -14,11 +14,27 @@ public sealed class BlurbForm
     public string? ReturnUrl { get; set; }
 }
 
-public static class BlurbEndpoints
+/// <summary>What "Check my post" on My spots posts (#174). A plain form, because the page has one per spot.</summary>
+public sealed class SelfCheckForm
+{
+    public int SlotId { get; set; }
+
+    /// <summary>The My spots page to go back to: <c>my-spots</c> or <c>my-spots/42</c>.</summary>
+    public string? ReturnUrl { get; set; }
+}
+
+public static partial class BlurbEndpoints
 {
     public static WebApplication MapBlurbs(this WebApplication app)
     {
         // Binding a form makes these check the antiforgery token.
+        app.MapPost("/my-spots/blurb-check", async ([FromForm] SelfCheckForm form, HttpContext context, BlurbSelfCheckService selfChecks, CancellationToken cancellationToken) =>
+            {
+                var outcome = await selfChecks.CheckAsync(context.User.GetContributorId() ?? 0, form.SlotId, cancellationToken);
+                return outcome is SelfCheckOutcome.NotFound ? Results.NotFound() : Results.LocalRedirect(BackToMySpots(form.ReturnUrl, form.SlotId, outcome));
+            })
+            .RequireAuthorization();
+
         var group = app.MapGroup("/manage/blurbs").RequireAuthorization(AdventPolicies.Admin);
 
         group.MapPost("/check", async ([FromForm] BlurbForm form, HttpContext context, BlurbCheckService blurbs, TimeProvider clock, CancellationToken cancellationToken) =>
@@ -62,4 +78,14 @@ public static class BlurbEndpoints
             : $"/manage/entries/{slotId}";
         return done is null ? target : $"{target}{(target.Contains('?', StringComparison.Ordinal) ? '&' : '?')}blurb={done}";
     }
+
+    /// <summary>Back to the My spots page the button was on (only those), saying how the check went, at the spot's box.</summary>
+    private static string BackToMySpots(string? returnUrl, int slotId, SelfCheckOutcome outcome)
+    {
+        var target = returnUrl is { } url && MySpotsPage().IsMatch(url) ? $"/{url}" : "/my-spots";
+        return $"{target}?blurb={BlurbSelfCheckService.QueryValue(outcome)}&slot={slotId}#blurb-{slotId}";
+    }
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"^my-spots(/\d+)?$")]
+    private static partial System.Text.RegularExpressions.Regex MySpotsPage();
 }

@@ -1,8 +1,12 @@
 @page "/my-spots/{SlotId:int}"
 @attribute [Authorize]
 @using CSAdvent.Web.Auth
+@using CSAdvent.Web.Blurbs
+@using CSAdvent.Web.Components.Contributors
 @using CSAdvent.Web.Contributors
 @inject MySpotsService MySpots
+@inject BlurbQueries Blurbs
+@inject BlurbSelfCheckService SelfChecks
 @inject NavigationManager Navigation
 
 @if (Done == "saved")
@@ -66,6 +70,11 @@
         </div>
     </EditForm>
 
+    @if (spot.Values.PostUrl is not null && !spot.IsDayOver && BlurbRules.AppliesTo(spot.Year) && Blurbs.IsEnabled)
+    {
+        <section class="mt-8 max-w-2xl"><PostBlurbCheck SlotId="spot.SlotId" Year="spot.Year" IsRevealed="spot.IsRevealed" State="_blurb" ReturnUrl="@($"my-spots/{spot.SlotId}")" /></section>
+    }
+
     @* Rendered (hidden) after a drop-out post too, so a repeat reaches its handler instead of a 400. *@
     @if (!spot.IsDayOver || _dropOutPosted)
     {
@@ -100,6 +109,8 @@ else if (Done == "dropped")
 
 @code {
     private MySpotDetails? _spot;
+    private BlurbState? _blurb;
+    private SelfCheckOutcome? _blurbChecked;
     private int _contributorId;
     private bool _dropOutPosted;
     private string? _error;
@@ -139,9 +150,21 @@ else if (Done == "dropped")
 
         // A posted form keeps what was typed; a fresh page starts from the spot.
         Form ??= _spot.Values;
+        _blurb = (await Blurbs.GetSlotsAsync([SlotId])).GetValueOrDefault(SlotId);
     }
 
-    private async Task SaveAsync() => await HandleAsync(await MySpots.SaveAsync(_contributorId, SlotId, Form!));
+    private async Task SaveAsync()
+    {
+        var outcome = await MySpots.SaveAsync(_contributorId, SlotId, Form!);
+
+        // A new link is checked for the blurb straight away (#174), so its author sees how it stands.
+        if (outcome is MySpotOutcome.Saved && BlurbSelfCheckService.LinkChanged(_spot!.Values.PostUrl, Form!.PostUrl))
+        {
+            _blurbChecked = await SelfChecks.CheckAsync(_contributorId, SlotId);
+        }
+
+        await HandleAsync(outcome);
+    }
 
     private async Task DropOutAsync() => await HandleAsync(await MySpots.DropOutAsync(_contributorId, SlotId, DropOut!.Version));
 
@@ -150,7 +173,9 @@ else if (Done == "dropped")
         switch (outcome)
         {
             case MySpotOutcome.Saved:
-                Navigation.NavigateTo($"my-spots/{SlotId}?done=saved");
+                Navigation.NavigateTo(_blurbChecked is { } checkedNow
+                    ? $"my-spots/{SlotId}?done=saved&blurb={BlurbSelfCheckService.QueryValue(checkedNow)}&slot={SlotId}"
+                    : $"my-spots/{SlotId}?done=saved");
                 return;
             case MySpotOutcome.DroppedOut:
                 Navigation.NavigateTo($"my-spots/{SlotId}?done=dropped");

@@ -16,7 +16,7 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261025232735_AddEmailOutbox";
+    public override string LastMigrationId => "20261026142227_AddBlurbSelfChecks";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -387,6 +387,46 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                     .HasDatabaseName("ix_blurb_checks_slot_id");
 
                 b.ToTable("blurb_checks");
+            });
+
+        modelBuilder.Entity("CSAdvent.Web.Data.BlurbSelfCheck", b =>
+            {
+                var id = b.Property<int>("Id")
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("integer")
+                    .HasColumnName("id");
+
+                NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(id);
+
+                b.Property<bool>("AskedClaude")
+                    .HasColumnType("boolean")
+                    .HasColumnName("asked_claude");
+
+                b.Property<DateTimeOffset>("CheckedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("checked_at");
+
+                b.Property<int>("ContributorId")
+                    .HasColumnType("integer")
+                    .HasColumnName("contributor_id");
+
+                b.Property<int>("SlotId")
+                    .HasColumnType("integer")
+                    .HasColumnName("slot_id");
+
+                b.HasKey("Id")
+                    .HasName("pk_blurb_self_checks");
+
+                b.HasIndex("CheckedAt")
+                    .HasDatabaseName("ix_blurb_self_checks_checked_at");
+
+                b.HasIndex("SlotId")
+                    .HasDatabaseName("ix_blurb_self_checks_slot_id");
+
+                b.HasIndex("ContributorId", "CheckedAt")
+                    .HasDatabaseName("ix_blurb_self_checks_contributor_id_checked_at");
+
+                b.ToTable("blurb_self_checks");
             });
 
         modelBuilder.Entity("CSAdvent.Web.Data.ClaimRequest", b =>
@@ -1765,6 +1805,27 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                     .OnDelete(DeleteBehavior.Cascade)
                     .IsRequired()
                     .HasConstraintName("fk_blurb_checks_slots_slot_id");
+
+                b.Navigation("Slot");
+            });
+
+        modelBuilder.Entity("CSAdvent.Web.Data.BlurbSelfCheck", b =>
+            {
+                b.HasOne("CSAdvent.Web.Data.Contributor", "Contributor")
+                    .WithMany()
+                    .HasForeignKey("ContributorId")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired()
+                    .HasConstraintName("fk_blurb_self_checks_contributors_contributor_id");
+
+                b.HasOne("CSAdvent.Web.Data.Slot", "Slot")
+                    .WithMany()
+                    .HasForeignKey("SlotId")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired()
+                    .HasConstraintName("fk_blurb_self_checks_slots_slot_id");
+
+                b.Navigation("Contributor");
 
                 b.Navigation("Slot");
             });
