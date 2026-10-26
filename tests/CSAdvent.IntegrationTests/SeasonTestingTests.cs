@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Net;
+using CSAdvent.Web.Content;
 using CSAdvent.Web.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -166,6 +167,43 @@ public sealed class SeasonTestingTests(AppHostFixture fixture)
         Assert.False(await db.Seasons.AnyAsync(s => s.Year == TestYear, CancellationToken));
         Assert.False(await db.Slots.AnyAsync(s => s.SeasonYear == TestYear, CancellationToken));
         Assert.False(await db.SeasonTesters.AnyAsync(t => t.SeasonYear == TestYear, CancellationToken));
+    }
+
+    [Fact]
+    public async Task TheTestSeasonsOtherAdventsAreOnlyForItsRehearsal()
+    {
+        using var organizer = await TestSeasonAsync(todayIs: 0);
+        await organizer.PostFormAsync(Page, "tester", new() { ["Tester.Login"] = "testing-otto" });
+        await organizer.PostFormAsync($"/manage/other-advents?year={TestYear}", "add", new()
+        {
+            ["Form.Name"] = "Rehearsal Advent",
+            ["Form.Url"] = "https://example.com/rehearsal-advent",
+        });
+
+        try
+        {
+            // With no current season (every real one finished), the test season's list used to win as the latest (#190).
+            await using (var db = await fixture.CreateDbContextAsync())
+            {
+                var latest = await new OtherAdventsService(db).GetForPageAsync(year: null, CancellationToken);
+                Assert.NotEqual(TestYear, latest.Year);
+                Assert.DoesNotContain(latest.Items, advent => advent.Name == "Rehearsal Advent");
+            }
+
+            using var anonymous = fixture.CreateWebClient();
+            Assert.DoesNotContain("Rehearsal Advent", await anonymous.GetStringAsync("/others", CancellationToken));
+
+            // A tester sees it in test mode, as part of the rehearsal, and only then.
+            using var tester = await fixture.SignInAsync("testing-otto", 8204);
+            Assert.DoesNotContain("Rehearsal Advent", await tester.GetStringAsync("/others", CancellationToken));
+            await tester.GetAsync("/test-mode/on?returnUrl=%2F", CancellationToken);
+            Assert.Contains("Rehearsal Advent", await tester.GetStringAsync("/others", CancellationToken));
+        }
+        finally
+        {
+            await using var db = await fixture.CreateDbContextAsync();
+            await db.OtherAdvents.Where(a => a.SeasonYear == TestYear).ExecuteDeleteAsync(CancellationToken.None);
+        }
     }
 
     [Fact]

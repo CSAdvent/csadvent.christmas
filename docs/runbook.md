@@ -23,6 +23,7 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 | December 1–25 | Decide on posts the blurb check can't settle, before their announcement | Organizers, when emailed |
 | December 31 | The calendar moves to the archive, and the home page thanks everyone | Automatic |
 | Late December–January | Write, publish and share the season's retrospective | Organizers |
+| January | Save the season to the archive files in the repository (After Advent, below) | Organizers |
 | February 1 | The season's requests and backup list are deleted (authors' emails are kept) | Automatic |
 
 ---
@@ -157,8 +158,14 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
   the same page (Post now on Automatic platforms, Copy for the rest), and send it to the announcements list from
   `/manage/announcements` if you like. Generate it before February 1, because the season's requests and backup list
   (two of its numbers) are deleted then.
+- **Save the season to the archive files (January):** on `/manage/seasons`, press the finished season's
+  **Download {year}.json** and save it as `src/CSAdvent.Web/Data/Archive/{year}.json`, then commit it in a pull
+  request. It's the calendar as shown (authors, links, titles, summaries; no contact details), in the same format as
+  2017–2025, and any new database is seeded with it, so the season no longer depends on the database's 14-day backups.
+  If an author asks for their entry to be taken down later, remove it from that file too.
 - **February 1:** the season's claim requests (with comments) and backup list are deleted automatically, and so are
-  the emails of people who signed in but never had a spot. **Authors' email addresses are kept**, on their accounts and
+  the emails of people who signed in but never had a spot (unless they're waiting to hear about a request for an older
+  post). **Authors' email addresses are kept**, on their accounts and
   their spots, so they can hear about the next season. Delete an author's address when they ask. Nothing else to do.
 
 ---

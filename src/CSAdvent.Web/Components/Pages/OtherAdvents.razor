@@ -1,8 +1,11 @@
 @page "/others"
+@using CSAdvent.Web.Data
 @using CSAdvent.Web.Manage
+@using CSAdvent.Web.SeasonTesting
 @inject ContentService Content
 @inject OtherAdventsService Others
 @inject SeasonAdminService Seasons
+@inject SeasonAccess Access
 
 <PageTitle>Other Advents · C# Advent</PageTitle>
 <SocialMeta Title="Other developer advent calendars" Description="More developer advent calendars to enjoy this December, from F# to Advent of Code." />
@@ -45,6 +48,7 @@
     protected override async Task OnInitializedAsync()
     {
         _intro = await Content.GetAsync(ContentCatalog.OtherAdvents);
-        _list = await Others.GetForPageAsync(await Seasons.GetCurrentYearAsync());
+        // A tester in test mode sees the test season's list, if it has one; everyone else sees the real seasons' (#190).
+        _list = await Others.GetForPageAsync(Access.InTestMode ? Season.TestYear : await Seasons.GetCurrentYearAsync());
     }
 }

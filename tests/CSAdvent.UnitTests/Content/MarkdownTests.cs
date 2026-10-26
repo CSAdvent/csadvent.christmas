@@ -46,4 +46,23 @@ public sealed class MarkdownTests
 
         Assert.Contains($"href=\"{url}\"", html);
     }
+
+    [Theory]
+    [InlineData("javascript:alert(document.domain)")]
+    [InlineData("JAVASCRIPT:alert(1)")]
+    [InlineData("data:text/html,hi")]
+    [InlineData("vbscript:msgbox(1)")]
+    public void TurnsAutolinksWithUnsafeSchemesIntoText(string url)
+    {
+        var html = Markdown.ToHtml($"See <{url}> now.").Value;
+
+        Assert.DoesNotContain("<a", html);
+        Assert.Contains($"See {url} now.", html);
+    }
+
+    [Theory]
+    [InlineData("<https://csadvent.christmas/>", "<a href=\"https://csadvent.christmas/\">https://csadvent.christmas/</a>")]
+    [InlineData("<hello@csadvent.christmas>", "<a href=\"mailto:hello@csadvent.christmas\">hello@csadvent.christmas</a>")]
+    public void KeepsSafeAutolinks(string markdown, string expected) =>
+        Assert.Contains(expected, Markdown.ToHtml(markdown).Value);
 }

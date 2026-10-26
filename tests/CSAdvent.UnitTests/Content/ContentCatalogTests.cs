@@ -52,7 +52,9 @@ public sealed class ContentCatalogTests
     {
         Assert.NotEmpty(OtherAdventsService.Suggestions);
         Assert.All(OtherAdventsService.Suggestions, advent => Assert.StartsWith("https://", advent.Url));
-        Assert.DoesNotContain(OtherAdventsService.Suggestions, advent => advent.Url.Contains("golang.christmas") || advent.Url.Contains("pwadvent.dev"));
+        Assert.All(
+            new[] { "golang.christmas", "pwadvent.dev", "dotnet.christmas", "adventofjs.com" },
+            gone => Assert.DoesNotContain(OtherAdventsService.Suggestions, advent => advent.Url.Contains(gone, StringComparison.Ordinal)));
         Assert.Equal(OtherAdventsService.Suggestions.Count, OtherAdventsService.Suggestions.Select(a => a.Url).Distinct().Count());
     }
 }

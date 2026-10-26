@@ -7,7 +7,6 @@
       "day": 1,
       "part": 1,
       "authorName": "Brant Burnett",
-      "authorUrl": "https://crosscuttingconcerns.com/The-Third-Annual-csharp-Advent#comment-4641190500",
       "postTitle": "IAsyncEnumerable Is Your Friend, Even In .NET Core 2.x",
       "postUrl": "https://btburnett.com/csharp/2019/12/01/iasyncenumerable-is-your-friend.html"
     },
@@ -15,7 +14,6 @@
       "day": 1,
       "part": 2,
       "authorName": "Simon Painter",
-      "authorUrl": "https://twitter.com/madSimonJ/status/1181174805703385088",
       "postTitle": "Hacking C#: Programming for the Truly Lazy",
       "postUrl": "https://www.thecodepainter.co.uk/blog/2019113/hackingcsharp_arrayadjust"
     },
@@ -23,7 +21,6 @@
       "day": 2,
       "part": 1,
       "authorName": "Luis Antonio Beltran",
-      "authorUrl": "https://crosscuttingconcerns.com/C-Advent-2019-Early-Sign-Up#comment-4634695419",
       "postTitle": "2FA with Twilio Authy and C# (special guest: Xamarin)",
       "postUrl": "https://dev.to/icebeam7/2fa-with-twilio-authy-and-c-special-guest-xamarin-6ea"
     },
@@ -31,7 +28,6 @@
       "day": 2,
       "part": 2,
       "authorName": "Chris Ayers",
-      "authorUrl": "https://crosscuttingconcerns.com/The-Third-Annual-csharp-Advent#comment-4643688303",
       "postTitle": "Dependency Injection, Architecture, and Testing",
       "postUrl": "https://chrislayers.com/2019/12/01/dependency-injection-architecture-and-testing/"
     },
@@ -39,7 +35,6 @@
       "day": 3,
       "part": 1,
       "authorName": "Kelson Ball",
-      "authorUrl": "https://twitter.com/Poly_Sigh/status/1181216894981787649",
       "postTitle": "An Example of Partial Function Application in C#",
       "postUrl": "https://dev.to/kelsonball/an-example-of-partial-function-application-in-c-2bed"
     },
@@ -47,7 +42,6 @@
       "day": 3,
       "part": 2,
       "authorName": "Morgan Kenyon",
-      "authorUrl": "https://crosscuttingconcerns.com/The-Third-Annual-csharp-Advent#comment-4643706823",
       "postTitle": "The Difference Between IEnumerable and IQueryable Explained",
       "postUrl": "https://thesharperdev.com/the-difference-between-ienumerable-and-iqueryable-explained/"
     },
@@ -55,7 +49,6 @@
       "day": 4,
       "part": 1,
       "authorName": "Ryan Overton",
-      "authorUrl": "https://twitter.com/ryano9791/status/1178777442795675648",
       "postTitle": "Default Interface Methods in C#: Love 'em or Hate 'em?",
       "postUrl": "https://dev.to/onyxprime/default-interface-methods-in-c-love-em-or-hate-em-3no9"
     },
@@ -63,7 +56,6 @@
       "day": 4,
       "part": 2,
       "authorName": "Carl Layton",
-      "authorUrl": "https://crosscuttingconcerns.com/C-Advent-2019-Early-Sign-Up#comment-4635967246",
       "postTitle": "The Outbox Pattern in C#",
       "postUrl": "https://www.carlserver.com/blog/post/the-outbox-pattern-in-csharp"
     },
@@ -71,7 +63,6 @@
       "day": 5,
       "part": 1,
       "authorName": "Dave Cook",
-      "authorUrl": "https://twitter.com/dcook_net/status/1181258080740413447",
       "postTitle": "To Null, or not to Null?!?",
       "postUrl": "https://medium.com/@dcook_net/to-null-or-not-to-null-304571effc80"
     },
@@ -79,7 +70,6 @@
       "day": 5,
       "part": 2,
       "authorName": "Manuel Grundner",
-      "authorUrl": "https://crosscuttingconcerns.com/The-Third-Annual-csharp-Advent#comment-4644610115",
       "postTitle": "The journey of porting pretzel to .NET Core",
       "postUrl": "https://blog.delegate.at/2019/12/05/the-third-annual-csharp-advent-pretzel-journey.html"
     },
@@ -87,7 +77,6 @@
       "day": 6,
       "part": 1,
       "authorName": "Lukáš Lánský",
-      "authorUrl": "https://crosscuttingconcerns.com/The-Third-Annual-csharp-Advent#comment-4644827935",
       "postTitle": "Coverage-Driven Test Selection",
       "postUrl": "https://programming.lansky.name/coverage-driven-test-selection"
     },
@@ -95,7 +84,6 @@
       "day": 6,
       "part": 2,
       "authorName": "Simon Timms",
-      "authorUrl": "https://crosscuttingconcerns.com/The-Third-Annual-csharp-Advent#comment-4649647272",
       "postTitle": "Machine Learning for Boring Applications",
       "postUrl": "https://blog.simontimms.com/2019/12/05/2019-12-06-machine-learning-for-boring-stuff/"
     },
@@ -103,7 +91,6 @@
       "day": 7,
       "part": 1,
       "authorName": "Chase Aucoin",
-      "authorUrl": "https://twitter.com/ChaseAucoin/status/1184900462547558400",
       "postTitle": "Aurora Serverless with Entity Framework Core",
       "postUrl": "https://www.chaseaucoin.com/posts/aurora-serverless-lambda-with-entity-framework-core/"
     },
@@ -111,7 +98,6 @@
       "day": 7,
       "part": 2,
       "authorName": "Kendall Miller",
-      "authorUrl": "https://twitter.com/kendallmiller/status/1186286390222438401",
       "postTitle": "Better String Formatting with String Interpolation",
       "postUrl": "https://onloupe.com/blog/csharp-advent-string-interpolation/"
     },
@@ -119,7 +105,6 @@
       "day": 8,
       "part": 1,
       "authorName": "Matt Eland",
-      "authorUrl": "https://crosscuttingconcerns.com/C-Advent-2019-Early-Sign-Up#comment-4634912537",
       "postTitle": "Experimental C# with Scientist .NET",
       "postUrl": "https://killalldefects.com/2019/12/08/experimental-csharp-with-scientist-dotnet/"
     },
@@ -127,7 +112,6 @@
       "day": 8,
       "part": 2,
       "authorName": "Jeremy Sinclair",
-      "authorUrl": "https://twitter.com/sinclairinator/status/1178825469061472257",
       "postTitle": "Creating a Simple Wizard Component with Blazor",
       "postUrl": "https://sinclairinat0r.com/2019/12/08/creating-a-simple-wizard-component-in-blazor"
     },
@@ -135,7 +119,6 @@
       "day": 9,
       "part": 1,
       "authorName": "Meziantou",
-      "authorUrl": "https://crosscuttingconcerns.com/C-Advent-2019-Early-Sign-Up#comment-4635108466",
       "postTitle": "Thread-safe observable collection in .NET",
       "postUrl": "https://www.meziantou.net/thread-safe-observable-collection-in-dotnet.htm"
     },
@@ -143,7 +126,6 @@
       "day": 9,
       "part": 2,
       "authorName": "Cecilia Wirén",
-      "authorUrl": "https://crosscuttingconcerns.com/The-Third-Annual-csharp-Advent#comment-4660549410",
       "postTitle": "Overflow on integers - count with this security risk!",
       "postUrl": "https://www.ceciliasharp.net/dont-overflow-your-values/"
     },
@@ -151,7 +133,6 @@
       "day": 10,
       "part": 1,
       "authorName": "Andrew Lock",
-      "authorUrl": "https://crosscuttingconcerns.com/C-Advent-2019-Early-Sign-Up#comment-4635422257",
       "postTitle": ".NET Core, Docker, and Cultures - Solving a culture issue porting a .NET Core app from Windows to Linux",
       "postUrl": "https://andrewlock.net/dotnet-core-docker-and-cultures-solving-culture-issues-porting-a-net-core-app-from-windows-to-linux/"
     },
@@ -159,7 +140,6 @@
       "day": 10,
       "part": 2,
       "authorName": "James Hickey",
-      "authorUrl": "https://crosscuttingconcerns.com/The-Third-Annual-csharp-Advent#comment-4643525463",
       "postTitle": "Modular Monoliths And Composite UIs With .NET Core Razor Class Libraries",
       "postUrl": "https://dev.to/jamesmh/modular-monoliths-and-composite-uis-with-net-core-razor-class-libraries-2394"
     },
@@ -167,7 +147,6 @@
       "day": 11,
       "part": 1,
       "authorName": "DotNetCoreShow",
-      "authorUrl": "https://crosscuttingconcerns.com/The-Third-Annual-csharp-Advent#comment-4643307165",
       "postTitle": "The .NET Core Podcast - Episode 40 - Noda Time with Jon Skeet",
       "postUrl": "https://dotnetcore.show/episode-40-noda-time-with-jon-skeet/"
     },
@@ -175,7 +154,6 @@
       "day": 11,
       "part": 2,
       "authorName": "Roman Stoffel",
-      "authorUrl": "https://crosscuttingconcerns.com/The-Third-Annual-csharp-Advent#comment-4670865855",
       "postTitle": "C# Loves Code Patterns",
       "postUrl": "https://www.gamlor.info/posts-output/2019-12-11-csharp-structural-pattern/en/"
     },
@@ -183,7 +161,6 @@
       "day": 12,
       "part": 1,
       "authorName": "Brian Jackett",
-      "authorUrl": "https://twitter.com/BrianTJackett/status/1181267807813668867",
       "postTitle": "Creating a C# Azure Function to Call Microsoft Graph",
       "postUrl": "https://briantjackett.com/2019/12/12/creating-a-c-azure-function-to-call-microsoft-graph/"
     },
@@ -191,7 +168,6 @@
       "day": 12,
       "part": 2,
       "authorName": "James Curran",
-      "authorUrl": "https://crosscuttingconcerns.com/The-Third-Annual-csharp-Advent#comment-4672820480",
       "postTitle": "Cleanup Scaffolded Code with modelbuild",
       "postUrl": "https://honestillusion.com/2019/12/12/cleanup-Scaffolded-Code-with-ModelBuilder.html"
     },
@@ -199,7 +175,6 @@
       "day": 13,
       "part": 1,
       "authorName": "Barret Blake",
-      "authorUrl": "https://crosscuttingconcerns.com/C-Advent-2019-Early-Sign-Up#comment-4634558552",
       "postTitle": "The Nightmare Before Blazor",
       "postUrl": "https://barretblake.dev/2019/12/13/the-nightmare-before-blazor/"
     },
@@ -207,21 +182,18 @@
       "day": 13,
       "part": 2,
       "authorName": "Ed Charbeneau",
-      "authorUrl": "https://crosscuttingconcerns.com/C-Advent-2019-Early-Sign-Up#comment-4642820451",
       "postTitle": "Getting Started with Blazor: All There is to Know From the Experts",
       "postUrl": "https://prgress.co/blazor-experts"
     },
     {
       "day": 14,
       "part": 1,
-      "authorName": "Benjamin Howarth",
-      "authorUrl": "https://crosscuttingconcerns.com/C-Advent-2019-Early-Sign-Up#comment-4635789511"
+      "authorName": "Benjamin Howarth"
     },
     {
       "day": 14,
       "part": 2,
       "authorName": "Martin Zikmund",
-      "authorUrl": "https://twitter.com/mzikmunddev/status/1179025366670876672",
       "postTitle": "A Christmas C# riddle",
       "postUrl": "https://blog.mzikmund.com/2019/12/a-christmas-csharp-riddle/"
     },
@@ -229,7 +201,6 @@
       "day": 15,
       "part": 1,
       "authorName": "Jonathan Danylko",
-      "authorUrl": "https://twitter.com/jdanylko/status/1178698576383369218",
       "postTitle": "10 More Useful C# Extension Methods for 2019",
       "postUrl": "https://www.danylkoweb.com/Blog/10-more-useful-c-extension-methods-for-2019-H7"
     },
@@ -237,7 +208,6 @@
       "day": 15,
       "part": 2,
       "authorName": "Hilary Weaver-Robb",
-      "authorUrl": "https://twitter.com/g33klady/status/1179021235491094530",
       "postTitle": "Refactoring RestSharp Sample Tests to Make Them More Maintainable",
       "postUrl": "https://g33klady.com/2019/12/15/c-advent-calendar-2019-refactoring-restsharp-sample-tests-to-make-them-more-maintainable/"
     },
@@ -245,7 +215,6 @@
       "day": 16,
       "part": 1,
       "authorName": "Shahed Chowdhuri",
-      "authorUrl": "https://crosscuttingconcerns.com/C-Advent-2019-Early-Sign-Up#comment-4642815336",
       "postTitle": "ASP .NET Core code sharing between Blazor, MVC and Razor Pages",
       "postUrl": "https://wakeupandcode.com/asp-net-core-code-sharing-between-blazor-mvc-and-razor-pages/"
     },
@@ -253,7 +222,6 @@
       "day": 16,
       "part": 2,
       "authorName": "Ian Bebbington",
-      "authorUrl": "https://twitter.com/ibebbs/status/1182674138256887809",
       "postTitle": "The Seven GUIs of Christmas",
       "postUrl": "https://ian.bebbs.co.uk/posts/Uno"
     },
@@ -261,7 +229,6 @@
       "day": 17,
       "part": 1,
       "authorName": "Joe Zack",
-      "authorUrl": "https://crosscuttingconcerns.com/The-Third-Annual-csharp-Advent#comment-4644590442",
       "postTitle": "Streaming process output to a browser, with SignalR and C#",
       "postUrl": "https://dev.to/_codingblocks/streaming-process-output-to-a-browser-with-signalr-and-c-5adb"
     },
@@ -269,7 +236,6 @@
       "day": 17,
       "part": 2,
       "authorName": "Chris Sainty",
-      "authorUrl": "https://crosscuttingconcerns.com/The-Third-Annual-csharp-Advent#comment-4685048023",
       "postTitle": "Introduction to Blazor Component Testing",
       "postUrl": "https://chrissainty.com/introduction-to-blazor-component-testing/"
     },
@@ -277,7 +243,6 @@
       "day": 18,
       "part": 1,
       "authorName": "Garo Yeriazarian",
-      "authorUrl": "https://crosscuttingconcerns.com/The-Third-Annual-csharp-Advent#comment-4641534416",
       "postTitle": "Vertically Sliced Command Line Tools in C# and .NET Core 3.1",
       "postUrl": "https://www.garoyeri.dev/2019-12/command-line-tools-netcore-31/"
     },
@@ -285,7 +250,6 @@
       "day": 18,
       "part": 2,
       "authorName": "Stuart Turner",
-      "authorUrl": "https://crosscuttingconcerns.com/The-Third-Annual-csharp-Advent#comment-4681559978",
       "postTitle": "Improving Code Readability with Linq (and MoreLinq)",
       "postUrl": "http://turner-isageek.com/improving-code-readability-with-linq/"
     },
@@ -293,7 +257,6 @@
       "day": 19,
       "part": 1,
       "authorName": "Baskar Rao",
-      "authorUrl": "https://twitter.com/mgroves/status/1181918039941505033",
       "postTitle": "How to use Subscriptions in GraphQL C#",
       "postUrl": "https://baskarmib.netlify.com/content/posts/2019/12/19/how-to-use-subscriptions-in-graph-ql-c/"
     },
@@ -301,7 +264,6 @@
       "day": 19,
       "part": 2,
       "authorName": "Stephen Lorello",
-      "authorUrl": "https://twitter.com/slorello/status/1192992752046346240",
       "postTitle": "Santa’s Nexmo Helper",
       "postUrl": "https://www.nexmo.com/blog/2019/12/19/santas-nexmo-helper-c-advent-series-dr"
     },
@@ -309,7 +271,6 @@
       "day": 20,
       "part": 1,
       "authorName": "Andrea Angella",
-      "authorUrl": "https://crosscuttingconcerns.com/The-Third-Annual-csharp-Advent#comment-4640554982",
       "postTitle": "15 reasons why you should learn C# in 2020",
       "postUrl": "https://www.productivecsharp.com/why-you-should-learn-csharp/"
     },
@@ -317,7 +278,6 @@
       "day": 20,
       "part": 2,
       "authorName": "Layla",
-      "authorUrl": "https://twitter.com/LaylaCodesIt/status/1186296174820630528",
       "postTitle": "Get off the naughty list with Twilio Autopilot, Azure Functions and Table Storage",
       "postUrl": "https://www.twilio.com/blog/get-off-the-naughty-list"
     },
@@ -325,7 +285,6 @@
       "day": 21,
       "part": 1,
       "authorName": "Muhammad Azeez",
-      "authorUrl": "https://twitter.com/mhmd_azeez/status/1184901126426103808",
       "postTitle": "How do Object Relational Mappers (like Entity Framework) work?",
       "postUrl": "https://dev.to/mhmd_azeez/how-do-object-relational-mappers-like-entity-framework-work-2ko5"
     },
@@ -333,7 +292,6 @@
       "day": 21,
       "part": 2,
       "authorName": "Patrick Lioi",
-      "authorUrl": "https://crosscuttingconcerns.com/The-Third-Annual-csharp-Advent#comment-4689471944",
       "postTitle": "Patterns for using Entity Framework in C# 8",
       "postUrl": "https://headspring.com/2019/12/19/c-sharp-8-entity-framework-patterns/"
     },
@@ -341,7 +299,6 @@
       "day": 22,
       "part": 1,
       "authorName": "James Bender",
-      "authorUrl": "https://crosscuttingconcerns.com/The-Third-Annual-csharp-Advent#comment-4660307054",
       "postTitle": "Refactoring for Testability – A Christmas Miracle!",
       "postUrl": "https://crosscuttingconcerns.com/Refactoring-Testability-Christmas-Miracle"
     },
@@ -349,7 +306,6 @@
       "day": 22,
       "part": 2,
       "authorName": "Eric Potter",
-      "authorUrl": "https://crosscuttingconcerns.com/The-Third-Annual-csharp-Advent#comment-4686334133",
       "postTitle": "C# Strings with Ranges, and Indexes",
       "postUrl": "http://humbletoolsmith.com/2019/12/21/csharp-strings-with-ranges,-and-indexes/"
     },
@@ -357,7 +313,6 @@
       "day": 23,
       "part": 1,
       "authorName": "Andrew Craven",
-      "authorUrl": "https://twitter.com/acraven_dev/status/1182196933869412352",
       "postTitle": "Microservices and Outside-in Tests Using C# and Docker Compose",
       "postUrl": "https://medium.com/@acraven/microservices-and-outside-in-tests-using-c-and-docker-compose-22328f47627"
     },
@@ -365,21 +320,18 @@
       "day": 23,
       "part": 2,
       "authorName": "Lee Englestone",
-      "authorUrl": "https://twitter.com/LeeEnglestone/status/1194684010435432451",
       "postTitle": "Compiling Code without Visual Studio",
       "postUrl": "http://www.manchesterdeveloper.com/blog/post/compiling-code-without-visual-studio/"
     },
     {
       "day": 24,
       "part": 1,
-      "authorName": "Thomas Carpe",
-      "authorUrl": "https://twitter.com/thomascarpe/status/1182797142076866561"
+      "authorName": "Thomas Carpe"
     },
     {
       "day": 24,
       "part": 2,
       "authorName": "Azmat Ullah Khan",
-      "authorUrl": "https://twitter.com/Azmat85/status/1186322740350836736",
       "postTitle": "PDF Digital Signatures with Itext7, Bouncy Castle and .NET Core",
       "postUrl": "https://viewbag.wordpress.com/2019/12/24/pdf-digital-signatures-itext7-bouncy-castle-net-core/"
     },
@@ -387,7 +339,6 @@
       "day": 25,
       "part": 1,
       "authorName": "Mike Jolley",
-      "authorUrl": "https://crosscuttingconcerns.com/The-Third-Annual-csharp-Advent#comment-4640064127",
       "postTitle": "Adding HATEOAS to an ASP.NET Core API",
       "postUrl": "https://baldbeardedbuilder.com/posts/adding-hateoas-to-an-aspnetcore-rest-api/"
     },
@@ -395,7 +346,6 @@
       "day": 25,
       "part": 2,
       "authorName": "Calvin Allen",
-      "authorUrl": "https://crosscuttingconcerns.com/C-Advent-2019-Early-Sign-Up#comment-4634498028",
       "postTitle": "C# 8 is old news. Onward, to C# 9!",
       "postUrl": "https://www.calvinallen.net/csharp-8-is-old-news-onward-to-csharp-9/"
     }

@@ -32,12 +32,12 @@ public static class GitHubSignIn
         context.Identity!.AddClaims(AdventClaims.For(user.Id, user.Login, verifiedEmail, contributorId, user.Name));
     }
 
-    /// <summary>The primary address if GitHub has verified it, otherwise any verified address, otherwise none.</summary>
-    public static string? SelectVerifiedEmail(IEnumerable<GitHubEmail> emails)
-    {
-        var verified = emails.Where(e => e.Verified).ToList();
-        return (verified.FirstOrDefault(e => e.Primary) ?? verified.FirstOrDefault())?.Email;
-    }
+    /// <summary>
+    /// The primary address if GitHub has verified it, otherwise none: never another of their addresses, which they may not
+    /// want us to use. The privacy page, the profile and the error messages all say so (#168).
+    /// </summary>
+    public static string? SelectVerifiedEmail(IEnumerable<GitHubEmail> emails) =>
+        emails.FirstOrDefault(e => e is { Primary: true, Verified: true })?.Email;
 
     private static async Task<T> GetAsync<T>(OAuthCreatingTicketContext context, string url, CancellationToken cancellationToken)
     {

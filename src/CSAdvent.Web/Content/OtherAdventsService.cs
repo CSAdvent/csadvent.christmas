@@ -24,16 +24,14 @@ public sealed record OtherAdventsList(int? Year, IReadOnlyList<OtherAdventItem> 
 public sealed class OtherAdventsService(AdventDbContext db)
 {
     /// <summary>
-    /// A starting list, from the legacy site's, without links that no longer work (golang.christmas, pwadvent.dev) or
-    /// one-off calendars from past years.
+    /// A starting list, from the legacy site's, without links that no longer work or one-off calendars from past years.
+    /// Gone: golang.christmas and pwadvent.dev, dotnet.christmas (now a newsletter) and adventofjs.com (now Advent of CSS).
     /// </summary>
     public static IReadOnlyList<OtherAdventItem> Suggestions { get; } =
     [
         new(null, "F# Advent Calendar", "https://sergeytihon.com/fsadvent/", "The calendar that inspired C# Advent."),
-        new(null, ".NET Advent Calendar", "https://dotnet.christmas/", null),
         new(null, "Festive Tech Calendar", "https://festivetechcalendar.com/", null),
         new(null, "Advent of Code", "https://adventofcode.com/", "Programming puzzles, one a day."),
-        new(null, "Advent of JavaScript", "https://www.adventofjs.com/", null),
         new(null, "Advent of CSS", "https://www.adventofcss.com/", null),
         new(null, "HTMHell Advent Calendar", "https://www.htmhell.dev/adventcalendar/", null),
         new(null, "24 Days in December", "https://24daysindecember.net/", "PHP."),
@@ -43,12 +41,16 @@ public sealed class OtherAdventsService(AdventDbContext db)
         new(null, "24 Pull Requests", "https://24pullrequests.com/", "Give back to open source in December."),
     ];
 
-    /// <summary>The list for the public page: <paramref name="year"/>'s, else the latest season's, else the suggestions.</summary>
+    /// <summary>
+    /// The list for the public page: <paramref name="year"/>'s, else the latest season's, else the suggestions. The test
+    /// season's list is only ever shown when <paramref name="year"/> is the test season (a tester in test mode), never as the
+    /// latest season's (#190).
+    /// </summary>
     public async Task<OtherAdventsList> GetForPageAsync(int? year, CancellationToken cancellationToken = default)
     {
         var lists = await db.OtherAdvents
             .AsNoTracking()
-            .Where(a => year == null || a.SeasonYear <= year)
+            .Where(a => (a.SeasonYear != Season.TestYear || year == Season.TestYear) && (year == null || a.SeasonYear <= year))
             .OrderByDescending(a => a.SeasonYear).ThenBy(a => a.SortOrder)
             .ToListAsync(cancellationToken);
         if (lists.Count == 0)

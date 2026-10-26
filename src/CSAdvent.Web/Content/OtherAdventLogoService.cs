@@ -49,7 +49,7 @@ public sealed class OtherAdventLogoService(AdventDbContext db, LogoFetcher fetch
     /// <summary>Fetches the site's logo. A failed fetch keeps any logo it already had.</summary>
     public async Task<LogoResult> FetchAsync(string url, CancellationToken cancellationToken = default)
     {
-        var png = Uri.TryCreate(url, UriKind.Absolute, out var site) ? await fetcher.FetchAsync(site, cancellationToken) : null;
+        var png = await FetchPngAsync(url, cancellationToken);
 
         var logo = await FindOrAddAsync(url, cancellationToken);
         var now = timeProvider.GetUtcNow();
@@ -63,6 +63,38 @@ public sealed class OtherAdventLogoService(AdventDbContext db, LogoFetcher fetch
 
         await db.SaveChangesAsync(cancellationToken);
         return png is null ? LogoResult.NotFound : LogoResult.Saved;
+    }
+
+    /// <summary>
+    /// For the background fetch: fetches a missing logo, unless another replica has just taken it (null). Each replica claims
+    /// a site before fetching it, by stamping its last attempt, so two never fetch the same one (#197).
+    /// </summary>
+    public async Task<LogoResult?> FetchIfMissingAsync(string url, CancellationToken cancellationToken = default)
+    {
+        await EnsureRowAsync(url, cancellationToken);
+        var now = timeProvider.GetUtcNow();
+        var retryBefore = now - RetryAfter;
+        var claimed = await db.OtherAdventLogos
+            .Where(l => l.Url == url && l.Png == null && (l.LastAttemptAt == null || l.LastAttemptAt <= retryBefore))
+            .ExecuteUpdateAsync(s => s.SetProperty(l => l.LastAttemptAt, now), cancellationToken);
+        if (claimed == 0)
+        {
+            return null;
+        }
+
+        if (await FetchPngAsync(url, cancellationToken) is not { } png)
+        {
+            return LogoResult.NotFound;
+        }
+
+        // Only fills in a logo that's still missing, so an organizer's upload in the meantime stays.
+        var saved = timeProvider.GetUtcNow();
+        await db.OtherAdventLogos
+            .Where(l => l.Url == url && l.Png == null)
+            .ExecuteUpdateAsync(
+                s => s.SetProperty(l => l.Png, png).SetProperty(l => l.IsUploaded, false).SetProperty(l => l.UpdatedAt, saved).SetProperty(l => l.LastAttemptAt, saved),
+                cancellationToken);
+        return LogoResult.Saved;
     }
 
     /// <summary>Replaces the logo with an organizer's image, redrawn like a fetched one.</summary>
@@ -81,15 +113,21 @@ public sealed class OtherAdventLogoService(AdventDbContext db, LogoFetcher fetch
         return LogoResult.Saved;
     }
 
+    private Task<byte[]?> FetchPngAsync(string url, CancellationToken cancellationToken) =>
+        Uri.TryCreate(url, UriKind.Absolute, out var site) ? fetcher.FetchAsync(site, cancellationToken) : Task.FromResult<byte[]?>(null);
+
     private async Task<OtherAdventLogo> FindOrAddAsync(string url, CancellationToken cancellationToken)
     {
-        if (await db.OtherAdventLogos.SingleOrDefaultAsync(l => l.Url == url, cancellationToken) is { } logo)
-        {
-            return logo;
-        }
-
-        logo = new OtherAdventLogo { Url = url };
-        db.OtherAdventLogos.Add(logo);
-        return logo;
+        await EnsureRowAsync(url, cancellationToken);
+        return await db.OtherAdventLogos.SingleAsync(l => l.Url == url, cancellationToken);
     }
+
+    /// <summary>
+    /// Adds the site's row if it hasn't got one. Another replica (or an organizer's Refresh) can add the same site at the same
+    /// moment, so a duplicate is ignored rather than failing on the unique index (#197).
+    /// </summary>
+    private Task EnsureRowAsync(string url, CancellationToken cancellationToken) =>
+        db.Database.ExecuteSqlAsync(
+            $"INSERT INTO other_advent_logos (url, is_uploaded) VALUES ({url}, false) ON CONFLICT (url) DO NOTHING",
+            cancellationToken);
 }

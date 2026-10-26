@@ -12,7 +12,7 @@
     @foreach (var founder in Site.Value.Organizers.Where(o => o.Founder))
     {
         <section class="mt-8 flex flex-col gap-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:flex-row sm:items-center">
-            <img src="@($"https://github.com/{founder.GitHub}.png?size=256")" alt="" width="128" height="128" class="size-32 shrink-0 rounded-full ring-4 ring-advent-100" />
+            <img src="@OrganizerPhotos.Link(founder.GitHub)" alt="" width="128" height="128" class="size-32 shrink-0 rounded-full ring-4 ring-advent-100" />
             <div>
                 <p class="text-sm font-semibold uppercase tracking-wide text-advent-700">Founder and host</p>
                 <h2 class="mt-1 text-2xl font-bold text-slate-900">@founder.Name</h2>
@@ -37,7 +37,7 @@
             @foreach (var organizer in organizers)
             {
                 <li class="flex items-center gap-3">
-                    <img src="@($"https://github.com/{organizer.GitHub}.png?size=128")" alt="" width="64" height="64" class="size-16 rounded-full ring-1 ring-slate-200" loading="lazy" />
+                    <img src="@OrganizerPhotos.Link(organizer.GitHub)" alt="" width="64" height="64" class="size-16 rounded-full ring-1 ring-slate-200" loading="lazy" />
                     <span>
                         <span class="block font-semibold text-slate-900">@organizer.Name</span>
                         @if (!string.IsNullOrWhiteSpace(organizer.Role))

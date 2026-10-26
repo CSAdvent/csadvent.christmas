@@ -240,6 +240,61 @@ public sealed class RetentionTests(AppHostFixture fixture)
         }
     }
 
+    [Fact]
+    public async Task KeepsTheEmailOfSomeoneStillWaitingOnARequestForAnOlderPost()
+    {
+        int claimerId, linkerId, declinedId;
+        await using (var db = await fixture.CreateDbContextAsync())
+        {
+            // None has had a spot, and each last signed in before 2025's deletion time.
+            Contributor Lapsed(long githubUserId, string login) => new()
+            {
+                GithubUserId = githubUserId,
+                GithubLogin = login,
+                Email = $"{login}@example.com",
+                EmailVerifiedAt = new DateTimeOffset(2025, 11, 2, 12, 0, 0, TimeSpan.Zero),
+                CreatedAt = new DateTimeOffset(2025, 11, 2, 12, 0, 0, TimeSpan.Zero),
+            };
+            var claimer = Lapsed(8106, "waiting-claimer");
+            var linker = Lapsed(8107, "waiting-linker");
+            var declined = Lapsed(8108, "declined-claimer");
+            db.Contributors.AddRange(claimer, linker, declined);
+            await db.SaveChangesAsync(CancellationToken);
+
+            var slots = await db.Slots.Where(s => s.SeasonYear == 2021 && s.PostUrl != null).OrderBy(s => s.Id).Take(2).ToListAsync(CancellationToken);
+            db.PostClaimRequests.AddRange(
+                new PostClaimRequest { SlotId = slots[0].Id, ContributorId = claimer.Id, SubmittedAt = Now.AddDays(-60), Status = PostClaimStatus.Pending },
+                new PostClaimRequest
+                {
+                    SlotId = slots[1].Id,
+                    ContributorId = declined.Id,
+                    SubmittedAt = Now.AddDays(-60),
+                    Status = PostClaimStatus.Declined,
+                    DecidedAt = Now.AddDays(-10),
+                    DecidedBy = "organizer",
+                });
+            db.PostLinkRequests.Add(new PostLinkRequest
+            {
+                ContributorId = linker.Id,
+                SubmittedAt = Now.AddDays(-60),
+                Status = PostLinkRequestStatus.Pending,
+                Changes = [new PostLinkChange { SlotId = slots[0].Id, OldUrl = slots[0].PostUrl!, NewUrl = "https://waiting.example.dev/post" }],
+            });
+            await db.SaveChangesAsync(CancellationToken);
+            (claimerId, linkerId, declinedId) = (claimer.Id, linker.Id, declined.Id);
+        }
+
+        await using (var db = await fixture.CreateDbContextAsync())
+        {
+            await CreateRetention(db, Now).DeleteExpiredAsync(CancellationToken);
+
+            // The organizers' answer goes to that address (#181). A decided request's answer has already been sent.
+            Assert.Equal("waiting-claimer@example.com", (await db.Contributors.SingleAsync(c => c.Id == claimerId, CancellationToken)).Email);
+            Assert.Equal("waiting-linker@example.com", (await db.Contributors.SingleAsync(c => c.Id == linkerId, CancellationToken)).Email);
+            Assert.Null((await db.Contributors.SingleAsync(c => c.Id == declinedId, CancellationToken)).Email);
+        }
+    }
+
     private static ContactRetention CreateRetention(AdventDbContext db, DateTimeOffset now)
     {
         var clock = new FakeTimeProvider(now);

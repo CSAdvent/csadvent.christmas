@@ -11,9 +11,67 @@ public sealed class ArchiveSeederTests
     private static readonly IReadOnlyList<ArchivedSeason> Archive = ArchiveSeeder.LoadSeasons();
 
     [Fact]
-    public void ContainsEverySeasonFrom2017To2025()
+    public void ContainsEverySeasonFrom2017()
     {
-        Assert.Equal(Enumerable.Range(2017, 9), Archive.Select(s => s.Year));
+        // 2017-2025 from the legacy site, then each finished season exported from the organizers' seasons page (#182).
+        Assert.True(Archive.Count >= 9);
+        Assert.Equal(Enumerable.Range(2017, Archive.Count), Archive.Select(s => s.Year));
+    }
+
+    [Fact]
+    public void TheExportWritesFilesExactlyLikeThese()
+    {
+        var assembly = typeof(ArchiveSeeder).Assembly;
+        foreach (var name in assembly.GetManifestResourceNames().Where(n => n.StartsWith("archive/", StringComparison.Ordinal)))
+        {
+            using var stream = assembly.GetManifestResourceStream(name)!;
+            var file = new StreamReader(stream).ReadToEnd();
+            using var json = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(file));
+
+            var exported = System.Text.Encoding.UTF8.GetString(ArchiveSeeder.Serialize(ArchiveSeeder.Deserialize(json)!));
+
+            Assert.Equal(file.ReplaceLineEndings("\n").TrimEnd(), exported.ReplaceLineEndings("\n"));
+        }
+    }
+
+    [Fact]
+    public void AnExportedSeasonIsSeededAsItWasWithoutContactDetails()
+    {
+        var season = Season.Create(2026, 2, Now);
+        var slot = season.Slots.Single(s => s is { Day: 6, Part: 2 });
+        slot.AuthorName = "Ada Lovelace";
+        slot.AuthorUrl = "https://ada.dev";
+        slot.PostTitle = "Spans and \"quotes\" in C# 15 🎄";
+        slot.PostUrl = "https://ada.dev/spans";
+        slot.PostSummary = "Ada's summary, with an accent: café.";
+        slot.Contact = new SlotContact { Email = "ada@example.com" };
+        slot.Contributor = new Contributor { GithubUserId = 1815, GithubLogin = "ada", Email = "ada@example.com", CreatedAt = Now };
+
+        var json = ArchiveSeeder.Serialize(ArchivedSeason.From(season));
+        var text = System.Text.Encoding.UTF8.GetString(json);
+        using var stream = new MemoryStream(json);
+        var seeded = ArchiveSeeder.Deserialize(stream)!.ToSeason(Now);
+
+        Assert.DoesNotContain("ada@example.com", text);
+        Assert.DoesNotContain("\"ada\"", text);
+        Assert.Contains("\"postSummary\": \"Ada's summary, with an accent: café.\"", text);
+        Assert.Equal(50, seeded.Slots.Count);
+        var copy = seeded.Slots.Single(s => s is { Day: 6, Part: 2 });
+        Assert.Equal(
+            (slot.AuthorName, slot.AuthorUrl, slot.PostTitle, slot.PostUrl, slot.PostSummary),
+            (copy.AuthorName, copy.AuthorUrl, copy.PostTitle, copy.PostUrl, copy.PostSummary));
+        Assert.Null(copy.Contact);
+        Assert.Null(copy.ContributorId);
+        Assert.All(seeded.Slots.Where(s => s != copy), s => Assert.False(s.IsClaimed));
+    }
+
+    [Fact]
+    public void NoAuthorLinkIsWhereTheySignedUp()
+    {
+        // The early seasons linked many authors to their sign-up tweet or comment (#166); those were dropped.
+        Assert.DoesNotContain(
+            Archive.SelectMany(s => s.Slots),
+            slot => slot.AuthorUrl is { } url && CSAdvent.Web.Entries.AuthorLinks.IsSignUpLink(url));
     }
 
     [Theory]

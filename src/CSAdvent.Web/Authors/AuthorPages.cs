@@ -145,7 +145,7 @@ public sealed class AuthorPageService(RevealedPosts revealed, AdventDbContext db
         return logins is [{ } login] ? AuthorPageLinks.ForLogin(login) : null;
     }
 
-    /// <summary>The website they gave with their latest post that has one.</summary>
+    /// <summary>The website they gave with their latest post that has one (not where they signed up: <see cref="AuthorLinks.Website"/>).</summary>
     private static string? Website(IEnumerable<RevealedPost> posts) =>
-        posts.OrderByDescending(p => p.Year).ThenByDescending(p => p.Day).Select(p => p.AuthorUrl).FirstOrDefault(url => url is not null);
+        posts.OrderByDescending(p => p.Year).ThenByDescending(p => p.Day).Select(p => AuthorLinks.Website(p.AuthorUrl)).FirstOrDefault(url => url is not null);
 }

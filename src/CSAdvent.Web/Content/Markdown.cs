@@ -27,6 +27,15 @@ public static class Markdown
             }
         }
 
+        // Autolinks (<https://…>) are links too, and their text is their address, so an unsafe one becomes plain text (#191).
+        foreach (var autolink in document.Descendants<AutolinkInline>().ToList())
+        {
+            if (!IsSafeUrl(autolink.Url))
+            {
+                autolink.ReplaceBy(new LiteralInline(autolink.Url));
+            }
+        }
+
         using var writer = new StringWriter();
         var renderer = new HtmlRenderer(writer);
         Pipeline.Setup(renderer);
