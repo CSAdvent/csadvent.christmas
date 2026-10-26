@@ -54,6 +54,12 @@ public sealed record SpotBackupOffer(
     string? PostTitle,
     string? PostUrl);
 
+/// <summary>
+/// A backup asked about a spot who hasn't answered yet, with time left, or one standing by to take it (<paramref name="StandingBy"/>).
+/// </summary>
+/// <param name="ExpiresAt">For an ask, when the next backup is asked too.</param>
+public sealed record ActiveBackupOffer(int SlotId, int SubstituteId, int Day, int Part, string Name, bool StandingBy, DateTimeOffset AskedAt, DateTimeOffset ExpiresAt);
+
 public enum BackupSignupOutcome
 {
     SignedUp,
@@ -209,23 +215,38 @@ public sealed partial class BackupListService(
     public async Task<List<BackupListEntry>> ListAsync(int year, CancellationToken cancellationToken = default)
     {
         var list = await OrderedAsync(year, cancellationToken);
-        var now = timeProvider.GetUtcNow();
-        var offers = await db.BackupOffers
-            .AsNoTracking()
-            .Where(o => o.Substitute.SeasonYear == year && (o.Status == BackupOfferStatus.Accepted || (o.Status == BackupOfferStatus.Asked && o.ExpiresAt > now)))
-            .Select(o => new { o.SubstituteId, o.Status, o.Slot.Day })
-            .ToListAsync(cancellationToken);
+        var offers = await ListActiveOffersAsync(year, timeProvider.GetUtcNow(), cancellationToken);
 
         return [.. list.Select(s =>
         {
             var offer = offers.FirstOrDefault(o => o.SubstituteId == s.Id);
             var status = s.AssignedSlot is { } slot ? $"Filled December {slot.Day}"
-                : offer is { Status: BackupOfferStatus.Accepted } ? $"Standing by for December {offer.Day}"
+                : offer is { StandingBy: true } ? $"Standing by for December {offer.Day}"
                 : offer is not null ? $"Asked about December {offer.Day}"
                 : "Waiting";
             return new BackupListEntry(PositionOf(list, s), s.Name, s.Contributor?.GithubLogin, s.Email, s.Notes, s.SignedUpAt, status);
         })];
     }
+
+    /// <summary>
+    /// A season's backups standing by, and those asked whose time to answer isn't up, in spot order: for the backup list's
+    /// statuses, and the organizers' Today panel and morning digest (#171).
+    /// </summary>
+    public Task<List<ActiveBackupOffer>> ListActiveOffersAsync(int year, DateTimeOffset now, CancellationToken cancellationToken = default) =>
+        db.BackupOffers
+            .AsNoTracking()
+            .Where(o => o.Substitute.SeasonYear == year && (o.Status == BackupOfferStatus.Accepted || (o.Status == BackupOfferStatus.Asked && o.ExpiresAt > now)))
+            .OrderBy(o => o.Slot.Day).ThenBy(o => o.Slot.Part).ThenBy(o => o.AskedAt).ThenBy(o => o.Id)
+            .Select(o => new ActiveBackupOffer(
+                o.SlotId,
+                o.SubstituteId,
+                o.Slot.Day,
+                o.Slot.Part,
+                o.Substitute.Name,
+                o.Status == BackupOfferStatus.Accepted,
+                o.AskedAt,
+                o.ExpiresAt))
+            .ToListAsync(cancellationToken);
 
     /// <summary>Every backup asked about a spot, in the order they were asked.</summary>
     public Task<List<SpotBackupOffer>> ListOffersAsync(int slotId, CancellationToken cancellationToken = default) =>

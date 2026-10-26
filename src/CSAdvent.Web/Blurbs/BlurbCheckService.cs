@@ -301,14 +301,15 @@ public sealed partial class BlurbCheckService(
     /// once, so they can keep the author if the check got it wrong (#148). The backup takes the spot no sooner than
     /// <see cref="BackupOptions.OrganizersNotice"/> after this (<see cref="BackupService"/>). Not when an organizer decided it
     /// themselves, or after the deadline's email, which already says a backup who accepts takes the spot straight away.
+    /// <para>
+    /// The notice is about the backup standing by now (#234). One from before they accepted was about another backup (from an
+    /// earlier round, or one who left the list since), so it's forgotten and they get one of their own. The backup standing by
+    /// counts whichever round they were asked in, as <see cref="BackupService.HasBackupThisRoundAsync"/> explains.
+    /// </para>
     /// </summary>
     private async Task<int> TellOrganizersBackupStandingByAsync(BlurbCheck check, Slot slot, DateTimeOffset now, CancellationToken cancellationToken)
     {
-        // Every run gets here while a backup stands by, so it checks first rather than leave it to the unique index, whose
-        // refusals EF Core logs as errors (#157).
-        var runDate = schedule.GetDate(slot.SeasonYear, slot.Day);
-        if (check.DecidedBy is not null || check.DeadlineEmailedAt is not null
-            || await db.SentReminders.RecordedSlots(ReminderKind.AdminBlurbBackupStandingBy, runDate).ContainsAsync(slot.Id, cancellationToken))
+        if (check.DecidedBy is not null || check.DeadlineEmailedAt is not null)
         {
             return 0;
         }
@@ -316,14 +317,33 @@ public sealed partial class BlurbCheckService(
         var backup = await db.BackupOffers
             .AsNoTracking()
             .Where(o => o.SlotId == slot.Id && o.Status == BackupOfferStatus.Accepted)
-            .Select(o => new { o.AuthorName, o.PostTitle, o.PostUrl })
+            .Select(o => new { o.AuthorName, o.PostTitle, o.PostUrl, AcceptedAt = o.RespondedAt })
             .FirstOrDefaultAsync(cancellationToken);
         if (backup?.PostUrl is null)
         {
             return 0;
         }
 
+        // Every run gets here while a backup stands by, so it checks first rather than leave it to the unique index, whose
+        // refusals EF Core logs as errors (#157).
+        var told = await db.SentReminders
+            .Where(r => r.SlotId == slot.Id && r.Kind == ReminderKind.AdminBlurbBackupStandingBy)
+            .Select(r => new { r.Id, r.SentAt })
+            .ToListAsync(cancellationToken);
+        if (told.Any(r => backup.AcceptedAt is not { } acceptedAt || r.SentAt >= acceptedAt))
+        {
+            return 0;
+        }
+
+        // Anything left is about an earlier backup: history, and its run date would stop this one's record.
+        if (told.Count > 0)
+        {
+            var stale = told.Select(r => r.Id).ToList();
+            await db.SentReminders.Where(r => stale.Contains(r.Id)).ExecuteDeleteAsync(cancellationToken);
+        }
+
         // Claimed once per spot; its time is when they were told, which the backup waits on.
+        var runDate = schedule.GetDate(slot.SeasonYear, slot.Day);
         var record = new SentReminder
         {
             Kind = ReminderKind.AdminBlurbBackupStandingBy,
@@ -360,13 +380,19 @@ public sealed partial class BlurbCheckService(
     private Task ForgetBackupNoticeAsync(int slotId, CancellationToken cancellationToken) =>
         db.SentReminders.Where(r => r.SlotId == slotId && r.Kind == ReminderKind.AdminBlurbBackupStandingBy).ExecuteDeleteAsync(cancellationToken);
 
-    /// <summary>At the deadline, a missing blurb with nobody to take the spot tells the organizers, once.</summary>
+    /// <summary>
+    /// At the deadline, a missing blurb with nobody to take the spot tells the organizers, once. Only this round's backups count
+    /// (#234): one who filled the spot in an earlier round, then dropped out or saw it go to someone new, isn't standing by.
+    /// </summary>
     private async Task<BlurbRun> DeadlineAsync(BlurbCheck check, Slot slot, DateTimeOffset now, CancellationToken cancellationToken)
     {
         if (check.Status is not BlurbStatus.Missing || check.DeadlineEmailedAt is not null
             || now < BlurbRules.Deadline(schedule, posting.Value, slot.SeasonYear, slot.Day, slot.Part)
             || now >= schedule.GetDayEndTime(slot.SeasonYear, slot.Day)
-            || await db.BackupOffers.AnyAsync(o => o.SlotId == slot.Id && (o.Status == BackupOfferStatus.Accepted || o.Status == BackupOfferStatus.Used), cancellationToken))
+            || await backups.HasBackupThisRoundAsync(slot, BackupReason.BlurbMissing, now, cancellationToken)
+            // A backup standing by may have taken the spot moments ago (NotifyAsync moves the backups along), so this check
+            // is about a post that isn't on the calendar any more.
+            || await db.Slots.Where(s => s.Id == slot.Id).Select(s => s.PostUrl).SingleOrDefaultAsync(cancellationToken) != check.PostUrl)
         {
             return BlurbRun.None;
         }

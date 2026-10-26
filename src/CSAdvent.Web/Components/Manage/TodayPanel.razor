@@ -1,0 +1,239 @@
+@* The organizers' day (#171): today's and tomorrow's spots with their posts, blurb checks and announcements, the backups being
+   asked or standing by, what failed, and what's waiting. The morning digest (MorningDigest) emails the same each morning. *@
+@using System.Globalization
+@using CSAdvent.Web.Data
+@using CSAdvent.Web.Email
+@using CSAdvent.Web.Manage
+
+<section class="mt-6" aria-labelledby="today">
+    <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h2 id="today" class="text-xl font-semibold text-slate-900">Today</h2>
+        <p class="text-sm text-slate-500">@Report.Date.ToString("dddd, MMMM d", CultureInfo.InvariantCulture)</p>
+    </div>
+    @if (Year == Season.TestYear)
+    {
+        <p class="mt-1 max-w-3xl text-sm text-slate-600">
+            The test season's rehearsal, on its own calendar. <a href="manage" class="text-advent-700 underline">Back to the real seasons</a>
+        </p>
+    }
+
+    <ul aria-label="What's waiting" class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        @Queue("manage/requests", Report.Queues.Requests, "Requests waiting", failure: false)
+        @Queue("manage/authors/requests", Report.Queues.PostClaims, "Post claims waiting", failure: false)
+        @Queue("manage/authors/link-changes", Report.Queues.LinkChanges, "Link changes waiting", failure: false)
+        @Queue("manage/emails/queue", Report.Queues.EmailsWaiting, "Emails waiting to go", failure: false)
+        @Queue("manage/emails/queue", Report.Queues.FailedEmails, "Failed emails", failure: true)
+    </ul>
+
+    @if (Report.Seasons.Count == 0)
+    {
+        <p class="mt-4 max-w-3xl text-slate-600">
+            @(Year is { } year
+                ? $"C# Advent {year} has no days today or tomorrow."
+                : "No C# Advent days today or tomorrow. From November 30, and in a rehearsal, this shows the day's spots, their posts and the backups.")
+        </p>
+    }
+
+    @foreach (var season in Report.Seasons)
+    {
+        <div class="mt-6 rounded-xl bg-white p-5 ring-1 ring-slate-200">
+            <h3 class="text-lg font-semibold text-slate-900">@(season.IsTest ? $"Test season ({season.Year})" : $"C# Advent {season.Year}")</h3>
+            @if (season.IsTest)
+            {
+                <p class="mt-1 text-sm text-slate-600">Nothing in the test season is posted automatically.</p>
+            }
+
+            @foreach (var day in season.Days)
+            {
+                <div class="mt-5 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                    <h4 class="font-semibold text-slate-900">
+                        @(day.IsToday ? "Today" : "Tomorrow"), December @day.Day<span class="text-sm font-normal text-slate-500">@(day.IsRevealed ? " · revealed" : " · revealed at midnight")</span>
+                    </h4>
+                    <a href="@($"manage/social?year={season.Year}&day={day.Day}")" class="text-sm font-medium text-advent-700 underline">December @day.Day's announcements</a>
+                </div>
+                @if (day.Spots.Count == 0)
+                {
+                    <p class="mt-2 text-sm text-slate-500">No spots.</p>
+                }
+                else
+                {
+                    <div class="relative mt-2 overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead class="border-b border-slate-200 text-slate-500">
+                                <tr>
+                                    <th class="py-2 pr-4 font-medium">Spot</th>
+                                    <th class="py-2 pr-4 font-medium">Author</th>
+                                    <th class="py-2 pr-4 font-medium">Post</th>
+                                    <th class="py-2 pr-4 font-medium">Blurb</th>
+                                    <th class="py-2 font-medium">Posting</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                @foreach (var spot in day.Spots)
+                                {
+                                    var entry = spot.Entry;
+                                    <tr class="align-top">
+                                        <td class="py-2 pr-4 whitespace-nowrap">
+                                            <a href="manage/entries/@entry.SlotId" class="text-slate-900 hover:underline">Post @entry.Part</a>
+                                            @if (spot.NeedsAttention)
+                                            {
+                                                <span class="ml-1 rounded-full bg-amber-300 px-2 py-0.5 text-xs font-semibold text-slate-900"><span class="sr-only">: </span>Needs attention</span>
+                                            }
+                                        </td>
+                                        <td class="min-w-32 py-2 pr-4">
+                                            @if (entry.AuthorName is { } author)
+                                            {
+                                                <span class="font-medium text-slate-900">@author</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-slate-500">Nobody</span>
+                                            }
+                                        </td>
+                                        <td class="min-w-48 py-2 pr-4">
+                                            <span class="rounded-full px-2 py-0.5 text-xs font-semibold @EntryBadge(entry.Status)">@TodayLabels.Entry(entry)</span>
+                                            @if (entry.PostUrl is { } postUrl)
+                                            {
+                                                @* Straight to the post, not through /go, so organizers aren't counted. *@
+                                                <a href="@postUrl" target="_blank" rel="noopener" class="mt-1 block text-advent-700 underline @(entry.PostTitle is null ? "break-all" : "")">@(entry.PostTitle ?? postUrl)</a>
+                                            }
+                                            else if (entry.PostTitle is { } title)
+                                            {
+                                                <span class="mt-1 block text-slate-700">@title</span>
+                                            }
+                                        </td>
+                                        <td class="py-2 pr-4 whitespace-nowrap">
+                                            @if (spot.Blurb is { } blurb)
+                                            {
+                                                <span title="@blurb.Detail" class="rounded-full px-2 py-0.5 text-xs font-semibold @CSAdvent.Web.Blurbs.Labels.Badge(blurb.Status)">@blurb.Label</span>
+                                            }
+                                        </td>
+                                        <td class="min-w-64 py-2">
+                                            @if (spot.Posting.Count == 0)
+                                            {
+                                                <span class="text-slate-500">@(entry.AuthorName is null ? "" : "Once it has a title and link")</span>
+                                            }
+                                            else
+                                            {
+                                                <ul class="flex flex-wrap gap-1">
+                                                    @foreach (var platform in spot.Posting)
+                                                    {
+                                                        var label = $"{platform.Platform}: {TodayLabels.Posting(platform, spot.AnnouncedAt, Report.TimeZone)}";
+                                                        <li>
+                                                            @if (platform.Status is TodayPostingStatus.Failed or TodayPostingStatus.Unconfirmed)
+                                                            {
+                                                                <a href="@SocialCard(season.Year, day.Day, entry.SlotId, platform)" title="@platform.Error" class="inline-block rounded-full px-2 py-0.5 text-xs font-semibold underline @TodayLabels.Badge(platform.Status)">@label</a>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="inline-block rounded-full px-2 py-0.5 text-xs font-semibold @TodayLabels.Badge(platform.Status)">@label</span>
+                                                            }
+                                                        </li>
+                                                    }
+                                                </ul>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            }
+
+            @if (season.Backups.Count > 0)
+            {
+                <h4 class="mt-6 font-semibold text-slate-900">Backup posters</h4>
+                <ul class="mt-2 flex flex-col gap-1 text-sm text-slate-700">
+                    @foreach (var backup in season.Backups)
+                    {
+                        <li>
+                            @* Each part starts with its own space, because Razor drops the whitespace between them. *@
+                            <a href="manage/entries/@backup.SlotId" class="font-medium text-slate-900 hover:underline">@season.Spot(backup.Day, backup.Part)</a>
+                            @if (backup.StandingBy)
+                            {
+                                <span>@($": {backup.Name} is standing by to take the spot.")</span>
+                            }
+                            else
+                            {
+                                <span>@($": {backup.Name} has been asked, and has until ")<LocalTime Value="backup.ExpiresAt" /> to answer.</span>
+                            }
+                        </li>
+                    }
+                </ul>
+            }
+
+            @if (season.FailedPosts.Count > 0)
+            {
+                <h4 class="mt-6 font-semibold text-slate-900">Posts that didn't go out</h4>
+                <ul class="mt-2 flex flex-col gap-1 text-sm text-slate-700">
+                    @foreach (var post in season.FailedPosts)
+                    {
+                        <li>
+                            <a href="@SocialCard(season.Year, post.Day, post.SlotId, post.Platform)" class="font-medium underline @(post.Unconfirmed ? "text-amber-800" : "text-red-700")">@season.Spot(post.Day, post.Part) on @post.Platform: @(post.Unconfirmed ? "did it go out?" : "failed")</a>
+                            <span>@($" {post.Title}.")</span>
+                            @if (post.Error is { } error)
+                            {
+                                <span class="text-slate-600">@($" {error}")</span>
+                            }
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    }
+
+    @if (Report.FailedEmails.Count > 0)
+    {
+        <div class="mt-6 rounded-xl bg-red-50 p-5 ring-1 ring-red-200">
+            <h3 class="font-semibold text-red-900">Failed emails</h3>
+            <ul class="mt-2 flex flex-col gap-1 text-sm text-red-900">
+                @foreach (var email in Report.FailedEmails.Take(FailedEmailsShown))
+                {
+                    <li class="break-words">
+                        <span class="font-medium">@(EmailCatalog.Find(email.Kind)?.Name ?? email.Kind)</span>
+                        <span>@($" to {email.ToAddress}{(email.LastError is { } error ? $": {error}" : "")}")</span>
+                    </li>
+                }
+            </ul>
+            @if (Report.FailedEmails.Count > FailedEmailsShown)
+            {
+                <p class="mt-1 text-sm text-red-900">And @(Report.FailedEmails.Count - FailedEmailsShown) more.</p>
+            }
+            <p class="mt-2 text-sm"><a href="manage/emails/queue" class="font-medium text-red-900 underline">Retry or discard them on the email queue page</a></p>
+        </div>
+    }
+</section>
+
+@code {
+    /// <summary>The failed emails listed here; the email queue's page has them all.</summary>
+    public const int FailedEmailsShown = 5;
+
+    [Parameter, EditorRequired]
+    public required TodayReport Report { get; set; }
+
+    /// <summary>The season the overview was asked for (<c>?year=</c>), if any: the test season's rehearsal is <c>?year=9000</c>.</summary>
+    [Parameter]
+    public int? Year { get; set; }
+
+    private static RenderFragment Queue(string href, int count, string label, bool failure) =>
+        @<li>
+            <a href="@href" class="flex h-full flex-col rounded-xl p-3 ring-1 @(failure && count > 0 ? "bg-red-50 ring-red-200 hover:bg-red-100" : "bg-white ring-slate-200 hover:bg-slate-50")">
+                <span class="text-2xl font-semibold tabular-nums @(failure && count > 0 ? "text-red-700" : "text-slate-900")">@count</span>
+                <span class="text-sm text-slate-600">@label</span>
+            </a>
+        </li>;
+
+    /// <summary>The announcement's card on the social page, where its Retry and Mark as posted buttons are.</summary>
+    private static string SocialCard(int year, int day, int slotId, TodayPosting platform) => SocialCard(year, day, slotId, platform.Platform);
+
+    private static string SocialCard(int year, int day, int slotId, CSAdvent.Web.Claims.SocialPlatform platform) =>
+        string.Create(CultureInfo.InvariantCulture, $"manage/social?year={year}&day={day}#announcement-{slotId}-{platform}-card");
+
+    private static string EntryBadge(EntryStatus status) => status switch
+    {
+        EntryStatus.Open => "bg-slate-100 text-slate-600",
+        EntryStatus.Ready => "bg-green-100 text-green-800",
+        _ => "bg-amber-100 text-amber-800",
+    };
+}

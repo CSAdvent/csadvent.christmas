@@ -3,6 +3,7 @@ using CSAdvent.Web.Blurbs;
 using CSAdvent.Web.Claims;
 using CSAdvent.Web.Content;
 using CSAdvent.Web.Contributors;
+using CSAdvent.Web.Manage;
 using CSAdvent.Web.Reminders;
 
 namespace CSAdvent.Web.Email;
@@ -267,6 +268,12 @@ public static class EmailCatalog
             "The author. Replies go to the organizers.",
             site => ReminderEmails.PostLinkDueToday(new DayOfReminder("Ada Lovelace", 2026, 10, 1, 2, new TimeOnly(10, 0)), site)),
         new(
+            "morning-digest",
+            "The organizers' morning digest",
+            "At 8 AM Eastern (Reminders:DigestAt) each day from December 1 to 25, and each day of the test season's rehearsal (for it alone), once a day per season: today's and tomorrow's spots, with tomorrow's posts unnamed until their reveal; backups asked or standing by; posts and emails that failed; and what's waiting. The same as the Today panel on /manage.",
+            "The organizers (Site:ContactEmail).",
+            SampleDigest),
+        new(
             "social-credentials-failing",
             "Automatic posting has stopped working",
             "At 8 AM Eastern, when a platform in Automatic mode fails the daily check of its credentials (once a day per platform).",
@@ -371,6 +378,61 @@ public static class EmailCatalog
     ];
 
     private static string SampleOffer(SiteOptions site) => $"{site.BaseUrl.TrimEnd('/')}/backups/offers/7";
+
+    /// <summary>December 6 at 8 AM Eastern: one post ready and one without a link today, tomorrow's posts coming along.</summary>
+    private static EmailContent SampleDigest(SiteOptions site)
+    {
+        var eastern = TimeZoneInfo.FindSystemTimeZoneById("America/New_York");
+        var now = new DateTimeOffset(2026, 12, 6, 13, 0, 0, TimeSpan.Zero);
+        var checkedAt = now.AddHours(-7);
+        TodaySpot Spot(EntryListItem entry, BlurbState? blurb, bool attention, int hour, params TodayPosting[] posting) =>
+            new(entry, blurb, attention, new DateTimeOffset(2026, 12, entry.Day, hour + 5, 0, 0, TimeSpan.Zero), posting);
+
+        var season = new TodaySeason(
+            2026,
+            2,
+            [
+                new TodayDay(6, IsToday: true, IsRevealed: true,
+                [
+                    Spot(
+                        new EntryListItem(41, 6, 1, "Ada Lovelace", "ada@example.com", false, "Span<T> all the way down", "https://example.com/span", EntryStatus.Ready),
+                        new BlurbState(CSAdvent.Web.Data.BlurbStatus.Passed, null, checkedAt, checkedAt, null, false),
+                        false,
+                        10,
+                        new TodayPosting(SocialPlatform.Bluesky, true, TodayPostingStatus.Scheduled),
+                        new TodayPosting(SocialPlatform.Mastodon, true, TodayPostingStatus.Scheduled),
+                        new TodayPosting(SocialPlatform.LinkedIn, false, TodayPostingStatus.ToPost)),
+                    Spot(new EntryListItem(42, 6, 2, "Grace Hopper", "grace@example.com", false, null, null, EntryStatus.ClaimedWithoutPost), null, true, 14),
+                ]),
+                new TodayDay(7, IsToday: false, IsRevealed: false,
+                [
+                    Spot(
+                        new EntryListItem(43, 7, 1, "Linus Torvalds", "linus@example.com", false, "Not named before its reveal", "https://example.com/hidden", EntryStatus.Ready),
+                        new BlurbState(CSAdvent.Web.Data.BlurbStatus.Waiting, null, checkedAt, null, null, false),
+                        false,
+                        10,
+                        new TodayPosting(SocialPlatform.Bluesky, true, TodayPostingStatus.Scheduled),
+                        new TodayPosting(SocialPlatform.Mastodon, true, TodayPostingStatus.Scheduled),
+                        new TodayPosting(SocialPlatform.LinkedIn, false, TodayPostingStatus.ByHandLater)),
+                    Spot(new EntryListItem(44, 7, 2, null, null, true, null, null, EntryStatus.Open), null, true, 14),
+                ]),
+            ],
+            [
+                new ActiveBackupOffer(44, 3, 7, 2, "Barbara Liskov", false, now.AddHours(-1), now.AddHours(3)),
+            ],
+            [
+                new TodayFailedPost(39, 5, 2, "Records, revisited", SocialPlatform.Facebook, false, "401 Unauthorized: Error validating access token."),
+            ]);
+
+        var report = new TodayReport(
+            now,
+            new DateOnly(2026, 12, 6),
+            eastern,
+            [season],
+            [new CSAdvent.Web.Email.Queue.FailedEmail(7, "daily-share", "ada@example.com", "Day 5 of C# Advent", 6, "The email service answered 503", now.AddHours(-2))],
+            new TodayQueues(Requests: 0, PostClaims: 1, LinkChanges: 0, EmailsWaiting: 12, FailedEmails: 1));
+        return MorningDigest.Email(report, season, site);
+    }
 
     public static EmailCatalogEntry? Find(string key) => Entries.FirstOrDefault(e => e.Key == key);
 }

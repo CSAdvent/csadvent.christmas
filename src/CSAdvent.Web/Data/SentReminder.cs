@@ -37,6 +37,12 @@ public enum ReminderKind
     /// keep the author (#148). Its time is when they were told: the backup takes the spot no sooner than an hour later.
     /// </summary>
     AdminBlurbBackupStandingBy,
+
+    /// <summary>
+    /// The organizers' morning digest (#171), once per season and day of its Advent (or of its rehearsal). Recorded against the
+    /// season's first slot, so each season gets its own, and resetting the test season forgets its digests.
+    /// </summary>
+    AdminMorningDigest,
 }
 
 /// <summary>

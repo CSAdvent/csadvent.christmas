@@ -1,6 +1,7 @@
 using CSAdvent.Web.Backups;
 using CSAdvent.Web.Blurbs;
 using CSAdvent.Web.Jobs;
+using CSAdvent.Web.Manage;
 using CSAdvent.Web.Reminders;
 using CSAdvent.Web.Social.Posting;
 using Microsoft.Extensions.DependencyInjection;
@@ -97,6 +98,7 @@ public sealed class PeriodicWorkerTests
             .AddScoped<BlurbCheckService>(_ => { asked.Add("blurb check"); throw new InvalidOperationException("A page the reader chokes on."); })
             .AddScoped<ReminderService>(_ => { asked.Add("reminders"); throw new InvalidOperationException("Stand-in."); })
             .AddScoped<BackupService>(_ => { asked.Add("backups"); throw new InvalidOperationException("Stand-in."); })
+            .AddScoped<MorningDigest>(_ => { asked.Add("digest"); throw new InvalidOperationException("Stand-in."); })
             .BuildServiceProvider();
         var clock = new FakeTimeProvider(Now);
         var (runs, store) = Runs(clock);
@@ -104,8 +106,8 @@ public sealed class PeriodicWorkerTests
 
         await worker.RunOnceAsync(TestContext.Current.CancellationToken);
 
-        Assert.Equal(["blurb check", "reminders", "backups"], asked);
-        Assert.Equal(["blurb-check", "reminders", "backups"], store.Saved.Select(s => s.Step));
+        Assert.Equal(["blurb check", "reminders", "backups", "digest"], asked);
+        Assert.Equal(["blurb-check", "reminders", "backups", "morning-digest"], store.Saved.Select(s => s.Step));
     }
 
     [Fact]
@@ -132,6 +134,7 @@ public sealed class PeriodicWorkerTests
         Assert.Contains(ReminderWorker.BlurbCheck, JobSteps.All);
         Assert.Contains(ReminderWorker.Reminders, JobSteps.All);
         Assert.Contains(ReminderWorker.Backups, JobSteps.All);
+        Assert.Contains(ReminderWorker.Digest, JobSteps.All);
         Assert.All(JobSteps.All, s => Assert.InRange(s.Key.Length, 1, 50));
     }
 

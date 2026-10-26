@@ -48,7 +48,8 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 5. **Run a test round** at `/manage/testing`:
    1. Create the test season and invite testers by GitHub login.
    2. Have them claim, add posts, drop out and join the backup list.
-   3. Move "today" through the rehearsal and send what's due.
+   3. Move "today" through the rehearsal and send what's due. Watch the rehearsal's **Today** panel (`/manage?year=9000`,
+      linked from the testing page) and its morning digest in hello@, as you will in December.
    4. **End testing** when you're done.
 
    Only testers and organizers ever see it, and it never posts to social media.
@@ -141,6 +142,12 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
     `appsettings.json` says.
   - **Pause Dependabot:** set both `open-pull-requests-limit` lines in `.github/dependabot.yml` to `0`, so no dependency
     updates arrive mid-season. Security alerts still show in the repository's **Security** tab.
+- **Start each day with the morning digest**, which reaches hello@ at 8 AM (#171): today's and tomorrow's spots (whether
+  each post is in, its blurb check, and where it stands on every platform), the backups asked or standing by, posts and
+  emails that didn't go out, and what's waiting. **Today** at the top of `/manage` shows the same at any time, linking to
+  each spot's entry page, the day's announcements and the email queue. Tomorrow's posts aren't named in the email before
+  their reveal, so open the panel to see them. During a rehearsal, the test season gets a digest of its own each rehearsal
+  day, and its panel is `/manage?year=9000`.
 - **Reveals** happen at midnight. The day revealed next counts down on the calendar.
 - **Automatic posts** go to Mastodon, Bluesky, Facebook and X at 10 AM (post 1) and 2 PM (post 2), or as soon as a late
   link arrives that day.

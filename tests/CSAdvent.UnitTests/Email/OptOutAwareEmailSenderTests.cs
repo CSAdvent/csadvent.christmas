@@ -123,6 +123,7 @@ public sealed class OptOutAwareEmailSenderTests
 
                 // To the organizers' inbox, which is never skipped and gets no unsubscribe link.
                 BlurbEmails.BackupStandingBy(new BlurbPost(1, spot, "Post", "https://example.com/post", "10 AM"), new BlurbBackup("Grace", "Hers", "https://example.com/hers"), "It's missing.", "10 AM", Site),
+                EmailCatalog.Find("morning-digest")!.Sample(Site),
             ],
             email => Assert.False(email.Transactional, email.Subject));
 
