@@ -50,6 +50,27 @@ public sealed class EntryTrafficTests
     }
 
     [Fact]
+    public void AClickIsCountedOnceEvenFromBlazorsEnhancedNavigation()
+    {
+        // Blazor's enhanced navigation fetches the link, then loads it again as a whole page (#150): only the page counts.
+        var fetch = new DefaultHttpContext();
+        fetch.Request.Method = "GET";
+        fetch.Request.Headers.UserAgent = Browser;
+        fetch.Request.Headers.Accept = "text/html; blazor-enhanced-nav=on";
+
+        var page = new DefaultHttpContext();
+        page.Request.Method = "GET";
+        page.Request.Headers.UserAgent = Browser;
+        page.Request.Headers.Accept = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
+
+        Assert.False(EntryTraffic.IsClick(fetch.Request));
+        Assert.True(EntryTraffic.IsClick(page.Request));
+
+        // A visit to an entry page is one request either way, so it still counts.
+        Assert.True(EntryTraffic.IsPerson(fetch.Request));
+    }
+
+    [Fact]
     public void LinksCarryTheirTag()
     {
         Assert.Equal("2026/day/3/2?via=bluesky", EntryLinks.Page(2026, 3, 2, "bluesky"));

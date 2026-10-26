@@ -45,4 +45,12 @@ public static class EntryTraffic
         var agent = request.Headers.UserAgent.ToString();
         return agent.Length > 0 && !AutomatedAgents.Any(marker => agent.Contains(marker, StringComparison.OrdinalIgnoreCase));
     }
+
+    /// <summary>
+    /// A person following a <c>/go</c> link (#150). Blazor's enhanced navigation (blazor.web.js, which the site no longer
+    /// loads, but a page open since before may still have) fetches the link first, can't follow the redirect to another site,
+    /// and then loads it again as a whole page. Only that second request counts.
+    /// </summary>
+    public static bool IsClick(HttpRequest request) =>
+        IsPerson(request) && !request.Headers.Accept.ToString().Contains("blazor-enhanced-nav=on", StringComparison.OrdinalIgnoreCase);
 }

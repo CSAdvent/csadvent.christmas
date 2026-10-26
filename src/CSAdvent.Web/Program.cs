@@ -195,20 +195,23 @@ builder.Services.AddDataProtection()
     .SetApplicationName("CSAdvent")
     .PersistKeysToDbContext<AdventDbContext>();
 
-// Pages render statically on the server by default. Components opt in to interactivity where they need it.
-builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+// Every page renders statically on the server, and every form is a plain HTML form, so there's no interactive render mode
+// and no Blazor script (#185). That also means antiforgery tokens (and their cookie and no-store) are only on pages with a
+// form, so the other pages can be cached (#186) and compressed (#164).
+builder.Services.AddRazorComponents();
+builder.Services.AddCompression();
 
 var app = builder.Build();
 
 // Container Apps' probes ask /health and /alive. First, so nothing redirects them.
 app.UseDefaultHealthChecks();
 
-// Basic security headers on every response, static files included. HSTS comes from UseHsts, and the frame protection
-// (X-Frame-Options and frame-ancestors) from Blazor. Links out to authors' posts still tell them the visit came from here.
+// Basic security headers on every response, static files included. HSTS comes from UseHsts. Pages can only be framed by
+// this site. Links out to authors' posts still tell them the visit came from here.
 app.Use(async (context, next) =>
 {
     context.Response.Headers.XContentTypeOptions = "nosniff";
+    context.Response.Headers.XFrameOptions = "SAMEORIGIN";
     context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
     await next();
 });
@@ -225,6 +228,8 @@ if (!app.Environment.IsDevelopment())
 }
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseHttpsRedirection();
+app.UseResponseCompression();
+app.UsePageCaching();
 
 app.UseRateLimiter();
 
@@ -255,7 +260,6 @@ app.MapSeasonArchive();
 app.MapOtherAdventLogos();
 app.MapSeasonTesting();
 app.MapAuthors();
-app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
+app.MapRazorComponents<App>();
 
 app.Run();

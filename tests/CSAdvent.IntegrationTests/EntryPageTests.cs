@@ -49,6 +49,12 @@ public sealed class EntryPageTests(AppHostFixture fixture)
         using (var person = CreateBrowser(Browser))
         {
             await person.GetAsync($"{page}?via=mastodon", CancellationToken);
+
+            // Blazor's enhanced navigation fetched the link before loading it as a page (#150). Only the page load counts.
+            using var enhanced = new HttpRequestMessage(HttpMethod.Get, $"{go}?via=mastodon");
+            enhanced.Headers.TryAddWithoutValidation("Accept", "text/html; blazor-enhanced-nav=on");
+            Assert.Equal(HttpStatusCode.Redirect, (await person.SendAsync(enhanced, CancellationToken)).StatusCode);
+
             var click = await person.GetAsync($"{go}?via=mastodon", CancellationToken);
             Assert.Equal(HttpStatusCode.Redirect, click.StatusCode);
             Assert.Equal(slot.PostUrl, click.Headers.Location!.OriginalString);
@@ -135,6 +141,13 @@ public sealed class EntryPageTests(AppHostFixture fixture)
             Assert.Equal("public, max-age=86400", card.Headers.CacheControl!.ToString());
             Assert.True((await card.Content.ReadAsByteArrayAsync(CancellationToken)).Length < 1_000_000);
         }
+
+        // By the versioned link the entry page gives out, it never changes, so it's kept for good (#186).
+        var page = await client.GetStringAsync($"/2023/day/{slot.Day}/{slot.Part}", CancellationToken);
+        var link = System.Text.RegularExpressions.Regex.Match(page, "<meta property=\"og:image\" content=\"https://localhost:7092(?<path>[^\"]+)\"").Groups["path"].Value;
+        var versioned = await client.GetAsync(WebUtility.HtmlDecode(link), CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, versioned.StatusCode);
+        Assert.Equal("public, max-age=31536000, immutable", versioned.Headers.CacheControl!.ToString());
 
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/cards/1999.jpg", CancellationToken)).StatusCode);
     }

@@ -104,7 +104,7 @@ public sealed class SeasonTestingTests
     }
 
     [Theory]
-    [InlineData(null, true)]
+    [InlineData(null, false)] // No request at all, as in an interactive component (#185).
     [InlineData("organizer", true)]
     [InlineData("Tess", true)]
     [InlineData("stranger", false)]

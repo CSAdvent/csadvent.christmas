@@ -1,5 +1,6 @@
 using Bunit;
 using CSAdvent.Web.Components.Calendar;
+using Microsoft.AspNetCore.Http;
 
 namespace CSAdvent.UnitTests.Calendar;
 
@@ -31,6 +32,21 @@ public sealed class CalendarGridTests : BunitContext
         Assert.Equal("2026-12-11T00:00:00.0000000-05:00", countdown.GetAttribute("data-countdown"));
         Assert.Equal("2026-12-10T12:00:00.0000000-05:00", countdown.GetAttribute("data-now"));
         Assert.NotNull(grid.Find("#december-11").QuerySelector("time[data-countdown]"));
+    }
+
+    [Fact]
+    public void APageWithACountdownIsNeverKept()
+    {
+        // The countdown carries the server's time, which a copy the browser kept would get wrong.
+        HttpContext counting = new DefaultHttpContext();
+        Render<CalendarGrid>(p => p.Add(c => c.Calendar, CalendarFixtures.Calendar(ClaimsOpened)).AddCascadingValue(counting));
+        Assert.Equal("no-cache, no-store", counting.Response.Headers.CacheControl.ToString());
+
+        // Once every day is revealed there's nothing to count down to, and the page can be kept as usual.
+        HttpContext finished = new DefaultHttpContext();
+        var afterwards = new DateTimeOffset(2027, 1, 5, 12, 0, 0, TimeSpan.FromHours(-5));
+        Render<CalendarGrid>(p => p.Add(c => c.Calendar, CalendarFixtures.Calendar(ClaimsOpened, afterwards)).AddCascadingValue(finished));
+        Assert.Equal(0, finished.Response.Headers.CacheControl.Count);
     }
 
     [Fact]

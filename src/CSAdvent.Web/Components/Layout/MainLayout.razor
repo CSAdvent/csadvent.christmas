@@ -5,11 +5,16 @@
 
 <div class="flex min-h-screen flex-col">
     <TestingBanner />
-    <header class="relative isolate overflow-hidden bg-advent-snowflakes bg-cover bg-center text-white">
+    <header class="relative isolate overflow-hidden text-white">
+        <picture>
+            <source type="image/webp" srcset="@Assets["images/advent-header.webp"]" />
+            <img src="@Assets["images/advent-header.jpg"]" alt="" class="absolute inset-0 -z-20 size-full object-cover" />
+        </picture>
         <div class="absolute inset-0 -z-10 bg-linear-to-r from-advent-950/85 via-advent-900/70 to-advent-800/40" aria-hidden="true"></div>
         <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-5">
             <a href="" class="flex items-center gap-4">
-                <img src="@Assets["images/csadvent-logo.png"]" alt="" width="64" height="64" class="size-14 rounded-xl shadow-lg ring-1 ring-white/20 sm:size-16" />
+                @* 128 pixels, for screens with twice as many pixels. (Emails use the larger csadvent-logo.png.) *@
+                <img src="@Assets["images/csadvent-logo-128.png"]" alt="" width="64" height="64" class="size-14 rounded-xl shadow-lg ring-1 ring-white/20 sm:size-16" />
                 <span>
                     <span class="block text-2xl font-bold tracking-tight sm:text-3xl">C# Advent</span>
                     <span class="block text-sm text-advent-100">Two C# posts a day, December 1–25</span>
@@ -66,10 +71,4 @@
             </nav>
         </div>
     </footer>
-</div>
-
-<div id="blazor-error-ui" data-nosnippet>
-    An unhandled error has occurred.
-    <a href="." class="reload">Reload</a>
-    <span class="dismiss">🗙</span>
 </div>

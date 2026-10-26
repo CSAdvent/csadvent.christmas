@@ -120,6 +120,8 @@ public sealed class WebTests(AppHostFixture fixture)
     [Fact]
     public async Task LegacyAddressesStillWork()
     {
+        // /substitute needs a current season. Other tests make some too, but this one mustn't depend on them running first.
+        await TestSeasons.EnsureAsync(fixture, 2420, claimsOpen: true);
         using var browser = fixture.CreateBrowser();
 
         var contributor = await browser.GetAsync("/contributor", TestContext.Current.CancellationToken);
