@@ -13,19 +13,21 @@ public sealed record SampleRecipient(string Address, string Label);
 
 public enum SampleEmailOutcome
 {
+    /// <summary>In the email queue, ahead of everything but other urgent emails.</summary>
     Sent,
 
     /// <summary>The email or the address isn't one of the choices on the page.</summary>
     NotAllowed,
 
-    /// <summary>The email service refused it, for example before the sending domain is verified.</summary>
+    /// <summary>It couldn't be queued (the database failed). The email service's own refusals show in the email queue.</summary>
     Failed,
 }
 
 /// <summary>
 /// Sends any email in <see cref="EmailCatalog"/> right away, with its sample data, so organizers can see what lands in an
 /// inbox without waiting for the date that would trigger it. It only goes to people on the page's list (the organizer,
-/// the organizers' inbox, or a signed-in tester), never to an address typed in.
+/// the organizers' inbox, or a signed-in tester), never to an address typed in. It goes through the email queue like
+/// everything else, first in line, so a sample proves the queue is sending too.
 /// </summary>
 public sealed partial class SampleEmailService(
     AdventDbContext db,
@@ -69,7 +71,10 @@ public sealed partial class SampleEmailService(
         }
 
         var content = entry.Sample(site.Value);
-        var email = await composer.ComposeAsync(content with { Subject = SubjectPrefix + content.Subject }, new EmailRecipient(address));
+        // Whatever the email is, an organizer is waiting for this one, and it isn't about anyone's spot or list.
+        var email = await composer.ComposeAsync(
+            content with { Subject = SubjectPrefix + content.Subject, Priority = EmailPriority.Urgent, SendBefore = null, Reference = null },
+            new EmailRecipient(address));
         try
         {
             await sender.SendAsync(email, cancellationToken);
@@ -82,7 +87,7 @@ public sealed partial class SampleEmailService(
         }
     }
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't send the sample {Key} email")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't queue the sample {Key} email")]
     private partial void LogSendFailed(Exception exception, string key);
 }
 

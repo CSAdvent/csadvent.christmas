@@ -27,7 +27,13 @@ public sealed class EmailComposer(IServiceScopeFactory scopeFactory, ILoggerFact
             await RenderHtmlAsync(withLink),
             RenderText(withLink),
             unsubscribe,
-            content.Transactional);
+            content.Transactional)
+        {
+            Kind = content.Kind,
+            Priority = content.Priority,
+            SendBefore = content.SendBefore,
+            Reference = content.Reference,
+        };
     }
 
     public async Task<string> RenderHtmlAsync(EmailContent content)

@@ -39,7 +39,8 @@ public enum BlurbDecision
 /// pass. A changed URL starts again, and an unchanged opening isn't sent to Claude twice.</item>
 /// <item>From the reveal: a missing blurb emails the author once and lines up a backup (<see cref="BackupService"/>); a post
 /// Claude can't settle, or that couldn't be checked, emails the organizers; and at the deadline, with nobody to take the spot,
-/// they're told again. Every email is claimed in the database before it's sent, so replicas never send one twice.</item>
+/// they're told again. Every email is claimed in the database before it's queued, so replicas never send one twice, and the
+/// claim is undone if it can't be queued, so a later run tries again (#149). Once queued, the email queue sees it through.</item>
 /// <item>Organizers can check again, decide, and ask for a backup.</item>
 /// </list>
 /// </summary>
@@ -234,7 +235,7 @@ public sealed partial class BlurbCheckService(
                 else
                 {
                     // A later run tries again.
-                    await db.BlurbChecks.Where(c => c.Id == check.Id).ExecuteUpdateAsync(c => c.SetProperty(x => x.AuthorEmailedAt, (DateTimeOffset?)null), cancellationToken);
+                    await db.BlurbChecks.Where(c => c.Id == check.Id).ExecuteUpdateAsync(c => c.SetProperty(x => x.AuthorEmailedAt, (DateTimeOffset?)null), CancellationToken.None);
                 }
             }
 
@@ -245,10 +246,20 @@ public sealed partial class BlurbCheckService(
             && check.OrganizersEmailedAbout != check.Status)
         {
             var status = check.Status;
-            if (await ClaimAsync(check.Id, c => c.Status == status && (c.OrganizersEmailedAbout == null || c.OrganizersEmailedAbout != status), c => c.SetProperty(x => x.OrganizersEmailedAbout, status), cancellationToken)
-                && await SendAsync(BlurbEmails.NeedsDecision(PostOf(slot), status, check.Detail ?? "", site.Value), Organizers, slot.Id, cancellationToken))
+            var before = check.OrganizersEmailedAbout;
+            if (await ClaimAsync(check.Id, c => c.Status == status && (c.OrganizersEmailedAbout == null || c.OrganizersEmailedAbout != status), c => c.SetProperty(x => x.OrganizersEmailedAbout, status), cancellationToken))
             {
-                emailed++;
+                if (await SendAsync(BlurbEmails.NeedsDecision(PostOf(slot), status, check.Detail ?? "", site.Value), Organizers, slot.Id, cancellationToken))
+                {
+                    emailed++;
+                }
+                else
+                {
+                    // A later run tries again (#149).
+                    await db.BlurbChecks
+                        .Where(c => c.Id == check.Id && c.OrganizersEmailedAbout == status)
+                        .ExecuteUpdateAsync(c => c.SetProperty(x => x.OrganizersEmailedAbout, before), CancellationToken.None);
+                }
             }
         }
 
@@ -266,10 +277,19 @@ public sealed partial class BlurbCheckService(
             return BlurbRun.None;
         }
 
-        return await ClaimAsync(check.Id, c => c.DeadlineEmailedAt == null, c => c.SetProperty(x => x.DeadlineEmailedAt, now), cancellationToken)
-            && await SendAsync(BlurbEmails.DeadlinePassed(PostOf(slot), site.Value), Organizers, slot.Id, cancellationToken)
-                ? new BlurbRun(0, 1)
-                : BlurbRun.None;
+        if (!await ClaimAsync(check.Id, c => c.DeadlineEmailedAt == null, c => c.SetProperty(x => x.DeadlineEmailedAt, now), cancellationToken))
+        {
+            return BlurbRun.None;
+        }
+
+        if (await SendAsync(BlurbEmails.DeadlinePassed(PostOf(slot), site.Value), Organizers, slot.Id, cancellationToken))
+        {
+            return new BlurbRun(0, 1);
+        }
+
+        // A later run tries again (#149): this is the email that says the post won't be announced until someone decides.
+        await db.BlurbChecks.Where(c => c.Id == check.Id).ExecuteUpdateAsync(c => c.SetProperty(x => x.DeadlineEmailedAt, (DateTimeOffset?)null), CancellationToken.None);
+        return BlurbRun.None;
     }
 
     /// <summary>The slot's check, created when it's first needed, and started again when the post's URL has changed.</summary>
@@ -383,6 +403,6 @@ public sealed partial class BlurbCheckService(
 
     private EmailRecipient Organizers => new(site.Value.ContactEmail, "C# Advent organizers");
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't send \"{Subject}\" for slot {SlotId}")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't queue \"{Subject}\" for slot {SlotId}")]
     private partial void LogSendFailed(Exception exception, string subject, int slotId);
 }

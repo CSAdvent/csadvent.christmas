@@ -63,6 +63,9 @@ public sealed class AdventDbContext(DbContextOptions<AdventDbContext> options) :
 
     public DbSet<PastAuthorInvitation> PastAuthorInvitations => Set<PastAuthorInvitation>();
 
+    /// <summary>Every email the site sends, queued for <see cref="Email.Queue.EmailOutboxWorker"/> (#152).</summary>
+    public DbSet<QueuedEmail> EmailOutbox => Set<QueuedEmail>();
+
     /// <summary>
     /// ASP.NET Core's data protection keys, which protect sign-in cookies and antiforgery tokens. Kept in the database so
     /// they survive container restarts and are shared by every replica.

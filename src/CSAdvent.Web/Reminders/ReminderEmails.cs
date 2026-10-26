@@ -57,6 +57,8 @@ public static class ReminderEmails
 
         return new EmailContent
         {
+            Kind = reminder.DaysBefore <= BackupWarningDays ? "post-link-reminder-final" : "post-link-reminder",
+            Priority = EmailPriority.Normal,
             Subject = $"Your C# Advent post is due {when} (December {reminder.Day})",
             Preview = "We don't have the link to your post yet. Sign in and add it when it's ready.",
             Heading = reminder.DaysBefore == 1 ? "Your day is tomorrow!" : $"Your day is {reminder.DaysBefore} days away!",
@@ -69,6 +71,7 @@ public static class ReminderEmails
     /// <summary>The last call: it's the author's day, and their post is announced in a few hours.</summary>
     public static EmailContent PostLinkDueToday(DayOfReminder reminder, SiteOptions site) => new()
     {
+        Kind = "post-link-day-of",
         Subject = $"Today's your C# Advent day: add your post's link by {reminder.Announced} Eastern",
         Preview = "We still don't have the link to your post, and it's announced today.",
         Heading = "Today's your day!",
@@ -95,7 +98,9 @@ public static class ReminderEmails
         share.RecipientIsAuthorToday,
         site,
         $"You're getting this because you have a spot in C# Advent {share.Year}. We send it each day of Advent.",
-        unsubscribeUrl);
+        unsubscribeUrl,
+        "daily-share",
+        EmailPriority.Normal);
 
     /// <summary>
     /// The same email for readers who asked for each day's posts (#206), with the link that turns off only the daily posts.
@@ -107,7 +112,9 @@ public static class ReminderEmails
         recipientIsAuthorToday: false,
         site,
         "You're getting this because you asked for C# Advent's daily posts by email. We send it each day of Advent.",
-        unsubscribeUrl);
+        unsubscribeUrl,
+        "daily-posts-readers",
+        EmailPriority.ReadersDailyPosts);
 
     private static EmailContent DailyEmail(
         int day,
@@ -116,7 +123,9 @@ public static class ReminderEmails
         bool recipientIsAuthorToday,
         SiteOptions site,
         string reason,
-        string unsubscribeUrl)
+        string unsubscribeUrl,
+        string kind,
+        EmailPriority priority)
     {
         List<EmailBlock> body =
         [
@@ -135,6 +144,8 @@ public static class ReminderEmails
 
         return new EmailContent
         {
+            Kind = kind,
+            Priority = priority,
             Subject = posts.Count == 1
                 ? $"Day {day} of C# Advent: {posts[0].Title}"
                 : $"Day {day} of C# Advent: {posts.Count} new posts to share",

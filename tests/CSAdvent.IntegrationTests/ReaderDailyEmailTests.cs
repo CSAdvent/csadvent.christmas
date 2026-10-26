@@ -9,8 +9,8 @@ namespace CSAdvent.IntegrationTests;
 
 /// <summary>
 /// Readers can ask for each December day's posts with their announcements (#206). Delivered through the announcements'
-/// development endpoint: season 2351's December 3 has both posts ready, and season 2353's December 10 checks the shared
-/// hourly allowance. 9 AM Eastern is 14:00 UTC in December.
+/// development endpoint: season 2351's December 3 has both posts ready, and season 2353's December 10 checks how they're
+/// queued (#152). 9 AM Eastern is 14:00 UTC in December.
 /// </summary>
 public sealed partial class ReaderDailyEmailTests(AppHostFixture fixture)
 {
@@ -66,31 +66,26 @@ public sealed partial class ReaderDailyEmailTests(AppHostFixture fixture)
     }
 
     [Fact]
-    public async Task TheDailyPostsWaitForTheHourlyAllowance()
+    public async Task TheDailyPostsAreQueuedAsListMailForTheirDayOnly()
     {
         await EnsureSeasonAsync(2353, 10);
-        const string reader = "reader-budget-2353@example.com";
+        const string reader = "reader-queue-2353@example.com";
         await AddSubscriberAsync(reader, dailyPosts: true);
 
-        // Past authors' invitations used up the hour's allowance just now.
-        var at = new DateTimeOffset(2353, 12, 10, 15, 0, 0, TimeSpan.Zero);
-        await using (var db = await fixture.CreateDbContextAsync())
-        {
-            db.PastAuthorInvitations.AddRange(Enumerable.Range(1, 40).Select(i => new PastAuthorInvitation
-            {
-                SeasonYear = 2353,
-                Fingerprint = EmailOptOutLinks.Fingerprint($"reader-filler-{i}@example.com"),
-                SentAt = at.AddMinutes(-30),
-            }));
-            await db.SaveChangesAsync(CancellationToken);
-        }
-
-        await RunAsync(at.ToString("O", CultureInfo.InvariantCulture));
-        Assert.Equal(0, await DeliveriesAsync(2353, reader));
-
-        // An hour later there's room again.
-        await RunAsync(at.AddHours(1).ToString("O", CultureInfo.InvariantCulture));
+        // Every reader's copy is queued at once; the queue sends them after the authors' daily email, as list mail.
+        await RunAsync(new DateTimeOffset(2353, 12, 10, 15, 0, 0, TimeSpan.Zero).ToString("O", CultureInfo.InvariantCulture));
         await fixture.WaitForEmailAsync(reader, "Day 10 of C# Advent: 2 new posts to share");
+        Assert.Equal(1, await DeliveriesAsync(2353, reader));
+        await fixture.WaitForQueueAsync(reader);
+
+        await using var db = await fixture.CreateDbContextAsync();
+        // Other tests' announcements can be queued to this subscriber too.
+        var queued = await db.EmailOutbox.SingleAsync(e => e.ToAddress == reader && e.Kind == "daily-posts-readers", CancellationToken);
+        Assert.Equal(("daily-posts-readers", EmailPriority.ReadersDailyPosts, "daily-posts:2353:10"), (queued.Kind, queued.Priority, queued.Reference));
+
+        // Not sent by midnight Eastern, it would have expired rather than arrive a day late.
+        Assert.Equal(new DateTimeOffset(2353, 12, 11, 5, 0, 0, TimeSpan.Zero), queued.SendBefore);
+        Assert.Equal(QueuedEmailStatus.Sent, queued.Status);
     }
 
     private async Task RunAsync(string at)

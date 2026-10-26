@@ -16,7 +16,7 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261025224338_AddPostSummary";
+    public override string LastMigrationId => "20261025232735_AddEmailOutbox";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -1023,6 +1023,130 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                     .HasDatabaseName("ix_post_link_requests_status_submitted_at");
 
                 b.ToTable("post_link_requests");
+            });
+
+        modelBuilder.Entity("CSAdvent.Web.Data.QueuedEmail", b =>
+            {
+                var id = b.Property<int>("Id")
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("integer")
+                    .HasColumnName("id");
+
+                NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(id);
+
+                b.Property<int>("Attempts")
+                    .HasColumnType("integer")
+                    .HasColumnName("attempts");
+
+                b.Property<DateTimeOffset>("CreatedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("created_at");
+
+                b.Property<DateTimeOffset?>("FinishedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("finished_at");
+
+                b.Property<string>("Html")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("html");
+
+                b.Property<string>("Kind")
+                    .IsRequired()
+                    .HasMaxLength(50)
+                    .HasColumnType("character varying(50)")
+                    .HasColumnName("kind");
+
+                b.Property<string>("LastError")
+                    .HasMaxLength(500)
+                    .HasColumnType("character varying(500)")
+                    .HasColumnName("last_error");
+
+                b.Property<DateTimeOffset?>("LockedUntil")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("locked_until");
+
+                b.Property<DateTimeOffset>("NextAttemptAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("next_attempt_at");
+
+                b.Property<int>("Priority")
+                    .HasColumnType("integer")
+                    .HasColumnName("priority");
+
+                b.Property<string>("Reference")
+                    .HasMaxLength(50)
+                    .HasColumnType("character varying(50)")
+                    .HasColumnName("reference");
+
+                b.Property<string>("ReplyTo")
+                    .IsRequired()
+                    .HasMaxLength(320)
+                    .HasColumnType("character varying(320)")
+                    .HasColumnName("reply_to");
+
+                b.Property<DateTimeOffset?>("SendBefore")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("send_before");
+
+                b.Property<DateTimeOffset?>("SentAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("sent_at");
+
+                b.Property<string>("Status")
+                    .IsRequired()
+                    .HasMaxLength(20)
+                    .HasColumnType("character varying(20)")
+                    .HasColumnName("status");
+
+                b.Property<string>("Subject")
+                    .IsRequired()
+                    .HasMaxLength(1000)
+                    .HasColumnType("character varying(1000)")
+                    .HasColumnName("subject");
+
+                b.Property<string>("Text")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("text");
+
+                b.Property<string>("ToAddress")
+                    .IsRequired()
+                    .HasMaxLength(320)
+                    .HasColumnType("character varying(320)")
+                    .HasColumnName("to_address");
+
+                b.Property<string>("ToName")
+                    .HasMaxLength(320)
+                    .HasColumnType("character varying(320)")
+                    .HasColumnName("to_name");
+
+                b.Property<bool>("Transactional")
+                    .HasColumnType("boolean")
+                    .HasColumnName("transactional");
+
+                b.Property<string>("UnsubscribeUrl")
+                    .HasMaxLength(2000)
+                    .HasColumnType("character varying(2000)")
+                    .HasColumnName("unsubscribe_url");
+
+                b.HasKey("Id")
+                    .HasName("pk_email_outbox");
+
+                b.HasIndex("FinishedAt")
+                    .HasDatabaseName("ix_email_outbox_finished_at");
+
+                b.HasIndex("Reference")
+                    .HasDatabaseName("ix_email_outbox_reference");
+
+                b.HasIndex("SentAt")
+                    .HasDatabaseName("ix_email_outbox_sent_at");
+
+                b.HasIndex("Priority", "Id")
+                    .HasDatabaseName("ix_email_outbox_priority_id")
+                    .HasFilter("status = 'Pending'");
+
+                b.ToTable("email_outbox");
             });
 
         modelBuilder.Entity("CSAdvent.Web.Data.Retrospective", b =>

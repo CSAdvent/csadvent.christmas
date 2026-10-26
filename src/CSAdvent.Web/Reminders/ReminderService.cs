@@ -25,8 +25,10 @@ public sealed record ReminderRun(int PostLinkReminders, int DailyShares, int Day
 /// Whatever the time, an author whose spot still has no post link on their day also gets a last call
 /// <see cref="ReminderOptions.DayOfLead"/> before it's announced.
 /// </para>
-/// Each email is recorded in <c>sent_reminders</c> before it's sent, and the unique index there means only one run (and
-/// one replica) can send it. Runs are cheap when there's nothing to do, so the worker calls this often.
+/// Each email is recorded in <c>sent_reminders</c> before it's queued, and the unique index there means only one run (and
+/// one replica) can send it. The email queue (#152) sends them within the email service's limits, and drops any that would
+/// arrive too late to be true (after the day it's about, or the last call after the announcement). Runs are cheap when
+/// there's nothing to do, so the worker calls this often.
 /// </summary>
 public sealed partial class ReminderService(
     AdventDbContext db,
@@ -97,9 +99,13 @@ public sealed partial class ReminderService(
         var sent = 0;
         foreach (var slot in slots.Where(s => IsDayOfReminderDue(time, posting.Value.TimeFor(s.Part), options.Value.DayOfLead)))
         {
+            // It gives the announcement as the deadline, so it's no use after that.
             var content = ReminderEmails.PostLinkDueToday(
                 new DayOfReminder(slot.AuthorName, year, day, slot.Part, slot.SlotsPerDay, posting.Value.TimeFor(slot.Part)),
-                site.Value);
+                site.Value) with
+            {
+                SendBefore = schedule.FromLocalTime(schedule.GetDate(year, day).ToDateTime(posting.Value.TimeFor(slot.Part))),
+            };
             if (await SendOnceAsync(ReminderKind.ContributorDayOf, schedule.InSeason(year, today), slot.Id, now, content, new EmailRecipient(slot.Email, slot.AuthorName), cancellationToken))
             {
                 sent++;
@@ -128,13 +134,18 @@ public sealed partial class ReminderService(
             .Select(s => new { s.Id, s.Day, s.Part, AuthorName = s.AuthorName!, s.Contact!.Email, s.Season.SlotsPerDay })
             .ToListAsync(cancellationToken);
 
+        // "Due in 3 days" is only true today.
+        var endOfToday = schedule.FromLocalTime(today.AddDays(1).ToDateTime(TimeOnly.MinValue));
         var sent = 0;
         foreach (var slot in slots)
         {
             var daysBefore = schedule.GetDate(year, slot.Day).DayNumber - today.DayNumber;
             var content = ReminderEmails.PostLinkMissing(
                 new PostLinkReminder(slot.AuthorName, year, slot.Day, slot.Part, slot.SlotsPerDay, daysBefore),
-                site.Value);
+                site.Value) with
+            {
+                SendBefore = endOfToday,
+            };
             if (await SendOnceAsync(ReminderKind.ContributorActionNeeded, schedule.InSeason(year, today), slot.Id, now, content, new EmailRecipient(slot.Email, slot.AuthorName), cancellationToken))
             {
                 sent++;
@@ -173,7 +184,12 @@ public sealed partial class ReminderService(
                 // The day of Advent, not today's day of the month: they differ in the test season's rehearsal.
                 new DailyShare(year, day, edition.Posts, recipient.First.AuthorName, recipient.IsAuthorToday),
                 site.Value,
-                optOut.CreateLink(recipient.First.Id));
+                optOut.CreateLink(recipient.First.Id)) with
+            {
+                // Today's posts are only news today. Opting out takes back the ones still waiting (DailyEmailOptOut).
+                SendBefore = schedule.GetDayEndTime(year, day),
+                Reference = DailyEmailOptOut.Reference(year, day),
+            };
             var to = new EmailRecipient(recipient.First.Email, recipient.First.AuthorName);
             if (await SendOnceAsync(ReminderKind.ContributorDailyShare, edition.RunDate, recipient.First.Id, now, content, to, cancellationToken))
             {
@@ -185,8 +201,8 @@ public sealed partial class ReminderService(
     }
 
     /// <summary>
-    /// Records the reminder, then sends it. If another run already recorded it, nothing is sent. If sending fails, the
-    /// record is removed so a later run tries again.
+    /// Records the reminder, then queues it. If another run already recorded it, nothing is sent. If queueing fails, the
+    /// record is removed so a later run tries again; once it's queued, the queue tries until it goes.
     /// </summary>
     private async Task<bool> SendOnceAsync(
         ReminderKind kind,
@@ -221,11 +237,6 @@ public sealed partial class ReminderService(
             return false;
         }
 
-        if (options.Value.PauseBetweenEmails > TimeSpan.Zero)
-        {
-            await Task.Delay(options.Value.PauseBetweenEmails, cancellationToken);
-        }
-
         return true;
     }
 
@@ -233,6 +244,6 @@ public sealed partial class ReminderService(
 
     private DateOnly LastDay(int year) => schedule.GetDate(year, Season.DaysInAdvent);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't send the {Kind} reminder for slot {SlotId}; a later run will try again")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't queue the {Kind} reminder for slot {SlotId}; a later run will try again")]
     private partial void LogSendFailed(Exception exception, ReminderKind kind, int slotId);
 }

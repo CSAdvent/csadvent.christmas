@@ -1,0 +1,182 @@
+@page "/manage/emails/queue"
+@using System.Globalization
+@using CSAdvent.Web.Email
+@using CSAdvent.Web.Email.Queue
+@inject EmailOutbox Outbox
+
+<PageTitle>Email queue · Manage · C# Advent</PageTitle>
+
+<ManageNav />
+
+<h1 class="text-3xl font-bold tracking-tight text-slate-900">Email queue</h1>
+<p class="mt-2 max-w-3xl text-slate-600">
+    Everything the site sends waits here until it goes, so the whole site stays under the email service's limits: at most
+    @Limits.PerMinute a minute and @Limits.PerHour an hour. Emails people are waiting for go first (requests, approvals, backup
+    asks, and everything to the organizers' inbox), then the authors' daily email and reminders, then list mail: readers' daily
+    posts, announcements and past authors' invitations, which go @Limits.ListPerMinute a minute at most, and only while the
+    last hour's emails are under @Limits.ListPerHour. An email that fails is tried again after 1, 5 and 15 minutes, then
+    hourly, @Limits.MaxAttempts times in all. Emails are deleted a week after they go.
+    <a href="manage/emails" class="text-advent-700 underline">Every email the site sends</a>.
+</p>
+
+@if (Message is { } message)
+{
+    <p class="mt-4 max-w-3xl rounded-xl bg-slate-50 p-4 text-sm font-medium text-slate-800 ring-1 ring-slate-200" role="status">@message</p>
+}
+
+@if (_status.TableMissing)
+{
+    <p class="mt-8 max-w-3xl text-slate-600">
+        The queue isn't set up yet: the deploy's migrations haven't run. Until they have, emails go straight out, as they did
+        before the queue.
+    </p>
+}
+else
+{
+    <dl class="mt-8 grid max-w-3xl grid-cols-2 gap-4 sm:grid-cols-4">
+        <div class="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
+            <dt class="text-sm text-slate-600">Waiting</dt>
+            <dd class="mt-1 text-2xl font-semibold text-slate-900">@_status.Waiting.Sum(w => w.Count)</dd>
+        </div>
+        <div class="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
+            <dt class="text-sm text-slate-600">Sent in the last minute</dt>
+            <dd class="mt-1 text-2xl font-semibold text-slate-900">@_status.Sent.LastMinute <span class="text-base font-normal text-slate-600">of @Limits.PerMinute</span></dd>
+        </div>
+        <div class="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
+            <dt class="text-sm text-slate-600">Sent in the last hour</dt>
+            <dd class="mt-1 text-2xl font-semibold text-slate-900">@_status.Sent.LastHour <span class="text-base font-normal text-slate-600">of @Limits.PerHour</span></dd>
+        </div>
+        <div class="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
+            <dt class="text-sm text-slate-600">Failed</dt>
+            <dd class="mt-1 text-2xl font-semibold @(_status.Failed.Count > 0 ? "text-red-700" : "text-slate-900")">@_status.Failed.Count</dd>
+        </div>
+    </dl>
+    @if (_status.Sent.LastHour >= Limits.ListPerHour && _status.Waiting.Any(w => w.Priority.IsListMail()))
+    {
+        <p class="mt-3 max-w-3xl text-sm text-slate-600">
+            List mail is waiting for the hour's sends to drop under @Limits.ListPerHour, so there's room for the emails people are waiting for.
+        </p>
+    }
+    @if (_status.ExpiredToday > 0)
+    {
+        <p class="mt-3 max-w-3xl text-sm text-slate-600">
+            @Plural(_status.ExpiredToday, "email") expired unsent in the last day: they'd have arrived too late to be any use
+            (a day's posts after midnight, a backup ask after the next backup was asked).
+        </p>
+    }
+
+    <h2 class="mt-10 text-xl font-semibold text-slate-900">Waiting</h2>
+    @if (_status.Waiting.Count == 0)
+    {
+        <p class="mt-2 text-slate-500">Nothing's waiting.</p>
+    }
+    else
+    {
+        <table class="mt-3 w-full max-w-3xl text-left text-sm">
+            <thead class="border-b border-slate-200 text-slate-500">
+                <tr>
+                    <th class="py-2 pr-4 font-medium">Email</th>
+                    <th class="py-2 pr-4 font-medium">Priority</th>
+                    <th class="py-2 pr-4 font-medium">Waiting</th>
+                    <th class="py-2 font-medium">Oldest queued</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                @foreach (var waiting in _status.Waiting)
+                {
+                    <tr class="align-top">
+                        <td class="py-2 pr-4 font-semibold text-slate-900">@NameOf(waiting.Kind)</td>
+                        <td class="py-2 pr-4 text-slate-600">@PriorityName(waiting.Priority)</td>
+                        <td class="py-2 pr-4 text-slate-600">@waiting.Count</td>
+                        <td class="py-2 text-slate-600"><LocalTime Value="waiting.OldestQueuedAt" /></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    <div class="mt-10 flex flex-wrap items-end justify-between gap-4">
+        <h2 class="text-xl font-semibold text-slate-900">Failed</h2>
+        @if (_status.Failed.Count > 1)
+        {
+            <form method="post" action="manage/emails/queue/retry-all">
+                <AntiforgeryToken />
+                <button type="submit" class="rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 ring-1 ring-slate-300 hover:bg-slate-100">Retry all @_status.Failed.Count</button>
+            </form>
+        }
+    </div>
+    @if (_status.Failed.Count == 0)
+    {
+        <p class="mt-2 text-slate-500">Nothing has failed.</p>
+    }
+    else
+    {
+        <p class="mt-2 max-w-3xl text-sm text-slate-600">
+            Every attempt failed. <strong>Retry</strong> sends one again from scratch, whatever its deadline was (after an outage,
+            say); <strong>Discard</strong> deletes it.
+        </p>
+        <ul class="mt-4 max-w-3xl divide-y divide-slate-100">
+            @foreach (var failed in _status.Failed)
+            {
+                <li class="py-3 text-sm">
+                    <p class="font-semibold text-slate-900">@NameOf(failed.Kind) to @failed.ToAddress</p>
+                    <p class="text-slate-600">@failed.Subject</p>
+                    <p class="text-red-700">
+                        @(failed.LastError ?? "No error recorded"), after @Plural(failed.Attempts, "attempt")
+                        @if (failed.FailedAt is { } failedAt)
+                        {
+                            <span class="text-slate-500">· gave up <LocalTime Value="failedAt" /></span>
+                        }
+                    </p>
+                    <div class="mt-2 flex gap-2">
+                        <form method="post" action="manage/emails/queue/retry">
+                            <AntiforgeryToken />
+                            <input type="hidden" name="Id" value="@failed.Id" />
+                            <button type="submit" class="rounded-md bg-white px-2 py-1 font-medium text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50">Retry</button>
+                        </form>
+                        <form method="post" action="manage/emails/queue/discard">
+                            <AntiforgeryToken />
+                            <input type="hidden" name="Id" value="@failed.Id" />
+                            <button type="submit" class="rounded-md bg-white px-2 py-1 font-medium text-red-700 ring-1 ring-slate-300 hover:bg-slate-50">Discard</button>
+                        </form>
+                    </div>
+                </li>
+            }
+        </ul>
+    }
+}
+
+@code {
+    private EmailQueueStatus _status = EmailQueueStatus.Missing;
+
+    [SupplyParameterFromQuery(Name = "done")]
+    public string? Done { get; set; }
+
+    private EmailQueueOptions Limits => Outbox.Limits;
+
+    private string? Message => Done switch
+    {
+        "retried" => "It's back in the queue, and goes as soon as the limits allow.",
+        "retried-all" => "Every failed email is back in the queue.",
+        "discarded" => "Discarded.",
+        "gone" => "That email isn't failed any more: someone else retried or discarded it.",
+        _ => null,
+    };
+
+    protected override async Task OnInitializedAsync() => _status = await Outbox.GetStatusAsync();
+
+    /// <summary>The email's name from the catalog, such as "Request received".</summary>
+    private static string NameOf(string kind) => EmailCatalog.Find(kind)?.Name ?? kind;
+
+    private static string PriorityName(EmailPriority priority) => priority switch
+    {
+        EmailPriority.Urgent => "First",
+        EmailPriority.Normal => "Authors' daily email and reminders",
+        EmailPriority.ReadersDailyPosts => "List mail: readers' daily posts",
+        EmailPriority.Announcement => "List mail: announcements",
+        EmailPriority.Invitation => "List mail: invitations",
+        _ => priority.ToString(),
+    };
+
+    private static string Plural(int count, string noun) => string.Create(CultureInfo.InvariantCulture, $"{count} {noun}{(count == 1 ? "" : "s")}");
+}

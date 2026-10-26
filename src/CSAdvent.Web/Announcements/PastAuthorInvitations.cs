@@ -2,6 +2,7 @@ using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Content;
 using CSAdvent.Web.Data;
 using CSAdvent.Web.Email;
+using CSAdvent.Web.Email.Queue;
 using CSAdvent.Web.Reminders;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -21,15 +22,26 @@ public sealed record PastAuthor(string Address, string Name, int Posts, int Firs
 /// <summary>Where a season's invitations stand, for the organizers.</summary>
 /// <param name="StartsAt">When they start going out (<see cref="PastAuthorInvitationService.StartsAt"/>), once sign-ups are scheduled.</param>
 /// <param name="EndsAt">When sign-ups close, and with them the invitations still waiting.</param>
-/// <param name="Waiting">Past authors who'd get one now (or still will).</param>
-public sealed record InvitationStatus(int Year, DateTimeOffset? StartsAt, DateTimeOffset EndsAt, int Waiting, int Sent);
+/// <param name="Waiting">Past authors who'd get one now (or still will), not yet queued.</param>
+/// <param name="Sent">Past authors invited: their invitation is queued or sent.</param>
+/// <param name="Queue">Where the queued ones are, while the email queue keeps them (a week).</param>
+public sealed record InvitationStatus(int Year, DateTimeOffset? StartsAt, DateTimeOffset EndsAt, int Waiting, int Sent, QueueProgress Queue)
+{
+    /// <summary>Queued, and still waiting for the email queue to send them.</summary>
+    public int InQueue => Queue.Waiting;
+}
 
 /// <summary>
 /// Invites everyone who has written for C# Advent before when a season's sign-ups open (#133). It runs inside
-/// <see cref="AnnouncementService.RunAsync"/>, from the same moment as the "sign-ups are open" announcement, and shares its
-/// hourly allowance, so it keeps going a few at a time for as long as sign-ups are open, until everyone's had one (#210).
-/// Each invitation is recorded (by the address's fingerprint) before it's sent, so nobody gets two.
+/// <see cref="AnnouncementService.RunAsync"/>, from the same moment as the "sign-ups are open" announcement, and keeps going
+/// for as long as sign-ups are open, until everyone's had one (#210). Each invitation is recorded (by the address's
+/// fingerprint) before it's queued, so nobody gets two.
 /// </summary>
+/// <remarks>
+/// Who's skipped is decided when an invitation is queued, so it only queues as many as the email queue has room for
+/// (<see cref="EmailOutbox.GetListRoomAsync"/>): someone who claims a spot in the meantime isn't invited a few hours later.
+/// The queue sends them last of all (<see cref="EmailPriority.Invitation"/>), and drops any still waiting when sign-ups close.
+/// </remarks>
 /// <remarks>
 /// Past authors are the authors of spots in finished seasons, at the addresses we keep for them: the verified email on the
 /// linked account, and the spot's contact email. Skipped: confirmed announcement subscribers (they get the announcement the
@@ -41,11 +53,14 @@ public sealed partial class PastAuthorInvitationService(
     AdventSchedule schedule,
     EmailComposer composer,
     IEmailSender sender,
+    EmailOutbox outbox,
     IOptions<ReminderOptions> reminders,
     IOptions<SiteOptions> site,
-    TimeProvider timeProvider,
     ILogger<PastAuthorInvitationService> logger)
 {
+    /// <summary>What the email queue knows a season's invitations by.</summary>
+    public static string Reference(int year) => string.Create(System.Globalization.CultureInfo.InvariantCulture, $"invitations:{year}");
+
     /// <summary>The past authors who'd be invited to the season now: not yet invited, and not skipped for any reason.</summary>
     public async Task<IReadOnlyList<PastAuthor>> GetRecipientsAsync(int year, CancellationToken cancellationToken = default)
     {
@@ -105,7 +120,8 @@ public sealed partial class PastAuthorInvitationService(
             season.ClaimsOpenAt is { } opensAt ? StartsAt(opensAt, reminders.Value.SendAt, schedule) : null,
             EndsAt(year, schedule),
             (await GetRecipientsAsync(year, cancellationToken)).Count,
-            await db.PastAuthorInvitations.CountAsync(i => i.SeasonYear == year, cancellationToken));
+            await db.PastAuthorInvitations.CountAsync(i => i.SeasonYear == year, cancellationToken),
+            await outbox.GetProgressOfAsync(Reference(year), cancellationToken));
     }
 
     /// <summary>
@@ -122,8 +138,8 @@ public sealed partial class PastAuthorInvitationService(
     public static DateTimeOffset EndsAt(int year, AdventSchedule schedule) => schedule.GetRevealTime(year, Season.DaysInAdvent);
 
     /// <summary>
-    /// Sends up to <paramref name="budget"/> of the season's invitations, if they're going out: from <see cref="StartsAt"/>
-    /// until sign-ups close (<see cref="EndsAt"/>). Returns how many went out.
+    /// Queues up to <paramref name="budget"/> of the season's invitations, if they're going out: from <see cref="StartsAt"/>
+    /// until sign-ups close (<see cref="EndsAt"/>). Returns how many were queued.
     /// </summary>
     public async Task<int> RunAsync(int year, DateTimeOffset now, int budget, CancellationToken cancellationToken = default)
     {
@@ -134,22 +150,17 @@ public sealed partial class PastAuthorInvitationService(
             return 0;
         }
 
-        var sent = 0;
+        var queued = 0;
         foreach (var author in (await GetRecipientsAsync(year, cancellationToken)).Take(budget))
         {
             if (await InviteAsync(year, author, now, cancellationToken))
             {
-                sent++;
-                await Task.Delay(reminders.Value.PauseBetweenEmails, timeProvider, cancellationToken);
+                queued++;
             }
         }
 
-        return sent;
+        return queued;
     }
-
-    /// <summary>Invitations sent after <paramref name="since"/> and up to <paramref name="until"/>, for the shared hourly allowance.</summary>
-    public Task<int> CountSentAsync(DateTimeOffset since, DateTimeOffset until, CancellationToken cancellationToken = default) =>
-        db.PastAuthorInvitations.CountAsync(i => i.SentAt > since && i.SentAt <= until, cancellationToken);
 
     /// <summary>
     /// Who to invite from the finished seasons' spots: one per address (lowercased), named from their profile or else the
@@ -185,7 +196,7 @@ public sealed partial class PastAuthorInvitationService(
 
     private async Task<bool> InviteAsync(int year, PastAuthor author, DateTimeOffset now, CancellationToken cancellationToken)
     {
-        // Recorded first: the unique index means only one run or replica sends each invitation.
+        // Recorded first: the unique index means only one run or replica queues each invitation.
         var invitation = new PastAuthorInvitation { SeasonYear = year, Fingerprint = EmailOptOutLinks.Fingerprint(author.Address), SentAt = now };
         db.PastAuthorInvitations.Add(invitation);
         try
@@ -200,7 +211,8 @@ public sealed partial class PastAuthorInvitationService(
 
         try
         {
-            var email = PastAuthorEmails.Invitation(author, year, site.Value);
+            // Once sign-ups close, it's no use.
+            var email = PastAuthorEmails.Invitation(author, year, site.Value) with { SendBefore = EndsAt(year, schedule), Reference = Reference(year) };
             await sender.SendAsync(await composer.ComposeAsync(email, new EmailRecipient(author.Address, author.Name)), cancellationToken);
             return true;
         }
@@ -213,6 +225,6 @@ public sealed partial class PastAuthorInvitationService(
         }
     }
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't send a past author's invitation to C# Advent {Year}; a later run will try again")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't queue a past author's invitation to C# Advent {Year}; a later run will try again")]
     private partial void LogInvitationFailed(Exception exception, int year);
 }

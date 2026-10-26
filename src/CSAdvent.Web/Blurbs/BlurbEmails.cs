@@ -23,6 +23,7 @@ public static class BlurbEmails
         var blurb = SuggestedBlurb.For(post.Spot.Year, post.Spot.SlotsPerDay);
         return new EmailContent
         {
+            Kind = "blurb-missing",
             Subject = $"Please add the C# Advent blurb to your post for December {post.Spot.Day}",
             Preview = $"Your post doesn't open with it yet. Add it by {post.Deadline}.",
             Heading = "One thing before your post is announced",
@@ -49,6 +50,7 @@ public static class BlurbEmails
     /// <summary>To the organizers, when the models can't settle a post, or it couldn't be checked, after its reveal.</summary>
     public static EmailContent NeedsDecision(BlurbPost post, BlurbStatus status, string detail, SiteOptions site) => new()
     {
+        Kind = status is BlurbStatus.CouldNotCheck ? "blurb-could-not-check" : "blurb-needs-decision",
         Subject = status is BlurbStatus.CouldNotCheck
             ? $"C# Advent, December {post.Spot.Day}: a post couldn't be checked for the blurb"
             : $"C# Advent, December {post.Spot.Day}: a post's blurb needs your decision",
@@ -70,6 +72,7 @@ public static class BlurbEmails
     /// <summary>To the organizers, when a post's deadline passes without the blurb and no backup has taken the spot.</summary>
     public static EmailContent DeadlinePassed(BlurbPost post, SiteOptions site) => new()
     {
+        Kind = "blurb-deadline",
         Subject = $"C# Advent, December {post.Spot.Day}: no blurb and no backup",
         Preview = $"The post for {post.Spot.Name} still doesn't open with the blurb, and no backup has taken the spot.",
         Heading = "No blurb, and no backup yet",

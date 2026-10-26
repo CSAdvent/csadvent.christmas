@@ -26,10 +26,4 @@ public sealed class ReminderOptions
     /// (<see cref="Social.Posting.SocialPostingOptions.PostAt"/>: 2 PM).
     /// </summary>
     public TimeOnly? DailyEmailCutoff { get; set; }
-
-    /// <summary>
-    /// The pause after each email, to stay under Azure Communication Services' sending limit (30 a minute for a new
-    /// custom domain).
-    /// </summary>
-    public TimeSpan PauseBetweenEmails { get; set; } = TimeSpan.FromSeconds(2);
 }

@@ -424,7 +424,7 @@ public sealed partial class PostLinkService(
         }
     }
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't send the {Kind} email for post link request {RequestId}")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't queue the {Kind} email for post link request {RequestId}")]
     private partial void LogSendFailed(Exception exception, string kind, int requestId);
 }
 

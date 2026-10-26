@@ -23,8 +23,8 @@ public interface IClaimNotifier
 }
 
 /// <summary>
-/// Emails contributors and organizers about claim requests. The request is already saved when these run, so a failed
-/// send is logged (without personal details) and never undoes or blocks it.
+/// Emails contributors and organizers about claim requests, through the email queue (#152). The request is already saved
+/// when these run, so an email that can't be queued is logged (without personal details) and never undoes or blocks it.
 /// </summary>
 public sealed partial class EmailClaimNotifier(
     AdventDbContext db,
@@ -116,6 +116,6 @@ public sealed partial class EmailClaimNotifier(
         }
     }
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't send the {Kind} email for claim request {ClaimRequestId}")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't queue the {Kind} email for claim request {ClaimRequestId}")]
     private partial void LogSendFailed(Exception exception, string kind, int claimRequestId);
 }

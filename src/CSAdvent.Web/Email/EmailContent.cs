@@ -33,6 +33,20 @@ public sealed record EmailContent
     /// link: the <see cref="Reason"/> line says why they're getting it. Everything else is optional.
     /// </summary>
     public bool Transactional { get; init; }
+
+    // How the email queue (#152) treats it. EmailComposer carries these over to the OutgoingEmail.
+
+    /// <summary>Which email it is: its <see cref="EmailCatalog"/> key, shown on the organizers' view of the queue.</summary>
+    public string? Kind { get; init; }
+
+    /// <summary>How soon it goes when the queue is busy, if not the default (<see cref="Queue.QueueingEmailSender.PriorityOf"/>).</summary>
+    public EmailPriority? Priority { get; init; }
+
+    /// <summary>When it's no use any more, such as the end of the day for the day's posts.</summary>
+    public DateTimeOffset? SendBefore { get; init; }
+
+    /// <summary>What it's about, for its sender's bookkeeping (<see cref="OutgoingEmail.Reference"/>).</summary>
+    public string? Reference { get; init; }
 }
 
 /// <summary>Part of a paragraph or list item: text, a link, or a line break. Strings convert to text.</summary>

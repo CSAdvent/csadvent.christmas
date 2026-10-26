@@ -13,6 +13,7 @@ using CSAdvent.Web.Contributors;
 using CSAdvent.Web.Data;
 using CSAdvent.Web.Data.Archive;
 using CSAdvent.Web.Email;
+using CSAdvent.Web.Email.Queue;
 using CSAdvent.Web.Entries;
 using CSAdvent.Web.Feed;
 using CSAdvent.Web.Manage;
@@ -138,6 +139,7 @@ builder.Services.AddScoped<BlurbQueries>();
 
 builder.Services.AddOptions<BackupOptions>().BindConfiguration(BackupOptions.SectionName);
 builder.Services.AddScoped<BackupService>();
+builder.Services.AddScoped<IUndeliveredEmailHandler, BackupAskUndelivered>();
 builder.Services.AddScoped<BackupListService>();
 builder.Services.AddScoped<ReminderService>();
 if (builder.Configuration.GetValue("Reminders:SendInBackground", defaultValue: true))
@@ -148,10 +150,6 @@ if (builder.Configuration.GetValue("Reminders:SendInBackground", defaultValue: t
 // The announcements list (#49). Signing up is rate limited per visitor, so the form can't be used to send confirmation
 // emails to a lot of addresses (and use up the email service's hourly limit).
 builder.Services.AddScoped<AnnouncementSubscriptions>();
-builder.Services.AddOptions<AnnouncementOptions>()
-    .BindConfiguration(AnnouncementOptions.SectionName)
-    .ValidateDataAnnotations()
-    .ValidateOnStart();
 builder.Services.AddScoped<PastAuthorInvitationService>();
 builder.Services.AddScoped<ReaderDailyEmailService>();
 builder.Services.AddScoped<AnnouncementService>();
@@ -227,6 +225,7 @@ app.UseAntiforgery();
 app.MapStaticAssets();
 app.MapAccounts();
 app.MapEmailPreviews();
+app.MapEmailQueue();
 app.MapReminders();
 app.MapEmailOptOuts();
 app.MapBackups();

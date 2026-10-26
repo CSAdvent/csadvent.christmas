@@ -274,7 +274,7 @@ public static class EmailCatalog
         new(
             "announcement",
             "Announcement",
-            "When an organizer sends an announcement from /manage/announcements, a few at a time.",
+            "When an organizer sends an announcement from /manage/announcements. It's queued for everyone at once, and goes after the emails people are waiting for, within the email queue's hourly allowance for list mail.",
             "Everyone on the announcements list who's confirmed their address. It has a one-click unsubscribe.",
             site => CSAdvent.Web.Announcements.AnnouncementService.Email(
                 new CSAdvent.Web.Data.Announcement
@@ -290,20 +290,20 @@ public static class EmailCatalog
         new(
             "announcement-signups-open",
             "Sign-ups are open",
-            "At 9 AM Eastern on the day the current season's sign-ups open, by itself, a few at a time.",
+            "At 9 AM Eastern on the day the current season's sign-ups open, by itself. It's queued for everyone at once, and goes after the emails people are waiting for, within the email queue's hourly allowance for list mail.",
             "Everyone on the announcements list who's confirmed their address. It has a one-click unsubscribe.",
             site =>
             {
                 var form = CSAdvent.Web.Announcements.AnnouncementService.SignUpsOpen(2026, site.BaseUrl);
                 return CSAdvent.Web.Announcements.AnnouncementService.Email(
-                    new CSAdvent.Web.Data.Announcement { Subject = form.Subject, Message = form.Message, ButtonLabel = form.ButtonLabel, ButtonUrl = form.ButtonUrl, CreatedBy = "automation" },
+                    new CSAdvent.Web.Data.Announcement { Kind = CSAdvent.Web.Data.AnnouncementKind.SignUpsOpen, Subject = form.Subject, Message = form.Message, ButtonLabel = form.ButtonLabel, ButtonUrl = form.ButtonUrl, CreatedBy = "automation" },
                     $"{site.BaseUrl.TrimEnd('/')}/emails/announcements/stop?token=sample",
                     site);
             }),
         new(
             "past-author-invitation",
             "Invitation for past authors",
-            "From 9 AM Eastern on the day the current season's sign-ups open, by itself, a few at a time alongside the announcement, until everyone's had one or sign-ups close.",
+            "From 9 AM Eastern on the day the current season's sign-ups open, by itself, after the announcement: only as many at a time as the email queue has room for, until everyone's had one or sign-ups close.",
             "Everyone who has written for C# Advent before, once per address, except announcement subscribers, anyone who already has a spot or request, and anyone who unsubscribed. It has the unsubscribe link.",
             site => CSAdvent.Web.Announcements.PastAuthorEmails.Invitation(new CSAdvent.Web.Announcements.PastAuthor("ada@example.com", "Ada Lovelace", 3, 2019), 2026, site)),
         new(
@@ -326,7 +326,7 @@ public static class EmailCatalog
         new(
             "daily-posts-readers",
             "Today's posts, for readers",
-            "Each day from December 1 to 25, when the authors' daily email goes (once both posts are in, from 9 AM Eastern, 2 PM at the latest), a few at a time within the announcements' hourly allowance, until midnight.",
+            "Each day from December 1 to 25, when the authors' daily email goes (once both posts are in, from 9 AM Eastern, 2 PM at the latest). It's queued for every reader at once and goes after the authors', within the email queue's hourly allowance for list mail, until midnight.",
             "Announcement subscribers who asked for the daily posts, once each. It has a one-click link that turns off only the daily posts.",
             site => ReminderEmails.DailyForReaders(
                 3,

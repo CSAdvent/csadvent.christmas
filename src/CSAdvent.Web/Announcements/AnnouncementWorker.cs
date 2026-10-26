@@ -2,8 +2,8 @@ namespace CSAdvent.Web.Announcements;
 
 /// <summary>
 /// Runs <see cref="AnnouncementService"/> every five minutes: queues the season's "sign-ups are open" email when it's due,
-/// and delivers readers' daily posts, announcements and past authors' invitations a few at a time. Runs with nothing to send
-/// are cheap.
+/// and puts readers' daily posts, announcements and past authors' invitations in the email queue, which sends them within
+/// the email service's limits. Runs with nothing to queue are cheap.
 /// </summary>
 public sealed class AnnouncementWorker(IServiceScopeFactory scopeFactory, TimeProvider timeProvider, ILogger<AnnouncementWorker> logger)
     : BackgroundService

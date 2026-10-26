@@ -121,7 +121,7 @@ dotnet test
 ## 📬 Announcements by Email
 
 - ✍️ **Anyone can sign up** at `/announcements` (or on the home page between seasons) with a confirmed email, kept until they unsubscribe
-- 📢 **Organizers send announcements** from `/manage/announcements`: draft, test to the organizers' inbox, then send. They go out 40 an hour, to stay under the email service's limit
+- 📢 **Organizers send announcements** from `/manage/announcements`: draft, test to the organizers' inbox, then send. They go through the email queue as list mail, after the emails people are waiting for
 - 🗓️ **"Sign-ups are open"** goes out by itself at 9 AM Eastern on the day each season's sign-ups open
 - 💌 **Past authors are invited back** at the same time, once each, unless they're already on the list, have a spot or request, or unsubscribed
 - 🚪 **Every email has a one-click unsubscribe**, which deletes the address
@@ -186,6 +186,7 @@ A hidden test season lets invited testers try everything for real on the live si
 - 📮 **Send any email now** from `/manage/emails` on the live site: organizers preview each one, and send it with sample data to themselves, the organizers' inbox or a tester, without waiting for the date that would trigger it
 - 📬 **Nothing leaves your machine locally**: MailPit catches every email, and its inbox is linked from the dashboard
 - ☁️ **In production** email goes through Azure Communication Services, from `donotreply@mail.csadvent.christmas`, with replies going to `hello@csadvent.christmas`
+- 🚦 **Every email goes through a queue** (`email_outbox`), so the whole site stays under the email service's 30 a minute and 100 an hour, however many replicas are running: at most 25 a minute and 90 an hour, emails people are waiting for first, list mail (announcements, invitations, readers' daily posts) a minute at a time and only while the hour's under 50. Failed sends are retried with backoff, and organizers can see what's waiting, retry or discard failed emails at `/manage/emails/queue`
 - ⏰ **Reminders** go out at 9 AM Eastern: post link reminders 7, 5, 3, 2 and 1 days before an author's day, and a daily "today's posts" email to every author during Advent, which has a one-click unsubscribe link
 - 🚨 **A last call on the day:** an author whose link still hasn't arrived gets an email 3 hours before their post is announced (7 AM Eastern for post 1, 11 AM for post 2), with the announcement as the deadline
 - 🧪 **Try a reminder run** without waiting for December: `POST https://localhost:7092/dev/reminders/run?at=2026-12-03T15:00:00Z` (Development only). The emails land in MailPit.
@@ -278,7 +279,7 @@ Azure only accepts a custom domain once its DNS points at the app, and only issu
    done
    az communication email domain show --email-service-name csadvent-email -g <rg> --domain-name mail.csadvent.christmas --query verificationStates
    ```
-6. 🔗 **Deploy again** to connect the verified domain to the Communication Service (`aspire deploy` connects it once all four checks pass). Email is sent from then on. A new domain can send 30 emails a minute and 100 an hour; ask Azure support for more if a season needs it.
+6. 🔗 **Deploy again** to connect the verified domain to the Communication Service (`aspire deploy` connects it once all four checks pass). Email is sent from then on. A new domain can send 30 emails a minute and 100 an hour, and the email queue keeps the site under that (the runbook's Email Sending Limits section has the details, and how to ask for more).
 7. 📮 **Set up hello@** in ImprovMX: add csadvent.christmas and an alias `hello` that forwards to the organizers.
 
 Keep `CustomDomains` and DNS records in the AppHost, not set by hand in the portal: every deploy puts back what the model says.

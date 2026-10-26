@@ -15,6 +15,7 @@ public static class SpotEmails
 {
     public static EmailContent DroppedOut(DropoutDetails dropout, SiteOptions site) => new()
     {
+        Kind = "dropped-out",
         Subject = $"{dropout.AuthorName} dropped out of C# Advent, December {dropout.Day}",
         Preview = $"{dropout.Spot} is open again, and the backup posters are being asked.",
         Heading = "An author dropped out",
