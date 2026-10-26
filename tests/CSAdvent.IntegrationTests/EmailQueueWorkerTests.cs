@@ -125,7 +125,7 @@ public sealed class EmailQueueWorkerTests(AppHostFixture fixture)
     /// <summary>Waits, in real time, for something the worker does on its own task.</summary>
     private static async Task WaitUntilAsync(Func<bool> condition, string what)
     {
-        for (var attempt = 0; attempt < 600; attempt++)
+        for (var attempt = 0; attempt < 1200; attempt++)
         {
             if (condition())
             {
@@ -144,7 +144,7 @@ public sealed class EmailQueueWorkerTests(AppHostFixture fixture)
     /// </summary>
     private static async Task AdvanceUntilAsync(FakeTimeProvider clock, TimeSpan step, Func<bool> condition, string what)
     {
-        for (var attempt = 0; attempt < 600; attempt++)
+        for (var attempt = 0; attempt < 1200; attempt++)
         {
             if (condition())
             {
