@@ -78,11 +78,12 @@ public sealed class BackgroundJobTests(AppHostFixture fixture)
         Assert.Equal(new BackupRunResult(0, 0, 0, 1), await RunBackupsAsync(year, "2560-11-05T19:15:00Z"));
         Assert.Equal(new BackupRunResult(0, 0, 0, 0), await RunBackupsAsync(year, "2560-11-05T19:30:00Z"));
 
-        // An organizer gives the spot to Nora.
+        // An organizer gives the spot to Nora, which clears its drop-out as the entry editor does (#188, #245).
         await using (var db = await fixture.CreateDbContextAsync())
         {
             var slot = await db.Slots.Include(s => s.Contact).SingleAsync(s => s.SeasonYear == year && s.Day == 9 && s.Part == 1, CancellationToken);
             slot.AuthorName = "Nora New";
+            slot.DroppedOutAt = null;
             slot.Contact = new SlotContact { Email = "nora-2560@example.com" };
             await db.SaveChangesAsync(CancellationToken);
         }

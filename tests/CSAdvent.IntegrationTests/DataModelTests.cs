@@ -8,13 +8,17 @@ using Npgsql;
 namespace CSAdvent.IntegrationTests;
 
 /// <summary>
-/// The data model's own rules (#188): a spot that gets an author isn't dropped out any more, a spot without an author isn't
-/// anyone's, and an announcement's season exists. Seasons 2642-2648; 2646 to 2648 never exist in the test database.
+/// The data model's own rules (#188, #245): a spot that gets an author isn't dropped out any more, and one with an author can't
+/// be, a spot without an author isn't anyone's, and an announcement's season exists. Seasons 2642-2650: 2645 and 2650 are only
+/// in databases of their own, and 2646 to 2648 never exist in the test database.
 /// </summary>
 public sealed class DataModelTests(AppHostFixture fixture)
 {
     /// <summary>The migration that adds the rules, and fixes the rows that would break them first.</summary>
     private const string Migration = "TightenDataModel";
+
+    /// <summary>The migration that adds the rule about dropped-out spots, which waited for a later release (#245).</summary>
+    private const string DropOutMigration = "AddAuthorNotDroppedOutCheck";
 
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
@@ -93,6 +97,20 @@ public sealed class DataModelTests(AppHostFixture fixture)
     }
 
     [Fact]
+    public async Task ASpotWithAnAuthorIsntDroppedOut()
+    {
+        const int year = 2649;
+        await TestSeasons.EnsureAsync(fixture, year, claimsOpen: false);
+        await using var db = await fixture.CreateDbContextAsync();
+        var slot = await db.Slots.SingleAsync(s => s.SeasonYear == year && s.Day == 1 && s.Part == 1, CancellationToken);
+        slot.AuthorName = "Dee Parted";
+        slot.DroppedOutAt = DateTimeOffset.UtcNow;
+
+        var error = await SaveExpectingErrorAsync(db);
+        Assert.Equal((PostgresErrorCodes.CheckViolation, "ck_slots_author_not_dropped_out"), (error.SqlState, error.ConstraintName));
+    }
+
+    [Fact]
     public async Task AnAnnouncementsSeasonMustExist()
     {
         await using var db = await fixture.CreateDbContextAsync();
@@ -107,20 +125,12 @@ public sealed class DataModelTests(AppHostFixture fixture)
     {
         // A database at the migration before this one, with rows the code before #188 could leave behind (or that can't
         // exist, but would stop the migration if they did).
-        var server = new NpgsqlConnectionStringBuilder(await fixture.App.GetConnectionStringAsync("csadvent", CancellationToken)) { Database = "postgres" }.ConnectionString;
-        const string database = "csadvent_migration_2645";
-        await ExecuteAsync(server, $"DROP DATABASE IF EXISTS {database} WITH (FORCE)");
-        await ExecuteAsync(server, $"CREATE DATABASE {database}");
-        var connectionString = new NpgsqlConnectionStringBuilder(server) { Database = database }.ConnectionString;
-        try
+        await OnADatabaseOfItsOwnAsync("csadvent_migration_2645", async connectionString =>
         {
             int filled, dropped, linkedWithoutAuthor, linked;
             await using (var db = Create(connectionString))
             {
-                var migrations = db.Database.GetMigrations().ToList();
-                var ours = migrations.FindIndex(m => m.EndsWith($"_{Migration}", StringComparison.Ordinal));
-                Assert.True(ours > 0, $"The {Migration} migration isn't there.");
-                await db.GetService<IMigrator>().MigrateAsync(migrations[ours - 1], cancellationToken: CancellationToken);
+                await MigrateToBeforeAsync(db, Migration);
 
                 var contributor = new Contributor { GithubUserId = 264501, GithubLogin = "data-model-old", CreatedAt = DateTimeOffset.UtcNow };
                 var season = Season.Create(2645, slotsPerDay: 2, DateTimeOffset.UtcNow);
@@ -167,6 +177,58 @@ public sealed class DataModelTests(AppHostFixture fixture)
                 db.Announcements.Add(SignUpsOpen(2648));
                 Assert.Equal("fk_announcements_seasons_season_year", (await SaveExpectingErrorAsync(db)).ConstraintName);
             }
+        });
+    }
+
+    [Fact]
+    public async Task TheDropOutRuleClearsSpotsWithAnAuthorFirst()
+    {
+        // A database at the migration before the rule, with a spot given an author by the code before #188, which kept
+        // serving while TightenDataModel ran, and would come back with a rollback.
+        await OnADatabaseOfItsOwnAsync("csadvent_migration_2650", async connectionString =>
+        {
+            int filled, dropped;
+            await using (var db = Create(connectionString))
+            {
+                await MigrateToBeforeAsync(db, DropOutMigration);
+
+                var season = Season.Create(2650, slotsPerDay: 2, DateTimeOffset.UtcNow);
+                var droppedAt = DateTimeOffset.UtcNow.AddDays(-2);
+                Spot(season, 1).AuthorName = "Late Taker";
+                Spot(season, 1).DroppedOutAt = droppedAt;
+                Spot(season, 2).DroppedOutAt = droppedAt;
+                db.Seasons.Add(season);
+                await db.SaveChangesAsync(CancellationToken);
+                (filled, dropped) = (Spot(season, 1).Id, Spot(season, 2).Id);
+
+                await db.Database.MigrateAsync(CancellationToken);
+            }
+
+            await using (var db = Create(connectionString))
+            {
+                var slots = await db.Slots.AsNoTracking().Where(s => s.SeasonYear == 2650).ToDictionaryAsync(s => s.Id, CancellationToken);
+                Assert.Equal(("Late Taker", (DateTimeOffset?)null), (slots[filled].AuthorName, slots[filled].DroppedOutAt));
+                Assert.Null(slots[dropped].AuthorName);
+                Assert.NotNull(slots[dropped].DroppedOutAt);
+
+                // And the rule is in place from now on.
+                db.Slots.Attach(slots[dropped]).Entity.AuthorName = "Too Soon";
+                Assert.Equal("ck_slots_author_not_dropped_out", (await SaveExpectingErrorAsync(db)).ConstraintName);
+            }
+        });
+    }
+
+    private static Slot Spot(Season season, int day) => season.Slots.Single(s => s.Day == day && s.Part == 1);
+
+    /// <summary>Runs a test on an empty database of its own, dropped afterwards, to migrate it from an earlier migration.</summary>
+    private async Task OnADatabaseOfItsOwnAsync(string database, Func<string, Task> test)
+    {
+        var server = new NpgsqlConnectionStringBuilder(await fixture.App.GetConnectionStringAsync("csadvent", CancellationToken)) { Database = "postgres" }.ConnectionString;
+        await ExecuteAsync(server, $"DROP DATABASE IF EXISTS {database} WITH (FORCE)");
+        await ExecuteAsync(server, $"CREATE DATABASE {database}");
+        try
+        {
+            await test(new NpgsqlConnectionStringBuilder(server) { Database = database }.ConnectionString);
         }
         finally
         {
@@ -175,7 +237,14 @@ public sealed class DataModelTests(AppHostFixture fixture)
         }
     }
 
-    private static Slot Spot(Season season, int day) => season.Slots.Single(s => s.Day == day && s.Part == 1);
+    /// <summary>Migrates the database to the migration before <paramref name="migration"/>.</summary>
+    private static async Task MigrateToBeforeAsync(AdventDbContext db, string migration)
+    {
+        var migrations = db.Database.GetMigrations().ToList();
+        var index = migrations.FindIndex(m => m.EndsWith($"_{migration}", StringComparison.Ordinal));
+        Assert.True(index > 0, $"The {migration} migration isn't there.");
+        await db.GetService<IMigrator>().MigrateAsync(migrations[index - 1], cancellationToken: CancellationToken);
+    }
 
     private static Announcement SignUpsOpen(int year) => new()
     {

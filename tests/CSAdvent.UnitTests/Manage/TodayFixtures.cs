@@ -63,6 +63,7 @@ internal static class TodayFixtures
         Now,
         new DateOnly(2026, 12, 6),
         Eastern,
+        "Eastern",
         season is null ? [] : [season],
         failedEmails ?? [Failed(1, "daily-share")],
         new TodayQueues(Requests: 2, PostClaims: 1, LinkChanges: 0, EmailsWaiting: 12, FailedEmails: failedEmails?.Count ?? 1));

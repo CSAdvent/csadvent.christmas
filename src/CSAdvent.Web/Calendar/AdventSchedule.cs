@@ -34,10 +34,16 @@ public sealed class AdventSchedule
     public string TimeZoneName { get; }
 
     /// <summary>A moment as emails and pages give it, in the reveal time zone: "10:00 AM Eastern on December 6".</summary>
-    public string Describe(DateTimeOffset moment)
+    public string Describe(DateTimeOffset moment) => Describe(moment, TimeZone, TimeZoneName);
+
+    /// <summary>
+    /// A moment as <see cref="Describe(DateTimeOffset)"/> gives it, for what's put together without the schedule, such as the
+    /// Today report that the email catalog's sample builds.
+    /// </summary>
+    public static string Describe(DateTimeOffset moment, TimeZoneInfo timeZone, string timeZoneName)
     {
-        var local = ToLocalTime(moment);
-        return string.Create(CultureInfo.InvariantCulture, $"{local:h:mm tt} {TimeZoneName} on {local:MMMM d}");
+        var local = TimeZoneInfo.ConvertTime(moment, timeZone);
+        return string.Create(CultureInfo.InvariantCulture, $"{local:h:mm tt} {timeZoneName} on {local:MMMM d}");
     }
 
     /// <summary>The date of a day of Advent: December {day}, or the matching day of the test season's rehearsal.</summary>

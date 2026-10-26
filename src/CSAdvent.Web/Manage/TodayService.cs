@@ -90,15 +90,21 @@ public sealed record TodayQueues(int Requests, int PostClaims, int LinkChanges, 
 /// <summary>An organizer's day in December (#171): the Today panel on <c>/manage</c>, and the morning digest.</summary>
 /// <param name="Date">Today, in the reveal time zone.</param>
 /// <param name="TimeZone">The reveal time zone, which every time is shown in.</param>
+/// <param name="TimeZoneName">What the reveal time zone is called (<see cref="AdventSchedule.TimeZoneName"/>, such as "Eastern").</param>
 /// <param name="Seasons">The seasons with an Advent day today or tomorrow.</param>
 /// <param name="FailedEmails">The emails the queue gave up on, newest first.</param>
 public sealed record TodayReport(
     DateTimeOffset At,
     DateOnly Date,
     TimeZoneInfo TimeZone,
+    string TimeZoneName,
     IReadOnlyList<TodaySeason> Seasons,
     IReadOnlyList<FailedEmail> FailedEmails,
-    TodayQueues Queues);
+    TodayQueues Queues)
+{
+    /// <summary>"10:00 PM Eastern on December 6", as <see cref="AdventSchedule.Describe(DateTimeOffset)"/> and the other emails give a time.</summary>
+    public string Describe(DateTimeOffset moment) => AdventSchedule.Describe(moment, TimeZone, TimeZoneName);
+}
 
 /// <summary>
 /// Puts an organizer's day together (#171) from the services the organizer pages already use: the entries list, the social
@@ -145,6 +151,7 @@ public sealed class TodayService(
             now,
             today,
             schedule.TimeZone,
+            schedule.TimeZoneName,
             seasons,
             queue.Failed,
             new TodayQueues(counts.Requests, counts.PostClaims, counts.LinkChanges, queue.Waiting.Sum(w => w.Count), queue.Failed.Count));
@@ -298,7 +305,4 @@ public static class TodayLabels
             ? local.ToString("h tt", CultureInfo.InvariantCulture)
             : local.ToString("h:mm tt", CultureInfo.InvariantCulture);
 
-    /// <summary>"10:00 PM Eastern on December 6", as the other emails give a time.</summary>
-    public static string Eastern(DateTimeOffset moment, TimeZoneInfo timeZone) =>
-        string.Create(CultureInfo.InvariantCulture, $"{TimeZoneInfo.ConvertTime(moment, timeZone):h:mm tt} Eastern on {TimeZoneInfo.ConvertTime(moment, timeZone):MMMM d}");
 }

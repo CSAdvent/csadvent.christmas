@@ -428,6 +428,7 @@ public static class EmailCatalog
             now,
             new DateOnly(2026, 12, 6),
             eastern,
+            "Eastern",
             [season],
             [new CSAdvent.Web.Email.Queue.FailedEmail(7, "daily-share", "ada@example.com", "Day 5 of C# Advent", 6, "The email service answered 503", now.AddHours(-2))],
             new TodayQueues(Requests: 0, PostClaims: 1, LinkChanges: 0, EmailsWaiting: 12, FailedEmails: 1));
