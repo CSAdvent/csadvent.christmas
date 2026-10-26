@@ -1,15 +1,27 @@
 using System.Globalization;
 using System.Net.Http.Json;
+using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Data;
+using CSAdvent.Web.Retention;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Npgsql;
 
 namespace CSAdvent.IntegrationTests;
 
 /// <summary>
-/// Errors the code expects, which mustn't trip the error alert (#157, #224). Runs that used to insert a record on every run
-/// and leave the unique index to refuse the ones already there, which EF Core logs as errors, now skip what's recorded. A
-/// trigger only the throwaway test database gets makes inserting a record that's already there fail outright for these
-/// seasons (<see cref="RefuseDuplicatesAsync"/>), so a run that stops skipping fails these tests. Seasons 2400-2419.
+/// Errors the code expects, which mustn't trip the error alert (#157, #224, #225).
+/// <list type="bullet">
+/// <item>Runs that used to insert a record on every run and leave the unique index to refuse the ones already there, which EF
+/// Core logs as errors, now skip what's recorded. A trigger only the throwaway test database gets makes inserting a record
+/// that's already there fail outright for these seasons (<see cref="RefuseDuplicatesAsync"/>), so a run that stops skipping
+/// fails these tests.</item>
+/// <item>Background jobs that run before the deploy's migrations job, against a database without a table or column they use,
+/// log a warning rather than an error.</item>
+/// </list>
+/// Seasons 2400-2419.
 /// </summary>
 public sealed class ExpectedErrorTests(AppHostFixture fixture)
 {
@@ -97,6 +109,43 @@ public sealed class ExpectedErrorTests(AppHostFixture fixture)
         Assert.Equal(1, await fixture.CountEmailsAsync("eet-rejoin@example.com", $"You're on the C# Advent {year} backup list"));
     }
 
+    [Fact]
+    public async Task BackgroundJobsWaitForTheMigrationsWithAWarning()
+    {
+        // A database the migrations haven't reached, as in the minutes between a new revision starting and its migrations
+        // job: no tables at first, then a table without a column this version uses.
+        var server = new NpgsqlConnectionStringBuilder(await fixture.App.GetConnectionStringAsync("csadvent", CancellationToken)) { Database = "postgres" }.ConnectionString;
+        const string database = "csadvent_deploy_2404";
+        await ExecuteAsync(server, $"DROP DATABASE IF EXISTS {database} WITH (FORCE)");
+        await ExecuteAsync(server, $"CREATE DATABASE {database}");
+        var deployed = new NpgsqlConnectionStringBuilder(server) { Database = database }.ConnectionString;
+        try
+        {
+            await using var services = new ServiceCollection()
+                .AddDbContext<AdventDbContext>(options => options.UseNpgsql(deployed))
+                .AddSingleton(TimeProvider.System)
+                .AddSingleton(Options.Create(new AdventOptions { TimeZone = "America/New_York" }))
+                .AddSingleton<AdventSchedule>()
+                .AddScoped<ContactRetention>()
+                .AddLogging()
+                .BuildServiceProvider();
+
+            var missingTable = await RunRetentionOnceAsync(services);
+            Assert.Equal(LogLevel.Warning, missingTable.Level);
+            Assert.Equal(PostgresErrorCodes.UndefinedTable, PostgresErrorOf(missingTable.Exception).SqlState);
+
+            await ExecuteAsync(deployed, "CREATE TABLE post_claim_requests (id integer PRIMARY KEY)");
+            var missingColumn = await RunRetentionOnceAsync(services);
+            Assert.Equal(LogLevel.Warning, missingColumn.Level);
+            Assert.Equal(PostgresErrorCodes.UndefinedColumn, PostgresErrorOf(missingColumn.Exception).SqlState);
+        }
+        finally
+        {
+            NpgsqlConnection.ClearAllPools();
+            await ExecuteAsync(server, $"DROP DATABASE IF EXISTS {database} WITH (FORCE)");
+        }
+    }
+
     private static void Claim(Season season, int day, int part, string author, string email, string? title = null)
     {
         var slot = season.Slots.Single(s => s.Day == day && s.Part == part);
@@ -138,6 +187,35 @@ public sealed class ExpectedErrorTests(AppHostFixture fixture)
         var response = await browser.PostFormAsync($"/backups/{year}", "backup", new() { ["Form.Name"] = "Re Joiner", ["Form.AgreeToTerms"] = "true" });
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         return response;
+    }
+
+    /// <summary>Starts the retention worker, which runs straight away, and returns what it logged about that run.</summary>
+    private static async Task<(LogLevel Level, Exception? Exception)> RunRetentionOnceAsync(IServiceProvider services)
+    {
+        var logger = new RecordingLogger<ContactRetentionWorker>();
+        using var worker = new ContactRetentionWorker(services.GetRequiredService<IServiceScopeFactory>(), TimeProvider.System, logger);
+        await worker.StartAsync(CancellationToken);
+        try
+        {
+            await logger.Logged.WaitAsync(TimeSpan.FromSeconds(30), CancellationToken);
+        }
+        finally
+        {
+            await worker.StopAsync(CancellationToken.None);
+        }
+
+        return Assert.Single(logger.Entries);
+    }
+
+    private static PostgresException PostgresErrorOf(Exception? exception) =>
+        exception as PostgresException ?? PostgresErrorOf(exception?.InnerException ?? throw new InvalidOperationException("No PostgresException was logged."));
+
+    private static async Task ExecuteAsync(string connectionString, string sql)
+    {
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync(CancellationToken);
+        await using var command = new NpgsqlCommand(sql, connection);
+        await command.ExecuteNonQueryAsync(CancellationToken);
     }
 
     /// <summary>
@@ -197,6 +275,40 @@ public sealed class ExpectedErrorTests(AppHostFixture fixture)
         finally
         {
             TriggersCreated.Release();
+        }
+    }
+
+    /// <summary>Keeps what a worker logs, and says when it first logs anything.</summary>
+    private sealed class RecordingLogger<T> : ILogger<T>
+    {
+        private readonly TaskCompletionSource _logged = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly List<(LogLevel Level, Exception? Exception)> _entries = [];
+
+        public Task Logged => _logged.Task;
+
+        public IReadOnlyList<(LogLevel Level, Exception? Exception)> Entries
+        {
+            get
+            {
+                lock (_entries)
+                {
+                    return [.. _entries];
+                }
+            }
+        }
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            lock (_entries)
+            {
+                _entries.Add((logLevel, exception));
+            }
+
+            _logged.TrySetResult();
         }
     }
 

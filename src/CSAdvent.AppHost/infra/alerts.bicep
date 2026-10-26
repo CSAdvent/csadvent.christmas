@@ -36,16 +36,19 @@ resource organizers 'Microsoft.Insights/actionGroups@2023-01-01' = {
   }
 }
 
-// Every Error-level log and exception, except what the database libraries record about errors the code expects (#224). A
-// failed database command is logged at Error before the code that ran it can handle it, up to three times:
+// Every Error-level log and exception, except the database libraries' records of errors the code expects (#224, #225).
+// A failed database command is logged at Error before the code that ran it can handle it, up to three times:
 //   - EF Core's CommandError trace (EventId 20102, "Failed executing DbCommand"), whose message is only the SQL. It's left
 //     out whatever the error, because the failure is always reported again by what comes after it: EF Core's
 //     SaveChangesFailed or failed query, or the code's own error.
 //   - EF Core's SaveChangesFailed or failed query exception, and Npgsql's tracing span on the postgresql dependency, which
-//     records the same PostgresException with no category. These are left out only for a unique violation (SqlState
-//     23505): a record that another run or replica saved first, which the code expects and handles.
-// A unique violation the code doesn't handle still alerts, through what logs it next: the page's unhandled exception, or
-// the background job's failed run.
+//     records the same PostgresException with no category. These are left out only for SqlStates the code expects:
+//       - 23505, a unique violation: a record another run or replica saved first.
+//       - 42P01 and 42703, a missing table or column: the minutes after a deploy before its migrations job has run (#151).
+//         Background jobs log those as warnings and try again on their next run.
+// Whatever handles one of these decides whether it's an error: the page's unhandled exception or a background job's failed
+// run still alerts. So a page that reads new schema before the migrations job finishes alerts too, because a visitor got an
+// error page; and a migration that fails is a failed step in the Deploy workflow.
 var errorsQuery = '''
 union
     (traces | where severityLevel >= 3),
@@ -53,7 +56,7 @@ union
 | extend category = tostring(customDimensions.CategoryName)
 | where not(category == "Microsoft.EntityFrameworkCore.Database.Command" and tostring(customDimensions.EventId) == "20102")
 | where not((isempty(category) or category startswith "Microsoft.EntityFrameworkCore" or category startswith "Npgsql")
-    and strcat(message, " ", outerMessage, " ", innermostMessage) has "23505")
+    and strcat(message, " ", outerMessage, " ", innermostMessage) has_any ("23505", "42P01", "42703"))
 '''
 
 // Checked every 15 minutes, the cheapest rate. Stateful (autoMitigate), so it emails once when errors start and once when

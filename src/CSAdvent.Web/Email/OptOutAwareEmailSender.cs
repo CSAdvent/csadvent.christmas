@@ -1,4 +1,4 @@
-using Npgsql;
+using CSAdvent.Web.Data;
 
 namespace CSAdvent.Web.Email;
 
@@ -29,9 +29,10 @@ public sealed partial class OptOutAwareEmailSender(IEmailSender inner, EmailOptO
         {
             return await scope.ServiceProvider.GetRequiredService<IEmailOptOutList>().IsOptedOutAsync(address, cancellationToken);
         }
-        catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UndefinedTable)
+        catch (Exception exception) when (MissingSchema.IsMissingTable(exception))
         {
-            // A new revision starts before the deploy runs the migrations, and nobody can have unsubscribed before then.
+            // A new revision starts before the deploy runs the migrations, and nobody can have unsubscribed before then. Only
+            // the table: with a column missing, people may well have, so the send fails and the email queue tries it again.
             return false;
         }
     }

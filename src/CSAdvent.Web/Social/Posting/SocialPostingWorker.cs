@@ -1,3 +1,5 @@
+using CSAdvent.Web.Data;
+
 namespace CSAdvent.Web.Social.Posting;
 
 /// <summary>
@@ -21,6 +23,12 @@ public sealed class SocialPostingWorker(IServiceScopeFactory scopeFactory, TimeP
                 await scope.ServiceProvider.GetRequiredService<SocialCredentialCheck>().RunAsync(timeProvider.GetUtcNow(), stoppingToken);
                 await scope.ServiceProvider.GetRequiredService<SocialPostingService>().RunAsync(timeProvider.GetUtcNow(), stoppingToken);
                 await scope.ServiceProvider.GetRequiredService<SeasonSocialService>().RunAsync(timeProvider.GetUtcNow(), cancellationToken: stoppingToken);
+            }
+            catch (Exception exception) when (!stoppingToken.IsCancellationRequested && MissingSchema.IsMissingTableOrColumn(exception))
+            {
+                // Shortly after a deploy, before its migrations job has added a table or column this version uses (#151). The
+                // next run after the migrations works, so it's a warning, not an error for the alert (#225).
+                logger.LogWarning(exception, "Couldn't post to social media automatically yet: the database isn't migrated to this version. Trying again in {Interval}.", Interval);
             }
             catch (Exception exception) when (!stoppingToken.IsCancellationRequested)
             {

@@ -8,8 +8,8 @@ namespace CSAdvent.Web.Email.Queue;
 /// which only fails when the database does: the caller's catch block still undoes whatever it recorded.
 /// </summary>
 /// <remarks>
-/// A new revision starts before the deploy's migrations job has created the table (#151). Until it has, emails go straight
-/// through the transport as they used to, so none is lost in that minute.
+/// A new revision starts before the deploy's migrations job has created the table, or a column a later migration adds (#151).
+/// Until it has, emails go straight through the transport as they used to, so none is lost in those minutes.
 /// </remarks>
 public sealed partial class QueueingEmailSender(
     [FromKeyedServices(EmailRegistration.TransportKey)] IEmailSender transport,
@@ -56,7 +56,7 @@ public sealed partial class QueueingEmailSender(
             // the app is stopping. It's one insert.
             await db.SaveChangesAsync(CancellationToken.None);
         }
-        catch (Exception exception) when (EmailOutbox.IsMissingTable(exception))
+        catch (Exception exception) when (MissingSchema.IsMissingTableOrColumn(exception))
         {
             LogSentDirectly(email.Kind ?? UnknownKind);
             try
@@ -84,7 +84,7 @@ public sealed partial class QueueingEmailSender(
         links.IsOrganizers(email.To.Address) ? EmailPriority.Urgent
         : email.Priority ?? (email.Transactional ? EmailPriority.Urgent : EmailPriority.Normal);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Sent a {Kind} email straight away: the email queue's table isn't there yet")]
+    [LoggerMessage(Level = LogLevel.Information, Message = "Sent a {Kind} email straight away: the email queue isn't migrated to this version yet")]
     private partial void LogSentDirectly(string kind);
 }
 

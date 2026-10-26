@@ -1,7 +1,6 @@
 using CSAdvent.Web.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Npgsql;
 
 namespace CSAdvent.Web.Email.Queue;
 
@@ -29,7 +28,7 @@ public sealed record QueueProgress(int Waiting, int Sent, int NotSent)
 /// <summary>
 /// The email queue (#152) for organizers and senders: what's waiting, sent and failed; retrying or discarding a failed email;
 /// taking back emails nobody wants any more (an unsubscribe); and how much list mail the queue has room for. Every read copes
-/// with the table not being there yet (the deploy runs the migrations after the new revision starts).
+/// with the queue's table or a column not being there yet (the deploy runs the migrations after the new revision starts).
 /// </summary>
 public sealed class EmailOutbox(AdventDbContext db, EmailQueueSignal signal, IOptions<EmailQueueOptions> options, TimeProvider timeProvider)
 {
@@ -57,7 +56,7 @@ public sealed class EmailOutbox(AdventDbContext db, EmailQueueSignal signal, IOp
                 await db.EmailOutbox.CountAsync(e => e.Status == QueuedEmailStatus.Expired && e.FinishedAt > dayAgo, cancellationToken),
                 failed);
         }
-        catch (Exception exception) when (IsMissingTable(exception))
+        catch (Exception exception) when (MissingSchema.IsMissingTableOrColumn(exception))
         {
             return EmailQueueStatus.Missing;
         }
@@ -89,7 +88,7 @@ public sealed class EmailOutbox(AdventDbContext db, EmailQueueSignal signal, IOp
                     && e.Reference != null && e.Reference.StartsWith(referencePrefix))
                 .ExecuteDeleteAsync(cancellationToken);
         }
-        catch (Exception exception) when (IsMissingTable(exception))
+        catch (Exception exception) when (MissingSchema.IsMissingTableOrColumn(exception))
         {
             return 0;
         }
@@ -109,7 +108,7 @@ public sealed class EmailOutbox(AdventDbContext db, EmailQueueSignal signal, IOp
             var waiting = await db.EmailOutbox.CountAsync(e => e.Status == QueuedEmailStatus.Pending && e.Priority >= EmailPriorities.FirstListMail, cancellationToken);
             return Math.Max(0, options.Value.ListPerHour - sent - waiting);
         }
-        catch (Exception exception) when (IsMissingTable(exception))
+        catch (Exception exception) when (MissingSchema.IsMissingTableOrColumn(exception))
         {
             // Nothing's counted until the table's there, so queue nothing optional.
             return 0;
@@ -135,7 +134,7 @@ public sealed class EmailOutbox(AdventDbContext db, EmailQueueSignal signal, IOp
                         g.Where(c => c.Status is QueuedEmailStatus.Sent).Sum(c => c.Count),
                         g.Where(c => c.Status is QueuedEmailStatus.Failed or QueuedEmailStatus.Expired).Sum(c => c.Count)));
         }
-        catch (Exception exception) when (IsMissingTable(exception))
+        catch (Exception exception) when (MissingSchema.IsMissingTableOrColumn(exception))
         {
             return new Dictionary<string, QueueProgress>();
         }
@@ -150,11 +149,6 @@ public sealed class EmailOutbox(AdventDbContext db, EmailQueueSignal signal, IOp
     /// </summary>
     public static async Task<bool> TableExistsAsync(AdventDbContext db, CancellationToken cancellationToken = default) =>
         await db.Database.SqlQuery<bool>($"SELECT to_regclass('email_outbox') IS NOT NULL AS \"Value\"").SingleAsync(cancellationToken);
-
-    /// <summary>Whether the exception is the outbox not existing yet: the minute between a deploy and its migrations.</summary>
-    public static bool IsMissingTable(Exception exception) =>
-        exception is PostgresException { SqlState: PostgresErrorCodes.UndefinedTable }
-        || (exception.InnerException is { } inner && IsMissingTable(inner));
 
     private async Task<int> RetryWhereAsync(IQueryable<QueuedEmail> emails, CancellationToken cancellationToken)
     {

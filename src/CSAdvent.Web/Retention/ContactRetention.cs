@@ -98,7 +98,7 @@ public sealed class ContactRetention(AdventDbContext db, AdventSchedule schedule
                 .Where(e => e.Status != QueuedEmailStatus.Pending && e.FinishedAt != null && e.FinishedAt < finishedBefore)
                 .ExecuteDeleteAsync(cancellationToken);
         }
-        catch (Exception exception) when (EmailOutbox.IsMissingTable(exception))
+        catch (Exception exception) when (MissingSchema.IsMissingTableOrColumn(exception))
         {
             // The worker runs this as the app starts, which can be before the deploy's migrations create the queue.
             return 0;

@@ -27,6 +27,7 @@ public sealed partial class EmailOutboxWorker(
     {
         var failures = 0;
         var tableExists = false;
+        var warnedNotMigrated = false;
         while (!stoppingToken.IsCancellationRequested)
         {
             var wait = options.Value.PollInterval;
@@ -51,6 +52,7 @@ public sealed partial class EmailOutboxWorker(
 
                 var pass = await scope.ServiceProvider.GetRequiredService<EmailQueueDrain>().RunAsync(stoppingToken);
                 failures = 0;
+                warnedNotMigrated = false;
                 if (pass.PausedUntil is { } pausedUntil)
                 {
                     wait = pausedUntil - timeProvider.GetUtcNow();
@@ -61,9 +63,17 @@ public sealed partial class EmailOutboxWorker(
             {
                 return;
             }
-            catch (Exception exception) when (EmailOutbox.IsMissingTable(exception))
+            catch (Exception exception) when (MissingSchema.IsMissingTableOrColumn(exception))
             {
-                // Dropped from under us (a database restored from before the queue, say): check again before the next pass.
+                // Not migrated to this version yet: a column a later migration adds, or the table dropped from under us (a
+                // database restored from before the queue, say). Checked again before the next pass, with a warning rather
+                // than an error, since the migrations job fixes it (#225).
+                if (!warnedNotMigrated)
+                {
+                    LogNotMigratedYet(exception);
+                    warnedNotMigrated = true;
+                }
+
                 tableExists = false;
                 wait = TableCheckInterval;
             }
@@ -98,6 +108,9 @@ public sealed partial class EmailOutboxWorker(
 
     [LoggerMessage(Level = LogLevel.Information, Message = "The email queue's table isn't there yet (the migrations haven't run); emails are sent straight away until it is")]
     private partial void LogNoTableYet();
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The email queue isn't migrated to this version yet (a table or column is missing until the migrations job runs). Trying again shortly")]
+    private partial void LogNotMigratedYet(Exception exception);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Sending queued emails failed. Trying again shortly")]
     private partial void LogPassFailed(Exception exception);
