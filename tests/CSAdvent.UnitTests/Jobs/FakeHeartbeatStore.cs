@@ -11,6 +11,12 @@ internal sealed class FakeHeartbeatStore : IJobHeartbeatStore
     /// <summary>Every save, in order.</summary>
     public List<JobHeartbeat> Saved { get; } = [];
 
+    /// <summary>
+    /// Released after each save, which comes after the run is recorded in memory: what a test waits on when a worker runs on
+    /// a task of its own.
+    /// </summary>
+    public SemaphoreSlim Saves { get; } = new(0);
+
     public Exception? Failure { get; set; }
 
     /// <summary>What another replica saved.</summary>
@@ -28,6 +34,7 @@ internal sealed class FakeHeartbeatStore : IJobHeartbeatStore
         _rows[step] = _rows.TryGetValue(step, out var saved)
             ? new JobHeartbeat { Step = step, LastSucceededAt = Later(saved.LastSucceededAt, lastSucceededAt), LastFailedAt = Later(saved.LastFailedAt, lastFailedAt) }
             : row;
+        Saves.Release();
         return Task.CompletedTask;
     }
 

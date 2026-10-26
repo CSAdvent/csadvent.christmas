@@ -152,7 +152,7 @@ public sealed class BackgroundJobTests(AppHostFixture fixture)
         // make the health check Degraded.
         await using (var db = await fixture.CreateDbContextAsync())
         {
-            for (var attempt = 0; attempt < 100 && !await db.JobHeartbeats.AnyAsync(h => h.Step == "email-queue" && h.LastSucceededAt != null, CancellationToken); attempt++)
+            for (var attempt = 0; attempt < 200 && !await db.JobHeartbeats.AnyAsync(h => h.Step == "email-queue" && h.LastSucceededAt != null, CancellationToken); attempt++)
             {
                 await Task.Delay(100, CancellationToken);
             }

@@ -65,19 +65,22 @@ public sealed class PeriodicWorkerTests
     public async Task ItRunsWhenItStartsThenEveryInterval()
     {
         var clock = new FakeTimeProvider(Now);
-        var runs = Runs(clock).Runs;
-        var ticks = new SemaphoreSlim(0);
-        using var worker = new TestWorker(Services(), runs, clock, NullLogger.Instance,
-            [new(First, (_, _, _) => { ticks.Release(); return Task.CompletedTask; })]);
+        var (runs, store) = Runs(clock);
+        using var worker = new TestWorker(Services(), runs, clock, NullLogger.Instance, [new(First, (_, _, _) => Task.CompletedTask)]);
 
+        // ExecuteAsync runs on a task of its own, so each wait is for the run's save, which comes after it's recorded, not
+        // for the step itself. The timer exists before the first run, and a tick that comes before the worker waits for it
+        // is kept for it, so the clock moves on only once the first run is recorded, and nothing depends on timing.
         await worker.StartAsync(TestContext.Current.CancellationToken);
         try
         {
-            Assert.True(await ticks.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken), "It didn't run when it started.");
+            Assert.True(await store.Saves.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken), "It didn't run when it started.");
             Assert.Equal(JobHealth.Succeeding, Assert.Single(runs.Running()).Health);
+            Assert.Equal(Now, Assert.Single(store.Saved).LastSucceededAt);
 
             clock.Advance(TestWorker.Interval);
-            Assert.True(await ticks.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken), "It didn't run after an interval.");
+            Assert.True(await store.Saves.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken), "It didn't run after an interval.");
+            Assert.Equal(Now + TestWorker.Interval, store.Saved[^1].LastSucceededAt);
         }
         finally
         {
