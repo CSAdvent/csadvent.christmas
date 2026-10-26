@@ -51,6 +51,17 @@ public sealed class SentReminder
     public DateTimeOffset SentAt { get; init; }
 }
 
+public static class SentReminderQueries
+{
+    /// <summary>
+    /// The slots that already have a <paramref name="kind"/> reminder recorded for <paramref name="runDate"/>. A run skips
+    /// them rather than insert a record the unique index refuses, because EF Core logs every refusal as an error before the
+    /// code can handle it (#157). The index still settles two runs, or replicas, recording the same reminder at once.
+    /// </summary>
+    public static IQueryable<int> RecordedSlots(this IQueryable<SentReminder> reminders, ReminderKind kind, DateOnly runDate) =>
+        reminders.Where(r => r.Kind == kind && r.RunDate == runDate && r.SlotId != null).Select(r => r.SlotId!.Value);
+}
+
 internal sealed class SentReminderConfiguration : IEntityTypeConfiguration<SentReminder>
 {
     public void Configure(EntityTypeBuilder<SentReminder> builder)

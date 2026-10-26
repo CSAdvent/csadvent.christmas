@@ -1,3 +1,5 @@
+using CSAdvent.Web.Data;
+
 namespace CSAdvent.Web.Content;
 
 /// <summary>
@@ -27,10 +29,15 @@ public sealed class OtherAdventLogoWorker(IServiceScopeFactory scopeFactory, Tim
                     }
                 }
             }
+            catch (Exception exception) when (!stoppingToken.IsCancellationRequested && MissingSchema.IsMissingTableOrColumn(exception))
+            {
+                // Shortly after a deploy, before its migrations job has added a table or column this version uses (#151). The
+                // next run after the migrations works, so it's a warning, not an error for the alert (#225).
+                logger.LogWarning(exception, "Couldn't fetch Other Advents logos yet: the database isn't migrated to this version. Trying again in {Interval}.", Interval);
+            }
             catch (Exception exception) when (!stoppingToken.IsCancellationRequested)
             {
-                // An unhandled exception would stop the whole app. The next run tries again (and on a brand-new deployment
-                // the first run can come before the migrations job has created the tables).
+                // An unhandled exception would stop the whole app. The next run tries again.
                 logger.LogError(exception, "Fetching Other Advents logos failed. Trying again in {Interval}.", Interval);
             }
         }

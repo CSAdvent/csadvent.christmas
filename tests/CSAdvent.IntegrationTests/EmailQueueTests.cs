@@ -193,7 +193,7 @@ public sealed partial class EmailQueueTests(AppHostFixture fixture)
                 TimeProvider.System,
                 NullLogger<EmailQueueDrain>.Instance);
             var missing = await Assert.ThrowsAnyAsync<Exception>(() => drain.RunAsync(CancellationToken));
-            Assert.True(EmailOutbox.IsMissingTable(missing));
+            Assert.True(MissingSchema.IsMissingTableOrColumn(missing));
         }
         finally
         {

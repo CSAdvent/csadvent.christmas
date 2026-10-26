@@ -501,8 +501,17 @@ a sample to everyone.
   3. "Gave up on … email" means the email queue tried an email 6 times over about 2 hours 20 minutes. It's on
      `/manage/emails/queue` with the email service's answer: fix the cause, then **Retry** (or **Retry all**).
 
-  The duplicate inserts that the reminders, backups and announcements expect, which EF Core logs as errors all day, are left
-  out of this alert until #157 stops them being logged.
+  A failed database command is logged as an error by EF Core and Npgsql before the site can handle it. The alert leaves out
+  EF Core's "Failed executing DbCommand" (`CommandError`), because whatever ran the command reports the failure again, and
+  their records of the errors the site expects (#224, #225): a duplicate (SqlState 23505), when two runs or replicas save
+  the same thing at once, and a missing table or column (42P01, 42703), in the minutes after a deploy before its migrations
+  job has run. So the manual query above shows more than the alert counts: read the error that comes after them.
+
+  **Right after a deploy:** the new revision starts before the migrations job (#151), so for a few minutes it can ask for
+  a table or column the job hasn't added yet. Background jobs log that as a warning ("the database isn't migrated to this
+  version") and try again on their next run. A page that reads the new schema fails until the job finishes, and that does
+  trip this alert, because a visitor got an error page. If the errors say a relation or column "does not exist" and stop
+  once the Deploy workflow's migrations step is done, there's nothing to fix. If they don't stop, check that step.
 - **Database storage over 80%** (`csadvent-postgres-storage`): the server has 32 GB and doesn't grow by itself. At 95% it
   turns read-only, and the site stops saving anything. Raise `StorageSizeInGB` in `AppHost.cs` and deploy (storage can grow
   but never shrink), then look for what grew:
@@ -559,8 +568,14 @@ alerts to both organizers at 80% and 100%. It's free, and only warns: nothing is
 
 - **Alerts:** what each one means is under Alerts, above.
 - **The site:** every deploy runs the database migrations job and checks the site. A new revision that can't reach the
-  database never takes traffic, because the health probes keep the old one serving.
-- **Logs and telemetry:** Application Insights, in the `rg-csadvent` resource group.
+  database never takes traffic, because the health probes keep the old one serving. The migrations job runs after the new
+  revision starts, so **a page that reads a new table or column fails until the job finishes** (a few minutes; #225), and
+  background jobs wait for it with a warning. A deploy by hand has to start the job itself
+  (`az containerapp job start -n migrations -g rg-csadvent`), or those pages keep failing.
+- **Logs and telemetry:** Application Insights, in the `rg-csadvent` resource group. The deploy sets neither a retention
+  nor a daily cap, so logs are kept for the Log Analytics workspace's default of 30 days, and nothing stops ingestion: the
+  budget alert (above) is what warns about the cost. SQL statements aren't logged (#157); each one is still a `postgresql`
+  dependency.
 - **Emails not arriving:** check `/manage/emails/queue` (waiting, the hour's sends, failed), send a sample from
   `/manage/emails`, and look at the Communication Service in Azure.
 - **Every post says "Couldn't check":** Claude isn't answering. Each entry's page says why (a rate limit, an expired key,
