@@ -59,7 +59,11 @@ public sealed record FormattedAnnouncement(
     int Length,
     int? Limit,
     string? ComposerUrl,
-    string? TagHint);
+    string? TagHint)
+{
+    /// <summary>The author's Bluesky handle, if the text mentions it: the only handle a Bluesky post makes a mention of.</summary>
+    public string? Mention { get; init; }
+}
 
 /// <summary>Formats an <see cref="Announcement"/> for each platform's limits and conventions.</summary>
 public static partial class AnnouncementFormatter
@@ -72,9 +76,23 @@ public static partial class AnnouncementFormatter
 
     private const string Hashtags = "#csharp #dotnet #csadvent";
 
+    // Invisible, and it doesn't break a line, so readers see the same text.
+    private const char WordJoiner = '\u2060';
+
+    /// <summary>The hashtags our posts end with, without the "#": the only ones a Bluesky post makes tags of.</summary>
+    public static IReadOnlySet<string> OurHashtags { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "csharp", "dotnet", "csadvent" };
+
     /// <param name="ours">C# Advent's accounts, for the Mastodon server and the subreddit the composer links open.</param>
     public static FormattedAnnouncement Format(Announcement announcement, SocialPlatform platform, SocialAccountsOptions? ours = null)
     {
+        // The title, the author's name and the summary are the author's own words, so nothing in them goes live (#155).
+        announcement = announcement with
+        {
+            Title = Inert(announcement.Title),
+            Author = Inert(announcement.Author),
+            Summary = announcement.Summary is { } summary ? Inert(summary) : null,
+        };
+
         var link = announcement.Link(platform);
         var mastodonInstance = ours?.MastodonServer;
         var submit = ours?.Subreddit is { Length: > 0 } subreddit ? $"https://www.reddit.com/r/{subreddit}/submit" : "https://www.reddit.com/submit";
@@ -82,7 +100,7 @@ public static partial class AnnouncementFormatter
         {
             SocialPlatform.Bluesky => Fit(announcement, BlueskyLimit, Graphemes, (title, summary) =>
                 Compose(announcement.When, title, announcement.Author, Mention(announcement.Accounts.Bluesky), summary, link, Hashtags),
-                text => (platform, link, null, $"https://bsky.app/intent/compose?text={Uri.EscapeDataString(text)}")),
+                text => (platform, link, null, $"https://bsky.app/intent/compose?text={Uri.EscapeDataString(text)}")) with { Mention = announcement.Accounts.Bluesky },
             SocialPlatform.Mastodon => Fit(announcement, MastodonLimit, MastodonLength, (title, summary) =>
                 Compose(announcement.When, title, announcement.Author, announcement.Accounts.Mastodon, summary, link, Hashtags),
                 text => (platform, link, null, mastodonInstance is null ? null : $"https://{mastodonInstance}/share?text={Uri.EscapeDataString(text)}")),
@@ -172,6 +190,14 @@ public static partial class AnnouncementFormatter
         };
     }
 
+    /// <summary>
+    /// The author's own words, made inert: a word joiner (U+2060), which nobody sees, after each "@" and hashtag "#", the ":"
+    /// of "://", and each dot before a letter. So no platform finds a mention, hashtag or link in them, not even X and Facebook,
+    /// which link anything that looks like a domain. Only our own parts of a post (its link, the author's account and our
+    /// hashtags) go live, so a title like "Free licenses at scam.example @someone" stays plain text.
+    /// </summary>
+    public static string Inert(string text) => Live().Replace(text, $"$0{WordJoiner}");
+
     /// <summary>Bluesky counts graphemes, so an emoji counts once.</summary>
     public static int Graphemes(string text) => new StringInfo(text).LengthInTextElements;
 
@@ -238,6 +264,11 @@ public static partial class AnnouncementFormatter
 
     [GeneratedRegex(@"https?://\S+")]
     private static partial Regex Url();
+
+    // What platforms make live: "@" before a name (X counts a full-width one too), "#" starting a hashtag (not C#'s), "://",
+    // and a dot before a letter, as in a domain.
+    [GeneratedRegex(@"[@\uFF20](?=\w)|(?<!\w)[#\uFF03](?=\w)|:(?=//)|\.(?=\p{L})")]
+    private static partial Regex Live();
 
     // "@user@server" counts as "@user".
     [GeneratedRegex(@"(?<=@[A-Za-z0-9_]+)@[A-Za-z0-9.\-]+")]
