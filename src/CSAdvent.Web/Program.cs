@@ -170,6 +170,10 @@ builder.Services.AddScoped<BackupService>();
 builder.Services.AddScoped<IUndeliveredEmailHandler, BackupAskUndelivered>();
 builder.Services.AddScoped<BackupListService>();
 builder.Services.AddScoped<ReminderService>();
+
+// The organizers' Today panel on /manage, and their morning digest, a step of the reminders' worker (#171).
+builder.Services.AddScoped<TodayService>();
+builder.Services.AddScoped<MorningDigest>();
 if (builder.Configuration.GetValue("Reminders:SendInBackground", defaultValue: true))
 {
     builder.Services.AddHostedService<ReminderWorker>();

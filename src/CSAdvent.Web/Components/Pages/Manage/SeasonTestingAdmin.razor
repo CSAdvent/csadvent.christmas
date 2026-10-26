@@ -46,7 +46,7 @@
         </EditForm>
         <p class="mt-3 text-sm text-slate-600">
             Post link reminders go out 7, 5, 3, 2 and 1 days before an author's day, backup asks from 6 PM the evening before, and
-            the daily email at 9 AM on a day with posts.
+            the daily email at 9 AM on a day with posts. The organizers' morning digest for the rehearsal's day goes at 8 AM.
         </p>
 
         <EditForm Model="Run" FormName="run" OnSubmit="RunAsync" class="mt-4">
@@ -58,7 +58,7 @@
 
         <p class="mt-5 text-slate-700">
             <a href="test-mode/on?returnUrl=%2F" class="font-semibold text-advent-700 underline">Switch to test mode</a>
-            to see the test calendar on the home page. The test season's
+            to see the test calendar on the home page. The rehearsal's <a href="@($"manage?year={TestYear}")" class="text-advent-700 underline">Today panel</a> is on the overview, and the test season's
             <a href="@($"manage/requests?year={TestYear}")" class="text-advent-700 underline">requests</a>,
             <a href="@($"manage/entries?year={TestYear}")" class="text-advent-700 underline">entries</a>,
             <a href="@($"manage/backups?year={TestYear}")" class="text-advent-700 underline">backup posters</a> and
@@ -203,7 +203,7 @@ else if (_loaded)
         "added" => "Tester added. They'll see an invitation to switch to test mode once they've signed in.",
         "removed" => "Tester removed.",
         "not-a-login" => "That isn't a GitHub login.",
-        "ran" => "The test season's posts have been checked for the blurb, and its due reminders and backup asks have gone out.",
+        "ran" => "The test season's posts have been checked for the blurb, and its due reminders, backup asks and morning digest have gone out.",
         "reset" => "The test season has been reset, and everything done in it deleted.",
         "ended" => "Testing has ended. The test season, its testers and everything done in it are gone.",
         _ => null,

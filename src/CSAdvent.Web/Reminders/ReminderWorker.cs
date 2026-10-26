@@ -1,14 +1,16 @@
 using CSAdvent.Web.Backups;
 using CSAdvent.Web.Blurbs;
 using CSAdvent.Web.Jobs;
+using CSAdvent.Web.Manage;
 
 namespace CSAdvent.Web.Reminders;
 
 /// <summary>
-/// Runs <see cref="BlurbCheckService"/>, <see cref="ReminderService"/> and <see cref="BackupService"/> every 15 minutes, in
-/// that order: the day's posts are checked for the blurb first, so the daily email leaves out a failed one, and a blurb added
-/// just before its deadline is seen before a backup takes the spot. Each is a step of its own (#147), so a blurb check that
-/// fails never stops the day's emails or backup asks. Runs with nothing to do are cheap.
+/// Runs <see cref="BlurbCheckService"/>, <see cref="ReminderService"/>, <see cref="BackupService"/> and
+/// <see cref="MorningDigest"/> every 15 minutes, in that order: the day's posts are checked for the blurb first, so the daily
+/// email leaves out a failed one, and a blurb added just before its deadline is seen before a backup takes the spot; the
+/// organizers' morning digest comes last, so it says what the others did. Each is a step of its own (#147), so a blurb check
+/// that fails never stops the day's emails or backup asks. Runs with nothing to do are cheap.
 /// </summary>
 public sealed class ReminderWorker(IServiceScopeFactory scopeFactory, JobRuns runs, TimeProvider timeProvider, ILogger<ReminderWorker> logger)
     : PeriodicWorker(scopeFactory, runs, timeProvider, logger, Every)
@@ -21,10 +23,13 @@ public sealed class ReminderWorker(IServiceScopeFactory scopeFactory, JobRuns ru
 
     public static readonly JobStep Backups = new("backups", "Backup asks", Every);
 
+    public static readonly JobStep Digest = new("morning-digest", "The organizers' morning digest", Every);
+
     protected override IReadOnlyList<PeriodicStep> Steps { get; } =
     [
         new(BlurbCheck, (services, now, cancellationToken) => services.GetRequiredService<BlurbCheckService>().RunAsync(now, cancellationToken: cancellationToken)),
         new(Reminders, (services, now, cancellationToken) => services.GetRequiredService<ReminderService>().RunAsync(now, cancellationToken)),
         new(Backups, (services, now, cancellationToken) => services.GetRequiredService<BackupService>().RunAsync(now, cancellationToken: cancellationToken)),
+        new(Digest, (services, now, cancellationToken) => services.GetRequiredService<MorningDigest>().RunAsync(now, cancellationToken: cancellationToken)),
     ];
 }

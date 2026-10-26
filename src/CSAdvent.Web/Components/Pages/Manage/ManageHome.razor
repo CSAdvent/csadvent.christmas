@@ -1,5 +1,6 @@
 @page "/manage"
 @inject SeasonAdminService Seasons
+@inject TodayService Today
 @inject AdventSchedule Schedule
 
 <PageTitle>Manage · C# Advent</PageTitle>
@@ -10,6 +11,11 @@
 
 @if (_loaded)
 {
+    @if (_today is { } today)
+    {
+        <TodayPanel Report="today" Year="Year" />
+    }
+
     @if (_current is { } current)
     {
         <section class="mt-6 rounded-xl bg-white p-5 ring-1 ring-slate-200">
@@ -113,7 +119,12 @@
     private SeasonSummary? _current;
     private List<SeasonSummary> _upcoming = [];
     private List<SeasonSummary> _past = [];
+    private TodayReport? _today;
     private bool _loaded;
+
+    /// <summary>The season the Today panel shows (#171): the test season's rehearsal is <c>?year=9000</c>. Otherwise the real seasons.</summary>
+    [SupplyParameterFromQuery]
+    public int? Year { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -122,6 +133,9 @@
         _current = seasons.SingleOrDefault(s => s.Year == year);
         _upcoming = [.. seasons.Where(s => !s.IsFinished && s.Year != year).OrderBy(s => s.Year)];
         _past = [.. seasons.Where(s => s.IsFinished)];
+
+        // After the page's own queries: they share its database context.
+        _today = await Today.GetAsync(Schedule.Now, Year);
         _loaded = true;
     }
 }

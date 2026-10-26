@@ -16,6 +16,7 @@ public static class JobSteps
         ReminderWorker.BlurbCheck,
         ReminderWorker.Reminders,
         ReminderWorker.Backups,
+        ReminderWorker.Digest,
         SocialPostingWorker.CredentialCheck,
         SocialPostingWorker.Announcements,
         SocialPostingWorker.SeasonPosts,

@@ -9,6 +9,12 @@ public sealed class ReminderOptions
     /// <summary>When each day's emails go out, in the reveal time zone. Runs before this time send nothing.</summary>
     public TimeOnly SendAt { get; set; } = new(9, 0);
 
+    /// <summary>
+    /// When the organizers' morning digest goes to their inbox each day of Advent (and of the test season's rehearsal), in the
+    /// reveal time zone (#171, <see cref="Manage.MorningDigest"/>): before the 9 AM emails and the first announcement.
+    /// </summary>
+    public TimeOnly DigestAt { get; set; } = new(8, 0);
+
     /// <summary>How many days before their day an author without a post link is reminded.</summary>
     [MinLength(1, ErrorMessage = "Reminders:DaysBefore needs at least one day.")]
     public int[] DaysBefore { get; set; } = [];

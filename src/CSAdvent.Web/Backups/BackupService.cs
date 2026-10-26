@@ -147,14 +147,52 @@ public sealed partial class BackupService(
             ? Task.FromResult<BlurbCheck?>(null)
             : db.BlurbChecks.AsNoTracking().SingleOrDefaultAsync(c => c.SlotId == slot.Id && c.PostUrl == slot.PostUrl, cancellationToken);
 
-    /// <summary>For a missing blurb: when the organizers heard that a backup is standing by (<see cref="BlurbCheckService"/>).</summary>
-    private async Task<DateTimeOffset?> OrganizersToldAsync(Slot slot, BackupReason reason, CancellationToken cancellationToken) =>
-        reason is not BackupReason.BlurbMissing
-            ? null
-            : await db.SentReminders
-                .Where(r => r.SlotId == slot.Id && r.Kind == ReminderKind.AdminBlurbBackupStandingBy)
-                .Select(r => (DateTimeOffset?)r.SentAt)
-                .FirstOrDefaultAsync(cancellationToken);
+    /// <summary>
+    /// For a missing blurb: when the organizers heard that <paramref name="standingBy"/> is standing by
+    /// (<see cref="BlurbCheckService"/>). A notice from before they accepted was about another backup, from an earlier round or
+    /// one who left the list since, so it doesn't count (#234): this one waits for a notice of its own.
+    /// </summary>
+    private async Task<DateTimeOffset?> OrganizersToldAsync(Slot slot, BackupReason reason, BackupOffer standingBy, CancellationToken cancellationToken)
+    {
+        if (reason is not BackupReason.BlurbMissing)
+        {
+            return null;
+        }
+
+        var acceptedAt = standingBy.RespondedAt;
+        return await db.SentReminders
+            .Where(r => r.SlotId == slot.Id && r.Kind == ReminderKind.AdminBlurbBackupStandingBy && (acceptedAt == null || r.SentAt >= acceptedAt))
+            .Select(r => (DateTimeOffset?)r.SentAt)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// The round of asks a spot needing a backup for <paramref name="reason"/> is in now (#153): its latest round, if that's for
+    /// the same reason and author, or else the next one, which nothing has started yet (it isn't saved here), so none of the
+    /// spot's offers are in it.
+    /// </summary>
+    public async Task<BackupRound> GetRoundAsync(Slot slot, BackupReason reason, DateTimeOffset now, CancellationToken cancellationToken = default)
+    {
+        var latest = await db.BackupRounds.AsNoTracking().Where(r => r.SlotId == slot.Id).OrderByDescending(r => r.Number).FirstOrDefaultAsync(cancellationToken);
+        var highestOfferId = await db.BackupOffers.Where(o => o.SlotId == slot.Id).MaxAsync(o => (int?)o.Id, cancellationToken) ?? 0;
+        return BackupRound.For(latest, slot, reason, highestOfferId, now);
+    }
+
+    /// <summary>
+    /// Whether a backup has the spot in hand in the round it's in now for <paramref name="reason"/> (#234): one is standing by,
+    /// or one took it in this round. A backup standing by counts whichever round they were asked in, because there's one at
+    /// most and they take the spot when it's due (a new round never starts while one stands by, so a backup who accepted for a
+    /// missing link still stands by once the link arrives without the blurb). One who took the spot in an earlier round (and
+    /// dropped out since, or saw it given to someone new) doesn't count.
+    /// </summary>
+    public async Task<bool> HasBackupThisRoundAsync(Slot slot, BackupReason reason, DateTimeOffset now, CancellationToken cancellationToken = default)
+    {
+        var round = await GetRoundAsync(slot, reason, now, cancellationToken);
+        return await db.BackupOffers.AnyAsync(
+            o => o.SlotId == slot.Id
+                && (o.Status == BackupOfferStatus.Accepted || (o.Status == BackupOfferStatus.Used && o.Id > round.OffersAfter)),
+            cancellationToken);
+    }
 
     /// <summary>
     /// Moves every spot along: closes offers that aren't needed, uses acceptances that are due, and asks the next backups.
@@ -353,7 +391,7 @@ public sealed partial class BackupService(
             return BackupOfferOutcome.TakenByOthers;
         }
 
-        if (IsDue(reason, offer.Slot, blurb, await OrganizersToldAsync(offer.Slot, reason, cancellationToken), now))
+        if (IsDue(reason, offer.Slot, blurb, await OrganizersToldAsync(offer.Slot, reason, offer, cancellationToken), now))
         {
             var others = await db.BackupOffers
                 .Where(o => o.SlotId == offer.SlotId && o.Id != offer.Id && o.Status == BackupOfferStatus.Asked)
@@ -412,7 +450,7 @@ public sealed partial class BackupService(
 
         if (open.FirstOrDefault(o => o.Status is BackupOfferStatus.Accepted) is { } accepted)
         {
-            return IsDue(stillNeeded, slot, blurb, await OrganizersToldAsync(slot, stillNeeded, cancellationToken), now)
+            return IsDue(stillNeeded, slot, blurb, await OrganizersToldAsync(slot, stillNeeded, accepted, cancellationToken), now)
                 ? await UseAsync(slot, accepted, open.Where(o => o != accepted), stillNeeded, cancellationToken)
                 : BackupRun.None;
         }

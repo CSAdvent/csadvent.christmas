@@ -25,6 +25,10 @@ public static class ReminderEndpoints
             // In UTC whatever offset it's given, because PostgreSQL's timestamps only take UTC.
             app.MapPost("/dev/reminders/run", async (DateTimeOffset at, ReminderService reminders, CancellationToken cancellationToken) =>
                 Results.Ok(await reminders.RunAsync(at.ToUniversalTime(), cancellationToken)));
+
+            // The organizers' morning digest (#171) as if it were the given time, for one season or all: how many went.
+            app.MapPost("/dev/digest/run", async (DateTimeOffset at, int? year, Manage.MorningDigest digest, CancellationToken cancellationToken) =>
+                Results.Ok(new { Sent = await digest.RunAsync(at.ToUniversalTime(), year, cancellationToken) }));
         }
 
         return app;

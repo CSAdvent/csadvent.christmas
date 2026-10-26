@@ -3,6 +3,7 @@ using CSAdvent.Web.Auth;
 using CSAdvent.Web.Backups;
 using CSAdvent.Web.Blurbs;
 using CSAdvent.Web.Data;
+using CSAdvent.Web.Manage;
 using CSAdvent.Web.Reminders;
 using Microsoft.EntityFrameworkCore;
 
@@ -27,7 +28,8 @@ public sealed class SeasonTestingService(
     TimeProvider timeProvider,
     BlurbCheckService blurbs,
     ReminderService reminders,
-    BackupService backups)
+    BackupService backups,
+    MorningDigest digest)
 {
     private const int Year = Season.TestYear;
 
@@ -98,13 +100,15 @@ public sealed class SeasonTestingService(
     /// <summary>
     /// Does what the worker would do now for the test season, and only the test season (#162), rather than waiting up to 15
     /// minutes: checks its posts for the blurb first, as the worker does, so the daily email and the backups see the answer,
-    /// then sends its due reminders and backup asks.
+    /// then sends its due reminders and backup asks, and the organizers' morning digest for the rehearsal's day if it's due (#171).
     /// </summary>
-    public async Task<(BlurbRun Blurbs, ReminderRun Reminders, BackupRun Backups)> RunNowAsync(CancellationToken cancellationToken = default)
+    public async Task<(BlurbRun Blurbs, ReminderRun Reminders, BackupRun Backups, int Digests)> RunNowAsync(CancellationToken cancellationToken = default)
     {
         var now = timeProvider.GetUtcNow();
         var checkedPosts = await blurbs.RunAsync(now, Year, cancellationToken);
-        return (checkedPosts, await reminders.RunAsync(now, Year, cancellationToken), await backups.RunAsync(now, Year, cancellationToken));
+        var sent = await reminders.RunAsync(now, Year, cancellationToken);
+        var asked = await backups.RunAsync(now, Year, cancellationToken);
+        return (checkedPosts, sent, asked, await digest.RunAsync(now, Year, cancellationToken));
     }
 
     /// <summary>
