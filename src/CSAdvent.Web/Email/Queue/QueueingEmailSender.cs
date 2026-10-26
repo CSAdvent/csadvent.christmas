@@ -8,8 +8,9 @@ namespace CSAdvent.Web.Email.Queue;
 /// which only fails when the database does: the caller's catch block still undoes whatever it recorded.
 /// </summary>
 /// <remarks>
-/// A new revision starts before the deploy's migrations job has created the table, or a column a later migration adds (#151).
-/// Until it has, emails go straight through the transport as they used to, so none is lost in those minutes.
+/// Deploys run the migrations before the new revision starts (#151), but a revision started without them would find the
+/// table, or a column a later migration adds, missing. Until it's there, emails go straight through the transport as they
+/// used to, so none is lost.
 /// </remarks>
 public sealed partial class QueueingEmailSender(
     [FromKeyedServices(EmailRegistration.TransportKey)] IEmailSender transport,

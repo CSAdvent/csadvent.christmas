@@ -168,16 +168,28 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
+      # aspire deploy runs the migrations before it updates the web app (#151): its run-migrations step (MigrateFirst.cs in
+      # the AppHost) starts the migrations job once the job has the new bundle, and only lets the web app be updated once the
+      # job has succeeded. If the migrations fail, or don't finish within 10 minutes, the deploy fails here and the site keeps
+      # running the previous version. The time limit is only a backstop, for anything in Azure that never answers.
       - name: Deploy
         if: steps.commit.outputs.deploy == 'true'
+        timeout-minutes: 45
         run: aspire deploy --apphost src/CSAdvent.AppHost --non-interactive --nologo
 
-      # aspire deploy builds the migration bundle's job but never starts it. The containerapp extension is pinned (#180), so
-      # a new release can't change this step by itself.
-      - name: Run the migrations
+      # Pinned (#180), so a new release can't change the steps below by itself.
+      - name: Add the Azure CLI's containerapp extension
         if: steps.commit.outputs.deploy == 'true'
+        run: az extension add --name containerapp --version 0.3.55 --upgrade --only-show-errors
+
+      # Only for a commit from before #151, whose AppHost has no run-migrations step (rolling back to it, #179): its aspire
+      # deploy updates the job and the web app side by side and never starts the job, so start it here, as the deploy did
+      # then. Its migrations are already in the database, so it finds nothing to do. Delete this step once no commit that
+      # old is worth rolling back to.
+      - name: Run the migrations (a commit from before #151)
+        if: steps.commit.outputs.deploy == 'true' && hashFiles('src/CSAdvent.AppHost/MigrateFirst.cs') == ''
+        timeout-minutes: 15
         run: |
-          az extension add --name containerapp --version 0.3.55 --upgrade --only-show-errors
           execution=$(az containerapp job start -n migrations -g "$Azure__ResourceGroup" --query name -o tsv)
           echo "Started $execution."
           for _ in $(seq 1 60); do

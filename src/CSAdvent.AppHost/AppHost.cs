@@ -1,8 +1,10 @@
 using System.Globalization;
 using Aspire.Hosting.Azure;
+using Azure.Provisioning;
 using Azure.Provisioning.AppContainers;
 using Azure.Provisioning.Expressions;
 using Azure.Provisioning.PostgreSql;
+using CSAdvent.AppHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 
@@ -237,8 +239,8 @@ else
 }
 
 // Applies EF Core migrations, and seeds the 2017-2025 history, before the web app starts. Locally that's `dotnet ef`; in
-// production a migration bundle runs as a manually started Container Apps job (`aspire deploy` doesn't start it; see the
-// README). Keep the tool version in step with dotnet-tools.json.
+// production a migration bundle runs as a manually triggered Container Apps job, which the deploy starts and waits for
+// before it updates the web app (MigrateFirst, below). Keep the tool version in step with dotnet-tools.json.
 var migrations = web.AddEFMigrations(
         "migrations",
         "CSAdvent.Web.Data.AdventDbContext",
@@ -255,9 +257,18 @@ var migrations = web.AddEFMigrations(
     .PublishAsMigrationBundle(
         publishContainer: true,
         baseImage: "mcr.microsoft.com/dotnet/aspnet:11.0.0-rc.2@sha256:9a52cade70623cb66cad79baeea5ae9995b42b38d169ccc2a95b4f6b041e9874")
-    .PublishAsAzureContainerAppJob();
+    // Its resource ID, for the deploy step that starts it (MigrateFirst).
+    .PublishAsAzureContainerAppJob((infra, job) =>
+        infra.Add(new ProvisioningOutput(MigrateFirst.JobIdOutput, typeof(string)) { Value = job.Id.ToBicepExpression() }));
 
 web.WaitForCompletion(migrations);
+
+if (isPublish)
+{
+    // Every deploy runs the migrations job, and waits for it to succeed, before it updates the web app (#151). If the
+    // migrations fail, the web app isn't updated, and the old revision keeps serving.
+    builder.AddMigrateFirst(web.Resource, migrations.Resource);
+}
 
 builder.Build().Run();
 

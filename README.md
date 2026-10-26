@@ -207,7 +207,7 @@ Email can't be sent until the sending domain is verified, which happens after th
 
 ### 🤖 Deploying from GitHub Actions
 
-[`deploy.yml`](.github/workflows/deploy.yml) deploys every push to `main` once CI has passed on it (a push that only changes documentation runs neither, and a push already overtaken by newer code on `main` is skipped), and **Run workflow** in the Actions tab redeploys `main` by hand, or an earlier commit of `main` given its SHA (rolling back is in [the runbook](docs/runbook.md)). It signs in to Azure with GitHub's OIDC token (no Azure password is stored), runs `aspire deploy`, starts the migrations job and waits for it, then checks the site. Deploys never overlap.
+[`deploy.yml`](.github/workflows/deploy.yml) deploys every push to `main` once CI has passed on it (a push that only changes documentation runs neither, and a push already overtaken by newer code on `main` is skipped), and **Run workflow** in the Actions tab redeploys `main` by hand, or an earlier commit of `main` given its SHA (rolling back is in [the runbook](docs/runbook.md)). It signs in to Azure with GitHub's OIDC token (no Azure password is stored), runs `aspire deploy`, then checks the site. `aspire deploy` runs the database migrations job, and waits for it to succeed, before it updates the site (#151), so a failed migration leaves the previous version serving. Deploys never overlap.
 
 One-time setup (`<sub>` is the subscription ID):
 
@@ -250,7 +250,7 @@ One-time setup (`<sub>` is the subscription ID):
 6. 🚨 **Alerts** (#139). Add the secret `ALERT_EMAILS`: the organizers' email addresses, separated by commas (`gh secret set ALERT_EMAILS --env production`). It's a secret rather than a variable so the addresses never show in the workflow's log. The next deploy creates an action group that emails them, and alerts on errors in the site's logs, the database's storage, CPU credits and connections, and Azure's Service Health ([`infra/alerts.bicep`](src/CSAdvent.AppHost/infra/alerts.bicep)). Without it, no alerts are set up. Change who gets them by changing the secret and deploying, never in the portal. The runbook says what each alert means.
 7. 📟 **An uptime check outside Azure**, on `https://csadvent.christmas/health`, from UptimeRobot's or Better Stack's free tier. It's set up by hand, as the runbook's Alerts section describes, and it still works when Azure or our email doesn't.
 
-The new revision of the site starts before the migrations job runs, so keep each migration safe for the code before it: add columns and tables first, and only remove them in a later release.
+The migrations run before the new revision of the site starts, but the previous revision serves while they run, and a rollback runs older code on the newer schema. So keep each migration safe for the code before it: add columns and tables first, and only remove them in a later release. No migrations from December 1 to 26 (the runbook's schema freeze).
 
 ### 🌐 Moving csadvent.christmas to the new site
 

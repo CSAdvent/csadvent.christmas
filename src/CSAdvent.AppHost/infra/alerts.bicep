@@ -44,11 +44,11 @@ resource organizers 'Microsoft.Insights/actionGroups@2023-01-01' = {
 //   - EF Core's SaveChangesFailed or failed query exception, and Npgsql's tracing span on the postgresql dependency, which
 //     records the same PostgresException with no category. These are left out only for SqlStates the code expects:
 //       - 23505, a unique violation: a record another run or replica saved first.
-//       - 42P01 and 42703, a missing table or column: the minutes after a deploy before its migrations job has run (#151).
-//         Background jobs log those as warnings and try again on their next run.
+//       - 42P01 and 42703, a missing table or column: new code on an older schema. Deploys run the migrations first (#151),
+//         so only a revision started without them. Background jobs log those as warnings and try again on their next run.
 // Whatever handles one of these decides whether it's an error: the page's unhandled exception or a background job's failed
-// run still alerts. So a page that reads new schema before the migrations job finishes alerts too, because a visitor got an
-// error page; and a migration that fails is a failed step in the Deploy workflow.
+// run still alerts. So a page that reads schema the database doesn't have yet alerts too, because a visitor got an error
+// page; and a migration that fails is a failed Deploy workflow, with the previous revision still serving.
 var errorsQuery = '''
 union
     (traces | where severityLevel >= 3),

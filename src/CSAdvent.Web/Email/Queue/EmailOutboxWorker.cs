@@ -45,8 +45,8 @@ public sealed partial class EmailOutboxWorker(
             {
                 await using var scope = scopeFactory.CreateAsyncScope();
 
-                // A new revision starts before the deploy runs the migrations (#151). Until the table's there,
-                // QueueingEmailSender sends straight through instead, and this waits without failing queries.
+                // Deploys run the migrations before the new revision starts (#151), but if one ever starts without them,
+                // QueueingEmailSender sends straight through until the table's there, and this waits without failing queries.
                 if (!tableExists && !(tableExists = await EmailOutbox.TableExistsAsync(scope.ServiceProvider.GetRequiredService<AdventDbContext>(), stoppingToken)))
                 {
                     if (failures++ == 0)

@@ -3,9 +3,9 @@ using Npgsql;
 namespace CSAdvent.Web.Data;
 
 /// <summary>
-/// Recognizes PostgreSQL saying a table or column isn't there (SqlState 42P01 or 42703). A deploy starts the new revision
-/// before its migrations job runs (#151), so for a few minutes the new code can ask for a table or column the migrations
-/// haven't added yet. Background jobs take that as "not migrated yet": a warning, and they try again on their next run
+/// Recognizes PostgreSQL saying a table or column isn't there (SqlState 42P01 or 42703): new code on a database its migrations
+/// haven't reached. Deploys run the migrations before the new revision starts (#151), so that's only a revision started
+/// without them, but background jobs still take it as "not migrated yet": a warning, and they try again on their next run
 /// (#225). The <see cref="PostgresException"/> can be wrapped (SaveChanges wraps it in a <c>DbUpdateException</c>, say), so
 /// every inner exception is searched.
 /// </summary>

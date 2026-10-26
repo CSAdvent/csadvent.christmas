@@ -22,4 +22,9 @@
     <ProjectReference Include="..\CSAdvent.Web\CSAdvent.Web.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The deploy's migrations step (MigrateFirst, ContainerAppJobRunner) is tested there. -->
+    <InternalsVisibleTo Include="CSAdvent.IntegrationTests" />
+  </ItemGroup>
+
 </Project>
