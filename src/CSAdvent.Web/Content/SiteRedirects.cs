@@ -33,9 +33,16 @@ public static class SiteRedirects
         // The contributor page, where authors added their post.
         app.MapGet("/contributor", () => Results.Redirect("/my-spots", permanent: true));
 
-        // The substitute sign-up: now the current season's backup list.
+        // The substitute sign-up: now the current season's backup list, which explains itself before asking to sign in.
         app.MapGet("/substitute", async (SeasonAdminService seasons, CancellationToken cancellationToken) =>
             Results.Redirect(await seasons.GetCurrentYearAsync(cancellationToken) is { } year ? $"/backups/{year}" : "/"));
+
+        // The mailing list's page: now the announcements list (#189).
+        app.MapGet("/mailinglist", () => Results.Redirect("/announcements", permanent: true));
+
+        // The old preview image and logo, which old posts and cached link previews still load.
+        app.MapGet("/images/csadventSocialCard.png", () => Results.Redirect("/images/social-card.jpg", permanent: true));
+        app.MapGet("/images/csadvent logo.png", () => Results.Redirect("/images/csadvent-logo.png", permanent: true));
 
         return app;
     }

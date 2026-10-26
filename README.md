@@ -156,7 +156,7 @@ dotnet test
 
 - 📄 **Every revealed post has its own page** at `/{year}/day/{day}/{part}`, with preview tags for Facebook, LinkedIn, Mastodon, Bluesky, Reddit, X, Slack, Teams and Discord
 - 🖼️ **Shared links get a generated card** showing the post's title, author and day (seasons get one too), drawn with SkiaSharp and the embedded Inter font
-- 📡 **RSS:** `/rss` has every revealed post from every season, newest first, and `/archive/{year}/rss` has one season
+- 📡 **RSS:** `/rss` has the latest 100 posts from every season, newest first, and `/archive/{year}/rss` has all of one season's
 - 📈 **Read the post** goes through `/go/...`, which counts the click (people only, nothing personal) and redirects to the post. Links we publish carry `?via=` (bluesky, rss, email, calendar...), so the stats show where readers came from
 
 ## 🎁 Retrospectives

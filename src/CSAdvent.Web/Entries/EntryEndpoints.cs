@@ -7,9 +7,11 @@ public static class EntryEndpoints
     public static WebApplication MapEntries(this WebApplication app)
     {
         // "Read the post": counts the click (people only, nothing personal) and sends the reader on to the author's post.
-        // Only a revealed entry's own post URL is ever a destination, so this can't be used as an open redirect.
+        // Only a revealed entry's own post URL is ever a destination, so this can't be used as an open redirect. Crawlers may
+        // follow it to the post (#167), but never list the redirect itself.
         app.MapGet("/go/{year:int}/{day:int}/{part:int}", async (int year, int day, int part, string? via, HttpRequest request, EntryService entries, CancellationToken cancellationToken) =>
         {
+            request.HttpContext.Response.Headers["X-Robots-Tag"] = "noindex";
             if (await entries.FindPostAsync(year, day, part, cancellationToken) is not { } post)
             {
                 return Results.NotFound();

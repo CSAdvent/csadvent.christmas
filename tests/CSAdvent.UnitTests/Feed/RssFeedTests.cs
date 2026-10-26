@@ -90,4 +90,15 @@ public sealed class RssFeedTests
         Assert.Equal("https://csadvent.christmas/archive/2017", channel.Element("link")!.Value);
         Assert.Equal("https://csadvent.christmas/archive/2017/rss", channel.Element(Atom + "link")!.Attribute("href")!.Value);
     }
+
+    [Fact]
+    public void TheChannelImageIsNoWiderThanRss20Allows()
+    {
+        var image = XDocument.Parse(CreateFeed().Write(Items)).Root!.Element("channel")!.Element("image")!;
+
+        Assert.Equal("https://csadvent.christmas/images/csadvent-logo-144.png", image.Element("url")!.Value);
+        Assert.Equal("144", image.Element("width")!.Value);
+        Assert.Equal("144", image.Element("height")!.Value);
+        Assert.Equal("https://csadvent.christmas", image.Element("link")!.Value);
+    }
 }

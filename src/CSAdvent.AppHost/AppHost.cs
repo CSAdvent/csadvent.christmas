@@ -78,6 +78,10 @@ var web = builder.AddProject<Projects.CSAdvent_Web>("web", launchProfileName: is
         app.Template.Scale.MinReplicas = 1;
         app.Template.Scale.MaxReplicas = 3;
 
+        // Plain http reaches the app, which sends it to https://csadvent.christmas in one permanent redirect (#165). Left to
+        // the ingress, http://www. took two: to https://www., then to the canonical host.
+        app.Configuration.Ingress.AllowInsecure = true;
+
         // A new revision only takes traffic once it's started and can reach the database (startup and readiness ask
         // /health, every check), and a replica that's stopped answering is restarted (liveness asks /alive, only the app
         // itself, so a database outage doesn't restart every replica). Port 8080 is the container's HTTP_PORTS.

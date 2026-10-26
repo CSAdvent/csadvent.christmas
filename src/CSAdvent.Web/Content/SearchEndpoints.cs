@@ -12,7 +12,7 @@ using Microsoft.Extensions.Options;
 namespace CSAdvent.Web.Content;
 
 /// <summary>
-/// What search engines read (#38): <c>robots.txt</c>, which keeps them out of signed-in pages and tracked redirects, and
+/// What search engines read (#38): <c>robots.txt</c>, which keeps them out of signed-in pages and our own search, and
 /// <c>sitemap.xml</c>, which lists the public pages, every finished season's archive and published retrospective, every
 /// revealed entry's page, and every author's page. The test season is never listed.
 /// </summary>
@@ -21,11 +21,12 @@ public static class SearchEndpoints
     private const string CacheControl = "public, max-age=3600";
 
     /// <summary>
-    /// Pages that are signed in, personal, redirects, our own search results or for organizers: nothing a search result
-    /// should lead to.
+    /// Pages that are signed in, personal, random, our own search results or for organizers: nothing a search result should
+    /// lead to. <c>/go</c> isn't here (#167): crawlers follow it to the authors' posts, so they get the link the legacy site
+    /// gave them, and its <c>X-Robots-Tag: noindex</c> keeps the redirect itself out of results.
     /// </summary>
     public static readonly IReadOnlyList<string> Disallowed =
-        ["/manage", "/my-spots", "/profile", "/claim/", "/backups/", "/go/", "/random", "/archive/search", "/test-post/", "/test-mode/", "/signin", "/emails/", "/announcements/", "/dev/"];
+        ["/manage", "/my-spots", "/profile", "/claim/", "/backups/", "/random", "/archive/search", "/test-post/", "/test-mode/", "/signin", "/emails/", "/announcements/", "/dev/"];
 
     /// <summary>The public pages that are always there, relative to the base URL.</summary>
     public static readonly IReadOnlyList<string> PublicPages = ["", "archive", "authors", "about", "others", "announcements", "privacy", "terms"];

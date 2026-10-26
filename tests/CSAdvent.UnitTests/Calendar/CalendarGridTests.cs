@@ -17,8 +17,39 @@ public sealed class CalendarGridTests : BunitContext
         Assert.Contains("by Ada", day10.TextContent);
 
         // Through the tracked redirect, so the click is counted, never straight to the post.
-        Assert.Equal("go/2026/10/1?via=calendar", day10.QuerySelector("a")!.GetAttribute("href"));
+        Assert.Equal("go/2026/10/1?via=calendar", day10.QuerySelector("a[href^='go/']")!.GetAttribute("href"));
         Assert.DoesNotContain("https://example.com/ada\"", day10.InnerHtml);
+    }
+
+    [Fact]
+    public void LabelsLinkRevealedPostsToTheirPages()
+    {
+        var grid = Render<CalendarGrid>(p => p.Add(c => c.Calendar, CalendarFixtures.Calendar(ClaimsOpened)));
+
+        // A link search engines can follow to the entry's page (#167), while the title goes through the tracked redirect.
+        var label = grid.Find("#december-10 li > p:first-child a");
+        Assert.Equal("Post 1", label.TextContent);
+        Assert.Equal("2026/day/10/1", label.GetAttribute("href"));
+
+        // Not a spot without a post, and nothing before the reveal (#5).
+        Assert.Single(grid.FindAll("#december-10 a[href^='2026/day/']"));
+        Assert.Empty(grid.FindAll("#december-11 a[href^='2026/day/']"));
+    }
+
+    [Fact]
+    public void WithOnePostADayTheDayLinksThePostsPage()
+    {
+        var season = Web.Data.Season.Create(2017, slotsPerDay: 1, CalendarFixtures.December10);
+        var slot = season.Slots.Single(s => s.Day == 3);
+        slot.AuthorName = "Matt";
+        slot.PostTitle = "The first one";
+        slot.PostUrl = "https://example.com/first";
+        var calendar = Web.Calendar.SeasonCalendar.From(season, CalendarFixtures.Schedule(CalendarFixtures.December10));
+
+        var grid = Render<CalendarGrid>(p => p.Add(c => c.Calendar, calendar));
+
+        Assert.Equal("2017/day/3/1", grid.Find("#december-3 h2 a").GetAttribute("href"));
+        Assert.Empty(grid.FindAll("#december-4 h2 a"));
     }
 
     [Fact]

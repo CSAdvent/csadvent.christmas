@@ -1,11 +1,21 @@
 ﻿@page "/"
+@using Microsoft.Extensions.Options
 @inject HomeService HomeService
 @inject ContentService Content
+@inject AdventSchedule Schedule
+@inject IOptions<SiteOptions> Site
+@inject IOptions<CSAdvent.Web.Social.SocialAccountsOptions> Accounts
 
-<PageTitle>C# Advent</PageTitle>
-<SocialMeta Title="C# Advent"
+<PageTitle>@Title</PageTitle>
+<SocialMeta Title="@Title"
             Description="Two new C# posts every day from December 1st to December 25th, written by the C# community."
-            Image="@(_home is null ? CSAdvent.Web.Cards.CardLinks.General : CSAdvent.Web.Cards.CardLinks.Home(_home))" />
+            Image="@Image">
+    <JsonLd Data="StructuredData.WebSite(Site.Value.BaseUrl, Accounts.Value)" />
+    @if (EventYear is { } year)
+    {
+        <JsonLd Data="@(StructuredData.SeasonEvent(year, Schedule, Site.Value.BaseUrl, page: "", Image))" />
+    }
+</SocialMeta>
 
 @if (_home is { Calendar: { } calendar })
 {
@@ -20,8 +30,15 @@ else if (_home is not null)
 }
 
 @code {
+    private const string Title = "C# Advent: two C# posts a day, December 1–25";
+
     private HomePage? _home;
     private string? _message;
+
+    private string Image => _home is null ? CSAdvent.Web.Cards.CardLinks.General : CSAdvent.Web.Cards.CardLinks.Home(_home);
+
+    /// <summary>The season the page is about, as an event (#195): the one on the calendar, or between seasons the next one.</summary>
+    private int? EventYear => (_home?.Calendar?.Year ?? _home?.NextSeason?.Year) is { } year && year != CSAdvent.Web.Data.Season.TestYear ? year : null;
 
     [SupplyParameterFromQuery]
     public string? Done { get; set; }

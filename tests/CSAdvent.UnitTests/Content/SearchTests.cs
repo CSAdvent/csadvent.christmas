@@ -12,7 +12,9 @@ public sealed class SearchTests
 
         Assert.StartsWith("User-agent: *\n", robots);
         Assert.Contains("Disallow: /manage\n", robots);
-        Assert.Contains("Disallow: /go/\n", robots);
+        Assert.Contains("Disallow: /random\n", robots);
+        // Crawlers may follow the tracked redirect to the authors' posts (#167); it answers with X-Robots-Tag: noindex.
+        Assert.DoesNotContain("/go", robots);
         Assert.EndsWith("\nSitemap: https://csadvent.christmas/sitemap.xml\n", robots);
     }
 

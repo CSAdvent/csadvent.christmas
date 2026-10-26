@@ -3,8 +3,10 @@
 @using CSAdvent.Web.Cards
 @using CSAdvent.Web.Data
 @using CSAdvent.Web.Entries
+@using Microsoft.Extensions.Options
 @inject EntryService Entries
 @inject NavigationManager Navigation
+@inject IOptions<SiteOptions> Site
 
 @if (_entry is { IsRevealed: true } entry)
 {
@@ -13,7 +15,11 @@
                 Description="@Description(entry)"
                 Type="article"
                 Image="@CardLinks.Entry(CardEndpoints.CardFor(entry))"
-                ImageAlt="@($"{entry.PostTitle} by {entry.AuthorName}, C# Advent {entry.Year}, December {entry.Day}")" />
+                ImageAlt="@($"{entry.PostTitle} by {entry.AuthorName}, C# Advent {entry.Year}, December {entry.Day}")">
+        @* Only once it's revealed, like everything else about the post (#5). *@
+        <meta property="article:published_time" content="@StructuredData.Iso(entry.RevealsAt)" />
+        <JsonLd Data="StructuredData.Entry(entry, Site.Value.BaseUrl, Description(entry), CardLinks.Entry(CardEndpoints.CardFor(entry)))" />
+    </SocialMeta>
 
     <nav class="mb-6 text-sm font-medium">
         <a href="@CalendarLink(entry)" class="text-advent-700 hover:underline">← C# Advent @entry.Year</a>

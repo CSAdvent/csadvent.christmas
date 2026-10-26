@@ -63,6 +63,9 @@ public sealed record CalendarEntry(int Part, bool IsRevealed, string? AuthorName
 {
     public bool HasPost => PostUrl is not null;
 
+    /// <summary>The entry has a page of its own: it's revealed, with a post, a title and an author (#167).</summary>
+    public bool HasPage => PostUrl is not null && PostTitle is not null && AuthorName is not null;
+
     /// <summary>Nobody has claimed the slot.</summary>
     public bool IsOpen => AuthorName is null;
 

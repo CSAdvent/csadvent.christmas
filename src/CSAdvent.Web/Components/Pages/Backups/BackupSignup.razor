@@ -1,5 +1,5 @@
 @page "/backups/{Year:int}"
-@attribute [Authorize]
+@* Anyone can read what backups do; joining needs GitHub sign-in (#189: /substitute used to send visitors straight to GitHub). *@
 @using CSAdvent.Web.Auth
 @using CSAdvent.Web.Backups
 @using CSAdvent.Web.Claims
@@ -42,6 +42,18 @@
 else if (_availability is BackupSignupAvailability.SeasonOver)
 {
     <p class="mt-6 rounded-xl bg-slate-50 p-4 font-medium text-slate-800 ring-1 ring-slate-200">This season is over. Thanks to everyone who stood by!</p>
+}
+else if (!_signedIn)
+{
+    <div class="mt-8 max-w-2xl rounded-xl bg-advent-50 p-5 ring-1 ring-advent-200">
+        <h2 class="text-lg font-semibold text-slate-900">Sign in to join</h2>
+        <p class="mt-1 text-slate-700">
+            You sign in with your GitHub account, and we contact backups at its verified email address. After signing in you
+            come back here to add your name and join.
+        </p>
+        <a href="@($"signin?returnUrl={Uri.EscapeDataString($"/backups/{Year}")}")"
+           class="mt-4 inline-block rounded-lg bg-advent-600 px-5 py-3 font-semibold text-white shadow hover:bg-advent-700">Sign in with GitHub</a>
+    </div>
 }
 else if (_membership is { } membership)
 {
@@ -130,6 +142,7 @@ else if (_email is null)
 
 @code {
     private BackupSignupAvailability? _availability;
+    private bool _signedIn;
     private BackupMembership? _membership;
     private string? _email;
     private int _contributorId;
@@ -166,13 +179,30 @@ else if (_email is null)
             return;
         }
 
-        _contributorId = user.GetContributorId() ?? 0;
+        _signedIn = user.GetContributorId() is not null;
+        if (!_signedIn)
+        {
+            // A form posted after the sign-in ran out goes to sign in again, as it did when the whole page needed it.
+            if (_signupPosted || _leavePosted)
+            {
+                Navigation.NavigateTo($"signin?returnUrl={Uri.EscapeDataString($"/backups/{Year}")}");
+            }
+
+            return;
+        }
+
+        _contributorId = user.GetContributorId()!.Value;
         _email = (await Claims.GetClaimantAsync(_contributorId))?.VerifiedEmail;
         _membership = await List.GetMembershipAsync(_contributorId, Year);
     }
 
     private async Task SignUpAsync()
     {
+        if (!_signedIn)
+        {
+            return;
+        }
+
         switch (await List.SignUpAsync(_contributorId, Year, Form!))
         {
             case BackupSignupOutcome.SignedUp or BackupSignupOutcome.AlreadyOnList:
@@ -192,6 +222,11 @@ else if (_email is null)
 
     private async Task LeaveAsync()
     {
+        if (!_signedIn)
+        {
+            return;
+        }
+
         await List.LeaveAsync(_contributorId, Year);
         Navigation.NavigateTo($"backups/{Year}?done=left");
     }
