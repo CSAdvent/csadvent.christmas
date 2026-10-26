@@ -51,7 +51,9 @@
 
         <EditForm Model="Run" FormName="run" OnSubmit="RunAsync" class="mt-4">
             <button type="submit" class="rounded-lg bg-white px-4 py-2 font-semibold text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50">Send due reminders and backup asks now</button>
-            <span class="ml-2 text-sm text-slate-600">They also go out on their own every 15 minutes.</span>
+            <span class="ml-2 text-sm text-slate-600">
+                For the test season only, after checking its posts for the blurb. They also go out on their own every 15 minutes.
+            </span>
         </EditForm>
 
         <p class="mt-5 text-slate-700">
@@ -201,7 +203,7 @@ else if (_loaded)
         "added" => "Tester added. They'll see an invitation to switch to test mode once they've signed in.",
         "removed" => "Tester removed.",
         "not-a-login" => "That isn't a GitHub login.",
-        "ran" => "Due reminders and backup asks have gone out.",
+        "ran" => "The test season's posts have been checked for the blurb, and its due reminders and backup asks have gone out.",
         "reset" => "The test season has been reset, and everything done in it deleted.",
         "ended" => "Testing has ended. The test season, its testers and everything done in it are gone.",
         _ => null,

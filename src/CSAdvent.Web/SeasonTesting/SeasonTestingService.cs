@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using CSAdvent.Web.Auth;
 using CSAdvent.Web.Backups;
+using CSAdvent.Web.Blurbs;
 using CSAdvent.Web.Data;
 using CSAdvent.Web.Reminders;
 using Microsoft.EntityFrameworkCore;
@@ -24,6 +25,7 @@ public sealed class SeasonTestingService(
     AdventDbContext db,
     TestSeasons testSeasons,
     TimeProvider timeProvider,
+    BlurbCheckService blurbs,
     ReminderService reminders,
     BackupService backups)
 {
@@ -93,11 +95,16 @@ public sealed class SeasonTestingService(
         await testSeasons.RefreshAsync(cancellationToken);
     }
 
-    /// <summary>Sends whatever reminders and backup asks are due now, rather than waiting up to 15 minutes for the worker.</summary>
-    public async Task<(ReminderRun Reminders, BackupRun Backups)> RunNowAsync(CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Does what the worker would do now for the test season, and only the test season (#162), rather than waiting up to 15
+    /// minutes: checks its posts for the blurb first, as the worker does, so the daily email and the backups see the answer,
+    /// then sends its due reminders and backup asks.
+    /// </summary>
+    public async Task<(BlurbRun Blurbs, ReminderRun Reminders, BackupRun Backups)> RunNowAsync(CancellationToken cancellationToken = default)
     {
         var now = timeProvider.GetUtcNow();
-        return (await reminders.RunAsync(now, cancellationToken), await backups.RunAsync(now, Year, cancellationToken));
+        var checkedPosts = await blurbs.RunAsync(now, Year, cancellationToken);
+        return (checkedPosts, await reminders.RunAsync(now, Year, cancellationToken), await backups.RunAsync(now, Year, cancellationToken));
     }
 
     /// <summary>
@@ -164,7 +171,10 @@ public sealed class SeasonTestingService(
         return true;
     }
 
-    /// <summary>Deletes the requests, backup list, offers, sent emails, visits, social posts, blurb checks and contacts of the test season's spots.</summary>
+    /// <summary>
+    /// Deletes the requests, backup list, offers, sent emails, visits, social posts, blurb checks (and the ones authors asked
+    /// for) and contacts of the test season's spots.
+    /// </summary>
     private async Task DeleteActivityAsync(CancellationToken token)
     {
         // Offers point at both the backup list and the spots, so they go first.
@@ -174,6 +184,7 @@ public sealed class SeasonTestingService(
         await db.SentReminders.Where(r => r.Slot != null && r.Slot.SeasonYear == Year).ExecuteDeleteAsync(token);
         await db.EntryHits.Where(h => h.Slot.SeasonYear == Year).ExecuteDeleteAsync(token);
         await db.SocialPosts.Where(p => p.Slot.SeasonYear == Year).ExecuteDeleteAsync(token);
+        await db.BlurbSelfChecks.Where(c => c.Slot.SeasonYear == Year).ExecuteDeleteAsync(token);
         await db.BlurbChecks.Where(c => c.Slot.SeasonYear == Year).ExecuteDeleteAsync(token);
         await db.ClaimRequests.Where(r => r.Slot.SeasonYear == Year).ExecuteDeleteAsync(token);
         await db.SlotContacts.Where(c => c.Slot.SeasonYear == Year).ExecuteDeleteAsync(token);

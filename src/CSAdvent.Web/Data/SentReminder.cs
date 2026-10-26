@@ -28,6 +28,12 @@ public enum ReminderKind
 
     /// <summary>Tells the organizers every backup poster has been asked about a spot and nobody took it.</summary>
     AdminBackupsExhausted,
+
+    /// <summary>
+    /// Tells the organizers a backup is standing by to take a spot whose post was found without the C# Advent blurb, so they can
+    /// keep the author (#148). Its time is when they were told: the backup takes the spot no sooner than an hour later.
+    /// </summary>
+    AdminBlurbBackupStandingBy,
 }
 
 /// <summary>

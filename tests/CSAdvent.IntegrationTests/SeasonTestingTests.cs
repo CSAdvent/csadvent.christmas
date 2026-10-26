@@ -131,6 +131,33 @@ public sealed class SeasonTestingTests(AppHostFixture fixture)
     }
 
     [Fact]
+    public async Task SendingDueNowChecksTheTestSeasonsPostsForTheBlurbFirst()
+    {
+        // Today is December 8 in the rehearsal, and Day 8's post links back but doesn't say it's part of C# Advent.
+        using var organizer = await TestSeasonAsync(todayIs: 7);
+        int slotId;
+        await using (var db = await fixture.CreateDbContextAsync())
+        {
+            var slot = await db.Slots.SingleAsync(s => s.SeasonYear == TestYear && s.Day == 8 && s.Part == 1, CancellationToken);
+            slot.AuthorName = "Blurbless Bo";
+            slot.PostTitle = "Rehearsing the blurb";
+            slot.PostUrl = $"https://samples.csadvent.test/link-only?year={TestYear}";
+            await db.SaveChangesAsync(CancellationToken);
+            slotId = slot.Id;
+        }
+
+        var ran = await organizer.PostFormAsync(Page, "run", []);
+
+        // The blurb check ran first, as the worker's does (#162), so the reminders and backups saw its answer.
+        Assert.Equal($"{Page}?done=ran", TestBrowser.PathOf(ran.Headers.Location!));
+        Assert.Contains("The test season&#x27;s posts have been checked for the blurb", await organizer.GetStringAsync($"{Page}?done=ran", CancellationToken));
+        await using (var db = await fixture.CreateDbContextAsync())
+        {
+            Assert.Equal(BlurbStatus.Missing, (await db.BlurbChecks.SingleAsync(c => c.SlotId == slotId, CancellationToken)).Status);
+        }
+    }
+
+    [Fact]
     public async Task ResettingNeedsConfirming()
     {
         using var organizer = await TestSeasonAsync(todayIs: 0);

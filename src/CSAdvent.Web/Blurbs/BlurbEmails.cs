@@ -11,6 +11,9 @@ namespace CSAdvent.Web.Blurbs;
 /// <param name="Deadline">When the blurb is due, already in the reveal time zone: "10:00 AM Eastern on December 6".</param>
 public sealed record BlurbPost(int SlotId, BackupSpot Spot, string? Title, string Url, string Deadline);
 
+/// <summary>A backup standing by to take a spot, with their post.</summary>
+public sealed record BlurbBackup(string Name, string? PostTitle, string PostUrl);
+
 /// <summary>The blurb check's emails (#128). <see cref="EmailCatalog"/> lists when each one is sent.</summary>
 public static class BlurbEmails
 {
@@ -65,6 +68,35 @@ public static class BlurbEmails
                 $"It isn't announced automatically until it passes or you decide. Open it, look at the post, and mark it as passed or " +
                 $"missing. Its deadline is {post.Deadline}."),
             Button("Decide", Entry(post, site)),
+        ],
+        Reason = ForOrganizers,
+    };
+
+    /// <summary>
+    /// To the organizers, once a backup is standing by to take a spot whose post the check found without the blurb (#148), so
+    /// they can keep the author if the check got it wrong.
+    /// </summary>
+    /// <param name="detail">What the check found, such as "There's no link to csadvent.christmas near the top of the post."</param>
+    /// <param name="takesOver">When the backup takes the spot, already in the reveal time zone: "10:00 AM Eastern on December 6".</param>
+    public static EmailContent BackupStandingBy(BlurbPost post, BlurbBackup backup, string detail, string takesOver, SiteOptions site) => new()
+    {
+        Kind = "blurb-backup-standing-by",
+        Subject = $"C# Advent, December {post.Spot.Day}: a backup is standing by for a post without the blurb",
+        Preview = $"{backup.Name} takes {post.Spot.Name} at {takesOver}, unless you keep the author.",
+        Heading = "Keep the author?",
+        Body =
+        [
+            Paragraph(
+                $"The post for {post.Spot.Name} (", Link(post.Title ?? post.Url, post.Url), ") doesn't open with the C# Advent blurb, " +
+                $"as far as the check can tell. {detail}"),
+            Paragraph(
+                $"{backup.Name} is standing by with ", Link(backup.PostTitle ?? backup.PostUrl, backup.PostUrl),
+                $". They take the spot at {takesOver}, unless the author adds the blurb first."),
+            Paragraph(
+                "The check can be wrong, for example about a page that needs JavaScript. Open the post: if the blurb is there, " +
+                "mark it as passed. To keep the author without it, announce it anyway. Either one keeps the author, and the backup " +
+                "is thanked and stays on the list. To let the backup have the spot, there's nothing to do."),
+            Button("Keep the author", $"{Entry(post, site)}#blurb"),
         ],
         Reason = ForOrganizers,
     };

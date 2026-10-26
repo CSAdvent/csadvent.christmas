@@ -2,6 +2,7 @@
 @attribute [Authorize]
 @using CSAdvent.Web.Auth
 @using CSAdvent.Web.Blurbs
+@using CSAdvent.Web.Components.Contributors
 @using CSAdvent.Web.Components.Manage
 @using CSAdvent.Web.Contributors
 @using CSAdvent.Web.Manage
@@ -87,7 +88,7 @@
                         </p>
                         @if (spot.Status is EntryStatus.Ready && BlurbRules.AppliesTo(spot.Year) && Blurbs.IsEnabled && !spot.IsDayOver)
                         {
-                            <p class="mt-1 text-sm text-slate-600">@BlurbNote(_blurbs.GetValueOrDefault(spot.SlotId))</p>
+                            <PostBlurbCheck SlotId="spot.SlotId" Year="spot.Year" IsRevealed="spot.IsRevealed" State="_blurbs.GetValueOrDefault(spot.SlotId)" ReturnUrl="my-spots" />
                         }
                         @if (spot.IsRevealed && spot.Status is EntryStatus.Ready)
                         {
@@ -274,16 +275,6 @@
 
     [CascadingParameter]
     private Task<AuthenticationState> AuthenticationState { get; set; } = null!;
-
-    /// <summary>Where their post stands on the blurb, in their words.</summary>
-    private static string BlurbNote(BlurbState? blurb) => blurb?.Status switch
-    {
-        CSAdvent.Web.Data.BlurbStatus.Passed => "C# Advent blurb: found. Thank you!",
-        CSAdvent.Web.Data.BlurbStatus.Waived => "C# Advent blurb: an organizer has OK'd your post.",
-        CSAdvent.Web.Data.BlurbStatus.Missing => $"C# Advent blurb: missing. {blurb.Detail} Add it at the top of your post; we check again every few minutes.",
-        CSAdvent.Web.Data.BlurbStatus.NeedsDecision or CSAdvent.Web.Data.BlurbStatus.CouldNotCheck => "C# Advent blurb: an organizer is taking a look.",
-        _ => "C# Advent blurb: we check for it from the day before your post is revealed.",
-    };
 
     private static string Traffic(PostTraffic traffic) => string.Create(
         System.Globalization.CultureInfo.InvariantCulture,

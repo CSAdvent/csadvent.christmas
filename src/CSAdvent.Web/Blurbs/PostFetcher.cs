@@ -9,6 +9,9 @@ public sealed record FetchedPost(string? Html, Uri Url, string? Problem)
     public static FetchedPost Failed(Uri url, string problem) => new(null, url, problem);
 
     public bool Loaded => Html is not null;
+
+    /// <summary>It can never be read, whenever it's tried (a video site), so it isn't waiting to be published either.</summary>
+    public bool NeverReadable { get; init; }
 }
 
 /// <summary>Reads an author's post. The models never fetch anything themselves.</summary>
@@ -41,7 +44,7 @@ public sealed class WebPostFetcher(HttpClient http, ILogger<WebPostFetcher> logg
     {
         if (Unreadable.Any(host => url.Host.Equals(host, StringComparison.OrdinalIgnoreCase) || url.Host.EndsWith($".{host}", StringComparison.OrdinalIgnoreCase)))
         {
-            return FetchedPost.Failed(url, "It's a video, so there's no text to read. Check its description yourself.");
+            return FetchedPost.Failed(url, "It's a video, so there's no text to read. Check its description yourself.") with { NeverReadable = true };
         }
 
         try
@@ -112,11 +115,36 @@ public sealed class SamplePostFetcher : IPostFetcher
 /// <summary>The sample posts, one per situation the check has to handle.</summary>
 public static class SamplePosts
 {
+    /// <summary>The post's title, which every sample but the two that aren't the post carries.</summary>
+    public const string Title = "Span<T> all the way down";
+
     public static readonly IReadOnlyList<string> Names =
-        ["with-blurb", "own-words", "wrong-year", "link-only", "without-blurb", "blurb-in-footer", "unsure", "talks-to-the-model"];
+        ["with-blurb", "own-words", "wrong-year", "link-only", "without-blurb", "blurb-in-footer", "unsure", "talks-to-the-model", "javascript-shell", "not-found"];
 
     public static string? Find(string name, string year) => name switch
     {
+        // Pages that aren't the post (#148): a blog that needs JavaScript to show it, and a "not found" page that answers 200.
+        "javascript-shell" => """
+            <!doctype html>
+            <html lang="en">
+            <head><title>My blog</title><base href="/" /></head>
+            <body>
+              <div id="app"><p>Loading...</p></div>
+              <div id="blazor-error-ui">An unhandled error has occurred. <a href="" class="reload">Reload</a></div>
+              <script src="_framework/blazor.webassembly.js"></script>
+            </body>
+            </html>
+            """,
+        "not-found" => """
+            <!doctype html>
+            <html lang="en">
+            <head><title>Page not found · My blog</title></head>
+            <body>
+              <header><nav><a href="/">My blog</a> <a href="/about">About</a></nav></header>
+              <main><h1>Page not found</h1><p>Sorry, there's nothing here. Try the <a href="/">home page</a>.</p></main>
+            </body>
+            </html>
+            """,
         "with-blurb" => Page($"<p>This post is part of the <a href=\"https://csadvent.christmas\">{year} C# Advent calendar</a>: two C# posts a day, December 1–25.</p>"),
         "own-words" => Page($"<p><em>Happy holidays! I'm thrilled this post is part of the {year} C# Advent calendar. Check out the rest at <a href=\"https://csadvent.christmas/\">csadvent.christmas</a>.</em></p>"),
         "wrong-year" => Page("<p>This post is part of the <a href=\"https://csadvent.christmas\">2019 C# Advent calendar</a>.</p>"),

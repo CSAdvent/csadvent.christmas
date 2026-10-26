@@ -26,7 +26,7 @@
         <p class="mt-2 max-w-2xl text-slate-700">
             @if (offer.Deadline is { } deadline)
             {
-                @($"Thanks! If the original post still doesn't open with the C# Advent blurb at {Eastern(deadline)}, your post goes on the calendar, and we'll email you either way.")
+                @($"Thanks! If the original post still doesn't open with the C# Advent blurb at {Eastern(deadline)}, your post goes on the calendar, unless the organizers decide to keep its author. We'll email you either way.")
             }
             else
             {
@@ -75,8 +75,9 @@
         @if (offer.Reason is BackupReason.BlurbMissing && offer.Deadline is { } until)
         {
             <p class="mt-4 max-w-2xl rounded-xl bg-amber-50 p-4 text-amber-900 ring-1 ring-amber-200">
-                <strong>No guarantee yet.</strong> The original author can still add the blurb until @Eastern(until). If they do,
-                we'll let you know and you stay on the list. If they don't, your post goes on the calendar then.
+                <strong>No guarantee yet.</strong> The original author can still add the blurb until @Eastern(until), and the
+                organizers can decide to keep them. If either happens, we'll let you know and you stay on the list. If not, your post
+                goes on the calendar then.
             </p>
         }
         @if (Error is "blurb")

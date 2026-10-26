@@ -35,7 +35,8 @@ public sealed class PostSummaryTests(AppHostFixture fixture)
             ["Form.PostUrl"] = "https://example.com/secret-2330",
             ["Form.PostSummary"] = "  Quokkas   explain\n source generators ",
         });
-        Assert.Equal($"/my-spots/{slotId}?done=saved", TestBrowser.PathOf(saved.Headers.Location!));
+        // A new link is checked for the blurb straight away (#174).
+        Assert.Equal($"/my-spots/{slotId}?done=saved&blurb=checked&slot={slotId}", TestBrowser.PathOf(saved.Headers.Location!));
         await using (var db = await fixture.CreateDbContextAsync())
         {
             Assert.Equal("Quokkas explain source generators", (await db.Slots.SingleAsync(s => s.Id == slotId, CancellationToken)).PostSummary);

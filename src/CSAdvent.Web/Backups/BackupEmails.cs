@@ -73,8 +73,9 @@ public static class BackupEmails
                     "It has to be published already, and open by saying it's part of the ", Link($"{spot.Year} C# Advent calendar", "https://csadvent.christmas"),
                     ", with a link to csadvent.christmas. Any wording is fine. We check it when you send it."),
                 Paragraph(
-                    $"There's no guarantee yet: the original author can still add the blurb until {deadline ?? "their post is announced"}. " +
-                    "If they do, we'll let you know, and you stay on the list for the next one. If they don't, your post takes the spot then."),
+                    $"There's no guarantee yet: the original author can still add the blurb until {deadline ?? "their post is announced"}, " +
+                    "and the organizers can decide to keep them. If either happens, we'll let you know, and you stay on the list for the " +
+                    "next one. If not, your post takes the spot then."),
             ],
             _ =>
             [

@@ -20,7 +20,7 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 | Any time | Check requests to add older posts to people's accounts, and for new links to older posts (each one emails the organizers) | Organizers |
 | From 7 days before each day | "Your post is due" reminders, then a last call on the day | Automatic |
 | December 1–25 | Reveals at midnight, announcements at 10 AM and 2 PM, the daily email once both posts are in (from 9 AM, 2 PM at the latest) | Automatic, plus LinkedIn and Reddit by hand |
-| December 1–25 | Decide on posts the blurb check can't settle, before their announcement | Organizers, when emailed |
+| December 1–25 | Decide on posts the blurb check can't settle, and keep an author before a backup takes their spot if the check got it wrong, before their announcement | Organizers, when emailed |
 | December 31 | The calendar moves to the archive, and the home page thanks everyone | Automatic |
 | Late December–January | Write, publish and share the season's retrospective | Organizers |
 | January | Save the season to the archive files in the repository (After Advent, below) | Organizers |
@@ -68,9 +68,10 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
    inbox, then send it.
 10. **Post "sign-ups open soon"** from `/manage/social/signups` as the day approaches (a week out, the day before). It counts
     down by itself; post it with **Post now**, or copy it for LinkedIn and Reddit.
-11. **Try the blurb check** in the test round: give a test spot a real post with the blurb and one without, move "today" to
-    their day, and see each entry's page. It needs the Anthropic API key (the README's deploy setup); without it, posts
-    aren't checked and nothing is held.
+11. **Try the blurb check** in the test round: give a test spot a real post with the blurb and one without, press **Check my
+    post** on My spots as the tester, then move "today" to their day, **send what's due** (it checks the test season's posts
+    first), and see each entry's page. It needs the Anthropic API key (the README's deploy setup); without it, posts aren't
+    checked and nothing is held.
 12. **Check the alerts** (see Alerts, below): press **Test** on the `csadvent-organizers` action group in the portal and
     make sure both organizers get it, and check the uptime check is green and alerts both of you.
 
@@ -113,8 +114,10 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
   4 hours to answer. You get an email if nobody's left, and then the spot needs you at `/manage/entries`.
 - **The last call** goes out on the day, 3 hours before the post is announced (7 AM for post 1, 11 AM for post 2),
   if the link still hasn't arrived.
-- **The blurb check** starts the day before each post's reveal: authors who publish early can see on My spots whether
-  their post passes.
+- **The blurb check** starts the day before each post's reveal, and authors can press **Check my post** on My spots any
+  time before their day (10 times an hour each). Before the reveal it's only for them: nobody's emailed and no backup is
+  asked. An author who asks about a page we can't read (one that needs JavaScript, say) may email you to sort it out early:
+  look at the post, and **Mark as passed** on its entry page if the blurb is there.
 - **An author who drops out** frees their spot straight away, and the backups are asked immediately.
 
 ---
@@ -139,8 +142,16 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
   - **A missing blurb** emails its author (once) and asks the backups from midnight, an hour each. A backup who accepts takes
     the spot at the post's announcement unless the author adds the blurb first. If nobody has by then, you get an email: the
     post stays up but isn't announced until you decide.
-  - **You get an email** when Claude is unsure, or a post couldn't be checked for 30 minutes. Open the entry's page, look
-    at the post, and **Mark as passed** or **Mark as missing**.
+  - **"A backup is standing by"**: once a backup accepts, you get an email saying when they take the spot (the announcement,
+    or an hour after the email if that's later). If the check got it wrong, **Keep the author** opens the entry's page:
+    **Mark as passed** if the blurb is there, or **Announce anyway** to keep them without it. To let the backup have it, do
+    nothing. (Not when you marked it missing or chose **Use a backup** yourself.)
+  - **You get an email** when Claude is unsure, or a page has no link back and doesn't seem to be the post (it needs
+    JavaScript, or it's a bot check or a "not found" page). Open the entry's page, look at the post, and **Mark as passed**
+    or **Mark as missing**.
+  - **Posts that don't load** count as not published yet until 3 hours before their announcement (7 AM for post 1, 11 AM for
+    post 2), because many authors publish that morning. If one still doesn't load by then, you get a "couldn't check"
+    email half an hour later.
   - **An author who won't add it** (they reply to the email): **Use a backup** on the entry's page hands the spot to the next
     backup who accepts, straight away. **Announce anyway** lets a post through without it.
 - **A spot that ends up empty** can be filled from the backup list, or released, at `/manage/entries`.
@@ -253,9 +264,12 @@ Lines marked ✏️ **To fill in** are for the organizers: they aren't written d
 - **If it fails** (revoked, or the workspace reaches its spend limit): every post is Couldn't check, and posts aren't
   announced automatically until an organizer marks them.
 - **What notices:** an email to the organizers once a post couldn't be checked for 30 minutes. Posts are only checked from
-  the day before their reveal, so outside the season nothing notices.
+  the day before their reveal, so outside the season nothing notices (an author's **Check my post** just says it couldn't
+  check).
 - **Spend:** set the workspace's monthly limit to cover December (a season costs cents), with a usage notification below
-  it.
+  it. Authors' own checks are capped at 2,000 that go to Claude in 30 days (`Blurbs:SelfChecksPerMonth`, about $1), so they
+  can't use up the limit; if that's ever reached, the logs say "Checks on request are paused" and My spots says so, while
+  the season's own checks carry on.
 - **Rotating:** create a new key in the same workspace, set the secret, deploy, press **Check now** on an entry page (the
   test season works), then revoke the old key.
 

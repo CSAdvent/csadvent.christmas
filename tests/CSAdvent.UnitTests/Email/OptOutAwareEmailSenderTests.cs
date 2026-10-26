@@ -119,6 +119,9 @@ public sealed class OptOutAwareEmailSenderTests
                 AnnouncementSubscriptions.Confirmation("https://csadvent.christmas/emails/announcements/confirm?token=abc", Site, dailyPosts: true),
                 ReminderEmails.Daily(new DailyShare(2026, 3, [], "Ada", false), Site, "https://csadvent.christmas/emails/daily/stop?token=abc"),
                 ReminderEmails.DailyForReaders(3, [], Site, "https://csadvent.christmas/emails/announcements/daily-posts/stop?token=abc"),
+
+                // To the organizers' inbox, which is never skipped and gets no unsubscribe link.
+                BlurbEmails.BackupStandingBy(new BlurbPost(1, spot, "Post", "https://example.com/post", "10 AM"), new BlurbBackup("Grace", "Hers", "https://example.com/hers"), "It's missing.", "10 AM", Site),
             ],
             email => Assert.False(email.Transactional, email.Subject));
     }

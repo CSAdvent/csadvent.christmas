@@ -67,6 +67,11 @@ public sealed partial class BlurbCheckTests(AppHostFixture fixture)
         await backup.PostFormAsync(offer, "accept", Accept("Bo Backup", Sample("with-blurb", year)));
         Assert.Contains("If the original post still doesn&#x27;t open with the C# Advent blurb at 10:00 AM Eastern on December 6", await backup.GetPageAsync(offer));
 
+        // The organizers hear that a backup is standing by, so they can keep the author (#148).
+        Assert.Equal(1, (await RunAsync(year, "2132-12-06T06:00:00Z")).Emailed);
+        var standingBy = await fixture.WaitForEmailAsync("hello@csadvent.christmas", "C# Advent, December 6: a backup is standing by for a post without the blurb");
+        Assert.Contains("Bo Backup is standing by", standingBy.Text);
+
         // The backup takes the spot at the deadline, and the new post is checked like any other.
         Assert.Equal(0, (await RunBackupsAsync(year, "2132-12-06T14:59:00Z")).Used);
         Assert.Equal(1, (await RunBackupsAsync(year, "2132-12-06T15:00:00Z")).Used);
@@ -150,7 +155,8 @@ public sealed partial class BlurbCheckTests(AppHostFixture fixture)
         {
             var slot = season.Slots.Single(s => s.Day == day && s.Part == 1);
             slot.AuthorName = author;
-            slot.PostTitle = $"{author}'s post";
+            // The samples' title, so a page without a link back is clearly the post (#148).
+            slot.PostTitle = CSAdvent.Web.Blurbs.SamplePosts.Title;
             slot.PostUrl = postUrl;
             slot.Contact = new SlotContact { Email = email };
         });

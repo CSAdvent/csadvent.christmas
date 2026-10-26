@@ -61,6 +61,8 @@ public sealed class AdventDbContext(DbContextOptions<AdventDbContext> options) :
 
     public DbSet<BlurbCheck> BlurbChecks => Set<BlurbCheck>();
 
+    public DbSet<BlurbSelfCheck> BlurbSelfChecks => Set<BlurbSelfCheck>();
+
     public DbSet<PastAuthorInvitation> PastAuthorInvitations => Set<PastAuthorInvitation>();
 
     /// <summary>Every email the site sends, queued for <see cref="Email.Queue.EmailOutboxWorker"/> (#152).</summary>

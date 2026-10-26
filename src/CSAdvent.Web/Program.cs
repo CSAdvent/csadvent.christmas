@@ -145,6 +145,7 @@ builder.Services.AddSingleton(services => new BlurbChecker(
     BlurbJudges.Create(services),
     services.GetRequiredService<IOptions<BlurbOptions>>()));
 builder.Services.AddScoped<BlurbCheckService>();
+builder.Services.AddScoped<BlurbSelfCheckService>();
 builder.Services.AddScoped<BlurbQueries>();
 
 builder.Services.AddOptions<BackupOptions>().BindConfiguration(BackupOptions.SectionName);

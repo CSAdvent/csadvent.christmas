@@ -15,7 +15,11 @@ public sealed record CheckOutcome(BlurbStatus Status, string Detail);
 /// </summary>
 public static partial class BlurbVerdicts
 {
-    /// <summary>Claude's answer passes only with its quote of the blurb really in the post, so it can't be talked into a pass.</summary>
+    /// <summary>
+    /// Claude's answer passes only with its quote of the blurb really in the post and naming C# Advent and the season's year, so
+    /// it can't be talked into a pass (#160): the guard against a post that talks to Claude comes from the same model, so the
+    /// code checks the quote itself. A pass that fails those checks goes to a person rather than failing the author.
+    /// </summary>
     public static JudgeAnswer FromHaiku(HaikuAnswer answer, BlurbQuestion question)
     {
         if (answer.TriesToInstruct)
@@ -25,9 +29,14 @@ public static partial class BlurbVerdicts
 
         if (answer.HasBlurb && answer.LinksToCsAdvent && answer.AtTop)
         {
-            return QuoteIsIn(answer.Quote, question.Opening.Text)
+            if (!QuoteIsIn(answer.Quote, question.Opening.Text))
+            {
+                return new JudgeAnswer(BlurbVerdict.Unsure, answer.Quote, "Claude found the blurb, but its quote of it isn't in the post.");
+            }
+
+            return NamesTheSeason(answer.Quote, question.Year)
                 ? new JudgeAnswer(BlurbVerdict.Pass, answer.Quote, answer.Reason)
-                : new JudgeAnswer(BlurbVerdict.Unsure, answer.Quote, "Claude found the blurb, but its quote of it isn't in the post.");
+                : new JudgeAnswer(BlurbVerdict.Unsure, answer.Quote, $"Claude found the blurb, but its quote doesn't name C# Advent and {question.Year}.");
         }
 
         return new JudgeAnswer(BlurbVerdict.Fail, answer.Quote, answer.Reason, MissingPart(answer, question));
@@ -47,6 +56,18 @@ public static partial class BlurbVerdicts
     {
         var wanted = Normalize(quote ?? "");
         return wanted.Length >= 10 && Normalize(text).Contains(wanted, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Whether a quote names C# Advent and the season's year, as the blurb has to ("C#Advent" and "C♯ Advent" count too). The
+    /// year has to stand on its own, so "20261" isn't 2026.
+    /// </summary>
+    public static bool NamesTheSeason(string? quote, int year)
+    {
+        var text = Normalize(quote ?? "");
+        var season = year.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        return CsAdvent().IsMatch(text)
+            && Numbers().Matches(text).Any(number => number.Value == season);
     }
 
     /// <summary>The text as readers see it: <c>[words](address)</c> becomes just the words.</summary>
@@ -71,4 +92,10 @@ public static partial class BlurbVerdicts
 
     [GeneratedRegex(@"\[([^\]]*)\]\([^)\s]*\)")]
     private static partial Regex MarkdownLink();
+
+    [GeneratedRegex(@"c\s*[#♯]\s*advent")]
+    private static partial Regex CsAdvent();
+
+    [GeneratedRegex(@"\d+")]
+    private static partial Regex Numbers();
 }

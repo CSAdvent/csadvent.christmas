@@ -11,11 +11,12 @@ using Npgsql;
 
 namespace CSAdvent.Web.Blurbs;
 
-public sealed record BlurbRun(int Checked, int Emailed)
+/// <param name="AskedClaude">How many of the checks went to Claude (the rest were settled without it).</param>
+public sealed record BlurbRun(int Checked, int Emailed, int AskedClaude = 0)
 {
     public static readonly BlurbRun None = new(0, 0);
 
-    public static BlurbRun operator +(BlurbRun a, BlurbRun b) => new(a.Checked + b.Checked, a.Emailed + b.Emailed);
+    public static BlurbRun operator +(BlurbRun a, BlurbRun b) => new(a.Checked + b.Checked, a.Emailed + b.Emailed, a.AskedClaude + b.AskedClaude);
 }
 
 /// <summary>What an organizer decided about a post's blurb.</summary>
@@ -36,11 +37,15 @@ public enum BlurbDecision
 /// 15 minutes, before the reminders and backups:
 /// <list type="bullet">
 /// <item>Posts are checked from <see cref="BlurbOptions.CheckFrom"/> before their reveal until their day is over, until they
-/// pass. A changed URL starts again, and an unchanged opening isn't sent to Claude twice.</item>
-/// <item>From the reveal: a missing blurb emails the author once and lines up a backup (<see cref="BackupService"/>); a post
-/// Claude can't settle, or that couldn't be checked, emails the organizers; and at the deadline, with nobody to take the spot,
-/// they're told again. Every email is claimed in the database before it's queued, so replicas never send one twice, and the
-/// claim is undone if it can't be queued, so a later run tries again (#149). Once queued, the email queue sees it through.</item>
+/// pass. A changed URL starts again, and an unchanged opening isn't sent to Claude twice. Authors can check their own post
+/// any time before their day is over (<see cref="CheckForAuthorAsync"/>, #174).</item>
+/// <item>A page that doesn't load, or doesn't seem to be the post, counts as not published yet until
+/// <see cref="BlurbOptions.PublishedBy"/> before its deadline (#159).</item>
+/// <item>From the reveal: a missing blurb emails the author once and lines up a backup (<see cref="BackupService"/>); once a
+/// backup is standing by, the organizers hear about it, with time to keep the author (#148); a post Claude can't settle, or
+/// that couldn't be checked, emails the organizers; and at the deadline, with nobody to take the spot, they're told again.
+/// Every email is claimed in the database before it's queued, so replicas never send one twice, and the claim is undone if it
+/// can't be queued, so a later run tries again (#149). Once queued, the email queue sees it through.</item>
 /// <item>Organizers can check again, decide, and ask for a backup.</item>
 /// </list>
 /// </summary>
@@ -52,6 +57,7 @@ public sealed partial class BlurbCheckService(
     EmailComposer composer,
     IEmailSender sender,
     IOptions<BlurbOptions> options,
+    IOptions<BackupOptions> backupOptions,
     IOptions<SocialPostingOptions> posting,
     IOptions<SiteOptions> site,
     ILogger<BlurbCheckService> logger)
@@ -133,6 +139,8 @@ public sealed partial class BlurbCheckService(
         check.BackupRequestedAt = requestBackup ? now : null;
         await db.SaveChangesAsync(cancellationToken);
 
+        // They've decided, so any word about a backup standing by is history.
+        await ForgetBackupNoticeAsync(slot.Id, cancellationToken);
         await NotifyAsync(check, slot, now, cancellationToken);
 
         // Lines up (or uses) a backup for a missing blurb, and closes the offers of one that passed or was let through.
@@ -146,6 +154,15 @@ public sealed partial class BlurbCheckService(
     /// </summary>
     public Task<bool> UseBackupAsync(int slotId, string organizer, DateTimeOffset now, CancellationToken cancellationToken = default) =>
         DecideAsync(slotId, BlurbDecision.Missing, organizer, now, requestBackup: true, cancellationToken);
+
+    /// <summary>
+    /// "Check my post" (#174): the author's own check of their post, made just as a run would make it, but whenever they ask, even
+    /// days before their post is first looked at. Before the reveal it's only information: nobody's emailed and no backup is
+    /// asked. A post that passed, or that an organizer decided, isn't checked again. Who may ask, and how often, is
+    /// <see cref="BlurbSelfCheckService"/>'s business.
+    /// </summary>
+    public Task<BlurbRun> CheckForAuthorAsync(int slotId, DateTimeOffset now, CancellationToken cancellationToken = default) =>
+        IsEnabled ? AdvanceAsync(slotId, now, organizer: null, cancellationToken) : Task.FromResult(BlurbRun.None);
 
     /// <summary>Checks one post, saves what was found, and acts on it. With an organizer, it's their "Check now".</summary>
     private async Task<BlurbRun> AdvanceAsync(int slotId, DateTimeOffset now, string? organizer, CancellationToken cancellationToken)
@@ -168,7 +185,8 @@ public sealed partial class BlurbCheckService(
 
             // A post Claude already answered about isn't sent to it again while its opening is the same.
             var unchanged = organizer is null && check.Status is BlurbStatus.Missing or BlurbStatus.NeedsDecision ? check.ContentHash : null;
-            var result = await checker.CheckAsync(slot.SeasonYear, new Uri(slot.PostUrl), unchanged, cancellationToken);
+            var result = await checker.CheckAsync(slot.SeasonYear, new Uri(slot.PostUrl), slot.PostTitle, unchanged, cancellationToken);
+            var before = check.Status;
             Record(check, slot, result, now);
             if (organizer is not null)
             {
@@ -178,7 +196,13 @@ public sealed partial class BlurbCheckService(
             }
 
             await db.SaveChangesAsync(cancellationToken);
-            run += new BlurbRun(1, 0);
+            run += new BlurbRun(1, 0, result.Answer is null ? 0 : 1);
+
+            // Once it passes, a later failure is a new one, and a backup standing by for it is worth telling the organizers about.
+            if (check.Status is BlurbStatus.Passed && before is not BlurbStatus.Passed)
+            {
+                await ForgetBackupNoticeAsync(slot.Id, cancellationToken);
+            }
         }
 
         return run + await NotifyAsync(check, slot, now, cancellationToken) + await DeadlineAsync(check, slot, now, cancellationToken);
@@ -197,8 +221,9 @@ public sealed partial class BlurbCheckService(
 
         var outcome = result.Outcome;
 
-        // Before its reveal, a post that doesn't load yet is only waiting to be published.
-        if (outcome.Status is BlurbStatus.CouldNotCheck && result.Opening is null && now < schedule.GetRevealTime(slot))
+        // A page that doesn't load, or doesn't seem to be the post, is most likely not published yet: many authors publish on
+        // the morning of their day (#159). It waits until a few hours before its deadline, and only then goes to the organizers.
+        if (result.MaybeUnpublished && now < PublishBy(slot))
         {
             outcome = outcome with { Status = BlurbStatus.Waiting };
         }
@@ -241,6 +266,7 @@ public sealed partial class BlurbCheckService(
 
             // Asks the first backup now, rather than at the next backup run.
             await backups.OfferNowAsync(slot.Id, now, cancellationToken);
+            emailed += await TellOrganizersBackupStandingByAsync(check, slot, now, cancellationToken);
         }
         else if ((check.Status is BlurbStatus.NeedsDecision || (check.Status is BlurbStatus.CouldNotCheck && now - check.StatusSince >= CouldNotCheckGrace))
             && check.OrganizersEmailedAbout != check.Status)
@@ -265,6 +291,70 @@ public sealed partial class BlurbCheckService(
 
         return new BlurbRun(0, emailed);
     }
+
+    /// <summary>
+    /// Before a backup takes a spot whose post the check found without the blurb, the organizers hear that one is standing by,
+    /// once, so they can keep the author if the check got it wrong (#148). The backup takes the spot no sooner than
+    /// <see cref="BackupOptions.OrganizersNotice"/> after this (<see cref="BackupService"/>). Not when an organizer decided it
+    /// themselves, or after the deadline's email, which already says a backup who accepts takes the spot straight away.
+    /// </summary>
+    private async Task<int> TellOrganizersBackupStandingByAsync(BlurbCheck check, Slot slot, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        // Every run gets here while a backup stands by, so it checks first rather than leave it to the unique index, whose
+        // refusals EF Core logs as errors (#157).
+        var runDate = schedule.GetDate(slot.SeasonYear, slot.Day);
+        if (check.DecidedBy is not null || check.DeadlineEmailedAt is not null
+            || await db.SentReminders.RecordedSlots(ReminderKind.AdminBlurbBackupStandingBy, runDate).ContainsAsync(slot.Id, cancellationToken))
+        {
+            return 0;
+        }
+
+        var backup = await db.BackupOffers
+            .AsNoTracking()
+            .Where(o => o.SlotId == slot.Id && o.Status == BackupOfferStatus.Accepted)
+            .Select(o => new { o.AuthorName, o.PostTitle, o.PostUrl })
+            .FirstOrDefaultAsync(cancellationToken);
+        if (backup?.PostUrl is null)
+        {
+            return 0;
+        }
+
+        // Claimed once per spot; its time is when they were told, which the backup waits on.
+        var record = new SentReminder
+        {
+            Kind = ReminderKind.AdminBlurbBackupStandingBy,
+            RunDate = runDate,
+            SlotId = slot.Id,
+            SentAt = now,
+        };
+        db.SentReminders.Add(record);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        {
+            db.Entry(record).State = EntityState.Detached;
+            return 0;
+        }
+
+        var deadline = BlurbRules.Deadline(schedule, posting.Value, slot.SeasonYear, slot.Day, slot.Part);
+        var takesOver = Eastern(deadline > now + backupOptions.Value.OrganizersNotice ? deadline : now + backupOptions.Value.OrganizersNotice);
+        var email = BlurbEmails.BackupStandingBy(PostOf(slot), new BlurbBackup(backup.AuthorName ?? "A backup", backup.PostTitle, backup.PostUrl), check.Detail ?? "", takesOver, site.Value);
+        if (await SendAsync(email, Organizers, slot.Id, cancellationToken))
+        {
+            return 1;
+        }
+
+        // Not queued, so not recorded either: a later run tries again (#149), and the backup waits for it.
+        db.SentReminders.Remove(record);
+        await db.SaveChangesAsync(CancellationToken.None);
+        return 0;
+    }
+
+    /// <summary>Forgets that the organizers heard about a backup standing by, once that's history: the post changed or passed, or they decided.</summary>
+    private Task ForgetBackupNoticeAsync(int slotId, CancellationToken cancellationToken) =>
+        db.SentReminders.Where(r => r.SlotId == slotId && r.Kind == ReminderKind.AdminBlurbBackupStandingBy).ExecuteDeleteAsync(cancellationToken);
 
     /// <summary>At the deadline, a missing blurb with nobody to take the spot tells the organizers, once.</summary>
     private async Task<BlurbRun> DeadlineAsync(BlurbCheck check, Slot slot, DateTimeOffset now, CancellationToken cancellationToken)
@@ -328,6 +418,7 @@ public sealed partial class BlurbCheckService(
             check.OrganizersEmailedAbout = null;
             check.DeadlineEmailedAt = null;
             await db.SaveChangesAsync(cancellationToken);
+            await ForgetBackupNoticeAsync(slot.Id, cancellationToken);
         }
 
         return check;
@@ -390,15 +481,22 @@ public sealed partial class BlurbCheckService(
     private Task<Slot?> LoadSlotAsync(int slotId, CancellationToken cancellationToken) =>
         db.Slots.AsNoTracking().Include(s => s.Contact).Include(s => s.Season).SingleOrDefaultAsync(s => s.Id == slotId, cancellationToken);
 
-    private BlurbPost PostOf(Slot slot)
+    private BlurbPost PostOf(Slot slot) => new(
+        slot.Id,
+        new BackupSpot(slot.SeasonYear, slot.Day, slot.Part, slot.Season.SlotsPerDay),
+        slot.PostTitle,
+        slot.PostUrl!,
+        Eastern(BlurbRules.Deadline(schedule, posting.Value, slot.SeasonYear, slot.Day, slot.Part)));
+
+    /// <summary>Until when a post whose page doesn't load, or doesn't seem to be the post, counts as not published yet.</summary>
+    private DateTimeOffset PublishBy(Slot slot) =>
+        BlurbRules.Deadline(schedule, posting.Value, slot.SeasonYear, slot.Day, slot.Part) - options.Value.PublishedBy;
+
+    /// <summary>A time as emails give it: "10:00 AM Eastern on December 6".</summary>
+    private string Eastern(DateTimeOffset moment)
     {
-        var deadline = schedule.ToLocalTime(BlurbRules.Deadline(schedule, posting.Value, slot.SeasonYear, slot.Day, slot.Part));
-        return new BlurbPost(
-            slot.Id,
-            new BackupSpot(slot.SeasonYear, slot.Day, slot.Part, slot.Season.SlotsPerDay),
-            slot.PostTitle,
-            slot.PostUrl!,
-            string.Create(CultureInfo.InvariantCulture, $"{deadline:h:mm tt} Eastern on {deadline:MMMM d}"));
+        var local = schedule.ToLocalTime(moment);
+        return string.Create(CultureInfo.InvariantCulture, $"{local:h:mm tt} Eastern on {local:MMMM d}");
     }
 
     private EmailRecipient Organizers => new(site.Value.ContactEmail, "C# Advent organizers");

@@ -6,22 +6,30 @@ namespace CSAdvent.Web.Data;
 /// <summary>Where a post stands on the C# Advent blurb (#128).</summary>
 public enum BlurbStatus
 {
-    /// <summary>Not checked yet, or its page doesn't load yet before its day. Checked again on every run.</summary>
+    /// <summary>
+    /// Not checked yet, or its page doesn't load (or doesn't seem to be the post) and it's still more than a few hours before
+    /// its deadline, so it's most likely not published yet (#159). Checked again on every run.
+    /// </summary>
     Waiting,
 
     /// <summary>Claude found the blurb, or an organizer said it's there.</summary>
     Passed,
 
     /// <summary>
-    /// No link back near the top, Claude says the blurb is missing, or an organizer said so. Its author is emailed and a backup
-    /// poster is lined up.
+    /// No link back near the top of a page that's clearly the post, Claude says the blurb is missing, or an organizer said so.
+    /// Its author is emailed and a backup poster is lined up.
     /// </summary>
     Missing,
 
-    /// <summary>Claude is unsure, or the post seems to talk to it: an organizer decides.</summary>
+    /// <summary>
+    /// Claude is unsure, the post seems to talk to it, or the page has no link back and doesn't seem to be the post (#148): an
+    /// organizer decides.
+    /// </summary>
     NeedsDecision,
 
-    /// <summary>The page didn't load on its day, or Claude couldn't answer. An organizer decides; it's never the author's fault.</summary>
+    /// <summary>
+    /// The page didn't load in time on its day, or Claude couldn't answer. An organizer decides; it's never the author's fault.
+    /// </summary>
     CouldNotCheck,
 
     /// <summary>An organizer let it through without the blurb (Announce anyway).</summary>

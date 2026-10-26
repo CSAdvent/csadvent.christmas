@@ -139,14 +139,16 @@ dotnet test
 - 🙋 **Anyone signed in can join a season's backup list** at `/backups/{year}`, kept in sign-up order
 - 📨 **Spots are offered one backup at a time**, 4 hours each: straight away when an author drops out, or from 6 PM Eastern the evening before a day whose post link is still missing
 - ✅ **A backup who accepts takes the spot**: immediately for a dropped spot, or at the reveal if the original author's link hasn't arrived by then
-- ✍️ **A post without the C# Advent blurb** lines up a backup from the reveal, an hour each, and one who accepts (with the blurb in their own post) takes the spot at the post's announcement, unless the author adds it first
+- ✍️ **A post without the C# Advent blurb** lines up a backup from the reveal, an hour each, and one who accepts (with the blurb in their own post) takes the spot at the post's announcement, unless the author adds it first or the organizers keep the author (they're told, at least an hour before)
 - 🧪 **Try it** without waiting for December: `POST https://localhost:7092/dev/backups/run?at=2026-12-04T23:00:00Z` (Development only)
 
 ## ✍️ The C# Advent Blurb
 
 - 📌 **Every post opens with the blurb** from 2026 on: a sentence saying it's part of that year's C# Advent calendar, with a link to csadvent.christmas, in the author's own words. My spots has one ready to paste, as text, Markdown or HTML
-- 🔎 **Each post is checked automatically** from the day before its reveal: we fetch it ourselves (public addresses only), read the top of the article, and fail it straight away without a link back near the top
-- 🤖 **Claude Haiku 5.5 checks the rest**, through Anthropic's API. Its quote of the blurb has to really be in the post, and anything it's unsure about goes to an organizer
+- 🔎 **Each post is checked automatically** from the day before its reveal: we fetch it ourselves (public addresses only), read the top of the article, and fail it straight away without a link back near the top, as long as the page is clearly the post (its title is on it). A page that isn't (one that needs JavaScript, a bot check, a "not found" page) goes to an organizer
+- ⏳ **Posts not published yet aren't chased**: a page that doesn't load waits until 3 hours before its announcement, since many authors publish that morning
+- 🙋 **Authors can check their own post** with **Check my post** on My spots, and when they save a new link, days before their day. Before the reveal it's only for them, and it's limited per person and in what it can spend on Claude
+- 🤖 **Claude Haiku 5.5 checks the rest**, through Anthropic's API. Its quote of the blurb has to really be in the post and name C# Advent and the year, and anything it's unsure about goes to an organizer
 - 📨 **A missing blurb emails the author** once, with the blurb to paste and the deadline (the post's announcement), and lines up a backup. Fixing it is noticed within 15 minutes, with no reply needed
 - ⏸️ **Announcements wait for it**: automatic social posts only go out once a post passes (or an organizer lets it through), and the daily email leaves out a post without it
 - 🧑‍⚖️ **Organizers decide on each entry's page**: Claude's answer, **Check now**, **Mark as passed**, **Mark as missing**, **Announce anyway** and **Use a backup**

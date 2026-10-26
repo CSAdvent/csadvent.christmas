@@ -51,7 +51,8 @@ public sealed class MySpotsTests(AppHostFixture fixture)
             ["Form.PostUrl"] = "https://example.com/bea/patterns",
         });
 
-        Assert.Equal($"/my-spots/{slotId}?done=saved", TestBrowser.PathOf(saved.Headers.Location!));
+        // A new link is checked for the blurb straight away (#174).
+        Assert.Equal($"/my-spots/{slotId}?done=saved&blurb=checked&slot={slotId}", TestBrowser.PathOf(saved.Headers.Location!));
         await using var db = await fixture.CreateDbContextAsync();
         var slot = await db.Slots.SingleAsync(s => s.Id == slotId, CancellationToken);
         Assert.Equal(("Bea Coder", "https://example.com/bea", "Pattern matching all the way down", "https://example.com/bea/patterns"),

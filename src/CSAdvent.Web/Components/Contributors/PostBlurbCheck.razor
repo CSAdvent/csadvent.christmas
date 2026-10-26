@@ -1,0 +1,87 @@
+@* A spot's post on the C# Advent blurb, in its author's words, with "Check my post" (#174). A plain form to a minimal API,
+   because My spots has one per spot. Before the reveal it's only for the author: nobody else is told. *@
+@using CSAdvent.Web.Blurbs
+@using CSAdvent.Web.Components.Manage
+@using CSAdvent.Web.Data
+@inject Microsoft.Extensions.Options.IOptions<SiteOptions> Site
+
+<div id="blurb-@SlotId" class="mt-1 text-sm text-slate-600">
+    @if (Message is { } message)
+    {
+        <p class="mb-2 rounded-lg bg-slate-50 p-2 font-medium text-slate-800 ring-1 ring-slate-200" role="status">@message</p>
+    }
+    <p>@Note</p>
+    @if (CanCheck)
+    {
+        <form method="post" action="my-spots/blurb-check" class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <AntiforgeryToken />
+            <input type="hidden" name="SlotId" value="@SlotId" />
+            <input type="hidden" name="ReturnUrl" value="@ReturnUrl" />
+            <button type="submit" class="rounded-lg bg-white px-3 py-1.5 font-semibold text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50">Check my post</button>
+            @if (State?.CheckedAt is { } checkedAt)
+            {
+                <span class="text-xs text-slate-500">Last checked <LocalTime Value="checkedAt" /></span>
+            }
+        </form>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public int SlotId { get; set; }
+
+    /// <summary>The season, which the blurb has to name.</summary>
+    [Parameter, EditorRequired]
+    public int Year { get; set; }
+
+    /// <summary>Whether the post's day has started, after which a missing blurb has consequences.</summary>
+    [Parameter]
+    public bool IsRevealed { get; set; }
+
+    /// <summary>The spot's blurb check, if its post has been looked at.</summary>
+    [Parameter]
+    public BlurbState? State { get; set; }
+
+    /// <summary>The page the button comes back to: <c>my-spots</c> or <c>my-spots/42</c>.</summary>
+    [Parameter, EditorRequired]
+    public string ReturnUrl { get; set; } = "";
+
+    /// <summary>How the last check went ("checked", "too-many"...), from the address the button came back to.</summary>
+    [SupplyParameterFromQuery(Name = "blurb")]
+    public string? Checked { get; set; }
+
+    /// <summary>Which spot that was about, since My spots has several.</summary>
+    [SupplyParameterFromQuery(Name = "slot")]
+    public int? CheckedSlot { get; set; }
+
+    /// <summary>A post that passed, or that an organizer decided, isn't checked again.</summary>
+    private bool CanCheck => State is null || (State.DecidedBy is null && State.Status is not (BlurbStatus.Passed or BlurbStatus.Waived));
+
+    private string? Message => CheckedSlot != SlotId ? null : Checked switch
+    {
+        "checked" => "We've just looked at your post.",
+        "too-many" => $"You've checked {BlurbSelfCheckService.MaxPerHour} times in the last hour, so try again a bit later. We also check it ourselves from the day before your post is revealed.",
+        "paused" => "Checking on request is paused for now. We still check every post ourselves from the day before it's revealed.",
+        "unavailable" => "There's nothing to check yet: add your post's URL first.",
+        _ => null,
+    };
+
+    /// <summary>Where the post stands, and what to do about it.</summary>
+    private string Note => State switch
+    {
+        { Status: BlurbStatus.Passed } => "C# Advent blurb: found. Thank you!",
+        { Status: BlurbStatus.Waived } => "C# Advent blurb: an organizer has OK'd your post.",
+        { Status: BlurbStatus.Missing } => IsRevealed
+            ? $"C# Advent blurb: missing. {State.Detail} Add it at the top of your post; we check again every few minutes."
+            : $"C# Advent blurb: missing. {State.Detail} Add it at the top of your post, then check again. Until your day starts, this is only for you.",
+        { Status: BlurbStatus.NeedsDecision or BlurbStatus.CouldNotCheck } when IsRevealed => "C# Advent blurb: an organizer is taking a look.",
+        { Status: BlurbStatus.NeedsDecision } =>
+            $"C# Advent blurb: we can't tell for sure. {State.Detail} Make sure your post opens by saying it's part of the {Year} C# Advent " +
+            "calendar, with a link to csadvent.christmas. If it does, there's nothing more to do: an organizer looks on your day.",
+        { Status: BlurbStatus.CouldNotCheck } => $"C# Advent blurb: we couldn't check your post just now. {State.Detail} Please try again later.",
+        { Status: BlurbStatus.Waiting, Detail: not null } =>
+            $"C# Advent blurb: we couldn't read your post yet. {State.Detail} That's fine if it isn't published yet: check again once it is. " +
+            $"If it's up and you still see this, email {Site.Value.ContactEmail} so we can sort it out before your day.",
+        _ => "C# Advent blurb: not checked yet. We check it from the day before your post is revealed, or check it yourself now.",
+    };
+}

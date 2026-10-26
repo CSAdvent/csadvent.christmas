@@ -20,15 +20,18 @@ public sealed record BlurbState(
     /// <summary>Whether its post can be announced automatically: once it passes, or an organizer lets it through.</summary>
     public bool CanAnnounce => Status is BlurbStatus.Passed or BlurbStatus.Waived;
 
-    public string Label => Labels.For(Status);
+    /// <summary>"Not checked yet" until a check has run, then the status (a post waiting to be published is "Waiting").</summary>
+    public string Label => Status is BlurbStatus.Waiting && CheckedAt is null ? Labels.NotChecked : Labels.For(Status);
 }
 
 /// <summary>What the organizer pages say about each status.</summary>
 public static class Labels
 {
+    public const string NotChecked = "Not checked yet";
+
     public static string For(BlurbStatus status) => status switch
     {
-        BlurbStatus.Waiting => "Not checked yet",
+        BlurbStatus.Waiting => "Waiting",
         BlurbStatus.Passed => "Blurb passed",
         BlurbStatus.Missing => "Missing blurb",
         BlurbStatus.NeedsDecision => "Needs a decision",
@@ -47,7 +50,8 @@ public static class Labels
 }
 
 /// <summary>A post's blurb check in full, for its entry page: whether it applies, the status, and the deadline.</summary>
-public sealed record BlurbDetails(int SlotId, bool Applies, bool Enabled, bool HasPost, BlurbState? State, DateTimeOffset Deadline);
+/// <param name="StandingBy">For a missing blurb, the backup standing by to take the spot (#148).</param>
+public sealed record BlurbDetails(int SlotId, bool Applies, bool Enabled, bool HasPost, BlurbState? State, DateTimeOffset Deadline, BlurbBackup? StandingBy = null);
 
 /// <summary>What the pages read about blurb checks.</summary>
 public sealed class BlurbQueries(AdventDbContext db, AdventSchedule schedule, IOptions<BlurbOptions> options, IOptions<SocialPostingOptions> posting)
@@ -95,13 +99,22 @@ public sealed class BlurbQueries(AdventDbContext db, AdventSchedule schedule, IO
         }
 
         var check = await db.BlurbChecks.AsNoTracking().SingleOrDefaultAsync(c => c.SlotId == slotId && c.PostUrl == slot.PostUrl, cancellationToken);
+        var standingBy = check?.Status is BlurbStatus.Missing
+            ? await db.BackupOffers
+                .AsNoTracking()
+                .Where(o => o.SlotId == slotId && o.Status == BackupOfferStatus.Accepted && o.PostUrl != null)
+                .Select(o => new BlurbBackup(o.AuthorName ?? o.Substitute.Name, o.PostTitle, o.PostUrl!))
+                .FirstOrDefaultAsync(cancellationToken)
+            : null;
+
         return new BlurbDetails(
             slotId,
             BlurbRules.AppliesTo(slot.SeasonYear),
             IsEnabled,
             slot.PostUrl is not null,
             check is null ? null : State(check),
-            BlurbRules.Deadline(schedule, posting.Value, slot.SeasonYear, slot.Day, slot.Part));
+            BlurbRules.Deadline(schedule, posting.Value, slot.SeasonYear, slot.Day, slot.Part),
+            standingBy);
     }
 
     private static BlurbState State(BlurbCheck check) =>
