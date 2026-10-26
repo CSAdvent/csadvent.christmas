@@ -1,5 +1,8 @@
 @page "/archive/{Year:int}"
+@using Microsoft.Extensions.Options
 @inject ArchiveService Archive
+@inject AdventSchedule Schedule
+@inject IOptions<SiteOptions> Site
 @inject CSAdvent.Web.Retrospectives.RetrospectiveService Retrospectives
 @inject NavigationManager Navigation
 
@@ -11,6 +14,10 @@
                 Image="@CSAdvent.Web.Cards.CardLinks.Season(_calendar.Year, _calendar.PostCount)"
                 ImageAlt="@($"C# Advent {_calendar.Year}: {_calendar.PostCount} C# posts")">
         <link rel="alternate" type="application/rss+xml" title="@($"C# Advent {_calendar.Year}")" href="@($"archive/{_calendar.Year}/rss")" />
+        @if (_calendar.Year != CSAdvent.Web.Data.Season.TestYear)
+        {
+            <JsonLd Data="@(StructuredData.SeasonEvent(_calendar.Year, Schedule, Site.Value.BaseUrl, $"archive/{_calendar.Year}", CSAdvent.Web.Cards.CardLinks.Season(_calendar.Year, _calendar.PostCount)))" />
+        }
     </SocialMeta>
 
     <nav aria-label="Seasons" class="mb-6 flex flex-wrap items-center justify-between gap-3 text-sm font-medium">

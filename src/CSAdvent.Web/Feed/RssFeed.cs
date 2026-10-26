@@ -52,35 +52,59 @@ public sealed record FeedItem(int Year, int Day, int Part, int SlotsPerDay, stri
 }
 
 /// <summary>
-/// The RSS 2.0 feeds: every revealed entry and published retrospective from every season at <c>/rss</c>, or one season's at
-/// <c>/archive/{year}/rss</c>.
+/// The RSS 2.0 feeds: the latest <see cref="LatestItems"/> revealed entries and published retrospectives from every season at
+/// <c>/rss</c>, or everything from one season at <c>/archive/{year}/rss</c>.
 /// Items are newest first (by reveal time, then post order within a day), dated with their reveal time, and link to the
 /// entry's page on our site tagged <c>?via=rss</c>, never straight to the post. GUIDs come from the season, day and post,
 /// so editing a title or URL never makes an item look new.
 /// </summary>
 public sealed class RssFeed(AdventDbContext db, AdventSchedule schedule, IOptions<SiteOptions> site)
 {
+    /// <summary>
+    /// How many items <c>/rss</c> carries (#194): two seasons' worth, newest first, which is all a feed reader looks at. Every
+    /// season's own feed keeps all of its posts.
+    /// </summary>
+    public const int LatestItems = 100;
+
     public async Task<List<FeedItem>> GetItemsAsync(int? year = null, CancellationToken cancellationToken = default)
     {
-        var slots = await db.Slots
+        var limit = year is null ? LatestItems : int.MaxValue;
+
+        // Newest first, so the all-seasons feed stops reading once it has enough revealed posts.
+        var slots = db.Slots
             .AsNoTracking()
             // Never the test season, even for its testers: feed readers remember items, and these are deleted afterwards.
             .Where(s => (year == null || s.SeasonYear == year) && s.SeasonYear != Season.TestYear && s.PostTitle != null && s.PostUrl != null && s.AuthorName != null)
+            .OrderByDescending(s => s.SeasonYear).ThenByDescending(s => s.Day).ThenBy(s => s.Part)
             .Select(s => new { s.SeasonYear, s.Day, s.Part, s.Season.SlotsPerDay, s.PostTitle, s.AuthorName, s.PostSummary })
-            .ToListAsync(cancellationToken);
+            .AsAsyncEnumerable();
+
+        var entries = new List<FeedItem>();
+        await foreach (var s in slots.WithCancellation(cancellationToken))
+        {
+            // Only what's been revealed: the reveal time depends on the time zone, so it's checked here rather than in SQL (#5).
+            if (!schedule.IsRevealed(s.SeasonYear, s.Day))
+            {
+                continue;
+            }
+
+            entries.Add(new FeedItem(s.SeasonYear, s.Day, s.Part, s.SlotsPerDay, s.PostTitle!, s.AuthorName!, schedule.GetRevealTime(s.SeasonYear, s.Day)) { PostSummary = s.PostSummary });
+            if (entries.Count == limit)
+            {
+                break;
+            }
+        }
 
         var retrospectives = await db.Retrospectives
             .AsNoTracking()
             .Where(r => (year == null || r.SeasonYear == year) && r.PublishedAt != null)
             .ToListAsync(cancellationToken);
 
-        // Only what's been revealed: the reveal time depends on the time zone, so it's checked here rather than in SQL (#5).
-        return [.. slots
-            .Where(s => schedule.IsRevealed(s.SeasonYear, s.Day))
-            .Select(s => new FeedItem(s.SeasonYear, s.Day, s.Part, s.SlotsPerDay, s.PostTitle!, s.AuthorName!, schedule.GetRevealTime(s.SeasonYear, s.Day)) { PostSummary = s.PostSummary })
+        return [.. entries
             .Concat(retrospectives.Select(r => FeedItem.Retrospective(r.SeasonYear, r.Title, RetrospectiveDraft.Summary(r.Stats), r.PublishedAt!.Value)))
             .OrderByDescending(item => item.RevealedAt)
-            .ThenBy(item => item.Part)];
+            .ThenBy(item => item.Part)
+            .Take(limit)];
     }
 
     public string Write(IReadOnlyList<FeedItem> items, int? year = null)
@@ -114,10 +138,13 @@ public sealed class RssFeed(AdventDbContext db, AdventSchedule schedule, IOption
             writer.WriteAttributeString("type", "application/rss+xml");
             writer.WriteEndElement();
 
+            // RSS 2.0 allows a channel image up to 144 pixels wide.
             writer.WriteStartElement("image");
-            writer.WriteElementString("url", $"{root}/images/csadvent-logo.png");
+            writer.WriteElementString("url", $"{root}/{FeedImage}");
             writer.WriteElementString("title", year is { } imageYear ? $"C# Advent {imageYear}" : "C# Advent");
             writer.WriteElementString("link", root);
+            writer.WriteElementString("width", "144");
+            writer.WriteElementString("height", "144");
             writer.WriteEndElement();
 
             foreach (var item in items)
@@ -142,6 +169,9 @@ public sealed class RssFeed(AdventDbContext db, AdventSchedule schedule, IOption
 
         return output.ToString();
     }
+
+    /// <summary>The logo at 144 pixels. A stable path, because feed readers keep it.</summary>
+    public const string FeedImage = "images/csadvent-logo-144.png";
 
     private static string Rfc822(DateTimeOffset moment) => moment.UtcDateTime.ToString("r", CultureInfo.InvariantCulture);
 

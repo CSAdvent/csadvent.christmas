@@ -64,7 +64,7 @@ public sealed record EntryView(
 }
 
 /// <summary>Entry pages, the tracked redirect to each post, and their visit and click counts.</summary>
-public sealed class EntryService(AdventDbContext db, AdventSchedule schedule, TimeProvider timeProvider, SeasonAccess access)
+public sealed partial class EntryService(AdventDbContext db, AdventSchedule schedule, TimeProvider timeProvider, SeasonAccess access, ILogger<EntryService> logger)
 {
     /// <summary>
     /// The entry, or nothing if the spot doesn't exist, or it's been revealed without a post (an author who never published
@@ -179,10 +179,23 @@ public sealed class EntryService(AdventDbContext db, AdventSchedule schedule, Ti
         return slot is null ? null : (slot.Id, slot.PostUrl!);
     }
 
+    /// <summary>
+    /// Counts a visit or a click. A count that can't be saved is logged, never thrown, so the reader still gets the page or
+    /// the post (#196).
+    /// </summary>
     public async Task RecordAsync(int slotId, EntryHitKind kind, string? via, CancellationToken cancellationToken = default)
     {
-        db.EntryHits.Add(new EntryHit { SlotId = slotId, Kind = kind, Via = EntryVia.Normalize(via), At = timeProvider.GetUtcNow() });
-        await db.SaveChangesAsync(cancellationToken);
+        var hit = db.EntryHits.Add(new EntryHit { SlotId = slotId, Kind = kind, Via = EntryVia.Normalize(via), At = timeProvider.GetUtcNow() });
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            // Not left to be saved by anything else in this request.
+            hit.State = EntityState.Detached;
+            LogRecordFailed(exception, kind, slotId);
+        }
     }
 
     /// <summary>Clicks per slot for a season, for the organizers' entries list.</summary>
@@ -192,4 +205,7 @@ public sealed class EntryService(AdventDbContext db, AdventSchedule schedule, Ti
             .GroupBy(h => h.SlotId)
             .Select(g => new { SlotId = g.Key, Count = g.Count() })
             .ToDictionaryAsync(g => g.SlotId, g => g.Count, cancellationToken);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't count a {Kind} of slot {SlotId}; the reader was served anyway")]
+    private partial void LogRecordFailed(Exception exception, EntryHitKind kind, int slotId);
 }

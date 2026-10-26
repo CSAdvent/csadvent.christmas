@@ -1,0 +1,10 @@
+@*
+    schema.org structured data for search engines (#195), built by StructuredData. It goes in the head, as SocialMeta's child
+    content. A data block, not a script that runs, so the Content-Security-Policy doesn't apply to it.
+*@
+<script type="application/ld+json">@((MarkupString)StructuredData.Serialize(Data))</script>
+
+@code {
+    [Parameter, EditorRequired]
+    public required System.Text.Json.Nodes.JsonObject Data { get; set; }
+}

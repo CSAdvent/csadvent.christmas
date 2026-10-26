@@ -200,7 +200,10 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 - **The blurb check's Anthropic API key** lasts until it's revoked. Check its workspace's spend limit in the Anthropic
   Console, and replace the `ANTHROPIC_API_KEY` secret the same way as the social ones if it's ever rotated.
 - **Domains:** the managed certificates for csadvent.christmas and www renew themselves while the app is running. The
-  domain itself doesn't: check its expiry date and auto-renew at Hover (see below).
+  domain itself doesn't: check its expiry date and auto-renew at Hover (see below). csadvent.christmas's certificate is
+  validated over plain http, which reaches the app since #165 (`AllowInsecure`, so http://www. is one redirect): check
+  `az containerapp env certificate list` shows both as Succeeded, and if a renewal ever fails, turning `AllowInsecure`
+  off in `AppHost.cs` is the first thing to try.
 - **Sign-in:** sign in to the live site with GitHub. Nothing else notices a revoked OAuth secret.
 - **hello@:** send it a test email from another address. Nothing else notices ImprovMX failing.
 - **GitHub Actions minutes:** check the organization's usage before November (see below).

@@ -28,6 +28,7 @@ using Microsoft.Extensions.Options;
 using OpenTelemetry.Instrumentation.Http;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.AddSecurityHeaders();
 
 // Add service defaults & Aspire client integrations.
 builder.AddServiceDefaults();
@@ -207,15 +208,8 @@ var app = builder.Build();
 // Container Apps' probes ask /health and /alive. First, so nothing redirects them.
 app.UseDefaultHealthChecks();
 
-// Basic security headers on every response, static files included. HSTS comes from UseHsts. Pages can only be framed by
-// this site. Links out to authors' posts still tell them the visit came from here.
-app.Use(async (context, next) =>
-{
-    context.Response.Headers.XContentTypeOptions = "nosniff";
-    context.Response.Headers.XFrameOptions = "SAMEORIGIN";
-    context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
-    await next();
-});
+// Security headers on every response, static files and redirects included (#165).
+app.UseSecurityHeaders();
 
 // www.csadvent.christmas (and links to it) go to csadvent.christmas.
 app.UseCanonicalHost();
@@ -224,8 +218,6 @@ app.UseCanonicalHost();
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-    app.UseHsts();
 }
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseHttpsRedirection();
