@@ -1,4 +1,3 @@
-using System.Text.Json;
 using CSAdvent.Web.Claims;
 using CSAdvent.Web.Data;
 using Microsoft.EntityFrameworkCore;
@@ -79,15 +78,14 @@ public sealed class SocialPlatformModes(AdventDbContext db, SocialPublishers pub
         {
             await publisher.CheckAsync(cancellationToken);
         }
-        catch (Exception exception) when (exception is SocialPublishException or HttpRequestException or JsonException
-            || (exception is TaskCanceledException && !cancellationToken.IsCancellationRequested))
+        catch (Exception exception) when (SocialPostAttempts.IsPlatformFailure(exception, cancellationToken))
         {
-            error = exception is TaskCanceledException ? "It didn't answer in time." : exception.Message;
+            error = SocialPostAttempts.Describe(exception, platform);
         }
 
         var setting = await FindOrAddAsync(platform, checkedBy, cancellationToken);
         setting.CheckedAt = timeProvider.GetUtcNow();
-        setting.CheckError = error is null ? null : error[..Math.Min(error.Length, 1000)];
+        setting.CheckError = error;
         await db.SaveChangesAsync(cancellationToken);
         return error;
     }

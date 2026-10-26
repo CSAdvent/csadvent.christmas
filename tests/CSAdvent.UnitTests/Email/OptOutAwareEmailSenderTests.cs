@@ -6,6 +6,7 @@ using CSAdvent.Web.Content;
 using CSAdvent.Web.Contributors;
 using CSAdvent.Web.Email;
 using CSAdvent.Web.Reminders;
+using CSAdvent.Web.Social.Posting;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -127,5 +128,25 @@ public sealed class OptOutAwareEmailSenderTests
 
         // Emails to the organizers aren't about anything they signed up for; their inbox is never skipped anyway.
         Assert.False(SpotEmails.PostChanged(new PostChangeDetails(1, "Ada", 2026, 3, 1, 2, "Old", "New", null, null), Site).Transactional);
+    }
+
+    [Fact]
+    public async Task AutomaticPostingsAlertsReachTheOrganizersWithoutBeingTransactional()
+    {
+        var (sender, transport) = Create("hello@csadvent.christmas");
+        EmailContent[] alerts =
+        [
+            SocialCredentialCheck.CredentialsFailing(SocialPlatform.Facebook, "401 Unauthorized", Site),
+            SocialPostingAlerts.Unconfirmed(StoppedPost.Entry(SocialPlatform.Facebook, 2026, 6, 2, 2, "Title", mayHavePosted: true, "Facebook didn't answer in time.", 1), Site),
+            SocialPostingAlerts.GaveUp(StoppedPost.Season(SocialPlatform.X, 2026, CSAdvent.Web.Data.SeasonPostKind.SignUpsOpen, mayHavePosted: false, "403 Forbidden"), Site),
+        ];
+
+        foreach (var alert in alerts)
+        {
+            Assert.False(alert.Transactional, alert.Subject);
+            await sender.SendAsync(Email(Site.ContactEmail, alert.Transactional), TestContext.Current.CancellationToken);
+        }
+
+        Assert.Equal(alerts.Length, transport.Sent.Count);
     }
 }

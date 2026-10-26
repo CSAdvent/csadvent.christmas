@@ -22,7 +22,7 @@ public enum SeasonPostKind
 /// open (once per season and platform), from the page, or marked posted after copying it; or the season's retrospective,
 /// once per platform, from its page (<c>/manage/retrospectives/{year}</c>).
 /// </summary>
-public sealed class SeasonSocialPost
+public sealed class SeasonSocialPost : ISocialPostRecord
 {
     public int Id { get; private set; }
 

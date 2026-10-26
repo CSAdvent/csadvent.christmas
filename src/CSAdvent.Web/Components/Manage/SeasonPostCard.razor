@@ -8,8 +8,9 @@
     var platform = Post.Announcement.Platform;
     // "Sign-ups are open" and the retrospective go out once; "soon" can go out again.
     var openDone = SeasonSocialService.IsOnce(Kind) && Post.Posts.Any(p => p.Status is SocialPostStatus.Posted or SocialPostStatus.Posting);
+    var unconfirmed = SeasonSocialService.IsOnce(Kind) && Post.Posts.Any(p => p.Status is SocialPostStatus.Unconfirmed);
 }
-<article class="flex flex-col rounded-xl p-4 ring-1 @(openDone ? "bg-green-50 ring-green-200" : "bg-white ring-slate-200")">
+<article class="flex flex-col rounded-xl p-4 ring-1 @(openDone ? "bg-green-50 ring-green-200" : unconfirmed ? "bg-amber-50 ring-amber-200" : "bg-white ring-slate-200")">
     <header class="flex items-center justify-between gap-2">
         <h3 class="font-semibold text-slate-900">@platform</h3>
         @if (Post.Announcement.Limit is { } limit)
@@ -57,9 +58,33 @@
             {
                 <p class="font-medium text-slate-700">Posting now…</p>
             }
-            else if (posted.Status is SocialPostStatus.Failed)
+            else if (posted.Status is SocialPostStatus.Failed or SocialPostStatus.Unconfirmed)
             {
-                <p class="text-red-700">Posting failed: @posted.Error</p>
+                <div class="flex flex-wrap items-start gap-2 @(posted.Status is SocialPostStatus.Unconfirmed ? "text-amber-900" : "text-red-700")">
+                    @if (posted.Status is SocialPostStatus.Unconfirmed)
+                    {
+                        @* It may have gone out (#154): checking comes before posting again, which could post it twice. *@
+                        <p class="min-w-0 flex-1">
+                            <span class="font-semibold">Did it go out?</span> @platform never said: @posted.Error Look for it on C# Advent's
+                            @platform account before posting again. If it's there, mark it posted.
+                        </p>
+                    }
+                    else
+                    {
+                        <p class="min-w-0 flex-1">Posting failed: @posted.Error</p>
+                    }
+                    @if (!SeasonSocialService.IsOnce(Kind))
+                    {
+                        @* "Soon" posts get a new row each time, so one that didn't go out (or was checked) can be cleared away. *@
+                        <form method="post" action="manage/social/signups/unmark">
+                            <AntiforgeryToken />
+                            <input type="hidden" name="Year" value="@Year" />
+                            <input type="hidden" name="Kind" value="@Kind" />
+                            <input type="hidden" name="PostId" value="@posted.Id" />
+                            <button type="submit" class="rounded-md px-2 py-1 text-slate-600 ring-1 ring-slate-300 hover:bg-white">Dismiss</button>
+                        </form>
+                    }
+                </div>
             }
             else
             {

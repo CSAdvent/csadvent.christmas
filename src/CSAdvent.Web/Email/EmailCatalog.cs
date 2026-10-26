@@ -274,6 +274,24 @@ public static class EmailCatalog
             site => CSAdvent.Web.Social.Posting.SocialCredentialCheck.CredentialsFailing(
                 CSAdvent.Web.Claims.SocialPlatform.Facebook, "401 Unauthorized: Error validating access token: The session has been invalidated.", site)),
         new(
+            "social-post-unconfirmed",
+            "Did a social post go out?",
+            "When an automatic post (an entry's announcement, or the “sign-ups are open” post) may have gone out without the platform saying so: it timed out or lost its connection once the post was sent, the platform answered with a server error, or a restart interrupted it. It isn't tried again by itself. A Bluesky timeout is just tried again, because Bluesky looks for the post first.",
+            "The organizers.",
+            site => CSAdvent.Web.Social.Posting.SocialPostingAlerts.Unconfirmed(
+                CSAdvent.Web.Social.Posting.StoppedPost.Entry(
+                    CSAdvent.Web.Claims.SocialPlatform.Facebook, 2026, 6, 2, 2, "Span<T> all the way down", mayHavePosted: true, "Facebook didn't answer in time.", 1),
+                site)),
+        new(
+            "social-post-gave-up",
+            "Automatic posting gave up on a post",
+            "When an entry's announcement fails its last automatic try (the third, about 15 minutes after the first), or the automatic “sign-ups are open” post fails (it isn't tried again by itself).",
+            "The organizers.",
+            site => CSAdvent.Web.Social.Posting.SocialPostingAlerts.GaveUp(
+                CSAdvent.Web.Social.Posting.StoppedPost.Entry(
+                    CSAdvent.Web.Claims.SocialPlatform.X, 2026, 6, 2, 2, "Span<T> all the way down", mayHavePosted: false, "402 Payment Required: Your enrolled account does not have any credits.", 3),
+                site)),
+        new(
             "announcements-confirm",
             "Confirm announcements",
             "When someone enters an address for announcements, unless it's already on the list or was sent one in the last day.",

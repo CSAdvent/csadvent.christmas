@@ -74,6 +74,7 @@ public sealed class PublisherTests
         {
             "/xrpc/com.atproto.server.createSession" => (HttpStatusCode.OK, """{ "accessJwt": "jwt", "did": "did:plc:csadvent" }"""),
             "/xrpc/com.atproto.identity.resolveHandle" => (HttpStatusCode.OK, """{ "did": "did:plc:ada" }"""),
+            "/xrpc/com.atproto.repo.getRecord" => (HttpStatusCode.BadRequest, """{ "error": "RecordNotFound", "message": "Could not locate record" }"""),
             "/xrpc/com.atproto.repo.uploadBlob" => (HttpStatusCode.OK, """{ "blob": { "$type": "blob", "ref": { "$link": "bafkcard" }, "mimeType": "image/jpeg", "size": 3 } }"""),
             "/xrpc/com.atproto.repo.createRecord" => (HttpStatusCode.OK, """{ "uri": "at://did:plc:csadvent/app.bsky.feed.post/3kabc", "cid": "bafyrecord" }"""),
             _ => (HttpStatusCode.NotFound, "{}"),

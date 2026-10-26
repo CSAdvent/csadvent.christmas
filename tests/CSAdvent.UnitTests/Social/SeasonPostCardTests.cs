@@ -38,13 +38,52 @@ public sealed class SeasonPostCardTests : BunitContext
         Assert.Empty(card.FindAll("span[aria-disabled='true']"));
     }
 
-    private IRenderedComponent<SeasonPostCard> RenderCard(SocialPlatform platform, bool canPost) =>
+    [Fact]
+    public void AnUnconfirmedPostAsksForACheckBeforeItsPostedAgain()
+    {
+        var card = RenderCard(SocialPlatform.Facebook, canPost: true, SeasonPostKind.SignUpsOpen, Unconfirmed(SeasonPostKind.SignUpsOpen), canPostAutomatically: true);
+
+        Assert.Contains("Did it go out?", card.Find("article").TextContent);
+        Assert.Contains("Facebook never said: Facebook didn't answer in time.", card.Find("article").TextContent);
+        Assert.Contains("bg-amber-50", card.Find("article").GetAttribute("class"));
+        Assert.Equal("Post now", card.Find("form[action='manage/social/signups/post'] button").TextContent.Trim());
+        Assert.Equal("Mark as posted", card.Find("form[action='manage/social/signups/mark'] button").TextContent.Trim());
+        Assert.Empty(card.FindAll("form[action='manage/social/signups/unmark']"));
+    }
+
+    [Fact]
+    public void AComingSoonPostThatDidntGoOutCanBeDismissed()
+    {
+        var card = RenderCard(SocialPlatform.Facebook, canPost: true, SeasonPostKind.SignUpsSoon, Unconfirmed(SeasonPostKind.SignUpsSoon), canPostAutomatically: true);
+
+        Assert.Equal("Dismiss", card.Find("form[action='manage/social/signups/unmark'] button").TextContent.Trim());
+    }
+
+    private static SeasonSocialPost Unconfirmed(SeasonPostKind kind) => new()
+    {
+        SeasonYear = 2026,
+        Kind = kind,
+        Platform = SocialPlatform.Facebook,
+        Status = SocialPostStatus.Unconfirmed,
+        At = new DateTimeOffset(2026, 11, 1, 14, 0, 0, TimeSpan.Zero),
+        MarkedBy = SocialPostingService.Automation,
+        Error = "Facebook didn't answer in time.",
+    };
+
+    private IRenderedComponent<SeasonPostCard> RenderCard(
+        SocialPlatform platform,
+        bool canPost,
+        SeasonPostKind kind = SeasonPostKind.SignUpsOpen,
+        SeasonSocialPost? posted = null,
+        bool canPostAutomatically = false) =>
         Render<SeasonPostCard>(p => p
             .Add(c => c.Year, 2026)
-            .Add(c => c.Kind, SeasonPostKind.SignUpsOpen)
+            .Add(c => c.Kind, kind)
             .Add(c => c.Post, new SeasonPostPlatform(
-                AnnouncementFormatter.FormatSignUpsOpen(2026, platform, "https://csadvent.christmas", Ours),
-                new PlatformPosting(platform, SocialPostingMode.Manual, CanPostAutomatically: false, IsDryRun: false, CheckedAt: null, CheckError: null),
-                []))
+                kind is SeasonPostKind.SignUpsSoon
+                    ? AnnouncementFormatter.FormatSignUpsSoon(2026, new DateOnly(2026, 11, 1), 8, platform, "https://csadvent.christmas", Ours)
+                    : AnnouncementFormatter.FormatSignUpsOpen(2026, platform, "https://csadvent.christmas", Ours),
+                new PlatformPosting(platform, SocialPostingMode.Manual, CanPostAutomatically: canPostAutomatically, IsDryRun: false, CheckedAt: null, CheckError: null),
+                posted is null ? [] : [posted]))
             .Add(c => c.CanPost, canPost));
 }

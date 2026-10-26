@@ -53,9 +53,6 @@ public sealed partial class AnnouncementService(
 {
     public const string Automation = "automation";
 
-    /// <summary>The "sign-ups are open" email is only queued this soon after sign-ups open, so creating a season late doesn't send a stale one.</summary>
-    public static readonly TimeSpan SignUpsAnnouncedWithin = TimeSpan.FromDays(2);
-
     /// <summary>What the email queue knows an announcement's copies by.</summary>
     public static string Reference(int announcementId) => string.Create(System.Globalization.CultureInfo.InvariantCulture, $"announcement:{announcementId}");
 
@@ -258,14 +255,13 @@ public sealed partial class AnnouncementService(
 
     /// <summary>
     /// The season whose sign-ups have just opened, if it's time to say so: only the current season, never the test season,
-    /// from the morning send time once sign-ups are open, and for <see cref="SignUpsAnnouncedWithin"/>.
+    /// when <see cref="AdventSchedule.IsTimeToAnnounceSignUps"/> says (the "sign-ups are open" social posts use it too).
     /// </summary>
     private async Task<int?> SignUpsOpeningAsync(DateTimeOffset now, int? current, CancellationToken cancellationToken)
     {
         if (current is not { } year || year == Season.TestYear
-            || await db.Seasons.Where(s => s.Year == year).Select(s => s.ClaimsOpenAt).SingleAsync(cancellationToken) is not { } opensAt
-            || now < opensAt || now - opensAt > SignUpsAnnouncedWithin
-            || TimeOnly.FromDateTime(schedule.ToLocalTime(now).DateTime) < reminders.Value.SendAt)
+            || !schedule.IsTimeToAnnounceSignUps(
+                await db.Seasons.Where(s => s.Year == year).Select(s => s.ClaimsOpenAt).SingleAsync(cancellationToken), now, reminders.Value.SendAt))
         {
             return null;
         }
