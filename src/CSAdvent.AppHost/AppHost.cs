@@ -59,12 +59,18 @@ var postgres = builder.AddAzurePostgresFlexibleServer("postgres")
         }
     });
 
+// The Key Vault for the database's connection strings, which also holds the key that encrypts the data protection keys
+// (#193). Publish mode only, like everything in it.
+IResourceBuilder<AzureKeyVaultResource>? keyVault = null;
 if (isPublish)
 {
     // Password authentication, so the EF migration bundle can connect with a plain connection string (Entra ID tokens
-    // don't survive its --connection argument). The connection strings go into a Key Vault that Aspire adds. Publish
-    // mode only: locally it would change the container's user and lock out the existing data volume.
+    // don't survive its --connection argument). The connection strings go into the Key Vault. It's the one Aspire used to
+    // add by itself, under the same name, so it's the same vault in Azure. Publish mode only: locally it would change the
+    // container's user and lock out the existing data volume.
+    keyVault = builder.AddAzureKeyVault("postgres-kv");
     postgres.WithPasswordAuthentication(
+        keyVault,
         builder.AddParameter("pg-admin-username"),
         builder.AddParameter("pg-admin-password", secret: true));
 }
@@ -140,6 +146,15 @@ if (isPublish)
     // Email goes through Azure Communication Services. The web app sends with its own managed identity, so there's no key.
     var webIdentity = builder.AddAzureUserAssignedIdentity("web-identity");
     web.WithAzureUserAssignedIdentity(webIdentity);
+
+    // The data protection keys (sign-in cookies, antiforgery tokens, the links in emails) are encrypted with a key in the Key
+    // Vault before they're saved (#193). Only the web app's identity can use it, to wrap and unwrap. The web app refuses to
+    // start without it, so a deploy that's missing the key or the role fails, rather than making keys other replicas can't
+    // read.
+    var dataProtection = builder.AddBicepTemplate("dataprotection", "infra/dataprotection.bicep")
+        .WithParameter("keyVaultName", keyVault!.Resource.NameOutputReference)
+        .WithParameter("webPrincipalId", webIdentity.Resource.PrincipalId);
+    web.WithEnvironment("DataProtection__KeyVaultKeyId", dataProtection.GetOutput("keyUri"));
 
     // The sending domain is connected by the first deploy after it's verified in DNS (see the README).
     var acs = builder.AddBicepTemplate("acs", "infra/acs.bicep")

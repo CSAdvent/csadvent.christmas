@@ -212,3 +212,22 @@ jobs:
           # The new revision can take a minute to start.
           curl --fail --silent --show-error --output /dev/null --retry 10 --retry-delay 15 --retry-all-errors "https://$host/"
           echo "https://$host/ is up."
+
+      # A new revision that can't start never takes traffic, so the old one keeps answering and the check above passes anyway.
+      # Azure should only finish updating the web app once its new revision is ready, failing aspire deploy (MigrateFirst.cs),
+      # but this makes sure. The web app refuses to start without its data protection key in Key Vault, or the role to use it
+      # (#193), and this catches any other revision that never becomes ready too.
+      - name: Check the new revision is serving
+        if: steps.commit.outputs.deploy == 'true'
+        run: |
+          for _ in $(seq 1 60); do
+            latest=$(az containerapp show -n web -g "$Azure__ResourceGroup" --query properties.latestRevisionName -o tsv)
+            ready=$(az containerapp show -n web -g "$Azure__ResourceGroup" --query properties.latestReadyRevisionName -o tsv)
+            if [ "$latest" = "$ready" ]; then
+              echo "The new revision, $latest, is serving."
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::The new revision $latest didn't become ready within 10 minutes, so $ready is still serving. Its console logs say why (the runbook's Data Protection Key, if it's about Key Vault)."
+          exit 1

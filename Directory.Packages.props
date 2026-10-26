@@ -6,6 +6,7 @@
   <ItemGroup Label="Aspire hosting">
     <PackageVersion Include="Aspire.Hosting.Azure.AppContainers" Version="13.6.2" />
     <PackageVersion Include="Aspire.Hosting.Azure.ApplicationInsights" Version="13.6.2" />
+    <PackageVersion Include="Aspire.Hosting.Azure.KeyVault" Version="13.6.2" />
     <PackageVersion Include="Aspire.Hosting.Azure.PostgreSQL" Version="13.6.2" />
     <PackageVersion Include="Aspire.Hosting.EntityFrameworkCore" Version="13.6.2-preview.1.26519.11" />
     <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.6.2" />
@@ -26,6 +27,8 @@
     <!-- Claude Haiku, for the blurb check -->
     <PackageVersion Include="Anthropic" Version="13.3.0" />
     <PackageVersion Include="Azure.Communication.Email" Version="1.1.0" />
+    <!-- Encrypts the data protection keys at rest with a key in Key Vault (#193) -->
+    <PackageVersion Include="Azure.Extensions.AspNetCore.DataProtection.Keys" Version="1.6.5" />
     <PackageVersion Include="Azure.Identity" Version="1.21.0" />
     <PackageVersion Include="MailKit" Version="4.18.2" />
     <PackageVersion Include="Markdig" Version="1.5.0" />
