@@ -73,6 +73,19 @@
     [Parameter, EditorRequired]
     public required SeasonCalendar Calendar { get; set; }
 
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        // The countdown carries the server's time (data-now). Browsers show a page they kept when you go back to it, which
+        // would count down from the wrong moment, so a page with a countdown is never kept.
+        if (Calendar.CountingDownTo is not null && HttpContext is { Response.HasStarted: false } context)
+        {
+            context.Response.Headers.CacheControl = "no-cache, no-store";
+        }
+    }
+
     private static string Iso(DateTimeOffset moment) => moment.ToString("O", CultureInfo.InvariantCulture);
 
     /// <summary>"11:42:07": hours, minutes and seconds, as countdown.js writes it.</summary>

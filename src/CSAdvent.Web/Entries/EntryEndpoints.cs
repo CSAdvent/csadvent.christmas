@@ -15,7 +15,7 @@ public static class EntryEndpoints
                 return Results.NotFound();
             }
 
-            if (EntryTraffic.IsPerson(request))
+            if (EntryTraffic.IsClick(request))
             {
                 await entries.RecordAsync(post.SlotId, EntryHitKind.Click, via, cancellationToken);
             }

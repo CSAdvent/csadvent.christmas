@@ -6,7 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#1a509d" />
     <BasePath />
-    <ResourcePreloader />
     <link rel="icon" href="@Assets["favicon.ico"]" sizes="any" />
     <link rel="icon" type="image/png" sizes="32x32" href="@Assets["favicon-32x32.png"]" />
     <link rel="icon" type="image/png" sizes="16x16" href="@Assets["favicon-16x16.png"]" />
@@ -14,15 +13,17 @@
     <link rel="manifest" href="@Assets["site.webmanifest"]" />
     <link rel="alternate" type="application/rss+xml" title="C# Advent" href="rss" />
     <link rel="stylesheet" href="@Assets["app.css"]" />
-    <link rel="stylesheet" href="@Assets["CSAdvent.Web.styles.css"]" />
-    <ImportMap />
     <HeadOutlet />
 </head>
 
-<body class="min-h-screen bg-advent-950 bg-advent-candles bg-cover bg-fixed bg-center text-slate-800 antialiased">
+<body class="min-h-screen bg-advent-950 text-slate-800 antialiased">
+    @* The candles, fixed behind every page. An image rather than a CSS background, so its address is fingerprinted and browsers keep it (#186). *@
+    <picture>
+        <source type="image/webp" srcset="@Assets["images/advent-bg-1280.webp"] 1280w, @Assets["images/advent-bg-2560.webp"] 2560w" sizes="100vw" />
+        <img src="@Assets["images/advent-bg-1280.jpg"]" srcset="@Assets["images/advent-bg-1280.jpg"] 1280w, @Assets["images/advent-bg-2560.jpg"] 2560w" sizes="100vw" alt="" class="fixed inset-0 -z-10 size-full object-cover" />
+    </picture>
     <Routes />
-    <ReconnectModal />
-    <script src="@Assets["_framework/blazor.web.js"]"></script>
+    @* No Blazor script: pages render on the server and every form is a plain HTML form, so each link loads a whole page (#185). *@
     <script src="@Assets["js/copy.js"]" defer></script>
     <script src="@Assets["js/countdown.js"]" defer></script>
 </body>

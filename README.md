@@ -8,7 +8,7 @@
 
 ## 🧱 Stack
 
-- 🟣 **.NET 11** - Blazor Web App, static server rendering by default and interactivity only where a page needs it
+- 🟣 **.NET 11** - Blazor Web App, rendered on the server with plain HTML forms and no Blazor script in the browser
 - 🐘 **PostgreSQL** - every season from 2017 onward, archives included, with EF Core 11 migrations
 - ✨ **Aspire** - local orchestration, telemetry, and deployment
 - 🎨 **Tailwind CSS 4** - built during `dotnet build` with Tailwind's official standalone CLI, so no Node is needed

@@ -1,5 +1,6 @@
 using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Cards;
+using Microsoft.AspNetCore.Http;
 using SkiaSharp;
 
 namespace CSAdvent.UnitTests.Cards;
@@ -73,6 +74,21 @@ public sealed class CardTests
         Assert.Equal("cards/2024.jpg?v=50", CardLinks.Season(2024, 50));
         Assert.Equal("cards/2026.jpg", CardLinks.Season(2026, null));
         Assert.Equal("cards/2026.jpg?v=signups-2026-11-01", CardLinks.Upcoming(2026, new DateOnly(2026, 11, 1)));
+    }
+
+    [Theory]
+    [InlineData("/cards/2026/3/1.jpg", "?v=abc123", "cards/2026/3/1.jpg?v=abc123", "public, max-age=31536000, immutable")]
+    [InlineData("/cards/2026/3/1.jpg", "?v=old", "cards/2026/3/1.jpg?v=abc123", "public, max-age=86400")]
+    [InlineData("/cards/2026/3/1.jpg", "", "cards/2026/3/1.jpg?v=abc123", "public, max-age=86400")]
+    [InlineData("/cards/2024.jpg", "?v=50", "cards/2024.jpg?v=50", "public, max-age=31536000, immutable")]
+    [InlineData("/cards/2026.jpg", "", "cards/2026.jpg", "public, max-age=86400")]
+    public void CardsAreKeptForGoodOnlyByTheirCurrentVersionedLink(string path, string query, string currentLink, string expected)
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Path = path;
+        context.Request.QueryString = new QueryString(query);
+
+        Assert.Equal(expected, CardEndpoints.CacheControlFor(context.Request, currentLink));
     }
 
     [Fact]
