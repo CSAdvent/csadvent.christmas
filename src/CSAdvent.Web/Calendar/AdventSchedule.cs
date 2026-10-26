@@ -104,6 +104,21 @@ public sealed class AdventSchedule
     /// <summary>Claims are open from the season's <see cref="Season.ClaimsOpenAt"/>; never if it isn't scheduled.</summary>
     public bool AreClaimsOpen(DateTimeOffset? claimsOpenAt) => claimsOpenAt is { } opensAt && _timeProvider.GetUtcNow() >= opensAt;
 
+    /// <summary>
+    /// How long after a season's sign-ups open they're still announced by themselves, so a season scheduled late doesn't
+    /// announce stale news.
+    /// </summary>
+    public static readonly TimeSpan SignUpsAnnouncedWithin = TimeSpan.FromDays(2);
+
+    /// <summary>
+    /// Whether it's time to announce that a season's sign-ups are open (the email to the announcements list, and the
+    /// Automatic platforms' post): once they're open, from <paramref name="sendAt"/> in the reveal time zone, for
+    /// <see cref="SignUpsAnnouncedWithin"/>. Never if they aren't scheduled.
+    /// </summary>
+    public bool IsTimeToAnnounceSignUps(DateTimeOffset? claimsOpenAt, DateTimeOffset now, TimeOnly sendAt) =>
+        claimsOpenAt is { } opensAt && now >= opensAt && now - opensAt <= SignUpsAnnouncedWithin
+        && TimeOnly.FromDateTime(ToLocalTime(now).DateTime) >= sendAt;
+
     /// <summary>Today's date in the reveal time zone.</summary>
     public DateOnly Today => DateOnly.FromDateTime(ToLocalTime(_timeProvider.GetUtcNow()).DateTime);
 

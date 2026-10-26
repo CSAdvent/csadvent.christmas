@@ -64,11 +64,16 @@ public static class SocialEndpoints
             return Results.LocalRedirect(Back(form.ReturnUrl, null));
         });
 
-        // Automatic posting (#61): retry a failed post now, change a platform's mode, or check its credentials.
+        // Automatic posting (#61): retry a failed or unconfirmed post now, change a platform's mode, or check its credentials.
         group.MapPost("/retry", async ([FromForm] SocialMarkForm form, SocialPostingService posting, TimeProvider timeProvider, CancellationToken cancellationToken) =>
         {
             var outcome = await posting.RetryAsync(form.SlotId, form.Platform, timeProvider.GetUtcNow(), cancellationToken);
-            return Results.LocalRedirect(Back(form.ReturnUrl, outcome is PostOutcome.Failed ? "retry-failed" : null));
+            return Results.LocalRedirect(Back(form.ReturnUrl, outcome switch
+            {
+                PostOutcome.Failed => "retry-failed",
+                PostOutcome.Unconfirmed => "retry-unconfirmed",
+                _ => null,
+            }));
         });
 
         group.MapPost("/mode", async ([FromForm] SocialPlatformForm form, HttpContext context, SocialPlatformModes modes, CancellationToken cancellationToken) =>
@@ -94,7 +99,7 @@ public static class SocialEndpoints
         group.MapPost("/signups/post", async ([FromForm] SeasonPostForm form, HttpContext context, SeasonSocialService season, CancellationToken cancellationToken) =>
         {
             var outcome = await season.PostAsync(form.Year, form.Kind, form.Platform, context.User.Identity?.Name ?? "organizer", cancellationToken);
-            return Results.LocalRedirect(SeasonPostPage(form.Kind, form.Year, outcome is null or PostOutcome.Failed ? "not-posted" : null));
+            return Results.LocalRedirect(SeasonPostPage(form.Kind, form.Year, outcome is null or PostOutcome.Failed or PostOutcome.Unconfirmed ? "not-posted" : null));
         });
 
         group.MapPost("/signups/mark", async ([FromForm] SeasonPostForm form, HttpContext context, SeasonSocialService season, CancellationToken cancellationToken) =>

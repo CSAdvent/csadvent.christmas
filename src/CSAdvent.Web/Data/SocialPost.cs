@@ -16,13 +16,41 @@ public enum SocialPostStatus
     /// it twice.
     /// </summary>
     Posting,
+
+    /// <summary>
+    /// It may have gone out, but the platform never said (#154): the try timed out or lost its connection after sending it,
+    /// the platform answered with a server error, or it was interrupted. Trying again could post it twice, so it waits for
+    /// an organizer to check the account, then mark it posted or retry it.
+    /// </summary>
+    Unconfirmed,
+}
+
+/// <summary>
+/// What an entry's announcement (<see cref="SocialPost"/>) and a season post (<see cref="SeasonSocialPost"/>) have in common,
+/// so posting claims, records and recovers both the same way (#187).
+/// </summary>
+public interface ISocialPostRecord
+{
+    int Id { get; }
+
+    SocialPlatform Platform { get; }
+
+    SocialPostStatus Status { get; set; }
+
+    DateTimeOffset At { get; set; }
+
+    string? PostUrl { get; set; }
+
+    string MarkedBy { get; set; }
+
+    string? Error { get; set; }
 }
 
 /// <summary>
 /// An entry's announcement on one platform: marked by an organizer after posting it by hand, or recorded by automatic
 /// posting (#61). One per entry and platform.
 /// </summary>
-public sealed class SocialPost
+public sealed class SocialPost : ISocialPostRecord
 {
     public int Id { get; private set; }
 

@@ -38,8 +38,9 @@ public sealed class SocialPublishers(
 
     /// <summary>
     /// A client of its own rather than one from the factory, because the factory's default retries could post an
-    /// announcement twice when a request times out after the platform accepted it. Failed posts are retried by
-    /// <see cref="SocialPostingService"/>, which knows whether they went out.
+    /// announcement twice when a request times out after the platform accepted it. Posting decides what a failure means
+    /// instead (<see cref="SocialPostRequests.SendPostAsync"/>): one that may have gone out is only tried again where that
+    /// can't post it twice, and otherwise waits for an organizer to check (<see cref="SocialPostAttempts.StatusAfter"/>).
     /// </summary>
     public static HttpClient CreateClient()
     {

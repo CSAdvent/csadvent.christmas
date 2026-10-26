@@ -20,11 +20,9 @@ public sealed class FacebookPublisher(HttpClient http, FacebookCredentials crede
             new("link", publication.Announcement.Link),
         ]);
 
-        using var response = await http.SendAsync(request, cancellationToken);
-        await SocialPublishException.EnsureSuccessAsync(response, cancellationToken);
-
-        // The ID is "{page-id}_{post-id}", which is also the post's address on Facebook.
-        return (await response.Content.ReadFromJsonAsync<Created>(cancellationToken))?.Id is { Length: > 0 } id
+        // The ID is "{page-id}_{post-id}", which is also the post's address on Facebook. There's no idempotency key, so a try
+        // that may have gone out waits for an organizer to check (#154).
+        return (await http.SendPostAsync<Created>(request, Platform, cancellationToken))?.Id is { Length: > 0 } id
             ? $"https://www.facebook.com/{Uri.EscapeDataString(id)}"
             : null;
     }

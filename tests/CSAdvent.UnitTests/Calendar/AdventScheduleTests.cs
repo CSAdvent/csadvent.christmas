@@ -104,6 +104,25 @@ public sealed class AdventScheduleTests
         Assert.False(schedule.AreClaimsOpen(null));
     }
 
+    [Theory]
+    // Sign-ups open at midnight Eastern on November 1, 2026 (still daylight time); the announcements go from 9 AM (standard time).
+    [InlineData("2026-10-31T10:00:00-04:00", false)]
+    [InlineData("2026-11-01T08:59:00-05:00", false)]
+    [InlineData("2026-11-01T09:00:00-05:00", true)]
+    [InlineData("2026-11-02T08:00:00-05:00", false)]
+    [InlineData("2026-11-02T23:00:00-05:00", true)]
+    [InlineData("2026-11-03T09:30:00-05:00", false)]
+    public void SignUpsAreAnnouncedFromTheMorningSendTimeForTwoDays(string now, bool due)
+    {
+        var opensAt = new DateTimeOffset(2026, 11, 1, 0, 0, 0, TimeSpan.FromHours(-4));
+
+        Assert.Equal(due, CreateSchedule().IsTimeToAnnounceSignUps(opensAt, DateTimeOffset.Parse(now, System.Globalization.CultureInfo.InvariantCulture), new TimeOnly(9, 0)));
+    }
+
+    [Fact]
+    public void UnscheduledSignUpsAreNeverAnnounced() =>
+        Assert.False(CreateSchedule().IsTimeToAnnounceSignUps(null, new DateTimeOffset(2026, 11, 1, 12, 0, 0, TimeSpan.Zero), new TimeOnly(9, 0)));
+
     [Fact]
     public void TodayIsTheDateInTheRevealTimeZone()
     {

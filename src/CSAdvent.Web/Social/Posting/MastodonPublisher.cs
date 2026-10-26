@@ -5,7 +5,8 @@ namespace CSAdvent.Web.Social.Posting;
 
 /// <summary>
 /// Posts to C# Advent's Mastodon account with <c>POST /api/v1/statuses</c>. Mastodon builds the link card itself from the
-/// entry page's preview tags, and the idempotency key stops a retried request posting twice.
+/// entry page's preview tags. The idempotency key stops a retried request posting twice, but Mastodon only keeps it for an
+/// hour, so a try that may have gone out still waits for an organizer to check (#154).
 /// </summary>
 public sealed class MastodonPublisher(HttpClient http, string server, string accessToken) : ISocialPublisher
 {
@@ -22,9 +23,7 @@ public sealed class MastodonPublisher(HttpClient http, string server, string acc
             new("language", "en"),
         ]);
 
-        using var response = await http.SendAsync(request, cancellationToken);
-        await SocialPublishException.EnsureSuccessAsync(response, cancellationToken);
-        return (await response.Content.ReadFromJsonAsync<Status>(cancellationToken))?.Url;
+        return (await http.SendPostAsync<Status>(request, Platform, cancellationToken))?.Url;
     }
 
     public async Task CheckAsync(CancellationToken cancellationToken)

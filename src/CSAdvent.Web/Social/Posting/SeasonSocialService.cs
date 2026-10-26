@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text.Json;
 using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Cards;
 using CSAdvent.Web.Claims;
@@ -32,7 +31,8 @@ public sealed record SeasonPosts(
 /// Posts about a season rather than an entry (<c>/manage/social/signups</c>): "sign-ups open in 8 days", which organizers
 /// post whenever they like, and "sign-ups are open", which the platforms in Automatic mode post by themselves at the
 /// morning send time on the day sign-ups open, once. Also the season's retrospective, once it's published, which organizers
-/// post from its page once per platform. Never for the test season.
+/// post from its page once per platform. Never for the test season. They're claimed, posted, recorded and recovered the same
+/// way as entries' announcements (<see cref="SocialPostAttempts"/>), but a failure is never tried again by itself.
 /// </summary>
 public sealed partial class SeasonSocialService(
     AdventDbContext db,
@@ -40,6 +40,7 @@ public sealed partial class SeasonSocialService(
     SeasonAdminService seasons,
     SocialPlatformModes modes,
     SocialPublishers publishers,
+    SocialPostingAlerts alerts,
     CardRenderer cards,
     IOptions<SiteOptions> site,
     IOptions<SocialAccountsOptions> accounts,
@@ -47,9 +48,6 @@ public sealed partial class SeasonSocialService(
     TimeProvider timeProvider,
     ILogger<SeasonSocialService> logger)
 {
-    /// <summary>The "sign-ups are open" post only goes out automatically this soon after they open, so a late season doesn't post a stale one.</summary>
-    public static readonly TimeSpan PostedWithin = TimeSpan.FromDays(2);
-
     public async Task<SeasonPosts?> GetAsync(int year, CancellationToken cancellationToken = default)
     {
         if (year == Season.TestYear || !await db.Seasons.AnyAsync(s => s.Year == year, cancellationToken))
@@ -141,20 +139,30 @@ public sealed partial class SeasonSocialService(
         {
             Key = string.Create(CultureInfo.InvariantCulture, $"csadvent-{year}-{kind}-{daysUntil}-{platform}").ToLowerInvariant(),
         };
-        try
+
+        var attempt = await SocialPostAttempts.TryAsync(publisher, publication, cancellationToken);
+        var status = SocialPostAttempts.StatusAfter(attempt, publisher.RetriesAreSafe);
+        if (status is not SocialPostStatus.Posted)
         {
-            var postUrl = await publisher.PublishAsync(publication, cancellationToken);
-            await RecordAsync(claimId, SocialPostStatus.Posted, Uri.TryCreate(postUrl, UriKind.Absolute, out var uri) && uri.Scheme is "https" or "http" ? postUrl : null, null, cancellationToken);
-            return PostOutcome.Posted;
+            LogFailed(attempt.Exception, kind, platform, year);
         }
-        catch (Exception exception) when (exception is SocialPublishException or HttpRequestException or JsonException
-            || (exception is TaskCanceledException && !cancellationToken.IsCancellationRequested))
+
+        var recorded = await SocialPostAttempts.RecordAsync(
+            db.SeasonSocialPosts.Where(p => p.Id == claimId), status, attempt.PostUrl, attempt.Error, timeProvider.GetUtcNow(), cancellationToken);
+
+        // Nothing tries it again by itself, so an automatic post that didn't go out stops here. An organizer's own try
+        // shows on their page.
+        if (recorded && status is not SocialPostStatus.Posted && postedBy == SocialPostingService.Automation)
         {
-            var error = exception is TaskCanceledException ? $"{platform} didn't answer in time." : exception.Message;
-            LogFailed(exception, kind, platform, year);
-            await RecordAsync(claimId, SocialPostStatus.Failed, null, error[..Math.Min(error.Length, 1000)], cancellationToken);
-            return PostOutcome.Failed;
+            await alerts.StoppedAsync(StoppedPost.Season(platform, year, kind, status is SocialPostStatus.Unconfirmed, attempt.Error!), cancellationToken);
         }
+
+        return status switch
+        {
+            SocialPostStatus.Posted => PostOutcome.Posted,
+            SocialPostStatus.Unconfirmed => PostOutcome.Unconfirmed,
+            _ => PostOutcome.Failed,
+        };
     }
 
     /// <summary>Records a post an organizer made by hand. "Soon" can be marked as often as it's posted; the others once.</summary>
@@ -201,10 +209,12 @@ public sealed partial class SeasonSocialService(
     /// <param name="year">The season, instead of the current one (for the tests).</param>
     public async Task<int> RunAsync(DateTimeOffset now, int? year = null, CancellationToken cancellationToken = default)
     {
+        // Any season and kind: an organizer's Post now can be interrupted too (#161).
+        await GiveUpOnInterruptedAsync(cancellationToken);
+
         if ((year ?? await seasons.GetCurrentYearAsync(cancellationToken)) is not { } season || season == Season.TestYear
-            || await db.Seasons.Where(s => s.Year == season).Select(s => s.ClaimsOpenAt).SingleOrDefaultAsync(cancellationToken) is not { } opensAt
-            || now < opensAt || now - opensAt > PostedWithin
-            || TimeOnly.FromDateTime(schedule.ToLocalTime(now).DateTime) < reminders.Value.SendAt)
+            || !schedule.IsTimeToAnnounceSignUps(
+                await db.Seasons.Where(s => s.Year == season).Select(s => s.ClaimsOpenAt).SingleOrDefaultAsync(cancellationToken), now, reminders.Value.SendAt))
         {
             return 0;
         }
@@ -231,43 +241,34 @@ public sealed partial class SeasonSocialService(
     }
 
     /// <summary>
-    /// Claims the post: a new row, except that "sign-ups are open" and the retrospective reuse a failed one and are skipped
-    /// once posted (or being posted).
+    /// Claims the post: a new row, except that "sign-ups are open" and the retrospective reuse a failed or unconfirmed one
+    /// and are skipped once posted (or being posted).
     /// </summary>
     private async Task<int?> ClaimAsync(int year, SeasonPostKind kind, SocialPlatform platform, string postedBy, DateTimeOffset now, CancellationToken cancellationToken)
     {
         if (IsOnce(kind)
-            && await db.SeasonSocialPosts.SingleOrDefaultAsync(p => p.SeasonYear == year && p.Kind == kind && p.Platform == platform, cancellationToken) is { } existing)
+            && await db.SeasonSocialPosts.AsNoTracking()
+                .Where(p => p.SeasonYear == year && p.Kind == kind && p.Platform == platform)
+                .Select(p => new { p.Id })
+                .SingleOrDefaultAsync(cancellationToken) is { } existing)
         {
             var retried = await db.SeasonSocialPosts
-                .Where(p => p.Id == existing.Id && p.Status == SocialPostStatus.Failed)
+                .Where(p => p.Id == existing.Id && (p.Status == SocialPostStatus.Failed || p.Status == SocialPostStatus.Unconfirmed))
                 .ExecuteUpdateAsync(s => s.SetProperty(p => p.Status, SocialPostStatus.Posting).SetProperty(p => p.At, now).SetProperty(p => p.MarkedBy, postedBy), cancellationToken);
             return retried == 1 ? existing.Id : null;
         }
 
         var claim = new SeasonSocialPost { SeasonYear = year, Kind = kind, Platform = platform, Status = SocialPostStatus.Posting, At = now, MarkedBy = postedBy };
-        db.SeasonSocialPosts.Add(claim);
-        try
-        {
-            await db.SaveChangesAsync(cancellationToken);
-            return claim.Id;
-        }
-        catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
-        {
-            // Another run, or an organizer, got there first.
-            db.Entry(claim).State = EntityState.Detached;
-            return null;
-        }
+        return await SocialPostAttempts.TryClaimAsync(db, claim, cancellationToken) ? claim.Id : null;
     }
 
-    private Task RecordAsync(int postId, SocialPostStatus status, string? postUrl, string? error, CancellationToken cancellationToken) =>
-        db.SeasonSocialPosts
-            .Where(p => p.Id == postId && p.Status == SocialPostStatus.Posting)
-            .ExecuteUpdateAsync(s => s
-                .SetProperty(p => p.Status, status)
-                .SetProperty(p => p.PostUrl, postUrl)
-                .SetProperty(p => p.Error, error)
-                .SetProperty(p => p.At, timeProvider.GetUtcNow()), cancellationToken);
+    private async Task GiveUpOnInterruptedAsync(CancellationToken cancellationToken)
+    {
+        foreach (var post in await SocialPostAttempts.GiveUpOnInterruptedAsync(db.SeasonSocialPosts, timeProvider.GetUtcNow(), cancellationToken))
+        {
+            await alerts.StoppedAsync(StoppedPost.Season(post.Platform, post.SeasonYear, post.Kind, mayHavePosted: true, SocialPostAttempts.Interrupted), cancellationToken);
+        }
+    }
 
     /// <summary>"Sign-ups are open" and the retrospective go out once per platform; "soon" as often as organizers like.</summary>
     public static bool IsOnce(SeasonPostKind kind) => kind is not SeasonPostKind.SignUpsSoon;
@@ -278,5 +279,5 @@ public sealed partial class SeasonSocialService(
     private DateOnly LocalDate(DateTimeOffset moment) => DateOnly.FromDateTime(schedule.ToLocalTime(moment).DateTime);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Posting the {Kind} post for season {Year} to {Platform} failed; it's shown to the organizers")]
-    private partial void LogFailed(Exception exception, SeasonPostKind kind, SocialPlatform platform, int year);
+    private partial void LogFailed(Exception? exception, SeasonPostKind kind, SocialPlatform platform, int year);
 }

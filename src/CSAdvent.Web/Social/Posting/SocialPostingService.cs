@@ -1,4 +1,3 @@
-using System.Text.Json;
 using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Cards;
 using CSAdvent.Web.Claims;
@@ -7,18 +6,18 @@ using CSAdvent.Web.Data;
 using CSAdvent.Web.Entries;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Npgsql;
 
 namespace CSAdvent.Web.Social.Posting;
 
-public sealed record SocialPostingRun(int Posted, int Failed)
+public sealed record SocialPostingRun(int Posted, int Failed, int Unconfirmed)
 {
-    public static readonly SocialPostingRun None = new(0, 0);
+    public static readonly SocialPostingRun None = new(0, 0, 0);
 
     public SocialPostingRun Add(PostOutcome outcome) => outcome switch
     {
         PostOutcome.Posted => this with { Posted = Posted + 1 },
         PostOutcome.Failed => this with { Failed = Failed + 1 },
+        PostOutcome.Unconfirmed => this with { Unconfirmed = Unconfirmed + 1 },
         _ => this,
     };
 }
@@ -29,6 +28,9 @@ public enum PostOutcome
     Skipped,
     Posted,
     Failed,
+
+    /// <summary>It may have gone out, but the platform never said (<see cref="SocialPostStatus.Unconfirmed"/>).</summary>
+    Unconfirmed,
 }
 
 /// <summary>
@@ -37,8 +39,11 @@ public enum PostOutcome
 /// <list type="bullet">
 /// <item>Exactly once, even with several replicas: a run claims an announcement by inserting its <c>social_posts</c> row
 /// (unique per entry and platform) before posting it, so only one run posts it, and anything an organizer marked posted by
-/// hand is skipped.</item>
+/// hand is skipped (<see cref="SocialPostAttempts"/>).</item>
 /// <item>A failed post is tried again a few times, waiting longer each time, then waits for an organizer to retry it.</item>
+/// <item>One that may have gone out without the platform saying so (a timeout once it was sent, say) is Unconfirmed, and waits
+/// for an organizer to check the account, unless trying again can't post it twice (Bluesky), #154.</item>
+/// <item>The organizers are emailed whenever a post stops and waits for them (#161).</item>
 /// <item>Never the test season: its entries must never reach C# Advent's real accounts.</item>
 /// <item>Only posts that passed the blurb check (#128), or that an organizer let through: a post that fails it, or hasn't been
 /// checked, waits, and goes out as soon as it passes that day.</item>
@@ -50,11 +55,13 @@ public sealed partial class SocialPostingService(
     SocialService social,
     SocialPlatformModes modes,
     SocialPublishers publishers,
+    SocialPostingAlerts alerts,
     CardRenderer cards,
     IOptions<SocialPostingOptions> options,
     IOptions<SiteOptions> site,
     IOptions<SocialAccountsOptions> accounts,
     IWebHostEnvironment environment,
+    TimeProvider timeProvider,
     ILogger<SocialPostingService> logger)
 {
     // The general share card ("C# Advent, two C# posts a day"), for a test post's link card.
@@ -68,18 +75,16 @@ public sealed partial class SocialPostingService(
 
     public const string Automation = "automation";
 
-    /// <summary>A post still marked as posting after this long was interrupted (a restart, say), and won't be tried again by itself.</summary>
-    public static readonly TimeSpan InterruptedAfter = TimeSpan.FromMinutes(15);
-
     public async Task<SocialPostingRun> RunAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
     {
+        // Whatever the modes: an organizer's retry can be interrupted too.
+        await GiveUpOnInterruptedAsync(cancellationToken);
+
         var automatic = (await modes.GetAsync(cancellationToken)).Where(p => p.IsAutomatic).Select(p => p.Platform).ToList();
         if (automatic.Count == 0)
         {
             return SocialPostingRun.None;
         }
-
-        await GiveUpOnInterruptedAsync(now, cancellationToken);
 
         var local = schedule.ToLocalTime(now).DateTime;
         var today = DateOnly.FromDateTime(local);
@@ -108,8 +113,8 @@ public sealed partial class SocialPostingService(
     }
 
     /// <summary>
-    /// Posts a failed announcement again now, for an organizer, whatever its attempts. Returns null if there's no failed
-    /// automatic post for that entry and platform.
+    /// Posts a failed or unconfirmed announcement again now, for an organizer, whatever its attempts. Returns null if there's
+    /// no such automatic post for that entry and platform.
     /// </summary>
     public async Task<PostOutcome?> RetryAsync(int slotId, SocialPlatform platform, DateTimeOffset now, CancellationToken cancellationToken = default)
     {
@@ -118,7 +123,8 @@ public sealed partial class SocialPostingService(
             .Select(s => new { s.SeasonYear, s.Day })
             .SingleOrDefaultAsync(cancellationToken);
         if (slot is null || !schedule.IsRevealed(slot.SeasonYear, slot.Day)
-            || !await db.SocialPosts.AnyAsync(p => p.SlotId == slotId && p.Platform == platform && p.Status == SocialPostStatus.Failed, cancellationToken))
+            || !await db.SocialPosts.AnyAsync(p => p.SlotId == slotId && p.Platform == platform
+                && (p.Status == SocialPostStatus.Failed || p.Status == SocialPostStatus.Unconfirmed), cancellationToken))
         {
             return null;
         }
@@ -155,20 +161,9 @@ public sealed partial class SocialPostingService(
             Key = $"csadvent-test-{id}",
         };
 
-        string? postUrl = null;
-        string? error = null;
-        try
-        {
-            postUrl = await publisher.PublishAsync(publication, cancellationToken);
-        }
-        catch (Exception exception) when (exception is SocialPublishException or HttpRequestException or JsonException
-            || (exception is TaskCanceledException && !cancellationToken.IsCancellationRequested))
-        {
-            error = exception is TaskCanceledException ? $"{platform} didn't answer in time." : exception.Message;
-        }
-
-        await modes.RecordTestAsync(platform, SafeUrl(postUrl), error, sentBy, cancellationToken);
-        return error;
+        var attempt = await SocialPostAttempts.TryAsync(publisher, publication, cancellationToken);
+        await modes.RecordTestAsync(platform, attempt.PostUrl, attempt.Error, sentBy, cancellationToken);
+        return attempt.Error;
     }
 
     /// <summary>How long a failed post waits before its next try: 5 minutes, then 10, then 20.</summary>
@@ -181,32 +176,42 @@ public sealed partial class SocialPostingService(
             return PostOutcome.Skipped;
         }
 
-        if (!await ClaimAsync(entry.SlotId, platform, now, byOrganizer, cancellationToken))
+        if (await ClaimAsync(entry.SlotId, platform, now, byOrganizer, cancellationToken) is not { } attempts)
         {
             return PostOutcome.Skipped;
         }
 
-        try
+        var attempt = await SocialPostAttempts.TryAsync(publisher, Publication(day, entry, announcement), cancellationToken);
+        var status = SocialPostAttempts.StatusAfter(attempt, publisher.RetriesAreSafe);
+        if (status is SocialPostStatus.Failed or SocialPostStatus.Unconfirmed)
         {
-            var postUrl = await publisher.PublishAsync(Publication(day, entry, announcement), cancellationToken);
-            await RecordAsync(entry.SlotId, platform, SocialPostStatus.Posted, SafeUrl(postUrl), null, now, cancellationToken);
-            return PostOutcome.Posted;
+            LogFailed(attempt.Exception, platform, entry.SlotId);
         }
-        catch (Exception exception) when (exception is SocialPublishException or HttpRequestException or JsonException
-            || (exception is TaskCanceledException && !cancellationToken.IsCancellationRequested))
+
+        var recorded = await SocialPostAttempts.RecordAsync(
+            db.SocialPosts.Where(p => p.SlotId == entry.SlotId && p.Platform == platform), status, attempt.PostUrl, attempt.Error, now, cancellationToken);
+
+        // It stops here, waiting for an organizer: tell them, unless it was their own retry, whose result they're looking at.
+        var stopped = status is SocialPostStatus.Unconfirmed || (status is SocialPostStatus.Failed && attempts >= options.Value.MaxAttempts);
+        if (recorded && stopped && !byOrganizer)
         {
-            var error = exception is TaskCanceledException ? $"{platform} didn't answer in time." : exception.Message;
-            LogFailed(exception, platform, entry.SlotId);
-            await RecordAsync(entry.SlotId, platform, SocialPostStatus.Failed, null, error[..Math.Min(error.Length, 1000)], now, cancellationToken);
-            return PostOutcome.Failed;
+            await AlertAsync(entry.SlotId, platform, status is SocialPostStatus.Unconfirmed, attempt.Error!, attempts, cancellationToken);
         }
+
+        return status switch
+        {
+            SocialPostStatus.Posted => PostOutcome.Posted,
+            SocialPostStatus.Unconfirmed => PostOutcome.Unconfirmed,
+            _ => PostOutcome.Failed,
+        };
     }
 
     /// <summary>
-    /// Claims the announcement for this run: a new row, or a failed one that's due another try. Whoever claims it posts it,
-    /// and everyone else skips it.
+    /// Claims the announcement for this run: a new row, or a failed one that's due another try (or that an organizer is
+    /// retrying, as they can an unconfirmed one). Whoever claims it posts it, and everyone else skips it. Returns which try
+    /// it is.
     /// </summary>
-    private async Task<bool> ClaimAsync(int slotId, SocialPlatform platform, DateTimeOffset now, bool byOrganizer, CancellationToken cancellationToken)
+    private async Task<int?> ClaimAsync(int slotId, SocialPlatform platform, DateTimeOffset now, bool byOrganizer, CancellationToken cancellationToken)
     {
         var existing = await db.SocialPosts.AsNoTracking()
             .Where(p => p.SlotId == slotId && p.Platform == platform)
@@ -216,60 +221,53 @@ public sealed partial class SocialPostingService(
         if (existing is null)
         {
             var claim = new SocialPost { SlotId = slotId, Platform = platform, Status = SocialPostStatus.Posting, At = now, MarkedBy = Automation, Attempts = 1 };
-            db.SocialPosts.Add(claim);
-            try
-            {
-                await db.SaveChangesAsync(cancellationToken);
-                return true;
-            }
-            catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
-            {
-                // Another run, or an organizer, got there first.
-                db.Entry(claim).State = EntityState.Detached;
-                return false;
-            }
+            return await SocialPostAttempts.TryClaimAsync(db, claim, cancellationToken) ? 1 : null;
         }
 
-        if (existing.Status is not SocialPostStatus.Failed
-            || (!byOrganizer && (existing.Attempts >= options.Value.MaxAttempts || now < existing.At + WaitAfter(existing.Attempts))))
+        var due = existing.Status switch
         {
-            return false;
+            SocialPostStatus.Failed => byOrganizer || (existing.Attempts < options.Value.MaxAttempts && now >= existing.At + WaitAfter(existing.Attempts)),
+            SocialPostStatus.Unconfirmed => byOrganizer,
+            _ => false,
+        };
+        if (!due)
+        {
+            return null;
         }
 
-        // Only the run that moves it from Failed (with the attempts it read) gets it.
+        // Only the run that moves it on (with the status and attempts it read) gets it.
         var attempts = byOrganizer ? 1 : existing.Attempts + 1;
         return await db.SocialPosts
-            .Where(p => p.SlotId == slotId && p.Platform == platform && p.Status == SocialPostStatus.Failed && p.Attempts == existing.Attempts)
+            .Where(p => p.SlotId == slotId && p.Platform == platform && p.Status == existing.Status && p.Attempts == existing.Attempts)
             .ExecuteUpdateAsync(s => s
                 .SetProperty(p => p.Status, SocialPostStatus.Posting)
                 .SetProperty(p => p.Attempts, attempts)
                 .SetProperty(p => p.At, now)
-                .SetProperty(p => p.MarkedBy, Automation), cancellationToken) == 1;
+                .SetProperty(p => p.MarkedBy, Automation), cancellationToken) == 1
+            ? attempts
+            : null;
     }
 
-    // Only while it's still this run's claim: an organizer may have marked it posted by hand in the meantime.
-    private Task RecordAsync(int slotId, SocialPlatform platform, SocialPostStatus status, string? postUrl, string? error, DateTimeOffset now, CancellationToken cancellationToken) =>
-        db.SocialPosts
-            .Where(p => p.SlotId == slotId && p.Platform == platform && p.Status == SocialPostStatus.Posting)
-            .ExecuteUpdateAsync(s => s
-                .SetProperty(p => p.Status, status)
-                .SetProperty(p => p.PostUrl, postUrl)
-                .SetProperty(p => p.Error, error)
-                .SetProperty(p => p.At, now), cancellationToken);
-
-    /// <summary>
-    /// A post still marked as posting long after its run (the app restarted mid-post, say) may or may not have gone out, so
-    /// it's marked failed for an organizer to check, and never tried again by itself.
-    /// </summary>
-    private Task GiveUpOnInterruptedAsync(DateTimeOffset now, CancellationToken cancellationToken)
+    private async Task GiveUpOnInterruptedAsync(CancellationToken cancellationToken)
     {
-        var cutoff = now - InterruptedAfter;
-        return db.SocialPosts
-            .Where(p => p.Status == SocialPostStatus.Posting && p.At < cutoff)
-            .ExecuteUpdateAsync(s => s
-                .SetProperty(p => p.Status, SocialPostStatus.Failed)
-                .SetProperty(p => p.Attempts, options.Value.MaxAttempts)
-                .SetProperty(p => p.Error, "Interrupted while posting. Check the account before retrying, in case it went out."), cancellationToken);
+        foreach (var post in await SocialPostAttempts.GiveUpOnInterruptedAsync(db.SocialPosts, timeProvider.GetUtcNow(), cancellationToken))
+        {
+            await AlertAsync(post.SlotId, post.Platform, mayHavePosted: true, SocialPostAttempts.Interrupted, post.Attempts, cancellationToken);
+        }
+    }
+
+    private async Task AlertAsync(int slotId, SocialPlatform platform, bool mayHavePosted, string error, int attempts, CancellationToken cancellationToken)
+    {
+        var slot = await db.Slots.AsNoTracking()
+            .Where(s => s.Id == slotId)
+            .Select(s => new { s.SeasonYear, s.Day, s.Part, s.Season.SlotsPerDay, s.PostTitle })
+            .SingleOrDefaultAsync(cancellationToken);
+        if (slot is not null)
+        {
+            await alerts.StoppedAsync(
+                StoppedPost.Entry(platform, slot.SeasonYear, slot.Day, slot.Part, slot.SlotsPerDay, slot.PostTitle, mayHavePosted, error, attempts),
+                cancellationToken);
+        }
     }
 
     private SocialPublication Publication(AnnouncementDay day, EntryAnnouncements entry, FormattedAnnouncement announcement) => new(
@@ -281,10 +279,6 @@ public sealed partial class SocialPostingService(
         announcement,
         cards.RenderEntry(new EntryCard(day.Year, day.Day, entry.Part, day.SlotsPerDay, entry.Title, entry.Author)));
 
-    /// <summary>The post's address, if it's a web address (the column only takes those).</summary>
-    private static string? SafeUrl(string? postUrl) =>
-        Uri.TryCreate(postUrl, UriKind.Absolute, out var uri) && uri.Scheme is "https" or "http" ? postUrl : null;
-
     /// <summary>What a link card says under the title, like the entry page's preview: the post's summary first, if it has one.</summary>
     public static string Description(AnnouncementDay day, EntryAnnouncements entry)
     {
@@ -295,5 +289,5 @@ public sealed partial class SocialPostingService(
     }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Posting slot {SlotId} to {Platform} failed; it'll be tried again or shown to the organizers")]
-    private partial void LogFailed(Exception exception, SocialPlatform platform, int slotId);
+    private partial void LogFailed(Exception? exception, SocialPlatform platform, int slotId);
 }

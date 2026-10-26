@@ -84,7 +84,7 @@
                     var posted = entry.Posted.GetValueOrDefault(platform.Platform);
                     var automatic = _platforms.Single(p => p.Platform == platform.Platform).IsAutomatic && day.Year != Season.TestYear;
                     var byAutomation = posted?.MarkedBy == SocialPostingService.Automation;
-                    <article id="@($"{id}-card")" class="flex min-w-0 scroll-mt-4 flex-col rounded-xl p-4 ring-1 @(posted is { Status: SocialPostStatus.Posted } ? "bg-green-50 ring-green-200" : "bg-white ring-slate-200")">
+                    <article id="@($"{id}-card")" class="flex min-w-0 scroll-mt-4 flex-col rounded-xl p-4 ring-1 @(posted?.Status switch { SocialPostStatus.Posted => "bg-green-50 ring-green-200", SocialPostStatus.Unconfirmed => "bg-amber-50 ring-amber-200", _ => "bg-white ring-slate-200" })">
                         <header class="flex items-center justify-between gap-2">
                             <h3 class="font-semibold text-slate-900">@platform.Platform</h3>
                             @if (platform.Limit is { } limit)
@@ -154,7 +154,23 @@
                             }
                             else
                             {
-                                @if (posted is { Status: SocialPostStatus.Failed })
+                                @if (posted is { Status: SocialPostStatus.Unconfirmed })
+                                {
+                                    @* It may have gone out (#154): checking comes before retrying, which could post it twice. *@
+                                    <form method="post" action="manage/social/retry" class="mb-3 text-sm text-amber-900">
+                                        <AntiforgeryToken />
+                                        <input type="hidden" name="SlotId" value="@entry.SlotId" />
+                                        <input type="hidden" name="Platform" value="@platform.Platform" />
+                                        <input type="hidden" name="ReturnUrl" value="@back" />
+                                        <p><span class="font-semibold">Did it go out?</span> @platform.Platform never said: @posted.Error</p>
+                                        <p class="mt-1">
+                                            Look for it on C# Advent's @platform.Platform account before trying again. If it's there, mark it
+                                            posted below; if it isn't, retry it.
+                                        </p>
+                                        <button type="submit" class="mt-2 rounded-md bg-white px-2 py-1 font-medium text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50">Retry now</button>
+                                    </form>
+                                }
+                                else if (posted is { Status: SocialPostStatus.Failed })
                                 {
                                     <form method="post" action="manage/social/retry" class="mb-3 flex flex-wrap items-center gap-2 text-sm text-red-700">
                                         <AntiforgeryToken />
@@ -226,6 +242,7 @@ else if (_loaded)
         "not-revealed" => "That entry isn't revealed yet, so it can't be posted.",
         "no-credentials" => "That platform has no credentials, so it can't post automatically.",
         "retry-failed" => "Retrying didn't work. The post shows the platform's error.",
+        "retry-unconfirmed" => "The platform never said whether the retry went out. Look for it on the account before trying again.",
         "test-failed" => "The test post didn't go out. The platform's error is next to it, under How each platform is posted.",
         _ => null,
     };

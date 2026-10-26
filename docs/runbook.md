@@ -103,6 +103,9 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
   fast as the email queue has room for them, and it carries on until everyone's had one, for as long as sign-ups are open.
   `/manage/announcements` shows how many have been invited, how many are still in the queue and how many are still to go.
   Nothing to do.
+- **The "sign-ups are open" posts** go out by themselves at 9 AM on the Automatic platforms, once. One that doesn't go out
+  isn't tried again, and you get an email: open `/manage/social/signups` and press **Post now** (if it says "Did it go
+  out?", look for it on the account first, and **Mark as posted** if it's there).
 - **Sign-up day's email** (see Email Sending Limits): the claim emails go first, and the announcement and invitations go a
   minute at a time with what's left of each hour. Beyond about 40 claims in an hour, some claim emails wait for the next
   hour, so keep an eye on `/manage/requests` rather than waiting for the "New request" emails, and on
@@ -143,7 +146,12 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
   link arrives that day.
   - Post **LinkedIn and Reddit by hand** from `/manage/social`, then **Mark as posted**.
   - Reddit posts go to r/csadvent only, never r/csharp or r/dotnet.
-  - A failed automatic post shows its error and a **Retry now** button.
+  - **A failed automatic post** shows its error. It's tried again after 5 and 10 minutes, then stops, and you get an email
+    ("Facebook didn't post …"). Fix what it says, then press **Retry now**, or post it by hand and **Mark as posted**.
+  - **"Did it go out?"** (in amber, and an email asking the same) means the platform never said: the post was sent, then
+    it timed out, the connection dropped or the platform had a server error, or the app restarted mid-post. It may be up,
+    so it isn't tried again by itself. Look for it on C# Advent's account: if it's there, **Mark as posted** (paste its
+    link); if it isn't, **Retry now**. Bluesky looks for an earlier try's post before posting again, so it just retries.
 - **The daily email** goes to everyone with a spot as soon as both of the day's posts are in, from 9 AM, or at 2 PM with
   whichever are, leaving out any without the blurb. Announcement subscribers who asked for the daily posts are queued the
   same email at the same time, and get it after the authors, as list mail (before any announcement), until midnight, when
@@ -304,7 +312,8 @@ Lines marked ✏️ **To fill in** are for the organizers: they aren't written d
 
 - **Lives in:** secret `MASTODON_ACCESS_TOKEN` (parameter `mastodon-access-token`), for `@csadvent@mastodon.social`.
 - **Who can sign in:** Calvin only.
-- **If it fails:** automatic Mastodon posts fail, each with its error and **Retry now**. Copy and paste still works.
+- **If it fails:** automatic Mastodon posts fail, each with its error and **Retry now**, and you get an email when one
+  stops trying. Copy and paste still works.
 - **What notices:** the 8 AM credential check emails the organizers, but only while Mastodon is Automatic.
 - **Rotating:** on mastodon.social, **Preferences → Development**, open the application and regenerate its access token
   (or create a new application with the `write:statuses` scope). Set the secret, deploy, and press **Check** on

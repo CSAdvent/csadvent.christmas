@@ -180,6 +180,119 @@ public sealed partial class SocialPostingTests(AppHostFixture fixture)
     }
 
     [Fact]
+    public async Task AnInterruptedAnnouncementWaitsForAnOrganizerToCheck()
+    {
+        // Season 2520's December 4 post 1 was being posted to Facebook when the app stopped, 20 minutes ago.
+        await TestSeasons.EnsureAsync(fixture, 2520, claimsOpen: false);
+        int slotId;
+        await using (var db = await fixture.CreateDbContextAsync())
+        {
+            var slot = await db.Slots.SingleAsync(s => s.SeasonYear == 2520 && s.Day == 4 && s.Part == 1, CancellationToken);
+            slot.AuthorName = "Ada Lovelace";
+            slot.PostTitle = "Interrupted on the way out";
+            slot.PostUrl = "https://example.com/interrupted";
+            await db.SaveChangesAsync(CancellationToken);
+            slotId = slot.Id;
+            db.SocialPosts.Add(new SocialPost
+            {
+                SlotId = slotId,
+                Platform = SocialPlatform.Facebook,
+                Status = SocialPostStatus.Posting,
+                At = DateTimeOffset.UtcNow.AddMinutes(-20),
+                MarkedBy = "automation",
+                Attempts = 1,
+            });
+            await db.SaveChangesAsync(CancellationToken);
+        }
+
+        // It's found by the real clock, whatever time the run says it is, and with no platform in Automatic mode.
+        await RunAsync(new DateTime(2025, 12, 8, 9, 0, 0));
+        await RunAsync(new DateTime(2025, 12, 8, 9, 5, 0));
+
+        await using (var db = await fixture.CreateDbContextAsync())
+        {
+            var post = await db.SocialPosts.SingleAsync(p => p.SlotId == slotId && p.Platform == SocialPlatform.Facebook, CancellationToken);
+            Assert.Equal((SocialPostStatus.Unconfirmed, 1), (post.Status, post.Attempts));
+            Assert.StartsWith("Interrupted while posting", post.Error);
+        }
+
+        // The organizers hear about it once: each run has queued what it sends by the time it returns. (Counting what MailPit
+        // got would wait for the organizers' queue to empty, which other tests keep filling.)
+        const string Subject = "Did C# Advent 2520, December 4, post 1 go out on Facebook?";
+        var email = await fixture.WaitForEmailAsync("hello@csadvent.christmas", Subject);
+        Assert.Contains("C# Advent 2520, December 4, post 1 (“Interrupted on the way out”)", email.Text);
+        Assert.Contains("https://localhost:7092/manage/social?year=2520&day=4", email.Text);
+        await using (var db = await fixture.CreateDbContextAsync())
+        {
+            Assert.Equal(1, await db.EmailOutbox.CountAsync(e => e.Subject == Subject, CancellationToken));
+        }
+
+        using var organizer = await fixture.SignInAsync("organizer", AppHostFixture.OrganizerGitHubId);
+        Assert.Contains("Did it go out?", await organizer.GetStringAsync("/manage/social?year=2520&day=4", CancellationToken));
+    }
+
+    [Fact]
+    public async Task AnInterruptedSeasonPostWaitsForAnOrganizerToCheck()
+    {
+        // Season 2521's sign-ups opened yesterday, and its "sign-ups are open" post to Facebook was interrupted 20 minutes ago.
+        await TestSeasons.EnsureAsync(fixture, 2521, claimsOpen: true);
+        await using (var db = await fixture.CreateDbContextAsync())
+        {
+            db.SeasonSocialPosts.Add(new SeasonSocialPost
+            {
+                SeasonYear = 2521,
+                Kind = SeasonPostKind.SignUpsOpen,
+                Platform = SocialPlatform.Facebook,
+                Status = SocialPostStatus.Posting,
+                At = DateTimeOffset.UtcNow.AddMinutes(-20),
+                MarkedBy = "automation",
+            });
+            await db.SaveChangesAsync(CancellationToken);
+        }
+
+        using var organizer = await fixture.SignInAsync("organizer", AppHostFixture.OrganizerGitHubId);
+        await SetModeAsync(organizer, SocialPlatform.Facebook, SocialPostingMode.Automatic);
+        try
+        {
+            // It isn't posted again by itself, in case it went out.
+            Assert.Equal(0, await RunSignUpsAsync(2521));
+            await using (var db = await fixture.CreateDbContextAsync())
+            {
+                Assert.Equal(SocialPostStatus.Unconfirmed, (await db.SeasonSocialPosts.SingleAsync(p => p.SeasonYear == 2521, CancellationToken)).Status);
+            }
+
+            var email = await fixture.WaitForEmailAsync("hello@csadvent.christmas", "Did the C# Advent 2521 ");
+            Assert.Contains("If it isn't, press Post now.", email.Text);
+            Assert.Contains("Did it go out?", await organizer.GetStringAsync("/manage/social/signups?year=2521", CancellationToken));
+
+            // It wasn't there, so an organizer posts it again.
+            var posted = await PostSeasonFormAsync(organizer, "post", 2521, SeasonPostKind.SignUpsOpen, SocialPlatform.Facebook);
+            Assert.Equal("/manage/social/signups?year=2521", TestBrowser.PathOf(posted.Headers.Location!));
+            await using (var db = await fixture.CreateDbContextAsync())
+            {
+                var post = await db.SeasonSocialPosts.SingleAsync(p => p.SeasonYear == 2521, CancellationToken);
+                Assert.Equal((SocialPostStatus.Posted, "organizer", (string?)null), (post.Status, post.MarkedBy, post.Error));
+            }
+        }
+        finally
+        {
+            await SetModeAsync(organizer, SocialPlatform.Facebook, SocialPostingMode.Manual);
+        }
+    }
+
+    [Theory]
+    [InlineData("social-post-unconfirmed", "Did it go out on Facebook?")]
+    [InlineData("social-post-gave-up", "C# Advent tried 3 times to post")]
+    public async Task ThePostingAlertsAreInTheEmailCatalog(string key, string text)
+    {
+        using var client = fixture.CreateWebClient();
+
+        var preview = await client.GetStringAsync($"/dev/emails/{key}", CancellationToken);
+
+        Assert.Contains(text, preview);
+    }
+
+    [Fact]
     public async Task OnlyPlatformsThatCanPostAutomaticallyCanBeAutomatic()
     {
         using var organizer = await fixture.SignInAsync("organizer", AppHostFixture.OrganizerGitHubId);

@@ -8,8 +8,9 @@ namespace CSAdvent.Web.Social.Posting;
 
 /// <summary>
 /// Posts to C# Advent's X account with <c>POST /2/tweets</c>, signed with OAuth 1.0a as the account. X builds the link card
-/// itself from the entry page's preview tags. It has no idempotency key, but it refuses a post identical to a recent one,
-/// so a retry after a post that did go out fails rather than posting twice.
+/// itself from the entry page's preview tags. It has no idempotency key. It refuses a post identical to a recent one ("duplicate
+/// content"), but X doesn't document how recent, so that isn't relied on: a try that may have gone out waits for an organizer
+/// to check (#154).
 /// </summary>
 public sealed class XPublisher(HttpClient http, string? account, XCredentials credentials, TimeProvider timeProvider) : ISocialPublisher
 {
@@ -20,11 +21,8 @@ public sealed class XPublisher(HttpClient http, string? account, XCredentials cr
         using var request = Request(HttpMethod.Post, "tweets");
         request.Content = JsonContent.Create(new { text = publication.Announcement.Text });
 
-        using var response = await http.SendAsync(request, cancellationToken);
-        await SocialPublishException.EnsureSuccessAsync(response, cancellationToken);
-
         // X answers with the new post's ID. /i/web/status/{id} finds a post without knowing whose it is.
-        return (await response.Content.ReadFromJsonAsync<Created>(cancellationToken))?.Data?.Id is { Length: > 0 } id
+        return (await http.SendPostAsync<Created>(request, Platform, cancellationToken))?.Data?.Id is { Length: > 0 } id
             ? account is { Length: > 0 } ? $"https://x.com/{account}/status/{id}" : $"https://x.com/i/web/status/{id}"
             : null;
     }

@@ -120,6 +120,7 @@ builder.Services.AddOptions<SocialPostingOptions>()
 builder.Services.AddKeyedSingleton(SocialPublishers.ClientKey, (_, _) => SocialPublishers.CreateClient());
 builder.Services.AddScoped<SocialPublishers>();
 builder.Services.AddScoped<SocialPlatformModes>();
+builder.Services.AddScoped<SocialPostingAlerts>();
 builder.Services.AddScoped<SocialPostingService>();
 builder.Services.AddScoped<SocialCredentialCheck>();
 builder.Services.AddScoped<SeasonSocialService>();
