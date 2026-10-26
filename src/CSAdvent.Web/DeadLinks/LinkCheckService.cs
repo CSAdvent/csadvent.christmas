@@ -102,7 +102,7 @@ public sealed partial class LinkCheckService(
     {
         // Finished seasons only: a season's posts are new until it's over, and the blurb check reads them in December anyway.
         var years = (await db.Seasons.Select(s => s.Year).ToListAsync(cancellationToken))
-            .Where(year => year != Season.TestYear && (onlyYear is null || year == onlyYear) && now >= schedule.GetDayEndTime(year, Season.DaysInAdvent))
+            .Where(year => year != Season.TestYear && (onlyYear is null || year == onlyYear) && schedule.IsFinished(year, now))
             .ToList();
         if (years.Count == 0)
         {
