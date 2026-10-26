@@ -13,6 +13,12 @@ public static class DatabaseErrors
     public static bool IsUniqueViolation(this DbUpdateException exception) =>
         exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
 
+    /// <summary>
+    /// Whether a statement failed on a unique index. <c>ExecuteUpdate</c> and <c>ExecuteDelete</c> throw PostgreSQL's own
+    /// exception, not a <see cref="DbUpdateException"/>.
+    /// </summary>
+    public static bool IsUniqueViolation(this PostgresException exception) => exception.SqlState == PostgresErrorCodes.UniqueViolation;
+
     /// <summary>Whether saving failed on a foreign key: the row it refers to was deleted first (an unsubscribe, say).</summary>
     public static bool IsForeignKeyViolation(this DbUpdateException exception) =>
         exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.ForeignKeyViolation };

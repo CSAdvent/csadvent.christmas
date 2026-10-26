@@ -30,7 +30,7 @@ public static class SeasonTestingEndpoints
                 context.Response.Cookies.Append(SeasonAccess.TestModeCookie, "on", new CookieOptions
                 {
                     HttpOnly = true,
-                    Secure = context.Request.IsHttps,
+                    Secure = CookieSecurity.IsSecure(context),
                     SameSite = SameSiteMode.Lax,
                     IsEssential = true,
                 });

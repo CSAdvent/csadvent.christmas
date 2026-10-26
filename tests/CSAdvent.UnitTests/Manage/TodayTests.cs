@@ -46,7 +46,7 @@ public sealed class TodayTests
     {
         // The rehearsal's December 1 is October 20, so October 25 is its December 6, whatever the real date.
         var testSeasons = new TestSeasons(null!);
-        testSeasons.Replace([new TestSeason(Season.TestYear, new DateOnly(2026, 10, 20), FrozenSet<string>.Empty)]);
+        testSeasons.Replace([new TestSeason(Season.TestYear, new DateOnly(2026, 10, 20), FrozenSet<long>.Empty, FrozenSet<string>.Empty)]);
 
         Assert.Equal([(6, true), (7, false)], TodayService.DaysOf(Schedule(testSeasons), Season.TestYear, new DateOnly(2026, 10, 25)));
         Assert.Empty(TodayService.DaysOf(Schedule(testSeasons), Season.TestYear, new DateOnly(2026, 12, 6)));

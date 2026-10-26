@@ -16,7 +16,7 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261026193818_TightenDataModel";
+    public override string LastMigrationId => "20261026205716_StoreTestersByGitHubUserId";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -1451,8 +1451,16 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                     .HasColumnType("timestamp with time zone")
                     .HasColumnName("added_at");
 
+                b.Property<long?>("GithubUserId")
+                    .HasColumnType("bigint")
+                    .HasColumnName("github_user_id");
+
                 b.HasKey("SeasonYear", "GithubLogin")
                     .HasName("pk_season_testers");
+
+                b.HasIndex("SeasonYear", "GithubUserId")
+                    .IsUnique()
+                    .HasDatabaseName("ix_season_testers_season_year_github_user_id");
 
                 b.ToTable("season_testers", t =>
                     {

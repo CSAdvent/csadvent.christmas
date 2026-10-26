@@ -19,10 +19,14 @@ public sealed class SeasonTestingTests
     private static readonly DateOnly October20 = new(2026, 10, 20);
     private static readonly DateTimeOffset October25Noon = new(2026, 10, 25, 12, 0, 0, TimeSpan.FromHours(-4));
 
-    private static TestSeasons Testing(params string[] testers)
+    /// <summary>The test season, with invitations waiting for these logins.</summary>
+    private static TestSeasons Testing(params string[] invitedLogins) => Testing([], invitedLogins);
+
+    /// <summary>The test season, with testers whose invitations are theirs by GitHub user ID, and some still waiting.</summary>
+    private static TestSeasons Testing(long[] testerIds, params string[] invitedLogins)
     {
         var testSeasons = new TestSeasons(null!);
-        testSeasons.Replace([new TestSeason(TestYear, October20, testers.ToFrozenSet(StringComparer.OrdinalIgnoreCase))]);
+        testSeasons.Replace([new TestSeason(TestYear, October20, testerIds.ToFrozenSet(), invitedLogins.ToFrozenSet(StringComparer.OrdinalIgnoreCase))]);
         return testSeasons;
     }
 
@@ -136,6 +140,28 @@ public sealed class SeasonTestingTests
     }
 
     [Fact]
+    public void AnInvitationThatsBeenUsedIsTheTestersByGitHubUserId()
+    {
+        // Tess (GitHub user 2) has used her invitation (#192). She's still a tester after renaming her login, and whoever
+        // registers her old login isn't one.
+        var testSeasons = Testing(testerIds: [2]);
+
+        Assert.True(CanSeeTestSeason(SignedIn(2, "tess-renamed"), testSeasons));
+        Assert.False(CanSeeTestSeason(SignedIn(3, "tess"), testSeasons));
+    }
+
+    [Fact]
+    public void AnInvitationStillWaitingIsByLogin()
+    {
+        var testSeasons = Testing("pat");
+
+        Assert.True(CanSeeTestSeason(SignedIn(4, "Pat"), testSeasons));
+        Assert.False(CanSeeTestSeason(SignedIn(5, "pat-someone"), testSeasons));
+        Assert.True(testSeasons.IsInvitationWaiting("PAT"));
+        Assert.False(Testing(testerIds: [4]).IsInvitationWaiting("pat"));
+    }
+
+    [Fact]
     public void TestModeIsForTestersWithTheCookie()
     {
         var context = new DefaultHttpContext { User = SignedIn(2, "tess") };
@@ -171,6 +197,9 @@ public sealed class SeasonTestingTests
     [InlineData("a1234567890123456789012345678901234567890", null)]
     public void AcceptsGitHubLoginsInTheUsualForms(string input, string? expected) =>
         Assert.Equal(expected, GitHubLogins.Normalize(input));
+
+    private static bool CanSeeTestSeason(ClaimsPrincipal user, TestSeasons testSeasons) =>
+        Access(new HttpContextAccessor { HttpContext = new DefaultHttpContext { User = user } }, testSeasons).CanSee(TestYear);
 
     private static SeasonAccess Access(IHttpContextAccessor http, TestSeasons testSeasons) =>
         new(testSeasons, http, new StaticOptions(new AccountOptions { Admins = [1] }));

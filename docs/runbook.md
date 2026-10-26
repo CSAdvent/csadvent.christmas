@@ -28,6 +28,7 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 | Late December–January | Write, publish and share the season's retrospective | Organizers |
 | January | Save the season to the archive files in the repository (After Advent, below) | Organizers |
 | February 1 | The season's requests and backup list are deleted (authors' emails are kept) | Automatic |
+| February 2027, once | Revoke the data protection keys from before they were encrypted (After Advent, below) | Organizers |
 
 ---
 
@@ -222,6 +223,44 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
   the emails of people who signed in but never had a spot (unless they're waiting to hear about a request for an older
   post). **Authors' email addresses are kept**, on their accounts and
   their spots, so they can hear about the next season. Delete an author's address when they ask. Nothing else to do.
+- **Once, in February 2027: revoke the data protection keys from before #193.** Since #193 the keys that protect sign-in
+  cookies, antiforgery tokens and the links in emails are encrypted with a key in Key Vault, but the ones made before it
+  aren't, and they're kept so nobody was signed out mid-season. Until they're revoked, anyone with a copy of the database
+  could still use them to make an organizer's cookie or an unsubscribe link. Revoking them breaks the links in emails sent
+  before the encrypted key took over (two days after #193's deploy), which by February are well past the 30 days an
+  unsubscribe link has to keep working; anyone can still unsubscribe from a newer email or their profile. Nobody is signed
+  out by then: sign-ins move to the new key as they're renewed, and organizers' last 12 hours.
+  1. Connect to **production** with `psql`, as in Restoring the Database, step 2 (a firewall rule for your IP, and the
+     admin login and password given to the deploy). List the keys, oldest first:
+
+     ```sql
+     select k.id, (xpath('/key/creationDate/text()', k.xml::xml))[1]::text as created,
+            (xpath('/key/activationDate/text()', k.xml::xml))[1]::text as active_from,
+            k.xml like '%encryptedSecret%' as encrypted
+     from data_protection_keys k where k.friendly_name like 'key-%' order by created;
+     ```
+
+     Every key since the first encrypted one should be encrypted, and that one should have been active for more than 30
+     days. If not, stop and find out why.
+  2. Revoke every key made before the first encrypted one (data protection's own format for revoking keys in bulk; it
+     inserts nothing if there's no encrypted key):
+
+     ```sql
+     insert into data_protection_keys (friendly_name, xml)
+     select 'revocation-before-encryption',
+            '<revocation version="1"><revocationDate>'
+              || to_char((min((xpath('/key/creationDate/text()', k.xml::xml))[1]::text::timestamptz) - interval '1 second') at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+              || '</revocationDate><key id="*" /><reason>Made before the keys were encrypted at rest (#193)</reason></revocation>'
+     from data_protection_keys k
+     where k.friendly_name like 'key-%' and k.xml like '%encryptedSecret%'
+     having count(*) > 0;
+     ```
+
+  3. Restart the `web` app's active revision in the portal, so every replica reloads its keys now rather than within a
+     day, then sign in to check. Remove your firewall rule.
+
+  To undo it, `delete from data_protection_keys where friendly_name = 'revocation-before-encryption';` and restart again.
+  Then delete this step.
 
 ---
 
@@ -411,10 +450,34 @@ Lines marked ✏️ **To fill in** are for the organizers: they aren't written d
 - **Changing it:** set the secret and deploy. Never edit the action group in the portal, because the next deploy puts it
   back.
 
+### 🔏 Data Protection Key (Key Vault)
+
+- **Lives in:** no secret. The Key Vault the deploy made for the database's connection strings (`postgres-kv`, named
+  `postgreskv-…` in `rg-csadvent`) holds the RSA key `data-protection`. The deploy creates it (`infra/dataprotection.bicep`)
+  and gives the site's identity (`web-identity`) Key Vault Crypto Service Encryption User on that key only: it can wrap
+  and unwrap with it, nothing else.
+- **What it's for:** it encrypts the keys in the database's `data_protection_keys` table, which protect sign-in cookies,
+  antiforgery tokens and the links in emails (unsubscribing, confirming), so a copy of the database (a restored server, a
+  dump, a leaked password) can't be used to sign in as an organizer or make someone's unsubscribe link (#193). Keys from
+  before #193 aren't encrypted; After Advent has the one-time step that revokes them.
+- **If it fails:** the site won't start. A new revision never takes traffic (the previous one keeps serving), and the
+  Deploy workflow fails: at **Deploy**, because Azure only finishes updating the web app once its new revision is ready,
+  or else at "Check the new revision is serving". The revision's console logs say "Data protection can't use
+  the Key Vault key". Check that the key exists and is enabled, and that the role assignment on it is there. On the very
+  first deploy the role can take a minute or two to reach Key Vault; the site keeps trying, and restarts until it works.
+- **Never delete or disable it.** Every data protection key made since #193 would become unreadable: everyone signed
+  out, and the links in every email sent since broken. A deleted key can be recovered for 90 days:
+  `az keyvault key recover --vault-name <postgreskv-…> --name data-protection --subscription …`. That, like anything else
+  with the key itself, needs Key Vault Crypto Officer on the vault: being Owner of the subscription isn't enough for Key
+  Vault's contents.
+- **Rotating:** not needed. If you ever do, `az keyvault key rotate` makes a new version: the site wraps new keys with the
+  newest version and unwraps each with the version it names, so never delete the old versions.
+- **What notices:** the Deploy workflow, the uptime check, and the error alert.
+
 ### ✅ Nothing to Look After
 
 - **Application Insights, the Key Vault and the container registry** are created by the deploy and used through managed
-  identities.
+  identities (the Key Vault's data protection key is above).
 - **The managed certificates** renew themselves while the app runs.
 - **LinkedIn and Reddit** have no credentials: they're always copy and paste.
 
@@ -714,6 +777,9 @@ Either way:
 - **The older code runs against the newer schema.** That's safe while migrations only add things (add first, remove in a
   later release). If the bad deploy's migration removed or renamed something the older code reads, the older code fails
   too: fix forward instead, with a new migration.
+- **Never roll back past #193** (the deploy that started encrypting the data protection keys) more than two days after
+  it, once its encrypted key has taken over: older code can't read that key, so everyone would be signed out and the links
+  in emails sent since would stop working. Fix forward instead.
 
 ### 🚧 A Deploy Whose Migrations Failed
 
@@ -748,7 +814,7 @@ When a migration damaged or dropped data:
    - **The whole database:** production is back to before the bad migration, its history included, so the next migrations
      job would run it again. Before anything else deploys, change that migration on `main` so it's safe (no database has
      it any more), and deploy that.
-4. **Delete the restored server** (step 4 there).
+4. **Delete the restored server, and every copy on your computer** (steps 4 and 5 there).
 
 ---
 
@@ -819,3 +885,8 @@ default subscription.
    ```
 
    **Check the name** before you press Enter: deleting `postgres-54yzcow3wctne` would delete production.
+
+5. **Delete every copy on your computer** as soon as the data is back: `csadvent.dump`, any `\copy` files, and anything
+   else you saved from either server. They hold authors' email addresses and the data protection keys, and the keys made
+   before #193 aren't encrypted, so until they're revoked (After Advent) a copy could be used to make an organizer's
+   cookie (#193). Empty the recycle bin or trash too.

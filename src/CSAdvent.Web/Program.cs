@@ -24,7 +24,6 @@ using CSAdvent.Web.Social.Posting;
 using CSAdvent.Web.Retention;
 using CSAdvent.Web.Retrospectives;
 using CSAdvent.Web.SeasonTesting;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using OpenTelemetry.Instrumentation.Http;
@@ -72,6 +71,7 @@ builder.Services.AddSingleton<TestSeasons>();
 builder.Services.AddHostedService<TestSeasonsRefresher>();
 builder.Services.AddScoped<SeasonAccess>();
 builder.Services.AddScoped<SeasonTestingService>();
+builder.Services.AddScoped<TesterInvitations>();
 builder.Services.AddSingleton<AdventSchedule>();
 builder.Services.AddScoped<ArchiveService>();
 builder.Services.AddScoped<HomeService>();
@@ -220,11 +220,10 @@ if (builder.Configuration.GetValue("Retention:DeleteInBackground", defaultValue:
 
 builder.AddAccounts();
 
-// Keys for sign-in cookies and antiforgery tokens live in the database, so a restart or a second replica doesn't sign
-// everyone out or reject their forms.
-builder.Services.AddDataProtection()
-    .SetApplicationName("CSAdvent")
-    .PersistKeysToDbContext<AdventDbContext>();
+// Keys for sign-in cookies, antiforgery tokens and email links live in the database, so a restart or a second replica doesn't
+// sign everyone out or reject their forms. In production they're encrypted with a Key Vault key first (#193), and the app
+// won't start if it can't use that key.
+builder.AddDataProtectionKeys();
 
 // Every page renders statically on the server, and every form is a plain HTML form, so there's no interactive render mode
 // and no Blazor script (#185). That also means antiforgery tokens (and their cookie and no-store) are only on pages with a
