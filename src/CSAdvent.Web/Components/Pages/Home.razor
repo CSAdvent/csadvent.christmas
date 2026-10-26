@@ -25,10 +25,11 @@
 }
 else if (_home is not null)
 {
-    <OffSeason LastSeason="_home.LastSeason" NextSeason="_home.NextSeason" Message="@_message" />
-    <div class="mt-10 max-w-2xl">
-        <CSAdvent.Web.Components.Announcements.SubscribeBox Heading="Get an email when sign-ups open" ReturnTo="home" Done="@Done" Error="@Error" />
-    </div>
+    <OffSeason LastSeason="_home.LastSeason" NextSeason="_home.NextSeason" Message="@_message" IsSignedIn="_signedIn">
+        <Subscribe>
+            <CSAdvent.Web.Components.Announcements.SubscribeBox Heading="Get an email when sign-ups open" ReturnTo="home" Done="@Done" Error="@Error" />
+        </Subscribe>
+    </OffSeason>
 }
 
 @code {
@@ -36,6 +37,7 @@ else if (_home is not null)
 
     private HomePage? _home;
     private string? _message;
+    private bool _signedIn;
 
     private string Image => _home is null ? CSAdvent.Web.Cards.CardLinks.General : CSAdvent.Web.Cards.CardLinks.Home(_home);
 
@@ -57,6 +59,9 @@ else if (_home is not null)
         if (_home.IsBetweenSeasons)
         {
             _message = await Content.GetAsync(ContentCatalog.BetweenSeasons);
+
+            // Past authors are invited to sign in and see their history (#200), or sent straight to it once they have.
+            _signedIn = (await AuthenticationState).User.Identity?.IsAuthenticated == true;
         }
         else if ((await AuthenticationState).User.GetContributorId() is { } contributorId)
         {

@@ -2,6 +2,7 @@
 @inject AuthorService Authors
 @inject CSAdvent.Web.Contributors.PostClaimService PostClaims
 @inject CSAdvent.Web.Contributors.PostLinkService PostLinks
+@inject CSAdvent.Web.DeadLinks.LinkCheckService LinkChecks
 
 <PageTitle>Authors · Manage · C# Advent</PageTitle>
 
@@ -29,6 +30,11 @@
     <li>
         <a href="@CSAdvent.Web.Contributors.PostLinkLinks.Requests" class="font-semibold text-advent-700 hover:underline">
             @(_pendingLinks switch { 0 => "Requests for new post links", 1 => "1 request for new post links is waiting", _ => $"{_pendingLinks} requests for new post links are waiting" }) →
+        </a>
+    </li>
+    <li>
+        <a href="@CSAdvent.Web.DeadLinks.LinkCheckService.DeadLinksPage" class="font-semibold text-advent-700 hover:underline">
+            @(_deadLinks switch { 0 => "Dead links", 1 => "1 post has gone from its site", _ => $"{_deadLinks} posts have gone from their sites" }) →
         </a>
     </li>
 </ul>
@@ -107,6 +113,7 @@
     private int _linked;
     private int _pendingClaims;
     private int _pendingLinks;
+    private int _deadLinks;
     private int _unlinked;
 
     [SupplyParameterFromQuery]
@@ -133,6 +140,7 @@
         var authors = await Authors.ListAsync();
         _pendingClaims = await PostClaims.CountPendingAsync();
         _pendingLinks = await PostLinks.CountPendingAsync();
+        _deadLinks = await LinkChecks.CountDeadAsync();
         _linked = authors.Count(a => a.ContributorId is not null);
         _unlinked = authors.Count - _linked;
         _shown = [.. authors.Where(a =>

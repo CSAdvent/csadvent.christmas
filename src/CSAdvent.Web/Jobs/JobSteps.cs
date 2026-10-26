@@ -1,5 +1,6 @@
 using CSAdvent.Web.Announcements;
 using CSAdvent.Web.Content;
+using CSAdvent.Web.DeadLinks;
 using CSAdvent.Web.Email.Queue;
 using CSAdvent.Web.Reminders;
 using CSAdvent.Web.Retention;
@@ -25,6 +26,7 @@ public static class JobSteps
         ContactRetentionWorker.ContactDetails,
         ContactRetentionWorker.UnconfirmedSubscribers,
         OtherAdventLogoWorker.Logos,
+        LinkCheckWorker.DeadLinks,
         TestSeasonsRefresher.Refresh,
     ];
 }

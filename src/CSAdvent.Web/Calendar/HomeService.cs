@@ -41,7 +41,8 @@ public sealed class HomeService(AdventDbContext db, AdventSchedule schedule, Sea
                 .Where(s => s.SeasonYear == lastYear && s.PostUrl != null && s.AuthorName != null)
                 .Select(s => s.AuthorName!)
                 .ToListAsync(cancellationToken);
-            lastSeason = new FinishedSeason(lastYear, authors.Count, authors.Distinct(StringComparer.OrdinalIgnoreCase).Count());
+            var hasRetrospective = await db.Retrospectives.AnyAsync(r => r.SeasonYear == lastYear && r.PublishedAt != null, cancellationToken);
+            lastSeason = new FinishedSeason(lastYear, authors.Count, authors.Distinct(StringComparer.OrdinalIgnoreCase).Count(), hasRetrospective);
         }
 
         return new HomePage(Calendar: null, lastSeason, plan.NextSeason);
@@ -52,9 +53,9 @@ public sealed class HomeService(AdventDbContext db, AdventSchedule schedule, Sea
 
     /// <summary>
     /// The calendar shown is the earliest season within its calendar dates (<see cref="AdventSchedule.IsCalendarShown"/>), so
-    /// a season created early for next year never replaces this year's. Between seasons, the page thanks everyone for the
-    /// latest finished season and says when the next one opens, if it's been created, counting the days from
-    /// <see cref="CountdownFrom"/>.
+    /// a season created early for next year never replaces this year's. Between seasons, the page leads with the next season
+    /// (#200): when its sign-ups open, if it's been created and scheduled, counting the days from <see cref="CountdownFrom"/>.
+    /// Below that, it thanks everyone for the latest finished season.
     /// <para>
     /// In test mode the test season is among the seasons, and it's the calendar shown, whatever the date.
     /// </para>
@@ -98,7 +99,9 @@ public sealed record HomePage(SeasonCalendar? Calendar, FinishedSeason? LastSeas
     public bool IsBetweenSeasons => Calendar is null;
 }
 
-public sealed record FinishedSeason(int Year, int PostCount, int AuthorCount);
+/// <summary>The latest finished season, for the thanks between seasons.</summary>
+/// <param name="HasRetrospective">Whether its retrospective is published, so the thanks can link to it (#200).</param>
+public sealed record FinishedSeason(int Year, int PostCount, int AuthorCount, bool HasRetrospective = false);
 
 /// <summary>The next season, when its registration opens if that's scheduled, and the days left once the countdown has started.</summary>
 public sealed record UpcomingSeason(int Year, DateOnly? SignUpsOpenOn, int? DaysUntilSignUps);

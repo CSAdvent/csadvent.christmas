@@ -12,6 +12,7 @@ using CSAdvent.Web.Content;
 using CSAdvent.Web.Contributors;
 using CSAdvent.Web.Data;
 using CSAdvent.Web.Data.Archive;
+using CSAdvent.Web.DeadLinks;
 using CSAdvent.Web.Email;
 using CSAdvent.Web.Email.Queue;
 using CSAdvent.Web.Entries;
@@ -111,6 +112,26 @@ builder.Services.AddScoped<OtherAdventLogoService>();
 if (builder.Configuration.GetValue("OtherAdvents:FetchLogosInBackground", defaultValue: true))
 {
     builder.Services.AddHostedService<OtherAdventLogoWorker>();
+}
+
+// The dead-link check (#201): each finished season's posts, now and then, and the Wayback Machine's copy of any that have gone.
+// Both clients are the app's own (public addresses only, no factory retries); development and the tests use stand-ins, so
+// they never reach authors' sites or the Internet Archive.
+builder.Services.AddOptions<LinkCheckOptions>()
+    .BindConfiguration(LinkCheckOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+var sampleLinks = builder.Configuration.GetValue<bool>($"{LinkCheckOptions.SectionName}:{nameof(LinkCheckOptions.SamplePages)}");
+builder.Services.AddSingleton<ILinkProber>(services => sampleLinks
+    ? new SampleLinkProber()
+    : new WebLinkProber(WebLinkProber.CreateClient(), services.GetRequiredService<ILogger<WebLinkProber>>()));
+builder.Services.AddSingleton<IArchiveLookup>(services => sampleLinks
+    ? new SampleArchiveLookup()
+    : new WaybackArchiveLookup(WaybackArchiveLookup.CreateClient(), services.GetRequiredService<ILogger<WaybackArchiveLookup>>()));
+builder.Services.AddScoped<LinkCheckService>();
+if (builder.Configuration.GetValue("LinkChecks:CheckInBackground", defaultValue: true))
+{
+    builder.Services.AddHostedService<LinkCheckWorker>();
 }
 builder.Services.AddOptions<SocialAccountsOptions>()
     .BindConfiguration(SocialAccountsOptions.SectionName)
@@ -272,6 +293,7 @@ app.MapBackups();
 app.MapClaims();
 app.MapBlurbs();
 app.MapEntries();
+app.MapLinkChecks();
 app.MapCards();
 app.MapFeeds();
 app.MapCalendarFiles();

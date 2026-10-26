@@ -14,6 +14,7 @@ public sealed class ManageNavTests
     [InlineData("manage/authors/7", "manage/authors")]
     [InlineData("manage/authors/requests/3", "manage/authors/requests")]
     [InlineData("manage/authors/link-changes", "manage/authors/link-changes")]
+    [InlineData("manage/authors/dead-links", "manage/authors/dead-links")]
     [InlineData("manage/emails/claim-received", "manage/emails")]
     [InlineData("manage/emails/queue", "manage/emails/queue")]
     public void TheCurrentLinkIsTheLongestOneThePageIsUnder(string path, string current) =>
@@ -26,6 +27,7 @@ public sealed class ManageNavTests
 
         Assert.Contains("manage/authors/requests", hrefs);
         Assert.Contains("manage/authors/link-changes", hrefs);
+        Assert.Contains("manage/authors/dead-links", hrefs);
         Assert.Contains("manage/social/signups", hrefs);
         Assert.Contains("manage/emails/queue", hrefs);
     }

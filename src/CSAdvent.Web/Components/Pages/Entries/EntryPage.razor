@@ -54,9 +54,12 @@
             <p class="mt-2 text-sm"><a href="@authorPage" class="font-medium text-advent-700 underline">Every C# Advent post by @entry.AuthorName</a></p>
         }
 
+        <CSAdvent.Web.Components.Entries.GonePostNotice Destination="entry.Destination" />
+
+        @* Through /go, which counts the click and sends readers to the post, or to its saved copy once it's gone (#201). *@
         <a href="@EntryLinks.Go(entry.Year, entry.Day, entry.Part, ClickVia)"
            class="mt-8 inline-flex items-center gap-2 rounded-xl bg-advent-600 px-6 py-3 text-lg font-semibold text-white shadow hover:bg-advent-700">
-            Read the post
+            @CSAdvent.Web.Components.Entries.GonePostNotice.ButtonLabel(entry.Destination)
             <svg class="size-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 13 13 7M8 7h5v5" /></svg>
         </a>
 

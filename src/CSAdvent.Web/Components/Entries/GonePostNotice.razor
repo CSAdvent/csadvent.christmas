@@ -1,0 +1,34 @@
+@* A post the dead-link check found gone from its site (#201): readers get its archived copy, if it has one. *@
+@using CSAdvent.Web.DeadLinks
+@using CSAdvent.Web.Entries
+
+@if (Destination is { IsGone: true } destination)
+{
+    <p class="mt-6 max-w-2xl rounded-xl bg-amber-50 p-4 text-sm text-amber-900 ring-1 ring-amber-200">
+        @if (destination.IsArchivedCopy)
+        {
+            <text>
+                This post seems to have gone from its site, so the button below takes you to @CopyName(destination.Url) instead.
+                <a href="@destination.PostUrl" rel="nofollow" class="font-medium underline">Try the original address</a>
+            </text>
+        }
+        else
+        {
+            <text>This post seems to have gone from its site, and we haven't found a saved copy of it yet.</text>
+        }
+    </p>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public PostDestination? Destination { get; set; }
+
+    /// <summary>The label for the button that goes to the post, or to its copy.</summary>
+    public static string ButtonLabel(PostDestination? destination) =>
+        destination?.IsArchivedCopy == true ? "Read the saved copy" : "Read the post";
+
+    private static string CopyName(string url) =>
+        url.StartsWith(WaybackArchiveLookup.CopyPrefix, StringComparison.OrdinalIgnoreCase)
+            ? "the copy the Internet Archive's Wayback Machine saved"
+            : "a saved copy";
+}

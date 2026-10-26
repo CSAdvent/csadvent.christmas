@@ -1,0 +1,177 @@
+@* One post's dead-link check (#201), with the organizer's buttons: plain forms, because the dead links page has one per post. *@
+@using CSAdvent.Web.Data
+@using CSAdvent.Web.DeadLinks
+
+<div class="text-sm">
+    @if (ShowPost)
+    {
+        <p class="text-slate-500"><a href="manage/entries/@Row.SlotId" class="hover:underline">@Row.Spot</a></p>
+        <p class="mt-1 flex flex-wrap items-baseline gap-x-1.5 text-base">
+            @* Straight to the post, not through /go, so organizers aren't counted, and so they see what readers would without the check. *@
+            <a href="@Row.PostUrl" target="_blank" rel="noopener" class="font-semibold text-advent-700 underline @(Row.Title is null ? "break-all" : "")">@(Row.Title ?? Row.PostUrl)</a>
+            @if (Row.AuthorName is { } author)
+            {
+                <span class="text-slate-600">by @author</span>
+            }
+        </p>
+        <p class="mt-1 break-all text-xs text-slate-500">@Row.PostUrl</p>
+    }
+
+    <p class="mt-2 flex flex-wrap items-center gap-2">
+        <span class="rounded-full px-2 py-0.5 text-xs font-semibold @Badge(Row.Status)">@Label(Row.Status)</span>
+        @if (Row.Detail is { } detail)
+        {
+            <span class="text-slate-700">@detail</span>
+        }
+        @if (Row.CheckedAt is { } checkedAt)
+        {
+            <span class="text-slate-500">· checked <LocalTime Value="checkedAt" /></span>
+        }
+    </p>
+
+    <p class="mt-1 text-slate-600">
+        @if (Row.DecidedBy is { } decidedBy)
+        {
+            <text>@decidedBy decided, so it isn't checked again until its link changes or someone presses Check now.</text>
+        }
+        else
+        {
+            @StatusLine(Row)
+            <text> Next check <LocalTime Value="Row.NextCheckAt" />.</text>
+        }
+    </p>
+
+    @if (Row.Status == LinkStatus.Dead || Row.ArchivedUrl is not null)
+    {
+        <p class="mt-1 text-slate-600">
+            @if (Row.ArchivedUrl is { } copy)
+            {
+                <text>Saved copy (@(Row.ArchivedBy is { } by ? $"from {by}" : "found at the Wayback Machine")):</text>
+                <a href="@copy" target="_blank" rel="noopener" class="break-all text-advent-700 underline">@copy</a>
+                @if (Row.SendsReadersToCopy)
+                {
+                    <span class="ml-1 font-medium text-slate-800">Readers who follow its link get this copy.</span>
+                }
+            }
+            else if (Row.ArchivedBy is { } clearedBy)
+            {
+                <text>No saved copy: @clearedBy cleared it, so readers still get the original address.</text>
+            }
+            else if (Row.ArchiveCheckedAt is { } asked)
+            {
+                <text>The Wayback Machine had no saved copy when it was last asked (<LocalTime Value="asked" />), so readers still get the original address.</text>
+            }
+            else
+            {
+                <text>Its saved copy hasn't been looked up yet.</text>
+            }
+        </p>
+    }
+
+    @if (Message is { } message)
+    {
+        <p class="mt-3 rounded-lg p-3 font-medium ring-1 @(IsError ? "bg-red-50 text-red-800 ring-red-200" : "bg-green-50 text-green-800 ring-green-200")" role="@(IsError ? "alert" : "status")">@message</p>
+    }
+
+    <div class="mt-3 flex flex-wrap gap-2">
+        @Button("manage/links/check", "Check now")
+        @if (Row.Status != LinkStatus.Working || Row.DecidedBy is null)
+        {
+            @Button("manage/links/working", "It works")
+        }
+        @if (Row.Status != LinkStatus.Dead || Row.DecidedBy is null)
+        {
+            @Button("manage/links/dead", "It's gone")
+        }
+        @Button("manage/links/lookup", "Look up a saved copy")
+    </div>
+
+    <div class="mt-3 grid gap-3 sm:grid-cols-2">
+        <form method="post" action="manage/links/replace" class="flex flex-col gap-1">
+            <AntiforgeryToken />
+            <input type="hidden" name="SlotId" value="@Row.SlotId" />
+            <input type="hidden" name="Version" value="@Row.Version" />
+            <input type="hidden" name="ReturnUrl" value="@ReturnUrl" />
+            <label for="replace-@Row.SlotId" class="font-medium text-slate-700">New link <span class="font-normal text-slate-500">(the author moved it)</span></label>
+            <span class="flex gap-2">
+                <input id="replace-@Row.SlotId" name="Url" type="url" required maxlength="500" placeholder="https://" class="min-w-0 grow rounded-lg border border-slate-300 px-2 py-1" />
+                <button type="submit" class="rounded-lg px-3 py-1 font-medium text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50">Save</button>
+            </span>
+        </form>
+        <form method="post" action="manage/links/archive" class="flex flex-col gap-1">
+            <AntiforgeryToken />
+            <input type="hidden" name="SlotId" value="@Row.SlotId" />
+            <input type="hidden" name="ReturnUrl" value="@ReturnUrl" />
+            <label for="archive-@Row.SlotId" class="font-medium text-slate-700">Saved copy <span class="font-normal text-slate-500">(empty clears it)</span></label>
+            <span class="flex gap-2">
+                <input id="archive-@Row.SlotId" name="Url" type="url" maxlength="1000" value="@Row.ArchivedUrl" placeholder="https://web.archive.org/web/…" class="min-w-0 grow rounded-lg border border-slate-300 px-2 py-1" />
+                <button type="submit" class="rounded-lg px-3 py-1 font-medium text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50">Save</button>
+            </span>
+        </form>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public LinkCheckRow Row { get; set; } = null!;
+
+    /// <summary>The page the buttons come back to.</summary>
+    [Parameter, EditorRequired]
+    public string ReturnUrl { get; set; } = "";
+
+    /// <summary>Whether to show which post it is: on the dead links page, not on the post's own entry page.</summary>
+    [Parameter]
+    public bool ShowPost { get; set; }
+
+    /// <summary>What a button just did to this post ("checked", "invalid"…), from the query string.</summary>
+    [Parameter]
+    public string? Done { get; set; }
+
+    private bool IsError => Done is "invalid" or "changed";
+
+    private string? Message => Done switch
+    {
+        "checked" => "Checked again.",
+        "working" => "Marked as working.",
+        "dead" => "Marked as gone. Readers get its saved copy, if it has one.",
+        "archive" => "Saved copy updated.",
+        "lookup" => Row.ArchivedUrl is null ? "The Wayback Machine has no saved copy of it." : "Found a saved copy at the Wayback Machine.",
+        "replaced" => "New link saved. It's checked again on the next run.",
+        "invalid" => "That isn't a full web address. It needs to start with https:// or http://.",
+        "changed" => "Someone changed this spot since you opened the page. Here's the current version; try again.",
+        _ => null,
+    };
+
+    private RenderFragment Button(string action, string label) =>
+        @<form method="post" action="@action">
+            <AntiforgeryToken />
+            <input type="hidden" name="SlotId" value="@Row.SlotId" />
+            <input type="hidden" name="ReturnUrl" value="@ReturnUrl" />
+            <button type="submit" class="rounded-lg px-3 py-1.5 font-medium text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50">@label</button>
+        </form>;
+
+    private static RenderFragment StatusLine(LinkCheckRow row) => row switch
+    {
+        { Status: LinkStatus.Dead, DeadSince: { } since } => @<text>Dead since <LocalTime Value="since" />.</text>,
+        { Status: LinkStatus.Failing, FailingSince: { } since } => @<text>Failing since <LocalTime Value="since" /> (@row.Failures in a row).</text>,
+        { Status: LinkStatus.Refused } => @<text>The site doesn't let us check it, so readers get the original address.</text>,
+        _ => @<text></text>,
+    };
+
+    public static string Label(LinkStatus status) => status switch
+    {
+        LinkStatus.Working => "Working",
+        LinkStatus.Failing => "Failing",
+        LinkStatus.Dead => "Dead",
+        LinkStatus.Refused => "Can't check",
+        _ => "Not checked yet",
+    };
+
+    public static string Badge(LinkStatus status) => status switch
+    {
+        LinkStatus.Working => "bg-green-100 text-green-800",
+        LinkStatus.Failing => "bg-amber-100 text-amber-800",
+        LinkStatus.Dead => "bg-red-100 text-red-800",
+        _ => "bg-slate-100 text-slate-700",
+    };
+}

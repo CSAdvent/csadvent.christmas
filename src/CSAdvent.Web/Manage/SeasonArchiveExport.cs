@@ -9,7 +9,7 @@ namespace CSAdvent.Web.Manage;
 /// <summary>
 /// A finished season as an archive file (#182), written like the ones in <c>Data/Archive</c>, so the organizers can commit it
 /// there each January: then any new database is seeded with it (<see cref="ArchiveSeeder"/>), and the season's history no
-/// longer depends on the database's 14-day backups. It holds only what the calendar shows: no contact details.
+/// longer depends on the database's 35-day backups. It holds only what the calendar shows: no contact details.
 /// </summary>
 public sealed class SeasonArchiveExport(AdventDbContext db, AdventSchedule schedule)
 {

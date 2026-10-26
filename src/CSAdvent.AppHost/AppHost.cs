@@ -35,8 +35,11 @@ var postgres = builder.AddAzurePostgresFlexibleServer("postgres")
         server.StorageSizeInGB = 32;
         server.Backup = new PostgreSqlFlexibleServerBackupProperties
         {
-            // Every season since 2017 lives here. Geo-redundant backup can only be chosen when the server is created.
-            BackupRetentionDays = 14,
+            // Every season since 2017 lives here. 35 days is Azure's most (#182): a mistake noticed weeks later can still be
+            // undone, and backup storage up to the server's 32 GB costs nothing, far more than this small database needs. The
+            // privacy page says deleted data can stay in backups this long. Geo-redundant backup can only be chosen when the
+            // server is created.
+            BackupRetentionDays = 35,
             GeoRedundantBackup = PostgreSqlFlexibleServerGeoRedundantBackupEnum.Disabled,
         };
 
@@ -244,8 +247,10 @@ if (isTesting)
     web.WithEnvironment("Announcements__SubscribeLimit", "1000");
     web.WithEnvironment("Announcements__SendInBackground", "false");
 
-    // The tests never reach out to the Other Advents calendars' real sites.
+    // The tests never reach out to the Other Advents calendars' real sites, or to authors' posts for the dead-link check
+    // (#201), which the tests run themselves on the stand-in pages, through the development endpoint.
     web.WithEnvironment("OtherAdvents__FetchLogosInBackground", "false");
+    web.WithEnvironment("LinkChecks__CheckInBackground", "false");
 }
 else
 {
