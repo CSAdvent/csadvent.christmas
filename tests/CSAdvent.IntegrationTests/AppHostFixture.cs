@@ -1,6 +1,7 @@
 using CSAdvent.Web.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 [assembly: AssemblyFixture(typeof(CSAdvent.IntegrationTests.AppHostFixture))]
 
@@ -38,6 +39,10 @@ public sealed class AppHostFixture : IAsyncLifetime
             ],
             timeout.Token);
 
+        // The AppHost relays every resource's console to the test output (as CSAdvent.AppHost.Resources.{resource}), standard
+        // output as Information and standard error as Error. Left alone that's thousands of lines of the migrations' SQL,
+        // which bury a failing test (#177). Warnings and errors still come through.
+        appHost.Services.AddLogging(logging => logging.AddFilter("CSAdvent.AppHost.Resources", LogLevel.Warning));
 
         appHost.Services.ConfigureHttpClientDefaults(http => http.AddStandardResilienceHandler());
 

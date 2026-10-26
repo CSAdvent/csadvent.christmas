@@ -19,8 +19,10 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 | November | Approve requests, watch the backup list | Organizers |
 | Any time | Check requests to add older posts to people's accounts, and for new links to older posts (each one emails the organizers) | Organizers |
 | From 7 days before each day | "Your post is due" reminders, then a last call on the day | Automatic |
+| By November 30 | Raise the site to 2 replicas and pause Dependabot, in one pull request (December, below) | Organizers |
 | December 1–25 | Reveals at midnight, announcements at 10 AM and 2 PM, the daily email once both posts are in (from 9 AM, 2 PM at the latest) | Automatic, plus LinkedIn and Reddit by hand |
 | December 1–25 | Decide on posts the blurb check can't settle, and keep an author before a backup takes their spot if the check got it wrong, before their announcement | Organizers, when emailed |
+| December 27 | Back to 1 replica, and Dependabot back on (After Advent, below) | Organizers |
 | December 31 | The calendar moves to the archive, and the home page thanks everyone | Automatic |
 | Late December–January | Write, publish and share the season's retrospective | Organizers |
 | January | Save the season to the archive files in the repository (After Advent, below) | Organizers |
@@ -60,7 +62,9 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 7. **Check email:** send yourself a sample from `/manage/emails` (it goes through the email queue, so it proves both),
    check `/manage/emails/queue` has nothing failed, and send a test email to hello@csadvent.christmas from another address
    (it forwards through ImprovMX).
-8. **Keep the stack current:** dependency updates, and a deploy (every merge to `main` deploys, unless it only changes
+8. **Keep the stack current:** Dependabot opens a pull request each Monday for the NuGet packages and one for the
+   workflows' actions, each update grouped into one (`.github/dependabot.yml`; EF Core, Npgsql and Aspire wait for the .NET
+   11 GA work, #55). Merge them before November, and deploy (every merge to `main` deploys, unless it only changes
    documentation).
 9. **Check the announcements list** at `/manage/announcements`. The "sign-ups are open" email goes to every confirmed
    subscriber by itself at 9 AM on the day sign-ups open: queued for everyone at once, and sent as list mail, after the
@@ -124,6 +128,14 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 
 ## 🎄 December 1–25: Advent
 
+- **Before December 1** (by November 30), in one pull request, so it's one deploy:
+  - **Two replicas:** set `Web:MinReplicas` to `2` in `src/CSAdvent.AppHost/appsettings.json` (#158). With one, a replica
+    restarting (a crash, or Azure moving it) takes the site down for a minute. The second replica is billed for as long as
+    it runs, which is why it's only for December. Merging deploys it; afterwards the `web` container app's **Scale** page
+    in the portal shows a minimum of 2. Don't change it in the portal instead: the next deploy puts back what
+    `appsettings.json` says.
+  - **Pause Dependabot:** set both `open-pull-requests-limit` lines in `.github/dependabot.yml` to `0`, so no dependency
+    updates arrive mid-season. Security alerts still show in the repository's **Security** tab.
 - **Reveals** happen at midnight. The day revealed next counts down on the calendar.
 - **Automatic posts** go to Mastodon, Bluesky, Facebook and X at 10 AM (post 1) and 2 PM (post 2), or as soon as a late
   link arrives that day.
@@ -160,6 +172,8 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 
 ## 🎁 After Advent
 
+- **December 27:** undo the December changes in one pull request: `Web:MinReplicas` back to `1`, and both
+  `open-pull-requests-limit` lines in `.github/dependabot.yml` back to `5`. Then merge the dependency updates that arrive.
 - **December 31:** the calendar leaves the home page for the archive, and the between-seasons page thanks everyone
   and links to it.
 - **The retrospective (late December or early January, before February 1):** at `/manage/retrospectives`, open the
@@ -174,6 +188,9 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
   request. It's the calendar as shown (authors, links, titles, summaries; no contact details), in the same format as
   2017–2025, and any new database is seeded with it, so the season no longer depends on the database's 14-day backups.
   If an author asks for their entry to be taken down later, remove it from that file too.
+- **Move the workflows to a newer runner (January):** every workflow runs on `ubuntu-24.04`, pinned so GitHub's move of
+  `ubuntu-latest` to a new Ubuntu couldn't land mid-season (#177). Outside the season, try the newer image in a pull
+  request (its CI run tests it), and change all three workflows together.
 - **February 1:** the season's claim requests (with comments) and backup list are deleted automatically, and so are
   the emails of people who signed in but never had a spot (unless they're waiting to hear about a request for an older
   post). **Authors' email addresses are kept**, on their accounts and
@@ -207,6 +224,11 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 - **Sign-in:** sign in to the live site with GitHub. Nothing else notices a revoked OAuth secret.
 - **hello@:** send it a test email from another address. Nothing else notices ImprovMX failing.
 - **GitHub Actions minutes:** check the organization's usage before November (see below).
+- **Dependency alerts:** the repository's **Security → Dependabot** tab lists known vulnerabilities in the packages and
+  actions. Fix any before December. (It needs Dependabot alerts on, under **Settings → Code security**.)
+- **The database's maintenance window:** Azure patches the server on Sundays from 08:00 UTC, 3 AM Eastern (#158), and
+  emails a notice 5 days ahead (the Service Health alert). If one lands on a day that matters, the server's **Maintenance**
+  page in the portal can **Reschedule** it.
 
 Each credential and account is described below, with where it lives and how to replace it.
 
@@ -450,10 +472,10 @@ The repository is private, and the CodingWithCalvin organization is on GitHub's 
 shared with the organization's other private repositories. Each job is billed in whole minutes, rounded up. When they run
 out, CI stops, and so do deploys, because they wait for CI.
 
-**What a change costs** (October 2026): about 4 minutes of CI for each push to a pull request, plus 2 for the commit
-lint (two jobs of a minute each), then 4 more for CI on `main` after the merge and about 7 for the deploy. So a pull request
-merged after one push is about 17 minutes. October 25 had 8 deploys, and recent use was about 180 minutes a day: at that
-pace November's allowance runs out mid-month.
+**What a change costs** (October 2026): about 4 minutes of CI for each push to a pull request (with the Azure publish
+check, #178), plus 2 for the commit lint (two jobs of a minute each), then 4 more for CI on `main` after the merge and about
+7 for the deploy. So a pull request merged after one push is about 17 minutes. October 25 had 8 deploys, and recent use was
+about 180 minutes a day: at that pace November's allowance runs out mid-month.
 
 **Already cut** (#140):
 
@@ -462,11 +484,23 @@ pace November's allowance runs out mid-month.
   check still passes, so it can never hold up a required check.
 - A push to `main` that only changes those doesn't run CI or deploy at all. Run the Deploy workflow by hand if you want
   one anyway.
+- The Azure publish check only runs on pull requests (on `main`, the deploy does the same), and leaves out the migration
+  bundle, which would add about two minutes.
+- A deploy whose commit `main` has already moved on from stops after its first step, rather than deploying code the next
+  deploy replaces.
+- Dependabot groups each week's updates into one pull request per ecosystem, and is paused in December.
 
-**The decision (organizers):** pick one before November.
+**Decided (October 26, 2026):** the repository goes public only once every open issue is done. Until then it stays
+private on the free 2,000 minutes, with an Actions budget as a bridge, so CI and deploys keep running through the push to
+clear the backlog (#140).
 
-1. **Make the repository public.** Actions minutes on GitHub's standard runners are free for public repositories. Before
-   switching:
+1. **Now: an Actions budget**, so CI keeps running past the free minutes: the organization's **Settings → Billing and
+   licensing → Budgets and alerts → New budget**, for Actions, with email alerts. In October 2026, Linux minutes beyond the
+   free ones cost $0.006 each, and October had used 1,255 by the 26th, at about 180 a day.
+   - ✏️ **To fill in:** the budget's amount ($____ a month; about $20–25 was suggested), whether it stops usage (which stops
+     CI again) or only warns, and the date it was set.
+2. **Once every open issue is done: make the repository public.** Actions minutes on GitHub's standard runners are free
+   for public repositories. Before switching:
    - Scan the whole history for secrets with a scanner such as [gitleaks](https://github.com/gitleaks/gitleaks). The real
      secrets live in the `production` environment, not the repository, but check anyway.
    - Read what becomes public: the docs name the subscription ID, the resource names and the deploy identity's federated
@@ -475,17 +509,10 @@ pace November's allowance runs out mid-month.
      secrets, and GitHub asks before running workflows for first-time contributors. Branch protection becomes available
      too (a private repository on the Free plan can't have it): requiring "Build and test" is safe with the documentation
      skip above.
-   - Switch it in **Settings → General → Danger Zone → Change visibility**.
-2. **Or set an Actions budget**, so CI keeps running past the free minutes: the organization's **Settings → Billing and
-   licensing → Budgets and alerts → New budget**, for Actions, with email alerts. The issue suggested $10–20 a month. At
-   October's pace that's 3,000 or more extra minutes a month, so check what that costs at GitHub's current price for Linux
-   minutes before picking the amount, and whether the budget should stop usage (which stops CI again) or only warn.
+   - Switch it in **Settings → General → Danger Zone → Change visibility**, then remove the Actions budget.
 
-Either way, check the organization's **Settings → Billing and licensing → Usage** (filtered to Actions) before November,
+Either way, check the organization's **Settings → Billing and licensing → Usage** (filtered to Actions) in early November,
 and again in early December.
-
-- **Decided (October 26, 2026):** make the repository public. Until it is, #140 stays open and CI still uses the free
-  minutes, so check the usage page in early November.
 
 ---
 
@@ -543,8 +570,10 @@ a sample to everyone.
   a loop). If December really needs more, change the `Sku` in `AppHost.cs` (B2s is the next size up, at about twice the
   price) and deploy. Changing it restarts the server for a minute or two, and Azure warns that restarts are slow once the
   credits are gone, so act on this warning rather than at zero.
-- **More than 30 database connections** (`csadvent-postgres-connections`): B1ms allows 50, and Azure keeps some of them.
-  A deploy briefly runs the old and new revisions side by side, so one alert that clears within 15 minutes is fine.
+- **More than 30 database connections** (`csadvent-postgres-connections`): B1ms allows 50, and Azure keeps 15 of them.
+  Each replica of the site opens at most 8 (`connectionsPerReplica` in `AppHost.cs`, #158), so 3 replicas stay under 25.
+  Before that cap, the server ran out on October 24–25 ("remaining connection slots are reserved", SqlState 53300). A
+  deploy briefly runs the old and new revisions side by side, so one alert that clears within 15 minutes is fine.
   Otherwise see who's connected:
 
   ```sql
@@ -553,7 +582,8 @@ a sample to everyone.
 - **Service Health** (`csadvent-service-health`): Azure reported an outage, planned maintenance, a security notice or
   something to act on, for a service in Central US or a global one (DNS, email, Azure's sign-in). Read it in the portal under
   **Service Health**. Outages are Azure's to fix: tell people on social media if the site is affected. Planned database
-  maintenance restarts the server for a few minutes.
+  maintenance restarts the server for a few minutes, in its window on Sundays from 08:00 UTC (3 AM Eastern in winter), and
+  the notice comes 5 days ahead: if that Sunday matters, **Reschedule** it on the server's **Maintenance** page.
 - **The uptime check** says the site is down, or its certificate is about to expire:
   1. Open the site and `/health` yourself.
   2. **Unhealthy**: the site can't reach the database (look at the server in the portal, and the database alerts).
@@ -599,7 +629,60 @@ alerts to both organizers at 80% and 100%. It's free, and only warns: nothing is
   or the workspace's spend limit). Posts aren't announced automatically meanwhile, so mark the day's posts as passed (or
   announce them anyway) by hand.
 - **A wrong post on the calendar:** fix it at `/manage/entries`. An edited title gets a fresh share card.
+- **A bad deploy:** roll it back. See below.
 - **Lost or damaged data:** restore the database to a point before it happened. See below.
+
+---
+
+## ⏪ Rolling Back a Deploy
+
+Rolling back the site never rolls back the database: migrations only go forward. Pass `--subscription …` (the C# Advent
+subscription, as in Restoring the Database) to every `az` command.
+
+### 🔁 The Site
+
+1. **Redeploy the last good commit** (about 7 minutes). In GitHub, **Actions → Deploy → Run workflow** on `main`, with
+   **sha** set to the commit before the bad one (`git log --oneline origin/main` lists them; short SHAs work), or:
+
+   ```bash
+   gh workflow run deploy.yml --ref main -f sha=<commit>
+   ```
+
+   The workflow refuses a commit that isn't on `main`. It deploys that commit's AppHost, so infrastructure changes roll back
+   too, and its migrations job finds nothing new to run.
+2. **Or put back the previous image** (a minute, no build), when the bad change is in the site's code and not the AppHost.
+   Every deploy pushes its images tagged `aspire-deploy-<UTC time>` (the Deploy run's log says "Setting default deploy tag
+   …"). List the revisions with their images, and switch to the one before:
+
+   ```bash
+   az containerapp revision list -n web -g rg-csadvent \
+     --query "[].{revision:name, created:properties.createdTime, image:properties.template.containers[0].image}" -o table
+   az containerapp update -n web -g rg-csadvent --image <the previous image>
+   ```
+
+   Only the image changes: the settings and secrets stay as the last deploy left them.
+
+Either way:
+
+- **It lasts until the next deploy of `main`**, which brings the bad change back. Revert it on `main` in a pull request
+  (`git revert <commit>`), and let that deploy.
+- **The older code runs against the newer schema.** That's safe while migrations only add things (add first, remove in a
+  later release). If the bad deploy's migration removed or renamed something the older code reads, the older code fails
+  too: fix forward instead, with a new migration.
+
+### 🧯 A Bad Migration
+
+When a migration damaged or dropped data:
+
+1. **Find when it ran:** the Deploy run's **Run the migrations** step, in UTC.
+2. **Restore to just before it** into a new server, and look at it (Restoring the Database, steps 1 and 2, below).
+3. **Copy the data back** (step 3 there), then fix the schema:
+   - **Only what was lost** (usually): the bad migration stays applied in production, so undo its schema change with a new
+     migration, merged and deployed like any change. Never delete a migration that has run in production.
+   - **The whole database:** production is back to before the bad migration, its history included, so the next migrations
+     job would run it again. Before anything else deploys, change that migration on `main` so it's safe (no database has
+     it any more), and deploy that.
+4. **Delete the restored server** (step 4 there).
 
 ---
 

@@ -1,13 +1,20 @@
 name: Deploy
 
 on:
-  # Every push to main deploys once CI has passed on it. CI skips documentation-only pushes, so they don't deploy.
+  # Every push to main deploys once CI has passed on it, unless main has moved on to newer code by then. CI skips
+  # documentation-only pushes, so they don't deploy.
   workflow_run:
     workflows: [CI]
     types: [completed]
     branches: [main]
-  # And by hand, from the Actions tab, to redeploy main.
+  # And by hand, from the Actions tab: main's latest commit, or an earlier commit of main to roll back to (the runbook's
+  # Rolling Back a Deploy).
   workflow_dispatch:
+    inputs:
+      sha:
+        description: A commit on main to deploy instead of the latest (full or short SHA). Leave it empty to deploy main.
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -20,16 +27,20 @@ concurrency:
   cancel-in-progress: false
 
 env:
+  # The same Aspire CLI as ci.yml. Keep the two in step.
   ASPIRE_CLI_VERSION: 13.6.3
   DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
   ASPIRE_CLI_TELEMETRY_OPTOUT: 'true'
 
+# This job can change anything in the subscription, so every action is pinned to a commit (#180), with its tag alongside for
+# Dependabot, which keeps both up to date.
 jobs:
   deploy:
     name: Deploy to Azure
     # A CI run for a pull request never deploys, and neither does a failed one.
     if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
-    runs-on: ubuntu-latest
+    # Pinned rather than ubuntu-latest, which moves to a new Ubuntu in the middle of the season (#177).
+    runs-on: ubuntu-24.04
     # The environment holds the secrets, and only main may deploy to it. Azure only trusts tokens for this environment.
     environment:
       name: production
@@ -63,43 +74,110 @@ jobs:
       Parameters__alert-emails: ${{ secrets.ALERT_EMAILS }}
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          # The commit CI just tested, even if main has moved on since.
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      # Only main's latest code deploys (#179). CI runs can finish out of order, so without this an older commit could deploy
+      # over a newer one. A newer commit that only changes documentation doesn't count, because it never deploys by itself
+      # (keep the list in step with ci.yml's). By hand, the sha input deploys an earlier commit of main instead.
+      - name: Choose the commit
+        id: commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          REQUESTED: ${{ inputs.sha }}
+          TESTED: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          if [ "$EVENT" = workflow_dispatch ]; then
+            sha="${REQUESTED:-$GITHUB_SHA}"
+          else
+            sha="$TESTED"
+          fi
+          if ! [[ "$sha" =~ ^[0-9a-fA-F]{7,40}$ ]]; then
+            echo "::error::\"$sha\" isn't a commit SHA."
+            exit 1
+          fi
+          # How main compares with the commit: "identical", "ahead" (the commit is in main's history), or "behind" and
+          # "diverged" (it isn't on main).
+          if ! compare=$(gh api "repos/$GITHUB_REPOSITORY/compare/$sha...main" --jq '{status, sha: .base_commit.sha, files: [(.files // [])[].filename]}'); then
+            echo "::error::Couldn't find the commit $sha."
+            exit 1
+          fi
+          status=$(jq -r .status <<< "$compare")
+          sha=$(jq -r .sha <<< "$compare")
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          case "$status" in
+            identical)
+              echo "Deploying $sha, main's latest commit."
+              echo "deploy=true" >> "$GITHUB_OUTPUT" ;;
+            ahead)
+              if [ "$EVENT" = workflow_dispatch ]; then
+                echo "::notice::Deploying $sha, an earlier commit of main. The next deploy of main replaces it."
+                echo "deploy=true" >> "$GITHUB_OUTPUT"
+              elif jq -r '.files[]' <<< "$compare" | grep -qvE '^(README\.md|CLAUDE\.md|docs/.+)$'; then
+                echo "::notice::Skipped $sha: main has newer code, which deploys once CI passes on it."
+                echo "Skipped: main has moved on from $sha to newer code, which deploys once CI passes on it." >> "$GITHUB_STEP_SUMMARY"
+                echo "deploy=false" >> "$GITHUB_OUTPUT"
+              else
+                echo "Deploying $sha. Main has moved on, but only its documentation."
+                echo "deploy=true" >> "$GITHUB_OUTPUT"
+              fi ;;
+            *)
+              if [ "$EVENT" = workflow_dispatch ]; then
+                echo "::error::$sha isn't a commit on main, so it can't be deployed."
+                exit 1
+              fi
+              echo "::warning::Skipped $sha: it's no longer on main."
+              echo "deploy=false" >> "$GITHUB_OUTPUT" ;;
+          esac
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v6
+      - name: Checkout
+        if: steps.commit.outputs.deploy == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          global-json-file: global.json
+          # The commit chosen above: the one CI just tested, or the one asked for.
+          ref: ${{ steps.commit.outputs.sha }}
+
+      # Only the SDK global.json asks for (#177): setup-dotnet also installs the latest LTS runtime first, every time. The
+      # install script is pinned to a commit of dotnet/install-scripts (tag v2026.07.21), like ci.yml's.
+      - name: Setup .NET
+        if: steps.commit.outputs.deploy == 'true'
+        run: |
+          curl --fail --silent --show-error --location --retry 3 --output "$RUNNER_TEMP/dotnet-install.sh" \
+            https://raw.githubusercontent.com/dotnet/install-scripts/da3ce11ba63f3dbb0fb835d41bda2665d5c48e84/src/dotnet-install.sh
+          bash "$RUNNER_TEMP/dotnet-install.sh" --jsonfile global.json --install-dir /usr/share/dotnet --skip-non-versioned-files
+          echo "DOTNET_ROOT=/usr/share/dotnet" >> "$GITHUB_ENV"
+          dotnet --version
 
       # The build downloads Tailwind's standalone CLI (about 110 MB) into .tools/ unless it's already there.
       - name: Cache the Tailwind CLI
-        uses: actions/cache@v6
+        if: steps.commit.outputs.deploy == 'true'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .tools
           key: tailwind-${{ runner.os }}-${{ hashFiles('build/Tailwind.targets') }}
 
       - name: Install the Aspire CLI and dotnet-ef
+        if: steps.commit.outputs.deploy == 'true'
         run: |
           dotnet tool install --global Aspire.Cli --version "$ASPIRE_CLI_VERSION"
           dotnet tool restore
 
       - name: Sign in to Azure
-        uses: azure/login@v3
+        if: steps.commit.outputs.deploy == 'true'
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       - name: Deploy
+        if: steps.commit.outputs.deploy == 'true'
         run: aspire deploy --apphost src/CSAdvent.AppHost --non-interactive --nologo
 
-      # aspire deploy builds the migration bundle's job but never starts it.
+      # aspire deploy builds the migration bundle's job but never starts it. The containerapp extension is pinned (#180), so
+      # a new release can't change this step by itself.
       - name: Run the migrations
+        if: steps.commit.outputs.deploy == 'true'
         run: |
-          az extension add --name containerapp --upgrade --only-show-errors
+          az extension add --name containerapp --version 0.3.55 --upgrade --only-show-errors
           execution=$(az containerapp job start -n migrations -g "$Azure__ResourceGroup" --query name -o tsv)
           echo "Started $execution."
           for _ in $(seq 1 60); do
@@ -115,6 +193,7 @@ jobs:
 
       - name: Check the site
         id: site
+        if: steps.commit.outputs.deploy == 'true'
         run: |
           host=$(az containerapp show -n web -g "$Azure__ResourceGroup" --query properties.configuration.ingress.fqdn -o tsv)
           echo "url=https://$host" >> "$GITHUB_OUTPUT"

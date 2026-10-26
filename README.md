@@ -206,7 +206,7 @@ Email can't be sent until the sending domain is verified, which happens after th
 
 ### 🤖 Deploying from GitHub Actions
 
-[`deploy.yml`](.github/workflows/deploy.yml) deploys every push to `main` once CI has passed on it (a push that only changes documentation runs neither), and **Run workflow** in the Actions tab redeploys `main` by hand. It signs in to Azure with GitHub's OIDC token (no Azure password is stored), runs `aspire deploy`, starts the migrations job and waits for it, then checks the site. Deploys never overlap.
+[`deploy.yml`](.github/workflows/deploy.yml) deploys every push to `main` once CI has passed on it (a push that only changes documentation runs neither, and a push already overtaken by newer code on `main` is skipped), and **Run workflow** in the Actions tab redeploys `main` by hand, or an earlier commit of `main` given its SHA (rolling back is in [the runbook](docs/runbook.md)). It signs in to Azure with GitHub's OIDC token (no Azure password is stored), runs `aspire deploy`, starts the migrations job and waits for it, then checks the site. Deploys never overlap.
 
 One-time setup (`<sub>` is the subscription ID):
 
