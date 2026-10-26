@@ -139,7 +139,7 @@ public sealed class MorningDigest(
             [
                 backup.StandingBy
                     ? $"{season.Spot(backup.Day, backup.Part)}: {backup.Name} is standing by to take the spot."
-                    : $"{season.Spot(backup.Day, backup.Part)}: {backup.Name} has been asked, and has until {TodayLabels.Eastern(backup.ExpiresAt, report.TimeZone)} to answer.",
+                    : $"{season.Spot(backup.Day, backup.Part)}: {backup.Name} has been asked, and has until {report.Describe(backup.ExpiresAt)} to answer.",
             ])]));
         }
 

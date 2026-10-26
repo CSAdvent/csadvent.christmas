@@ -92,7 +92,27 @@ public sealed class TodayTests
         Assert.Equal("Posted by CalvinAllen", TodayLabels.Posting(new(SocialPlatform.LinkedIn, false, TodayPostingStatus.Posted, "CalvinAllen"), tenAm, Eastern));
         Assert.Equal("Did it go out?", TodayLabels.Posting(new(SocialPlatform.X, true, TodayPostingStatus.Unconfirmed), tenAm, Eastern));
         Assert.Equal("To post by hand", TodayLabels.Posting(new(SocialPlatform.Reddit, false, TodayPostingStatus.ToPost), tenAm, Eastern));
-        Assert.Equal("10:00 PM Eastern on December 6", TodayLabels.Eastern(new DateTimeOffset(2026, 12, 7, 3, 0, 0, TimeSpan.Zero), Eastern));
+    }
+
+    [Fact]
+    public void TheReportGivesTimesAsTheScheduleDoes()
+    {
+        var late = new DateTimeOffset(2026, 12, 7, 3, 0, 0, TimeSpan.Zero);
+
+        Assert.Equal("10:00 PM Eastern on December 6", SampleReport().Describe(late));
+        Assert.Equal(Schedule().Describe(late), SampleReport().Describe(late));
+    }
+
+    [Fact]
+    public void TheDigestCallsTheTimeZoneWhatTheSiteCallsIt()
+    {
+        // Advent:TimeZone and Advent:TimeZoneName, rather than "Eastern" whatever the zone (#246).
+        var report = SampleReport(SampleSeason()) with { TimeZone = TimeZoneInfo.FindSystemTimeZoneById("Europe/London"), TimeZoneName = "UK time" };
+
+        var text = EmailText.Render(MorningDigest.Email(report, SampleSeason(), Site), Site.BaseUrl);
+
+        Assert.Contains("- December 7, post 2: Barbara Liskov has been asked, and has until 4:00 PM UK time on December 6 to answer.", text);
+        Assert.DoesNotContain("Eastern", text);
     }
 
     [Fact]
@@ -172,5 +192,6 @@ public sealed class TodayTests
 
         Assert.True(entry.IsForOrganizers);
         Assert.Equal("morning-digest", entry.Sample(Site).Kind);
+        Assert.Contains("has until 11:00 AM Eastern on December 6 to answer.", EmailText.Render(entry.Sample(Site), Site.BaseUrl));
     }
 }
