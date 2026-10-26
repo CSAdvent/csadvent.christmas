@@ -75,6 +75,10 @@ internal sealed class AnnouncementConfiguration : IEntityTypeConfiguration<Annou
 
         builder.HasIndex(a => new { a.Kind, a.SeasonYear }).IsUnique().HasFilter("season_year IS NOT NULL");
         builder.ToTable(t => t.HasCheckConstraint("ck_announcements_button_url", "button_url IS NULL OR button_url ~* '^https?://'"));
+
+        // The season a "sign-ups are open" announcement is about (#188). Only the test season is ever deleted, and it never
+        // has one, so cascading is only there to never stand in its way, like the season's other records.
+        builder.HasOne<Season>().WithMany().HasForeignKey(a => a.SeasonYear).OnDelete(DeleteBehavior.Cascade);
     }
 }
 

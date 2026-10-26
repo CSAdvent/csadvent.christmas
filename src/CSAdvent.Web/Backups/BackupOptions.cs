@@ -1,6 +1,9 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace CSAdvent.Web.Backups;
 
-public sealed class BackupOptions
+/// <summary>When backup posters are asked, and for how long. Checked when the app starts (#188).</summary>
+public sealed class BackupOptions : IValidatableObject
 {
     public const string SectionName = "Backups";
 
@@ -21,4 +24,19 @@ public sealed class BackupOptions
     /// standing by, to keep the author before the backup takes the spot (#148). The backup never takes it before the deadline.
     /// </summary>
     public TimeSpan OrganizersNotice { get; set; } = TimeSpan.FromHours(1);
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (AnswerWithin <= TimeSpan.Zero || AnswerWithinOnTheDay <= TimeSpan.Zero)
+        {
+            yield return new ValidationResult(
+                $"{SectionName}:AnswerWithin and {SectionName}:AnswerWithinOnTheDay must be longer than zero: each backup needs time to answer.",
+                [nameof(AnswerWithin), nameof(AnswerWithinOnTheDay)]);
+        }
+
+        if (OrganizersNotice < TimeSpan.Zero)
+        {
+            yield return new ValidationResult($"{SectionName}:OrganizersNotice can't be negative.", [nameof(OrganizersNotice)]);
+        }
+    }
 }

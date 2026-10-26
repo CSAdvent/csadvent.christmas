@@ -196,6 +196,9 @@ public sealed class ClaimReviewService(AdventDbContext db, AdventSchedule schedu
         slot.AuthorName = request.DisplayName;
         slot.AuthorUrl = request.Link;
         slot.ContributorId = request.ContributorId;
+
+        // A spot someone dropped out of has an author again (#188).
+        slot.DroppedOutAt = null;
         if (slot.Contact is null)
         {
             slot.Contact = new SlotContact { Email = request.Email };

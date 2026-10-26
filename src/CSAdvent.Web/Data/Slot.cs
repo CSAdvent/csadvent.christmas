@@ -43,7 +43,8 @@ public sealed class Slot
     public string? PostSummary { get; set; }
 
     /// <summary>
-    /// The signed-in contributor who owns the slot. Empty for imported history and for authors the organizer adds by hand.
+    /// The signed-in contributor who owns the slot. Empty for imported history and for authors the organizer adds by hand, and
+    /// always empty while the slot has no author (<c>ck_slots_contributor_needs_author</c>).
     /// </summary>
     public int? ContributorId { get; set; }
 
@@ -53,7 +54,8 @@ public sealed class Slot
 
     /// <summary>
     /// When the spot's author dropped out (or an organizer released it). While the spot stays open, the backup posters are
-    /// asked to fill it. Says nothing about who dropped out: they're never named.
+    /// asked to fill it. Says nothing about who dropped out: they're never named. Cleared whenever the spot gets an author
+    /// again (#188).
     /// </summary>
     public DateTimeOffset? DroppedOutAt { get; set; }
 
@@ -94,6 +96,11 @@ internal sealed class SlotConfiguration : IEntityTypeConfiguration<Slot>
             t.HasCheckConstraint("ck_slots_author_url", "author_url ~* '^https?://'");
             t.HasCheckConstraint("ck_slots_post_url", "post_url ~* '^https?://'");
             t.HasCheckConstraint("ck_slots_post_requires_author", "author_name IS NOT NULL OR (post_title IS NULL AND post_url IS NULL)");
+
+            // A spot without an author isn't anyone's (#188). "A spot with an author isn't dropped out" waits for a later
+            // release: the code before #188 gave dropped spots authors without clearing dropped_out_at, and it keeps serving
+            // while the migrations run (and after, if a later deploy step fails), and comes back with a rollback.
+            t.HasCheckConstraint("ck_slots_contributor_needs_author", "contributor_id IS NULL OR author_name IS NOT NULL");
         });
     }
 }

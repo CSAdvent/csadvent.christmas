@@ -16,7 +16,7 @@ public sealed class SentReminderQueriesTests
         Reminder(ReminderKind.ContributorDailyShare, December3, slotId: 11),
         Reminder(ReminderKind.ContributorDailyShare, December3.AddDays(-1), slotId: 12),
         Reminder(ReminderKind.ContributorActionNeeded, December3, slotId: 13),
-        Reminder(ReminderKind.AdminDailySummary, December3, slotId: null),
+        Reminder(ReminderKind.AdminBackupsExhausted, December3, slotId: null),
     ];
 
     [Fact]
@@ -42,7 +42,7 @@ public sealed class SentReminderQueriesTests
 
     [Fact]
     public void RecordsWithoutASlotAreLeftOut() =>
-        Assert.Empty(Recorded.AsQueryable().RecordedSlots(ReminderKind.AdminDailySummary, December3));
+        Assert.Empty(Recorded.AsQueryable().RecordedSlots(ReminderKind.AdminBackupsExhausted, December3));
 
     private static SentReminder Reminder(ReminderKind kind, DateOnly runDate, int? slotId) =>
         new() { Kind = kind, RunDate = runDate, SlotId = slotId, SentAt = DateTimeOffset.UnixEpoch };
