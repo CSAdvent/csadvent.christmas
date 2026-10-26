@@ -26,7 +26,8 @@ public sealed record ReminderRun(int PostLinkReminders, int DailyShares, int Day
 /// <see cref="ReminderOptions.DayOfLead"/> before it's announced.
 /// </para>
 /// Each email is recorded in <c>sent_reminders</c> before it's queued, and the unique index there means only one run (and
-/// one replica) can send it. The email queue (#152) sends them within the email service's limits, and drops any that would
+/// one replica) can send it. Each run skips what's already recorded rather than leave it to the index, whose refusals EF Core
+/// logs as errors (#157). The email queue (#152) sends them within the email service's limits, and drops any that would
 /// arrive too late to be true (after the day it's about, or the last call after the announcement). Runs are cheap when
 /// there's nothing to do, so the worker calls this often.
 /// </summary>
@@ -96,8 +97,10 @@ public sealed partial class ReminderService(
             .Select(s => new { s.Id, s.Part, AuthorName = s.AuthorName!, s.Contact!.Email, s.Season.SlotsPerDay })
             .ToListAsync(cancellationToken);
 
+        var runDate = schedule.InSeason(year, today);
+        var recorded = await RecordedAsync(ReminderKind.ContributorDayOf, runDate, cancellationToken);
         var sent = 0;
-        foreach (var slot in slots.Where(s => IsDayOfReminderDue(time, posting.Value.TimeFor(s.Part), options.Value.DayOfLead)))
+        foreach (var slot in slots.Where(s => !recorded.Contains(s.Id) && IsDayOfReminderDue(time, posting.Value.TimeFor(s.Part), options.Value.DayOfLead)))
         {
             // It gives the announcement as the deadline, so it's no use after that.
             var content = ReminderEmails.PostLinkDueToday(
@@ -106,7 +109,7 @@ public sealed partial class ReminderService(
             {
                 SendBefore = schedule.FromLocalTime(schedule.GetDate(year, day).ToDateTime(posting.Value.TimeFor(slot.Part))),
             };
-            if (await SendOnceAsync(ReminderKind.ContributorDayOf, schedule.InSeason(year, today), slot.Id, now, content, new EmailRecipient(slot.Email, slot.AuthorName), cancellationToken))
+            if (await SendOnceAsync(ReminderKind.ContributorDayOf, runDate, slot.Id, now, content, new EmailRecipient(slot.Email, slot.AuthorName), cancellationToken))
             {
                 sent++;
             }
@@ -136,8 +139,10 @@ public sealed partial class ReminderService(
 
         // "Due in 3 days" is only true today.
         var endOfToday = schedule.FromLocalTime(today.AddDays(1).ToDateTime(TimeOnly.MinValue));
+        var runDate = schedule.InSeason(year, today);
+        var recorded = await RecordedAsync(ReminderKind.ContributorActionNeeded, runDate, cancellationToken);
         var sent = 0;
-        foreach (var slot in slots)
+        foreach (var slot in slots.Where(s => !recorded.Contains(s.Id)))
         {
             var daysBefore = schedule.GetDate(year, slot.Day).DayNumber - today.DayNumber;
             var content = ReminderEmails.PostLinkMissing(
@@ -146,7 +151,7 @@ public sealed partial class ReminderService(
             {
                 SendBefore = endOfToday,
             };
-            if (await SendOnceAsync(ReminderKind.ContributorActionNeeded, schedule.InSeason(year, today), slot.Id, now, content, new EmailRecipient(slot.Email, slot.AuthorName), cancellationToken))
+            if (await SendOnceAsync(ReminderKind.ContributorActionNeeded, runDate, slot.Id, now, content, new EmailRecipient(slot.Email, slot.AuthorName), cancellationToken))
             {
                 sent++;
             }
@@ -171,11 +176,13 @@ public sealed partial class ReminderService(
             .ToListAsync(cancellationToken);
 
         // One email per person, however many spots they have, recorded against their first slot.
+        var recorded = await RecordedAsync(ReminderKind.ContributorDailyShare, edition.RunDate, cancellationToken);
         var recipients = contacts
             .GroupBy(c => c.Email.Trim().ToLowerInvariant())
             .Where(person => !person.Any(c => c.OptedOut))
             .Select(person => person.OrderBy(c => c.Id).ToList())
-            .Select(spots => new { First = spots[0], IsAuthorToday = spots.Any(c => c.Day == day) });
+            .Select(spots => new { First = spots[0], IsAuthorToday = spots.Any(c => c.Day == day) })
+            .Where(recipient => !recorded.Contains(recipient.First.Id));
 
         var sent = 0;
         foreach (var recipient in recipients)
@@ -201,8 +208,15 @@ public sealed partial class ReminderService(
     }
 
     /// <summary>
-    /// Records the reminder, then queues it. If another run already recorded it, nothing is sent. If queueing fails, the
-    /// record is removed so a later run tries again; once it's queued, the queue tries until it goes.
+    /// The slots that already have this reminder for this run date, which the run skips. Inserting their records again only for
+    /// the unique index to refuse them would log an error for each, every 15 minutes, on every replica (#157).
+    /// </summary>
+    private async Task<HashSet<int>> RecordedAsync(ReminderKind kind, DateOnly runDate, CancellationToken cancellationToken) =>
+        [.. await db.SentReminders.RecordedSlots(kind, runDate).ToListAsync(cancellationToken)];
+
+    /// <summary>
+    /// Records the reminder, then queues it. If another run recorded it in the meantime, nothing is sent. If queueing fails,
+    /// the record is removed so a later run tries again; once it's queued, the queue tries until it goes.
     /// </summary>
     private async Task<bool> SendOnceAsync(
         ReminderKind kind,

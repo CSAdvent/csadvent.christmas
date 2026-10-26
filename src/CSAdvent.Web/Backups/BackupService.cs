@@ -513,11 +513,18 @@ public sealed partial class BackupService(
 
     private async Task<BackupRun> TellOrganizersNobodyIsLeftAsync(Slot slot, DateTimeOffset now, CancellationToken cancellationToken)
     {
-        // Once per spot: recorded against the spot's day, whenever it's sent.
+        // Once per spot: recorded against the spot's day, whenever it's sent. Every run gets here until the spot's day is over,
+        // so it checks first rather than leave it to the unique index, whose refusals EF Core logs as errors (#157).
+        var runDate = schedule.GetDate(slot.SeasonYear, slot.Day);
+        if (await db.SentReminders.RecordedSlots(ReminderKind.AdminBackupsExhausted, runDate).ContainsAsync(slot.Id, cancellationToken))
+        {
+            return BackupRun.None;
+        }
+
         var record = new SentReminder
         {
             Kind = ReminderKind.AdminBackupsExhausted,
-            RunDate = schedule.GetDate(slot.SeasonYear, slot.Day),
+            RunDate = runDate,
             SlotId = slot.Id,
             SentAt = now,
         };

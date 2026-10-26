@@ -562,7 +562,10 @@ alerts to both organizers at 80% and 100%. It's free, and only warns: nothing is
 - **Alerts:** what each one means is under Alerts, above.
 - **The site:** every deploy runs the database migrations job and checks the site. A new revision that can't reach the
   database never takes traffic, because the health probes keep the old one serving.
-- **Logs and telemetry:** Application Insights, in the `rg-csadvent` resource group.
+- **Logs and telemetry:** Application Insights, in the `rg-csadvent` resource group. The deploy sets neither a retention
+  nor a daily cap, so logs are kept for the Log Analytics workspace's default of 30 days, and nothing stops ingestion: the
+  budget alert (above) is what warns about the cost. SQL statements aren't logged (#157); each one is still a `postgresql`
+  dependency.
 - **Emails not arriving:** check `/manage/emails/queue` (waiting, the hour's sends, failed), send a sample from
   `/manage/emails`, and look at the Communication Service in Azure.
 - **Every post says "Couldn't check":** Claude isn't answering. Each entry's page says why (a rate limit, an expired key,

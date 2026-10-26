@@ -110,7 +110,13 @@ public sealed partial class BackupListService(
         }
 
         // The email goes once per person and season, however often they leave and join again (#137). It's recorded first, so
-        // two replicas can't both send it, and the record goes again if sending fails, so a later sign-up tries again.
+        // two replicas can't both send it, and the record goes again if sending fails, so a later sign-up tries again. Someone
+        // rejoining already has one, which is checked first: the unique index refusing it would be logged as an error (#157).
+        if (await db.BackupSignupEmails.AnyAsync(e => e.SeasonYear == year && e.ContributorId == contributorId, cancellationToken))
+        {
+            return BackupSignupOutcome.Rejoined;
+        }
+
         var record = new BackupSignupEmail { SeasonYear = year, ContributorId = contributorId, SentAt = timeProvider.GetUtcNow() };
         db.BackupSignupEmails.Add(record);
         try

@@ -275,6 +275,13 @@ public sealed partial class AnnouncementService(
 
     private async Task QueueSignUpsOpenAsync(int year, DateTimeOffset now, CancellationToken cancellationToken)
     {
+        // Every run for two days gets here, so it checks first rather than leave it to the unique index, whose refusals EF
+        // Core logs as errors (#157). The index still settles two replicas at once.
+        if (await db.Announcements.AnyAsync(a => a.Kind == AnnouncementKind.SignUpsOpen && a.SeasonYear == year, cancellationToken))
+        {
+            return;
+        }
+
         var form = SignUpsOpen(year, site.Value.BaseUrl);
         db.Announcements.Add(new Announcement
         {
@@ -295,7 +302,7 @@ public sealed partial class AnnouncementService(
         }
         catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
         {
-            // Already queued, by an earlier run or another replica.
+            // Queued by another replica at the same moment.
             db.ChangeTracker.Clear();
         }
     }
