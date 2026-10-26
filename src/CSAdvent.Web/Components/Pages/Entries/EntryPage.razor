@@ -107,7 +107,7 @@
             <a href="rss" class="text-advent-700 underline">RSS feed</a>.
         </p>
 
-        @if (entry is { IsSeasonOver: true, IsLinked: false } && entry.Year != Season.TestYear)
+        @if (entry is { IsSeasonFinished: true, IsLinked: false } && entry.Year != Season.TestYear)
         {
             <p class="mt-4 text-sm text-slate-500">
                 Did you write this post?
@@ -178,7 +178,7 @@ else if (_entry is { } upcoming)
     private static string Label(EntryView entry, AdjacentEntry other) =>
         string.Create(CultureInfo.InvariantCulture, $"December {other.Day}{(entry.SlotsPerDay > 1 ? $", post {other.Part}" : "")}");
 
-    // A season's calendar is on the home page until it's over, then in the archive.
+    // A season's calendar is on the home page until its last day is revealed, then in the archive.
     private static string CalendarLink(EntryView entry) =>
-        string.Create(CultureInfo.InvariantCulture, $"{(entry.IsSeasonOver ? $"archive/{entry.Year}" : "")}#december-{entry.Day}");
+        string.Create(CultureInfo.InvariantCulture, $"{(entry.IsInArchive ? $"archive/{entry.Year}" : "")}#december-{entry.Day}");
 }

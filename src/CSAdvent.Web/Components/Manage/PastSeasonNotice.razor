@@ -1,8 +1,7 @@
-@using CSAdvent.Web.Manage
-@inject SeasonAdminService Seasons
+@inject AdventSchedule Schedule
 
 @* Says so when an organizer page shows a finished season, opened from the overview's history. *@
-@if (Year != CSAdvent.Web.Data.Season.TestYear && Seasons.IsFinished(Year))
+@if (Year != CSAdvent.Web.Data.Season.TestYear && Schedule.IsFinished(Year))
 {
     <p class="mt-4 max-w-2xl rounded-xl bg-slate-50 p-4 text-sm text-slate-700 ring-1 ring-slate-200" role="note">
         C# Advent @Year is over, so this is its history. <a href="manage" class="font-medium text-advent-700 underline">Back to the overview</a>

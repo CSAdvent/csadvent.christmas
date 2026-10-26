@@ -95,7 +95,7 @@ public static class StructuredData
             {
                 ["@type"] = "CreativeWorkSeries",
                 ["name"] = $"C# Advent {entry.Year}",
-                ["url"] = entry.IsSeasonOver ? $"{root}/archive/{entry.Year}" : $"{root}/",
+                ["url"] = entry.IsInArchive ? $"{root}/archive/{entry.Year}" : $"{root}/",
             },
             ["publisher"] = Organization(baseUrl),
         };

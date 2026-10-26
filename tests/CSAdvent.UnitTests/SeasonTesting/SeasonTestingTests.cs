@@ -87,9 +87,14 @@ public sealed class SeasonTestingTests
     [Fact]
     public void TheRehearsalCanFinishTheTestSeason()
     {
-        var schedule = Schedule(new DateTimeOffset(2026, 11, 14, 12, 0, 0, TimeSpan.FromHours(-5)), Testing());
+        // November 13 is the rehearsal's December 25: its last day is revealed, but it isn't over until midnight.
+        var christmasNoon = Schedule(new DateTimeOffset(2026, 11, 13, 12, 0, 0, TimeSpan.FromHours(-5)), Testing());
+        Assert.True(christmasNoon.IsLastDayRevealed(TestYear));
+        Assert.False(christmasNoon.IsFinished(TestYear));
 
-        Assert.True(schedule.IsSeasonOver(TestYear));
+        var midnight = Schedule(new DateTimeOffset(2026, 11, 14, 0, 0, 0, TimeSpan.FromHours(-5)), Testing());
+        Assert.True(midnight.IsFinished(TestYear));
+        Assert.False(midnight.IsFinished(2026));
     }
 
     [Fact]

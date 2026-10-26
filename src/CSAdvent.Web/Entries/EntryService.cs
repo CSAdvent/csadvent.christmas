@@ -30,6 +30,7 @@ public sealed record AdjacentEntry(int Day, int Part, string PostTitle, string A
 /// <summary>
 /// An entry's page. Before its reveal it carries nothing about the post or its author (#5), only when it's revealed.
 /// </summary>
+/// <param name="IsInArchive">Whether the season's last day is revealed, so its calendar is in the archive.</param>
 /// <param name="IsLinked">Whether the post is on someone's account. A finished season's post that isn't can be asked for (#120).</param>
 public sealed record EntryView(
     int SlotId,
@@ -45,7 +46,7 @@ public sealed record EntryView(
     string? AuthorUrl,
     IReadOnlyList<AuthorLink> AuthorLinks,
     IReadOnlyList<SiblingEntry> Siblings,
-    bool IsSeasonOver,
+    bool IsInArchive,
     bool IsLinked = false)
 {
     public string Spot => SlotsPerDay > 1 ? $"December {Day}, {Year} · Post {Part}" : $"December {Day}, {Year}";
@@ -61,6 +62,9 @@ public sealed record EntryView(
 
     /// <summary>The author's public page, with all of their posts (#203). None for the test season.</summary>
     public string? AuthorPage { get; init; }
+
+    /// <summary>Whether the season's last day is over, so it's history and a post that isn't on anyone's account can be asked for.</summary>
+    public bool IsSeasonFinished { get; init; }
 }
 
 /// <summary>Entry pages, the tracked redirect to each post, and their visit and click counts.</summary>
@@ -110,7 +114,7 @@ public sealed partial class EntryService(AdventDbContext db, AdventSchedule sche
         var revealsAt = schedule.GetRevealTime(year, day);
         if (!schedule.IsRevealed(year, day))
         {
-            return new EntryView(slot.Id, year, day, part, slot.SlotsPerDay, false, revealsAt, null, null, null, null, [], [], IsSeasonOver: false);
+            return new EntryView(slot.Id, year, day, part, slot.SlotsPerDay, false, revealsAt, null, null, null, null, [], [], IsInArchive: false);
         }
 
         if (slot.PostTitle is null || slot.PostUrl is null || slot.AuthorName is null)
@@ -141,13 +145,14 @@ public sealed partial class EntryService(AdventDbContext db, AdventSchedule sche
             [.. slots
                 .Where(s => s.Part != part && s.PostTitle is not null && s.PostUrl is not null && s.AuthorName is not null)
                 .Select(s => new SiblingEntry(s.Part, s.PostTitle!, s.AuthorName!))],
-            schedule.IsSeasonOver(year),
+            schedule.IsLastDayRevealed(year),
             slot.GithubLogin is not null)
         {
             PostSummary = slot.PostSummary,
             Previous = previous,
             Next = next,
             AuthorPage = year == Season.TestYear ? null : AuthorPageLinks.For(slot.GithubLogin, slot.AuthorName),
+            IsSeasonFinished = schedule.IsFinished(year),
         };
     }
 

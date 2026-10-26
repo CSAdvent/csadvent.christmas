@@ -114,7 +114,7 @@ public sealed partial class PostClaimService(
     /// <summary>The post, if it's from a finished season.</summary>
     public async Task<ClaimablePost?> GetAsync(int contributorId, int year, int day, int part, CancellationToken cancellationToken = default)
     {
-        if (year == Season.TestYear || !schedule.IsSeasonOver(year))
+        if (year == Season.TestYear || !schedule.IsFinished(year))
         {
             return null;
         }
@@ -134,7 +134,7 @@ public sealed partial class PostClaimService(
         var pattern = $"%{EscapeLike(term)}%";
         var posts = await Claimable(contributorId, Posts.Where(s => s.ContributorId == null && EF.Functions.ILike(s.AuthorName!, pattern, @"\")))
             .ToListAsync(cancellationToken);
-        return [.. posts.Where(p => schedule.IsSeasonOver(p.Year)).Take(MaxResults)];
+        return [.. posts.Where(p => schedule.IsFinished(p.Year)).Take(MaxResults)];
     }
 
     /// <summary>The contributor's requests an organizer hasn't decided yet.</summary>
@@ -222,7 +222,7 @@ public sealed partial class PostClaimService(
             .Where(s => s.ContributorId == null && s.Id != review.SlotId)
             .Select(s => new { s.SeasonYear, s.AuthorName })
             .ToListAsync(cancellationToken);
-        return names.Count(p => schedule.IsSeasonOver(p.SeasonYear) && AuthorService.Key(p.AuthorName!) == key);
+        return names.Count(p => schedule.IsFinished(p.SeasonYear) && AuthorService.Key(p.AuthorName!) == key);
     }
 
     /// <summary>

@@ -122,7 +122,7 @@ public sealed partial class PostLinkService(
 
     /// <summary>Their posts from finished seasons, newest season first: their C# Advent history.</summary>
     public async Task<IReadOnlyList<LinkedPost>> GetPostsAsync(int contributorId, CancellationToken cancellationToken = default) =>
-        [.. (await PostsAsync(db.Slots.Where(s => s.ContributorId == contributorId), cancellationToken)).Where(p => schedule.IsSeasonOver(p.Year))];
+        [.. (await PostsAsync(db.Slots.Where(s => s.ContributorId == contributorId), cancellationToken)).Where(p => schedule.IsFinished(p.Year))];
 
     /// <summary>The posts with links among the spots, in any real season, for an organizer changing an author's links.</summary>
     public Task<List<LinkedPost>> GetPostsAsync(IReadOnlyCollection<int> slotIds, CancellationToken cancellationToken = default) =>

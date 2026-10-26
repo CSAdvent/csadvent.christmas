@@ -34,11 +34,8 @@ public sealed class SeasonAdminService(AdventDbContext db, AdventSchedule schedu
             })
             .ToListAsync(cancellationToken);
 
-        return [.. seasons.Select(s => new SeasonSummary(s.Year, s.SlotsPerDay, s.ClaimsOpenAt, s.Spots, s.ClaimedSpots, s.PendingRequests, s.Posts, IsFinished(s.Year)))];
+        return [.. seasons.Select(s => new SeasonSummary(s.Year, s.SlotsPerDay, s.ClaimsOpenAt, s.Spots, s.ClaimedSpots, s.PendingRequests, s.Posts, schedule.IsFinished(s.Year)))];
     }
-
-    /// <summary>A season is history once its last day is over: the end of December 25 (or of its rehearsal's last day).</summary>
-    public bool IsFinished(int year) => schedule.IsDayOver(year, Season.DaysInAdvent);
 
     /// <summary>
     /// The season the organizer pages work on: the earliest one that isn't finished, so a season created early for next year
@@ -47,7 +44,7 @@ public sealed class SeasonAdminService(AdventDbContext db, AdventSchedule schedu
     public async Task<int?> GetCurrentYearAsync(CancellationToken cancellationToken = default)
     {
         var years = await db.Seasons.Where(s => s.Year != Season.TestYear).OrderBy(s => s.Year).Select(s => s.Year).ToListAsync(cancellationToken);
-        return CurrentYear(years, IsFinished);
+        return CurrentYear(years, schedule.IsFinished);
     }
 
     public static int? CurrentYear(IEnumerable<int> yearsInOrder, Func<int, bool> isFinished) =>

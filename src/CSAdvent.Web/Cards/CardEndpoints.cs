@@ -36,7 +36,7 @@ public static class CardEndpoints
                 return Results.NotFound();
             }
 
-            int? postCount = schedule.IsSeasonOver(year)
+            int? postCount = schedule.IsLastDayRevealed(year)
                 ? await db.Slots.CountAsync(s => s.SeasonYear == year && s.PostUrl != null && s.PostTitle != null && s.AuthorName != null, cancellationToken)
                 : null;
             var claimsOpenAt = await db.Seasons.Where(s => s.Year == year).Select(s => s.ClaimsOpenAt).SingleAsync(cancellationToken);

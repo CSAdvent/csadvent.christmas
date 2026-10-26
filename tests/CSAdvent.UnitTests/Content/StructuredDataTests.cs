@@ -13,8 +13,8 @@ public sealed class StructuredDataTests
     private static readonly DateTimeOffset Revealed = new(2026, 12, 6, 0, 0, 0, TimeSpan.FromHours(-5));
 
     private static EntryView Entry(bool isRevealed = true) => isRevealed
-        ? new(1, 2026, 6, 2, 2, true, Revealed, "Spans </script> & you", "https://example.com/spans", "Ada Lovelace", "https://ada.dev", [], [], IsSeasonOver: false)
-        : new(1, 2026, 6, 2, 2, false, Revealed, null, null, null, null, [], [], IsSeasonOver: false);
+        ? new(1, 2026, 6, 2, 2, true, Revealed, "Spans </script> & you", "https://example.com/spans", "Ada Lovelace", "https://ada.dev", [], [], IsInArchive: false)
+        : new(1, 2026, 6, 2, 2, false, Revealed, null, null, null, null, [], [], IsInArchive: false);
 
     [Fact]
     public void TheSiteIsPublishedByCSharpAdventWithItsAccounts()

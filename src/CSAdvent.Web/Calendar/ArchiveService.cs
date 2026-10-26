@@ -18,7 +18,7 @@ public sealed class ArchiveService(AdventDbContext db, AdventSchedule schedule, 
             .Select(s => new ArchivedSeasonSummary(s.Year, s.Slots.Count(slot => slot.PostUrl != null)))
             .ToListAsync(cancellationToken);
 
-        return [.. seasons.Where(s => schedule.IsSeasonOver(s.Year) && (s.Year != Season.TestYear || access.InTestMode))];
+        return [.. seasons.Where(s => schedule.IsLastDayRevealed(s.Year) && (s.Year != Season.TestYear || access.InTestMode))];
     }
 
     /// <summary>The season's calendar, or null if there's no such season or it isn't over yet.</summary>
@@ -30,7 +30,7 @@ public sealed class ArchiveService(AdventDbContext db, AdventSchedule schedule, 
             .Include(s => s.Slots).ThenInclude(slot => slot.Contributor)
             .SingleOrDefaultAsync(s => s.Year == year, cancellationToken);
 
-        return season is not null && schedule.IsSeasonOver(season.Year) && access.CanSee(season.Year) ? SeasonCalendar.From(season, schedule) : null;
+        return season is not null && schedule.IsLastDayRevealed(season.Year) && access.CanSee(season.Year) ? SeasonCalendar.From(season, schedule) : null;
     }
 }
 

@@ -59,7 +59,7 @@ public sealed partial class BackupListService(
     {
         var season = access.CanSee(year) ? await db.Seasons.AsNoTracking().SingleOrDefaultAsync(s => s.Year == year, cancellationToken) : null;
         return season is null ? null
-            : schedule.IsDayOver(year, Season.DaysInAdvent) ? BackupSignupAvailability.SeasonOver
+            : schedule.IsFinished(year) ? BackupSignupAvailability.SeasonOver
             : season.IsTest || schedule.AreClaimsOpen(season.ClaimsOpenAt) ? BackupSignupAvailability.Open
             : BackupSignupAvailability.NotOpen;
     }

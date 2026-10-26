@@ -96,7 +96,7 @@ public sealed partial class MySpotsService(
 
         return new MySpotsOverview(
             [.. spots
-                .Where(s => !schedule.IsSeasonOver(s.SeasonYear))
+                .Where(s => !schedule.IsFinished(s.SeasonYear))
                 .Select(s => new MySpot(
                     s.Id,
                     s.SeasonYear,
@@ -109,7 +109,7 @@ public sealed partial class MySpotsService(
                     schedule.IsDayOver(s.SeasonYear, s.Day),
                     schedule.IsRevealed(s.SeasonYear, s.Day),
                     traffic.GetValueOrDefault(s.Id, PostTraffic.None)))],
-            [.. requests.Where(r => !schedule.IsSeasonOver(r.Year))]);
+            [.. requests.Where(r => !schedule.IsFinished(r.Year))]);
     }
 
     /// <summary>
@@ -126,7 +126,7 @@ public sealed partial class MySpotsService(
         var traffic = await TrafficAsync([.. posts.Select(p => p.Id)], cancellationToken);
 
         return [.. posts
-            .Where(p => schedule.IsSeasonOver(p.SeasonYear))
+            .Where(p => schedule.IsFinished(p.SeasonYear))
             .OrderByDescending(p => p.SeasonYear).ThenBy(p => p.Day).ThenBy(p => p.Part)
             .Select(p => new PastPost(p.SeasonYear, p.Day, p.Part, p.SlotsPerDay, p.PostTitle ?? "Untitled", traffic.GetValueOrDefault(p.Id, PostTraffic.None)))];
     }
@@ -138,7 +138,7 @@ public sealed partial class MySpotsService(
             .AsNoTracking()
             .Include(s => s.Season)
             .SingleOrDefaultAsync(s => s.Id == slotId, cancellationToken);
-        if (slot is null || schedule.IsSeasonOver(slot.SeasonYear))
+        if (slot is null || schedule.IsFinished(slot.SeasonYear))
         {
             return null;
         }
@@ -171,7 +171,7 @@ public sealed partial class MySpotsService(
             return MySpotOutcome.NotFound;
         }
 
-        if (schedule.IsSeasonOver(slot.SeasonYear))
+        if (schedule.IsFinished(slot.SeasonYear))
         {
             return MySpotOutcome.TooLate;
         }
