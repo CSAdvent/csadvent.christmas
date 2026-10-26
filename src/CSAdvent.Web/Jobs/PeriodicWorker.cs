@@ -8,8 +8,9 @@ namespace CSAdvent.Web.Jobs;
 /// <list type="bullet">
 /// <item>Each step gets a scope and a try/catch of its own (#147), so one that throws (a bug, or one bad post) never skips the
 /// steps after it, and nothing it left tracked is saved by them.</item>
-/// <item>A step that finds a table or column missing logs a warning, not an error for the alert: shortly after a deploy, the
-/// migrations job hasn't added it yet, and the next run after the migrations works (#225).</item>
+/// <item>A step that finds a table or column missing logs a warning, not an error for the alert: the migrations haven't added
+/// it yet (deploys run them first since #151, so only on a revision started without them), and the next run after the
+/// migrations works (#225).</item>
 /// <item>Each step's outcome is recorded (<see cref="JobRuns"/>) for /manage and the health check (#172).</item>
 /// </list>
 /// Nothing but cancellation gets out when the app stops: an unhandled exception would stop the whole app.

@@ -19,7 +19,8 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 | November | Approve requests, watch the backup list | Organizers |
 | Any time | Check requests to add older posts to people's accounts, and for new links to older posts (each one emails the organizers) | Organizers |
 | From 7 days before each day | "Your post is due" reminders, then a last call on the day | Automatic |
-| By November 30 | Raise the site to 2 replicas and pause Dependabot, in one pull request (December, below) | Organizers |
+| By November 30 | Raise the site to 2 replicas and pause Dependabot, in one pull request, and merge any database migrations (December, below) | Organizers |
+| December 1–26 | Schema freeze: no pull requests with database migrations (December, below) | Organizers |
 | December 1–25 | Reveals at midnight, announcements at 10 AM and 2 PM, the daily email once both posts are in (from 9 AM, 2 PM at the latest) | Automatic, plus LinkedIn and Reddit by hand |
 | December 1–25 | Decide on posts the blurb check can't settle, and keep an author before a backup takes their spot if the check got it wrong, before their announcement | Organizers, when emailed |
 | December 27 | Back to 1 replica, and Dependabot back on (After Advent, below) | Organizers |
@@ -142,6 +143,11 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
     `appsettings.json` says.
   - **Pause Dependabot:** set both `open-pull-requests-limit` lines in `.github/dependabot.yml` to `0`, so no dependency
     updates arrive mid-season. Security alerts still show in the repository's **Security** tab.
+- **Schema freeze, December 1 to 26** (#151): no pull request that adds a migration (a new file in
+  `src/CSAdvent.Web/Data/Migrations`) merges in those days; merge them by November 30, or wait for December 27. Every deploy
+  runs its migrations while the previous version is serving, and a migration that goes wrong mid-season is the hardest
+  thing to undo (A Bad Migration, below). Code changes still deploy as usual. If a fix truly needs one, keep it to adding
+  a table or a nullable column, and merge it after the day's 2 PM announcement.
 - **Start each day with the morning digest**, which reaches hello@ at 8 AM (#171): today's and tomorrow's spots (whether
   each post is in, its blurb check, and where it stands on every platform), the backups asked or standing by, posts and
   emails that didn't go out, and what's waiting. **Today** at the top of `/manage` shows the same at any time, linking to
@@ -194,6 +200,7 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 
 - **December 27:** undo the December changes in one pull request: `Web:MinReplicas` back to `1`, and both
   `open-pull-requests-limit` lines in `.github/dependabot.yml` back to `5`. Then merge the dependency updates that arrive.
+  The schema freeze is over, so migrations can merge again.
 - **December 31:** the calendar leaves the home page for the archive, and the between-seasons page thanks everyone
   and links to it.
 - **The retrospective (late December or early January, before February 1):** at `/manage/retrospectives`, open the
@@ -572,14 +579,15 @@ a sample to everyone.
   A failed database command is logged as an error by EF Core and Npgsql before the site can handle it. The alert leaves out
   EF Core's "Failed executing DbCommand" (`CommandError`), because whatever ran the command reports the failure again, and
   their records of the errors the site expects (#224, #225): a duplicate (SqlState 23505), when two runs or replicas save
-  the same thing at once, and a missing table or column (42P01, 42703), in the minutes after a deploy before its migrations
-  job has run. So the manual query above shows more than the alert counts: read the error that comes after them.
+  the same thing at once, and a missing table or column (42P01, 42703), when code runs before its migrations. So the manual
+  query above shows more than the alert counts: read the error that comes after them.
 
-  **Right after a deploy:** the new revision starts before the migrations job (#151), so for a few minutes it can ask for
-  a table or column the job hasn't added yet. Background jobs log that as a warning ("the database isn't migrated to this
-  version") and try again on their next run. A page that reads the new schema fails until the job finishes, and that does
-  trip this alert, because a visitor got an error page. If the errors say a relation or column "does not exist" and stop
-  once the Deploy workflow's migrations step is done, there's nothing to fix. If they don't stop, check that step.
+  **A relation or column "does not exist":** the site's code is ahead of the database. Deploys run the migrations before
+  the new version starts (#151), so this only happens when a version started without them: its image was changed by hand
+  (`az containerapp update`), or someone deployed some other way. Background jobs log it as a warning ("the database isn't
+  migrated to this version") and try again on their next run, but a page that reads the new schema fails, and trips this
+  alert. Run the migrations job (`az containerapp job start -n migrations -g rg-csadvent`), and the errors stop once it's
+  done.
 - **Database storage over 80%** (`csadvent-postgres-storage`): the server has 32 GB and doesn't grow by itself. At 95% it
   turns read-only, and the site stops saving anything. Raise `StorageSizeInGB` in `AppHost.cs` and deploy (storage can grow
   but never shrink), then look for what grew:
@@ -644,11 +652,12 @@ alerts to both organizers at 80% and 100%. It's free, and only warns: nothing is
 ## 🧭 If Something Breaks
 
 - **Alerts:** what each one means is under Alerts, above.
-- **The site:** every deploy runs the database migrations job and checks the site. A new revision that can't reach the
-  database never takes traffic, because the health probes keep the old one serving. The migrations job runs after the new
-  revision starts, so **a page that reads a new table or column fails until the job finishes** (a few minutes; #225), and
-  background jobs wait for it with a warning. A deploy by hand has to start the job itself
-  (`az containerapp job start -n migrations -g rg-csadvent`), or those pages keep failing.
+- **The site:** every deploy runs the database migrations job, **before it updates the site** (#151), then checks the
+  site. If the migrations fail, the site isn't updated and keeps running the previous version (A Deploy Whose Migrations
+  Failed, below). A new revision that can't reach the database never takes traffic, because the health probes keep the old
+  one serving. `aspire deploy` by hand runs the migrations first too; changing the site's image by hand
+  (`az containerapp update`) doesn't, so run the job yourself first if that image needs a newer schema
+  (`az containerapp job start -n migrations -g rg-csadvent`).
 - **Logs and telemetry:** Application Insights, in the `rg-csadvent` resource group. The deploy sets neither a retention
   nor a daily cap, so logs are kept for the Log Analytics workspace's default of 30 days, and nothing stops ingestion: the
   budget alert (above) is what warns about the cost. SQL statements aren't logged (#157); each one is still a `postgresql`
@@ -657,8 +666,7 @@ alerts to both organizers at 80% and 100%. It's free, and only warns: nothing is
   Degraded): `/manage`'s **Background jobs** lists every step with when it last succeeded and failed, on any server, and
   says **Late** or **Last run failed**. Search the logs for the step's name ("Backup asks failed", say) to see why. Each
   step runs on its own, so the others carry on meanwhile. If a step is late on one server only (`/health` is Degraded now
-  and then, and `/manage` looks fine), restart the `web` container app's active revision in the portal. Right after a
-  deploy, `/manage` only shows the server's own runs until the migrations job has run.
+  and then, and `/manage` looks fine), restart the `web` container app's active revision in the portal.
 - **Emails not arriving:** check `/manage/emails/queue` (waiting, the hour's sends, failed), send a sample from
   `/manage/emails`, and look at the Communication Service in Azure.
 - **Every post says "Couldn't check":** Claude isn't answering. Each entry's page says why (a rate limit, an expired key,
@@ -685,7 +693,8 @@ subscription, as in Restoring the Database) to every `az` command.
    ```
 
    The workflow refuses a commit that isn't on `main`. It deploys that commit's AppHost, so infrastructure changes roll back
-   too, and its migrations job finds nothing new to run.
+   too, and its migrations job finds nothing new to run. (For a commit from before #151, the workflow runs the job after
+   the deploy instead, as deploys did then.)
 2. **Or put back the previous image** (a minute, no build), when the bad change is in the site's code and not the AppHost.
    Every deploy pushes its images tagged `aspire-deploy-<UTC time>` (the Deploy run's log says "Setting default deploy tag
    …"). List the revisions with their images, and switch to the one before:
@@ -706,11 +715,32 @@ Either way:
   later release). If the bad deploy's migration removed or renamed something the older code reads, the older code fails
   too: fix forward instead, with a new migration.
 
+### 🚧 A Deploy Whose Migrations Failed
+
+Every deploy runs the migrations job before it updates the site (#151): the `run-migrations` step in the Deploy run's
+**Deploy** step. When the job fails, or hasn't finished after 10 minutes, the Deploy run fails there with what happened
+("… ended as Failed", "… didn't finish within 10 minutes"), and nothing after it runs.
+
+- **The site is fine:** it still runs the previous version, which works with whatever the migrations did, because
+  migrations only add things. There's nothing to roll back.
+- **The database:** a migration that fails part way is undone with its transaction (PostgreSQL's schema changes are
+  transactional, unless a migration opts out of the transaction), but migrations before it in the same deploy may already
+  be in. The job's logs say which it applied.
+- **Why it failed:** the job's logs are in the portal: the `migrations` Container Apps job, **Execution history**, the
+  execution the Deploy run named, then its logs.
+- **A passing problem** (the database restarting for maintenance, say): run the Deploy workflow again (**Run workflow** on
+  `main`). The job runs again and picks up where it stopped.
+- **A broken migration:** fix it in a pull request. The one that failed never finished in production, so changing it is
+  safe; never change one the job's logs say it applied (A Bad Migration, below). Merging deploys it.
+- **Not finished after 10 minutes:** the job may still be running. Watch its execution history; once it has finished, run
+  the Deploy workflow again, and the job finds nothing left to do.
+
 ### 🧯 A Bad Migration
 
 When a migration damaged or dropped data:
 
-1. **Find when it ran:** the Deploy run's **Run the migrations** step, in UTC.
+1. **Find when it ran:** the Deploy run's `run-migrations` step, in its **Deploy** step (or the **Run the migrations**
+   step, for a commit from before #151), in UTC.
 2. **Restore to just before it** into a new server, and look at it (Restoring the Database, steps 1 and 2, below).
 3. **Copy the data back** (step 3 there), then fix the schema:
    - **Only what was lost** (usually): the bad migration stays applied in production, so undo its schema change with a new
