@@ -1,8 +1,13 @@
+using CSAdvent.Web.Announcements;
 using CSAdvent.Web.Backups;
 using CSAdvent.Web.Blurbs;
+using CSAdvent.Web.Content;
+using CSAdvent.Web.Data;
 using CSAdvent.Web.Jobs;
 using CSAdvent.Web.Manage;
 using CSAdvent.Web.Reminders;
+using CSAdvent.Web.Retention;
+using CSAdvent.Web.SeasonTesting;
 using CSAdvent.Web.Social.Posting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -128,6 +133,95 @@ public sealed class PeriodicWorkerTests
     }
 
     [Fact]
+    public async Task TheAnnouncementWorkerRunsTheAnnouncements()
+    {
+        var asked = new List<string>();
+        var services = new ServiceCollection()
+            .AddScoped<AnnouncementService>(_ => { asked.Add("announcements"); throw new InvalidOperationException("Stand-in."); })
+            .BuildServiceProvider();
+        var clock = new FakeTimeProvider(Now);
+        var (runs, store) = Runs(clock);
+        using var worker = new AnnouncementWorker(services.GetRequiredService<IServiceScopeFactory>(), runs, clock, NullLogger<AnnouncementWorker>.Instance);
+
+        await worker.RunOnceAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(["announcements"], asked);
+        Assert.Equal([("announcements", (DateTimeOffset?)Now)], store.Saved.Select(s => (s.Step, s.LastFailedAt)));
+    }
+
+    [Fact]
+    public async Task WhenDeletingContactDetailsThrowsUnconfirmedSubscribersAreStillDeleted()
+    {
+        var asked = new List<string>();
+        var services = new ServiceCollection()
+            .AddScoped<ContactRetention>(_ => { asked.Add("contact details"); throw new InvalidOperationException("Stand-in."); })
+            .AddScoped<AnnouncementSubscriptions>(_ => { asked.Add("unconfirmed subscribers"); throw new InvalidOperationException("Stand-in."); })
+            .BuildServiceProvider();
+        var clock = new FakeTimeProvider(Now);
+        var (runs, store) = Runs(clock);
+        using var worker = new ContactRetentionWorker(services.GetRequiredService<IServiceScopeFactory>(), runs, clock, NullLogger<ContactRetentionWorker>.Instance);
+
+        await worker.RunOnceAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(["contact details", "unconfirmed subscribers"], asked);
+        Assert.Equal(["contact-retention", "unconfirmed-subscribers"], store.Saved.Select(s => s.Step));
+    }
+
+    [Fact]
+    public async Task TheTestSeasonsRefresherReloadsThemAndAFailureIsOnlyAWarning()
+    {
+        // It runs every 15 seconds, so a passing database hiccup mustn't trip the error alert.
+        var asked = 0;
+        var services = new ServiceCollection()
+            .AddScoped<AdventDbContext>(_ => { asked++; throw new TimeoutException("The database is slow."); })
+            .BuildServiceProvider();
+        var scopes = services.GetRequiredService<IServiceScopeFactory>();
+        var clock = new FakeTimeProvider(Now);
+        var (runs, store) = Runs(clock);
+        var logger = new ListLogger<TestSeasonsRefresher>();
+        using var worker = new TestSeasonsRefresher(new TestSeasons(scopes), scopes, runs, clock, logger);
+
+        await worker.RunOnceAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, asked);
+        Assert.Equal((LogLevel.Warning, "Loading the test season"), Assert.Single(logger.Entries));
+        Assert.Equal(("test-seasons", (DateTimeOffset?)Now), (Assert.Single(store.Saved).Step, store.Saved[0].LastFailedAt));
+    }
+
+    [Fact]
+    public async Task TheLogoWorkerFirstRunsAMinuteAfterTheAppStarts()
+    {
+        // A replica that's just started doesn't fetch logos straight away: an organizer's new calendar waits a minute at most.
+        var asked = 0;
+        var services = new ServiceCollection()
+            .AddScoped<OtherAdventLogoService>(_ => { Interlocked.Increment(ref asked); throw new InvalidOperationException("Stand-in."); })
+            .BuildServiceProvider();
+        var clock = new FakeTimeProvider(Now);
+        var (runs, store) = Runs(clock);
+        using var worker = new OtherAdventLogoWorker(services.GetRequiredService<IServiceScopeFactory>(), runs, clock, NullLogger<OtherAdventLogoWorker>.Instance);
+
+        await worker.StartAsync(TestContext.Current.CancellationToken);
+        try
+        {
+            // The clock moves on in steps until the first run is recorded, which says when it ran. Had it run when it started,
+            // that would be the starting time, however fast or slow this machine is.
+            for (var step = 0; step < 300 && !await store.Saves.WaitAsync(TimeSpan.FromMilliseconds(100), TestContext.Current.CancellationToken); step++)
+            {
+                clock.Advance(TimeSpan.FromSeconds(10));
+            }
+
+            var first = Assert.Single(store.Saved);
+            Assert.Equal("other-advent-logos", first.Step);
+            Assert.True(first.LastFailedAt >= Now + OtherAdventLogoWorker.Every, $"Its first run was at {first.LastFailedAt:O}, less than a minute after {Now:O}.");
+            Assert.Equal(1, asked);
+        }
+        finally
+        {
+            await worker.StopAsync(CancellationToken.None);
+        }
+    }
+
+    [Fact]
     public void EveryStepIsListedForManageOnce()
     {
         Assert.Equal(JobSteps.All.Count, JobSteps.All.Select(s => s.Key).Distinct().Count());
@@ -159,7 +253,7 @@ public sealed class PeriodicWorkerTests
     }
 
     /// <summary>Records what was logged, and which step it was about.</summary>
-    private sealed class ListLogger : ILogger
+    private class ListLogger : ILogger
     {
         public List<(LogLevel Level, string? Step)> Entries { get; } = [];
 
@@ -170,4 +264,6 @@ public sealed class PeriodicWorkerTests
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
             Entries.Add((logLevel, (state as IReadOnlyList<KeyValuePair<string, object?>>)?.FirstOrDefault(p => p.Key == "Step").Value as string));
     }
+
+    private sealed class ListLogger<T> : ListLogger, ILogger<T>;
 }
