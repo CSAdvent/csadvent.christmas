@@ -106,11 +106,14 @@ public sealed class AppHostFixture : IAsyncLifetime
             ],
             cancellationToken);
 
-        // The AppHost relays every resource's console to the test output (as CSAdvent.AppHost.Resources.{resource}), standard
-        // output as Information and standard error as Error. Left alone that's thousands of lines of the migrations' SQL,
-        // which bury a failing test (#177). Warnings and errors still come through. Each request through CreateWebClient
-        // logs a few lines too (the HTTP client's and Polly's), which say nothing a test needs.
+        // The AppHost relays every resource's console to the test output (as CSAdvent.AppHost.Resources.{resource}), each line
+        // of standard output as Information and of standard error as Error. Left alone that's thousands of lines of the
+        // migrations' SQL, which bury a failing test (#177). Standard error still comes through, and in the Testing environment
+        // the web app writes its warnings and errors there (AppHost.cs, #248), so they do too. Each relayed line is one line
+        // of output, not two (the level and category, then the line). Each request through CreateWebClient logs a few lines
+        // too (the HTTP client's and Polly's), which say nothing a test needs.
         appHost.Services.AddLogging(logging => logging
+            .AddSimpleConsole(console => console.SingleLine = true)
             .AddFilter("CSAdvent.AppHost.Resources", LogLevel.Warning)
             .AddFilter("Polly", LogLevel.Warning)
             .AddFilter("System.Net.Http.HttpClient", LogLevel.Warning));

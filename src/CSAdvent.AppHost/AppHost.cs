@@ -251,6 +251,15 @@ if (isTesting)
     // (#201), which the tests run themselves on the stand-in pages, through the development endpoint.
     web.WithEnvironment("OtherAdvents__FetchLogosInBackground", "false");
     web.WithEnvironment("LinkChecks__CheckInBackground", "false");
+
+    // The web app's own warnings and errors reach the test output (#248). The AppHost relays each line of a resource's
+    // standard output as Information, which AppHostFixture filters out (#177), and of its standard error as Error, which it
+    // keeps. So the console logger writes Warning and up to standard error, without the color codes the relayed lines would
+    // spell out as text. A failed command's SQL stays out, as the migrations' does: the error that follows it has the
+    // exception.
+    web.WithEnvironment("Logging__Console__LogToStandardErrorThreshold", "Warning");
+    web.WithEnvironment("Logging__Console__FormatterOptions__ColorBehavior", "Disabled");
+    web.WithEnvironment("Logging__Console__LogLevel__Microsoft.EntityFrameworkCore.Database.Command", "None");
 }
 else
 {
