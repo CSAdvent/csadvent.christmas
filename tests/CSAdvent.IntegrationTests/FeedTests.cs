@@ -24,12 +24,12 @@ public sealed class FeedTests(AppHostFixture fixture)
 
         Assert.Equal("application/rss+xml", response.Content.Headers.ContentType!.MediaType);
         var items = XDocument.Parse(await response.Content.ReadAsStringAsync(CancellationToken)).Root!.Element("channel")!.Elements("item").ToList();
-        // The latest 100 (#194): the seeded history has about 400, so the oldest seasons are only in their own feeds.
+        // The latest 100 (#194): the seeded history has about 400 posts, so the oldest seasons' are only in their own feeds.
+        // Retrospectives (other tests publish every season's) are dated when they were published, so any of them can be here.
         Assert.Equal(100, items.Count);
         Assert.DoesNotContain(items, i => i.Element("title")!.Value.Contains("2114", StringComparison.Ordinal));
-        Assert.DoesNotContain(items, i => i.Element("guid")!.Value.StartsWith("csadvent-2017-", StringComparison.Ordinal));
-        // Published retrospectives are dated when they were published, so the newest entry may come after them.
-        Assert.StartsWith("csadvent-2025-25-", items.First(i => !i.Element("guid")!.Value.EndsWith("-retrospective", StringComparison.Ordinal)).Element("guid")!.Value);
+        Assert.DoesNotContain(items.Where(IsEntry), i => i.Element("guid")!.Value.StartsWith("csadvent-2017-", StringComparison.Ordinal));
+        Assert.StartsWith("csadvent-2025-25-", items.First(IsEntry).Element("guid")!.Value);
 
         var dates = items.Select(i => DateTimeOffset.Parse(i.Element("pubDate")!.Value, System.Globalization.CultureInfo.InvariantCulture)).ToList();
         Assert.Equal(dates.OrderByDescending(d => d), dates);
@@ -66,8 +66,8 @@ public sealed class FeedTests(AppHostFixture fixture)
         var season = XDocument.Parse(await client.GetStringAsync("/archive/2017/rss", CancellationToken)).Root!.Element("channel")!;
         Assert.Equal("C# Advent 2017", season.Element("title")!.Value);
         Assert.All(season.Elements("item"), i => Assert.StartsWith("csadvent-2017-", i.Element("guid")!.Value));
-        // A season's feed keeps every post: one a day in 2017.
-        Assert.Equal(25, season.Elements("item").Count());
+        // A season's feed keeps every post (one a day in 2017), and its retrospective once another test publishes it.
+        Assert.Equal(25, season.Elements("item").Count(IsEntry));
 
         // The channel image is the 144-pixel logo, the widest RSS 2.0 allows.
         var image = await client.GetAsync(new Uri(season.Element("image")!.Element("url")!.Value).AbsolutePath, CancellationToken);
@@ -78,4 +78,7 @@ public sealed class FeedTests(AppHostFixture fixture)
         Assert.Contains("<link rel=\"alternate\" type=\"application/rss+xml\" title=\"C# Advent\" href=\"rss\"", await client.GetStringAsync("/", CancellationToken));
         Assert.Contains("href=\"archive/2017/rss\"", await client.GetStringAsync("/archive/2017", CancellationToken));
     }
+
+    /// <summary>An entry's item, not a retrospective's.</summary>
+    private static bool IsEntry(XElement item) => !item.Element("guid")!.Value.EndsWith("-retrospective", StringComparison.Ordinal);
 }
