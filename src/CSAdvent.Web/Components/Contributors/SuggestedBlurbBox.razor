@@ -1,0 +1,52 @@
+@* The blurb ready to paste, in one format at a time (#175). The picker is radio buttons styled as tabs, and CSS shows the chosen
+   format's box, so it needs no script. Browsers without :has() show the text one. *@
+@using CSAdvent.Web.Blurbs
+
+<section class="group/blurb mt-8 max-w-3xl rounded-xl bg-advent-50 p-5 ring-1 ring-advent-100">
+    <h2 class="font-semibold text-slate-900">Open your post with the C# Advent blurb</h2>
+    <p class="mt-1 text-sm text-slate-700">
+        Start your post by saying it's part of the @Year C# Advent calendar, with a link to csadvent.christmas. Any wording is fine,
+        as long as it says that and links back. We check every post from the day before it's revealed, and a post without it by
+        the time it's announced goes to a backup poster. Here's one ready to paste:
+    </p>
+
+    <fieldset class="mt-4 flex flex-wrap items-center gap-2 text-sm">
+        <legend class="sr-only">Format</legend>
+        @foreach (var format in Formats)
+        {
+            <label class="cursor-pointer rounded-md bg-white px-3 py-1 font-medium text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 has-checked:bg-advent-600 has-checked:text-white has-checked:ring-advent-600 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-advent-600">
+                <input type="radio" name="@($"blurb-format-{Year}")" value="@format.Value" checked="@(format.Value == "text")" class="sr-only" />
+                @format.Name
+            </label>
+        }
+    </fieldset>
+
+    @foreach (var format in Formats)
+    {
+        var id = $"blurb-{Year}-{format.Value}";
+        <div class="@format.Shown mt-3 text-sm" data-format="@format.Value">
+            <pre id="@id" class="whitespace-pre-wrap break-words rounded-lg bg-white p-3 font-mono text-xs text-slate-800 ring-1 ring-slate-200">@format.Text(Blurb)</pre>
+            <button type="button" data-copy="@id" class="mt-2 rounded-md bg-white px-2 py-1 text-xs font-semibold text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50">Copy</button>
+        </div>
+    }
+</section>
+
+@code {
+    /// <param name="Shown">When its box shows, written out in full so Tailwind generates it: the text one unless another is chosen.</param>
+    private sealed record Format(string Name, string Value, Func<SuggestedBlurb, string> Text, string Shown);
+
+    private static readonly Format[] Formats =
+    [
+        new("Text", "text", blurb => blurb.Text, "block group-has-[input[value=markdown]:checked]/blurb:hidden group-has-[input[value=html]:checked]/blurb:hidden"),
+        new("Markdown", "markdown", blurb => blurb.Markdown, "hidden group-has-[input[value=markdown]:checked]/blurb:block"),
+        new("HTML", "html", blurb => blurb.Html, "hidden group-has-[input[value=html]:checked]/blurb:block"),
+    ];
+
+    [Parameter, EditorRequired]
+    public int Year { get; set; }
+
+    [Parameter, EditorRequired]
+    public int SlotsPerDay { get; set; }
+
+    private SuggestedBlurb Blurb => SuggestedBlurb.For(Year, SlotsPerDay);
+}

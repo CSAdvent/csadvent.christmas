@@ -1,0 +1,50 @@
+@* Someone's standing with a season's backup list on My spots (#175): the asks they can answer, their place on the list, or a
+   way to join it. Asks also come by email, but this way they can't be missed. *@
+@using CSAdvent.Web.Backups
+
+<div class="rounded-xl p-4 ring-1 @(Standing.Offers.Count > 0 ? "bg-advent-50 ring-advent-200" : "ring-slate-200")">
+    <p class="font-semibold text-slate-900">@Season</p>
+
+    @if (Standing.Offers.Count > 0)
+    {
+        <ul class="mt-2 flex flex-col gap-2">
+            @foreach (var offer in Standing.Offers)
+            {
+                <li class="flex flex-wrap items-center justify-between gap-3">
+                    <span class="text-slate-700">
+                        @(offer.StandingBy ? $"You're standing by for {offer.Spot}." : $"We've asked you to fill {offer.Spot}.")
+                    </span>
+                    <a href="@offer.Page" class="rounded-lg bg-advent-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-advent-700">
+                        @(offer.StandingBy ? "See it" : "Answer")
+                    </a>
+                </li>
+            }
+        </ul>
+    }
+
+    @if (Standing.Membership is { } membership)
+    {
+        <p class="mt-2 text-sm text-slate-600">
+            @(membership.FilledSpot is { } filled ? $"You filled {filled}. Thank you!" : $"You're number {membership.Position} on the backup list. We'll email you if a spot needs you.")
+            <a href="@($"backups/{Standing.Year}")" class="font-medium text-advent-700 underline">The backup list</a>
+        </p>
+    }
+    else if (Standing.Availability is BackupSignupAvailability.Open)
+    {
+        <p class="mt-2 text-sm text-slate-600">
+            Have a post ready, or can't commit to a day? Backup posters fill in when an author drops out or their post isn't ready.
+            <a href="@($"backups/{Standing.Year}")" class="font-medium text-advent-700 underline">Join the backup list</a>
+        </p>
+    }
+    else
+    {
+        <p class="mt-2 text-sm text-slate-600">Backup sign-ups open when spot sign-ups do.</p>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public required MyBackups Standing { get; set; }
+
+    private string Season => Standing.Year == CSAdvent.Web.Data.Season.TestYear ? "The test season" : $"C# Advent {Standing.Year}";
+}

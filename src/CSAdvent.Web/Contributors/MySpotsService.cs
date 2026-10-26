@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using CSAdvent.Web.Backups;
+using CSAdvent.Web.Blurbs;
 using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Claims;
 using CSAdvent.Web.Content;
@@ -7,6 +8,7 @@ using CSAdvent.Web.Data;
 using CSAdvent.Web.Email;
 using CSAdvent.Web.Entries;
 using CSAdvent.Web.Manage;
+using CSAdvent.Web.Social.Posting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -16,7 +18,16 @@ namespace CSAdvent.Web.Contributors;
 public sealed record MySpot(int SlotId, int Year, int Day, int Part, int SlotsPerDay, string? PostTitle, string? PostUrl, EntryStatus Status, bool IsDayOver, bool IsRevealed, PostTraffic Traffic)
 {
     public string Spot => SlotsPerDay > 1 ? $"December {Day}, {Year} · Post {Part}" : $"December {Day}, {Year}";
+
+    public required SpotDeadlines Deadlines { get; init; }
 }
+
+/// <summary>What happens when, for one spot, so its author knows their deadlines (#175). All follow a rehearsal.</summary>
+/// <param name="AskBackupsFrom">The evening before: if its post's link is still missing, backup posters are asked to stand by.</param>
+/// <param name="CheckBlurbFrom">When the blurb check first reads the post, in seasons with the rule.</param>
+/// <param name="RevealsAt">Midnight on its day. A backup who said yes takes a spot that still has no link then.</param>
+/// <param name="AnnouncedAt">When it's announced on social media: the deadline for its blurb.</param>
+public sealed record SpotDeadlines(DateTimeOffset AskBackupsFrom, DateTimeOffset CheckBlurbFrom, DateTimeOffset RevealsAt, DateTimeOffset AnnouncedAt);
 
 /// <param name="SpotTaken">The spot has gone to someone else while the request waits for the organizers.</param>
 public sealed record MyRequest(int Id, int Year, int Day, int Part, int SlotsPerDay, DateTimeOffset SubmittedAt, bool SpotTaken)
@@ -104,6 +115,8 @@ public sealed partial class MySpotsService(
     BackupService backups,
     PostLinkService postLinks,
     IOptions<SiteOptions> site,
+    IOptions<SocialPostingOptions> posting,
+    IOptions<BlurbOptions> blurbOptions,
     ILogger<MySpotsService> logger)
 {
     public async Task<MySpotsOverview> GetOverviewAsync(int contributorId, CancellationToken cancellationToken = default)
@@ -137,8 +150,37 @@ public sealed partial class MySpotsService(
                     EntryAdminService.StatusOf(s.AuthorName, s.PostTitle, s.PostUrl),
                     schedule.IsDayOver(s.SeasonYear, s.Day),
                     schedule.IsRevealed(s.SeasonYear, s.Day),
-                    traffic.GetValueOrDefault(s.Id, PostTraffic.None)))],
+                    traffic.GetValueOrDefault(s.Id, PostTraffic.None))
+                {
+                    Deadlines = DeadlinesOf(s.SeasonYear, s.Day, s.Part),
+                })],
             [.. requests.Where(r => !schedule.IsFinished(r.Year))]);
+    }
+
+    /// <summary>A spot's deadlines: when backups could be asked, when its blurb is checked, and when it's revealed and announced.</summary>
+    public SpotDeadlines DeadlinesOf(int year, int day, int part)
+    {
+        var revealsAt = schedule.GetRevealTime(year, day);
+        return new SpotDeadlines(backups.GetAskStart(year, day), revealsAt - blurbOptions.Value.CheckFrom, revealsAt, BlurbRules.Deadline(schedule, posting.Value, year, day, part));
+    }
+
+    /// <summary>
+    /// The contributor's spots and pending requests in a season, marked on its calendar for them (#175). It's only ever their
+    /// own, so it says nothing about anyone else's spot, or about a post before its reveal.
+    /// </summary>
+    public async Task<CalendarMarks> GetCalendarMarksAsync(int contributorId, int year, CancellationToken cancellationToken = default)
+    {
+        var email = await VerifiedEmailAsync(contributorId, cancellationToken);
+        var mine = await Mine(contributorId, email)
+            .Where(s => s.SeasonYear == year)
+            .Select(s => new { s.Day, s.Part })
+            .ToListAsync(cancellationToken);
+        var requested = await db.ClaimRequests
+            .Where(r => r.ContributorId == contributorId && r.Status == ClaimRequestStatus.Pending && r.Slot.SeasonYear == year)
+            .Select(r => new { r.Slot.Day, r.Slot.Part })
+            .ToListAsync(cancellationToken);
+
+        return new CalendarMarks(mine.Select(s => (s.Day, s.Part)).ToHashSet(), requested.Select(r => (r.Day, r.Part)).ToHashSet());
     }
 
     /// <summary>

@@ -1,4 +1,5 @@
 using Bunit;
+using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Components.Calendar;
 using Microsoft.AspNetCore.Http;
 
@@ -78,6 +79,35 @@ public sealed class CalendarGridTests : BunitContext
         var afterwards = new DateTimeOffset(2027, 1, 5, 12, 0, 0, TimeSpan.FromHours(-5));
         Render<CalendarGrid>(p => p.Add(c => c.Calendar, CalendarFixtures.Calendar(ClaimsOpened, afterwards)).AddCascadingValue(finished));
         Assert.Equal(0, finished.Response.Headers.CacheControl.Count);
+    }
+
+    [Fact]
+    public void MarksTheSignedInContributorsSpotsAndRequests()
+    {
+        var calendar = CalendarFixtures.Calendar(ClaimsOpened) with
+        {
+            Marks = new CalendarMarks(new HashSet<(int, int)> { (11, 1) }, new HashSet<(int, int)> { (11, 2) }),
+        };
+
+        var day11 = Render<CalendarGrid>(p => p.Add(c => c.Calendar, calendar)).Find("#december-11");
+        var (mine, requested) = (day11.QuerySelectorAll("ul > li")[0], day11.QuerySelectorAll("ul > li")[1]);
+
+        Assert.Equal("Your spot", mine.QuerySelector("a[href='my-spots']")!.TextContent);
+        Assert.Contains("Claimed by Carol", mine.TextContent);
+        Assert.Contains("You've requested this spot.", requested.TextContent);
+        Assert.Empty(requested.QuerySelectorAll("a[href^='claim/']"));
+
+        // Being theirs doesn't reveal the post early.
+        Assert.DoesNotContain("Not revealed yet", day11.TextContent);
+    }
+
+    [Fact]
+    public void MarksNothingForEveryoneElse()
+    {
+        var grid = Render<CalendarGrid>(p => p.Add(c => c.Calendar, CalendarFixtures.Calendar(ClaimsOpened)));
+
+        Assert.DoesNotContain("Your spot", grid.Markup);
+        Assert.DoesNotContain("You've requested", grid.Markup);
     }
 
     [Fact]

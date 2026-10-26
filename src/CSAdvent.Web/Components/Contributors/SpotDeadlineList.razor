@@ -1,0 +1,79 @@
+@* A spot's deadlines on My spots (#175), the ones still to come: its link, the blurb check, the reveal and the announcement. *@
+@using System.Globalization
+@using CSAdvent.Web.Contributors
+@inject AdventSchedule Schedule
+
+@if (Upcoming.ToList() is { Count: > 0 } upcoming)
+{
+    <ul class="mt-2 flex flex-col gap-0.5 text-sm text-slate-600">
+        @foreach (var deadline in upcoming)
+        {
+            <li>
+                @if (deadline.When is { } when)
+                {
+                    @* Razor drops whitespace between an expression and an element, so the space is part of the text. *@
+                    @($"{deadline.Before} ")<time datetime="@when.ToString("O", CultureInfo.InvariantCulture)" class="font-medium text-slate-800">@Eastern(when)</time>@deadline.After
+                }
+                else
+                {
+                    @deadline.Before
+                }
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private sealed record Deadline(string Before, DateTimeOffset? When, string After);
+
+    [Parameter, EditorRequired]
+    public required MySpot Spot { get; set; }
+
+    /// <summary>Whether its post is checked for the blurb: seasons with the rule, while the check is on.</summary>
+    [Parameter]
+    public bool ChecksBlurb { get; set; }
+
+    private IEnumerable<Deadline> Upcoming
+    {
+        get
+        {
+            if (Spot.IsDayOver)
+            {
+                yield break;
+            }
+
+            var (deadlines, now, hasLink) = (Spot.Deadlines, Schedule.Now, Spot.PostUrl is not null);
+            if (!hasLink)
+            {
+                yield return now < deadlines.AskBackupsFrom
+                    ? new("Add your post's link by", deadlines.AskBackupsFrom, ". Then we start asking backup posters to stand by for your spot.")
+                    : now < deadlines.RevealsAt
+                        ? new("Add your post's link before", deadlines.RevealsAt, ". We're asking backup posters, and one who says yes takes your spot then.")
+                        : new("Add your post's link now: backup posters have been asked, and one who says yes takes your spot straight away.", null, "");
+            }
+
+            if (ChecksBlurb && now < deadlines.CheckBlurbFrom)
+            {
+                yield return new("We start checking your post for the blurb at", deadlines.CheckBlurbFrom, ".");
+            }
+
+            if (now < deadlines.RevealsAt)
+            {
+                yield return new("Revealed at", deadlines.RevealsAt, ".");
+            }
+
+            if (now < deadlines.AnnouncedAt && (hasLink || now < deadlines.RevealsAt))
+            {
+                yield return new("Announced at", deadlines.AnnouncedAt, ChecksBlurb ? ". Your post needs the blurb by then, or a backup poster may take your spot." : ".");
+            }
+        }
+    }
+
+    /// <summary>"6:00 PM Eastern, December 5", or "midnight Eastern, December 6".</summary>
+    private string Eastern(DateTimeOffset moment)
+    {
+        var local = Schedule.ToLocalTime(moment);
+        var time = local.TimeOfDay == TimeSpan.Zero ? "midnight" : local.ToString("h:mm tt", CultureInfo.InvariantCulture);
+        return string.Create(CultureInfo.InvariantCulture, $"{time} Eastern, {local:MMMM d}");
+    }
+}

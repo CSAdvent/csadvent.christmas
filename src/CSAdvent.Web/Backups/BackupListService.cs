@@ -21,6 +21,18 @@ public enum BackupSignupAvailability
 /// <summary>Someone's place on a season's backup list. <see cref="FilledSpot"/> is set once they've filled one.</summary>
 public sealed record BackupMembership(int? Position, string? FilledSpot);
 
+/// <summary>Someone's standing with a season's backup list, for My spots (#175): their place, and the asks they can answer.</summary>
+/// <param name="Membership">Their place on the list, if they're on it.</param>
+public sealed record MyBackups(int Year, BackupSignupAvailability Availability, BackupMembership? Membership, IReadOnlyList<MyBackupOffer> Offers);
+
+/// <summary>A spot they've been asked to fill, whose day isn't over. <paramref name="StandingBy"/> once they've said yes.</summary>
+public sealed record MyBackupOffer(int OfferId, int Year, int Day, int Part, int SlotsPerDay, bool StandingBy)
+{
+    public string Spot => SlotsPerDay > 1 ? $"December {Day} · Post {Part}" : $"December {Day}";
+
+    public string Page => $"backups/offers/{OfferId}";
+}
+
 public sealed record BackupListEntry(
     int? Position,
     string Name,
@@ -75,6 +87,35 @@ public sealed partial class BackupListService(
 
         return new BackupMembership(PositionOf(list, mine), mine.AssignedSlot is { } slot ? $"December {slot.Day}" : null);
     }
+
+    /// <summary>
+    /// Their standing with a season's backup list, while it's running: their place, and every ask they can still answer, so
+    /// they don't have to find the email. Null if they can't see the season, or it's finished.
+    /// </summary>
+    public async Task<MyBackups?> GetMineAsync(int contributorId, int year, CancellationToken cancellationToken = default)
+    {
+        if (await GetAvailabilityAsync(year, cancellationToken) is not { } availability || availability is BackupSignupAvailability.SeasonOver)
+        {
+            return null;
+        }
+
+        var membership = await GetMembershipAsync(contributorId, year, cancellationToken);
+        var offers = membership is null
+            ? []
+            : await db.BackupOffers
+                .AsNoTracking()
+                .Where(o => o.Substitute.SeasonYear == year && o.Substitute.ContributorId == contributorId
+                    && (o.Status == BackupOfferStatus.Asked || o.Status == BackupOfferStatus.Accepted))
+                .OrderBy(o => o.Slot.Day).ThenBy(o => o.Slot.Part)
+                .Select(o => new MyBackupOffer(o.Id, year, o.Slot.Day, o.Slot.Part, o.Slot.Season.SlotsPerDay, o.Status == BackupOfferStatus.Accepted))
+                .ToListAsync(cancellationToken);
+
+        return new MyBackups(year, availability, membership, [.. offers.Where(o => !schedule.IsDayOver(year, o.Day))]);
+    }
+
+    /// <summary>The seasons whose backup lists they're on.</summary>
+    public async Task<IReadOnlyList<int>> GetListYearsAsync(int contributorId, CancellationToken cancellationToken = default) =>
+        await db.Substitutes.Where(s => s.ContributorId == contributorId).Select(s => s.SeasonYear).Distinct().ToListAsync(cancellationToken);
 
     public async Task<BackupSignupOutcome> SignUpAsync(int contributorId, int year, BackupSignupForm form, CancellationToken cancellationToken = default)
     {
