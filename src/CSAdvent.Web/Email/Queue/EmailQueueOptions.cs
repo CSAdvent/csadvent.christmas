@@ -34,6 +34,15 @@ public sealed class EmailQueueOptions : IValidatableObject
     /// </summary>
     public int ListPerMinute => ListPerHour <= 0 ? 0 : (ListPerHour + 59) / 60;
 
+    /// <summary>
+    /// The most one pass sends before it lets go of the lock. A pass sends the emails it takes in priority order, but anything
+    /// queued after it started waits for it to finish, so a pass with hundreds of emails to send (where the limits allow it, as
+    /// in development and the tests) would hold up a transactional email behind all of them. With a pass's worth sent, the
+    /// worker starts the next pass straight away. The default is the minute's limit, so in production it changes nothing.
+    /// </summary>
+    [Range(1, 100_000)]
+    public int MaxPerPass { get; set; } = 25;
+
     /// <summary>How often the worker looks for emails queued by another replica, or that are due again. Its own replica wakes it straight away.</summary>
     public TimeSpan PollInterval { get; set; } = TimeSpan.FromSeconds(2);
 

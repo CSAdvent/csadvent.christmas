@@ -7,7 +7,8 @@ namespace CSAdvent.Web.Email.Queue;
 /// <summary>
 /// Drains the email queue (#152) on every replica, in every environment (the tests need their emails delivered too): a pass
 /// (<see cref="EmailQueueDrain"/>) every <see cref="EmailQueueOptions.PollInterval"/>, or straight away when this replica queues
-/// an email (<see cref="EmailQueueSignal"/>). The advisory lock means only one replica's pass sends at a time. When the email
+/// an email (<see cref="EmailQueueSignal"/>), or straight after a pass that sent as many as a pass may
+/// (<see cref="EmailQueuePass.More"/>). The advisory lock means only one replica's pass sends at a time. When the email
 /// service throttles, it waits as long as it was asked to. Each pass is recorded as <see cref="Step"/> (#172).
 /// </summary>
 public sealed partial class EmailOutboxWorker(
@@ -38,6 +39,7 @@ public sealed partial class EmailOutboxWorker(
         {
             var wait = options.Value.PollInterval;
             var wakeable = true;
+            var more = false;
 
             // Waiting for the table records nothing: the step only succeeds once the migrations have run.
             bool? succeeded = null;
@@ -68,6 +70,9 @@ public sealed partial class EmailOutboxWorker(
                     wait = pausedUntil - timeProvider.GetUtcNow();
                     wakeable = false;
                 }
+
+                // A full pass may have left more due: the next pass starts straight away, and takes what's queued since.
+                more = pass.More;
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -105,6 +110,11 @@ public sealed partial class EmailOutboxWorker(
                 if (succeeded is { } outcome)
                 {
                     await runs.RecordAsync(Step, outcome, stoppingToken);
+                }
+
+                if (more)
+                {
+                    continue;
                 }
 
                 if (wakeable)

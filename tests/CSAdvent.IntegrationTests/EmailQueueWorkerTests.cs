@@ -16,7 +16,7 @@ namespace CSAdvent.IntegrationTests;
 
 /// <summary>
 /// The email queue's worker (<see cref="EmailOutboxWorker"/>), the one background job with a loop of its own rather than
-/// <see cref="PeriodicWorker"/>'s, run on a fake clock against databases of its own (#199): csadvent_worker_2624 and 2625.
+/// <see cref="PeriodicWorker"/>'s, run on a fake clock against databases of its own (#199): csadvent_worker_2624 to 2626.
 /// The site's own worker never sees them, and an advisory lock only counts in its own database.
 /// </summary>
 public sealed class EmailQueueWorkerTests(AppHostFixture fixture)
@@ -106,6 +106,31 @@ public sealed class EmailQueueWorkerTests(AppHostFixture fixture)
             var email = await db.EmailOutbox.SingleAsync(CancellationToken);
             Assert.Equal((QueuedEmailStatus.Sent, 0), (email.Status, email.Attempts));
         }
+    }
+
+    [Fact]
+    public async Task AfterAFullPassTheNextStartsStraightAway()
+    {
+        await using var database = await ThrowawayDatabase.CreateAsync(fixture, "csadvent_worker_2626");
+        var clock = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        await using (var db = database.CreateDbContext())
+        {
+            await db.Database.MigrateAsync(CancellationToken);
+            for (var i = 1; i <= 7; i++)
+            {
+                db.EmailOutbox.Add(Queued($"worker-{i}-2626@example.com", $"One of seven, number {i}", clock.GetUtcNow()));
+            }
+
+            await db.SaveChangesAsync(CancellationToken);
+        }
+
+        // Three at a time, and the clock never moves, so no poll interval ever passes: only going straight on to the next
+        // pass after a full one sends all seven (#198).
+        await using var queue = new WorkerUnderTest(database.ConnectionString, clock, new EmailQueueOptions { MaxPerPass = 3 });
+        await queue.StartAsync();
+
+        await WaitUntilAsync(() => queue.Transport.Attempts.Count == 7, "all seven emails to be sent");
+        Assert.Equal(Enumerable.Range(1, 7).Select(i => $"worker-{i}-2626@example.com"), queue.Transport.Attempts.Select(a => a.To));
     }
 
     private static QueuedEmail Queued(string to, string subject, DateTimeOffset now) => new()

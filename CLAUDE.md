@@ -397,7 +397,7 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 - **Sending:** `EmailOutboxWorker` runs on every replica **in every environment, the tests included** (they read its emails from MailPit). A pass (`EmailQueueDrain`) runs every `Email:Queue:PollInterval` (2 seconds), or straight away when its own replica queues something (`EmailQueueSignal`). Each pass:
   - takes a Postgres advisory transaction lock (`EmailOutboxStore.LockKey`, on a connection and transaction of its own, because EF Core's retrying strategy won't hold one open), so one replica sends at a time;
   - marks what's past its deadline Expired;
-  - works out what's left of the minute and the hour (`EmailBudget`, counted from `sent_at`, so every replica shares it);
+  - works out what's left of the minute and the hour (`EmailBudget`, counted from `sent_at`, so every replica shares it), and takes no more than `Email:Queue:MaxPerPass` (25, the minute's limit, so in production it changes nothing). A full pass is followed straight away by the next (`EmailQueuePass.More`), so where the limits are higher (development and the tests) an email queued meanwhile, transactional ones first, isn't held up behind hundreds of list emails (#198);
   - claims that many due emails in priority order, holding them with `locked_until` (`Email:Queue:Lease`, 5 minutes; a pass stops starting sends halfway through, and a dead replica's emails go again once it's passed), and sends them one at a time.
 - **Limits:** `Email:Queue:PerMinute` (25), `PerHour` (90) and `ListPerHour` (50, so 1 list email a minute), validated on start, leaving headroom under 30 and 100. `appsettings.Development.json` raises all three, so development and the tests never wait.
 - **Failures:**
