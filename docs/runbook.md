@@ -226,7 +226,7 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 - **Save the season to the archive files (January):** on `/manage/seasons`, press the finished season's
   **Download {year}.json** and save it as `src/CSAdvent.Web/Data/Archive/{year}.json`, then commit it in a pull
   request. It's the calendar as shown (authors, links, titles, summaries; no contact details), in the same format as
-  2017–2025, and any new database is seeded with it, so the season no longer depends on the database's 14-day backups.
+  2017–2025, and any new database is seeded with it, so the season no longer depends on the database's 35-day backups.
   If an author asks for their entry to be taken down later, remove it from that file too.
 - **Move the workflows to a newer runner (January):** every workflow runs on `ubuntu-24.04`, pinned so GitHub's move of
   `ubuntu-latest` to a new Ubuntu couldn't land mid-season (#177). Outside the season, try the newer image in a pull
@@ -833,7 +833,8 @@ When a migration damaged or dropped data:
 ## 🗄️ Restoring the Database
 
 Every season since 2017 lives in one PostgreSQL Flexible Server, `postgres-54yzcow3wctne` in `rg-csadvent` (Central US).
-Azure backs it up automatically, and it can go back to **any second in the last 14 days**, up to a few minutes ago.
+Azure backs it up automatically, and it can go back to **any second in the last 35 days** (Azure's most, raised from 14 in October 2026, #182), up to a few
+minutes ago.
 Backups stay in Central US: there's no geo-redundant copy.
 
 A restore always makes a **new** server, and production isn't touched. The test on October 25, 2026 restored production
@@ -905,21 +906,23 @@ default subscription.
 
 ### 📦 No Logical Backups (Decided 2026-10-26)
 
-A scheduled `pg_dump` to Blob Storage (the optional part of #182) was weighed and left out. The point-in-time backups cover
-any mistake noticed within 14 days, a deleted server can be restored for 5 days after, and each finished season's calendar
-is in the repository's archive files (After Advent), so the history no longer depends on the database. A dump would add a
+A scheduled `pg_dump` to Blob Storage (the optional part of #182) was weighed and left out. Instead, the point-in-time
+backups went from 14 days to 35 (done, `BackupRetentionDays` in `AppHost.cs`; backup storage up to the server's 32 GB is
+free, and this database is far smaller). They cover any mistake noticed within 35 days, a deleted server can be restored
+for 5 days after, and each finished season's calendar is in the repository's archive files (After Advent), so the history
+no longer depends on the database. A dump would add a
 storage account, a scheduled Container Apps job with an image of its own (the `postgres` image has no way to upload),
 credentials to rotate, and a restore that would need trying every year, for two volunteers. It would also keep deleted
-email addresses for as long as the dumps are kept, longer than the privacy page's 14 days.
+email addresses for as long as the dumps are kept, longer than the privacy page's 35 days.
 
-If that changes (a season's data lost between its December and the January export, say), the plan is:
+If a copy outside the server is ever wanted (a season's data lost between its December and the January export, say),
+the plan is:
 
-1. **Cheapest first:** raise `BackupRetentionDays` in `AppHost.cs` from 14 to 35 (Azure's most). Backup storage up to
-   the server's 32 GB is free, so check the server's **Backup Storage Used** metric first, and change the privacy page's
-   "14 days" in the same pull request.
-2. **Then, if a copy outside the server is still wanted:** a daily step in the web app (no new image), claimed once a day
+1. **Done:** 35-day retention, Azure's most. Keep an eye on the server's **Backup Storage Used** metric; it's free up to
+   32 GB.
+2. **A copy outside the server:** a daily step in the web app (no new image), claimed once a day
    across replicas, that copies the tables with Npgsql's `COPY … TO STDOUT` into one gzip file and uploads it with the web
    identity (`DefaultAzureCredential`, Storage Blob Data Contributor) to a storage account added with
    `AddAzureStorage("backups")` (publish mode only), with a lifecycle rule deleting blobs after 30 days. Restoring would be
-   a new database from the migrations bundle, then `\copy` each table in. Update the privacy page (30 days) in the same
-   pull request, and validate with `aspire publish --environment PublishCheck` and `az bicep build`.
+   a new database from the migrations bundle, then `\copy` each table in. Keep that within the privacy page's 35 days (or change
+   the page in the same pull request), and validate with `aspire publish --environment PublishCheck` and `az bicep build`.

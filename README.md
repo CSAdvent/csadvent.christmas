@@ -202,7 +202,7 @@ A hidden test season lets invited testers try everything for real on the live si
 
 ## ☁️ Deploying to Azure
 
-Production runs on **Azure Container Apps** with **Azure Database for PostgreSQL** (Flexible Server, PostgreSQL 18, Burstable B1ms, 14-day point-in-time backups; restoring is in [the runbook](docs/runbook.md)), **Application Insights**, the **Azure DNS** zone for csadvent.christmas, and **Azure Communication Services** for email, with **Azure Monitor alerts** that email the organizers when something fails. All of it is modeled in the AppHost, so one `aspire deploy` creates everything. The keys that protect sign-in cookies and email links are kept in the database, encrypted with a key in **Azure Key Vault** that only the site can use, and the deploy creates that too. The blurb check uses Claude through Anthropic's API, with a key (below).
+Production runs on **Azure Container Apps** with **Azure Database for PostgreSQL** (Flexible Server, PostgreSQL 18, Burstable B1ms, 35-day point-in-time backups; restoring is in [the runbook](docs/runbook.md)), **Application Insights**, the **Azure DNS** zone for csadvent.christmas, and **Azure Communication Services** for email, with **Azure Monitor alerts** that email the organizers when something fails. All of it is modeled in the AppHost, so one `aspire deploy` creates everything. The keys that protect sign-in cookies and email links are kept in the database, encrypted with a key in **Azure Key Vault** that only the site can use, and the deploy creates that too. The blurb check uses Claude through Anthropic's API, with a key (below).
 
 Email can't be sent until the sending domain is verified, which happens after the nameserver switch below.
 
