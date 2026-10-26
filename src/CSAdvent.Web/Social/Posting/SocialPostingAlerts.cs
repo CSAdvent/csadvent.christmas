@@ -102,7 +102,7 @@ public sealed class SocialPostingAlerts(EmailComposer composer, IOptions<SiteOpt
                 : $"C# Advent tried to post {What(post)} to {post.Platform}, and it didn't go out. It won't be tried again by itself."),
             Details(new DetailRow("What happened", EmailBlocks.SingleLine(post.Error))),
             Paragraph(
-                "If it's something on our side, fix it first: for the credentials, the README's deploy setup says how to replace " +
+                "If it's something on our side, fix it first: for the credentials, docs/deployment.md in the repository says how to replace " +
                 $"them. Then press {post.Retry}, or post it by hand and press Mark as posted."),
             Button("Open the page", Page(post, site)),
         ],

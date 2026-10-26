@@ -81,7 +81,7 @@ if (isPublish)
 var database = postgres.AddDatabase("csadvent");
 
 // The site's custom domains (CustomDomains in appsettings.json). Azure only accepts a domain once DNS points at the app, and
-// only issues its managed certificate after that, so each domain goes in in two steps (see the README): its name first,
+// only issues its managed certificate after that, so each domain goes in in two steps (see docs/deployment.md): its name first,
 // then its certificate's name. Kept in configuration rather than set by hand, because a deploy replaces whatever isn't in
 // the model.
 var customDomains = (builder.Configuration.GetSection("CustomDomains").Get<CustomDomain[]>() ?? [])
@@ -159,7 +159,7 @@ if (isPublish)
         .WithParameter("webPrincipalId", webIdentity.Resource.PrincipalId);
     web.WithEnvironment("DataProtection__KeyVaultKeyId", dataProtection.GetOutput("keyUri"));
 
-    // The sending domain is connected by the first deploy after it's verified in DNS (see the README).
+    // The sending domain is connected by the first deploy after it's verified in DNS (see docs/deployment.md).
     var acs = builder.AddBicepTemplate("acs", "infra/acs.bicep")
         .WithParameter("domainName", domainName)
         .WithParameter("webPrincipalId", webIdentity.Resource.PrincipalId);

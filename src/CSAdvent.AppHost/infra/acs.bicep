@@ -46,7 +46,7 @@ resource sender 'Microsoft.Communication/emailServices/domains/senderUsernames@2
 }
 
 // Azure refuses to connect a sending domain before it's verified, which can only happen once the zone in dns.bicep is
-// live. So the first deploy after all four checks pass connects it (see the README).
+// live. So the first deploy after all four checks pass connects it (see docs/deployment.md).
 var verification = sendingDomain.properties.verificationStates
 var isVerified = verification.Domain.status == 'Verified' && verification.SPF.status == 'Verified' && verification.DKIM.status == 'Verified' && verification.DKIM2.status == 'Verified'
 
