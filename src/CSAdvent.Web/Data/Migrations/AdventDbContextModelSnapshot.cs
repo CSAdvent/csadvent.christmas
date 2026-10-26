@@ -16,7 +16,7 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261026161343_AddBackupRoundsAndJobHeartbeats";
+    public override string LastMigrationId => "20261026193818_TightenDataModel";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -88,6 +88,9 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
 
                 b.HasKey("Id")
                     .HasName("pk_announcements");
+
+                b.HasIndex("SeasonYear")
+                    .HasDatabaseName("ix_announcements_season_year");
 
                 b.HasIndex("Kind", "SeasonYear")
                     .IsUnique()
@@ -1573,6 +1576,8 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                     {
                         t.HasCheckConstraint("ck_slots_author_url", "author_url ~* '^https?://'");
 
+                        t.HasCheckConstraint("ck_slots_contributor_needs_author", "contributor_id IS NULL OR author_name IS NOT NULL");
+
                         t.HasCheckConstraint("ck_slots_day", "day BETWEEN 1 AND 25");
 
                         t.HasCheckConstraint("ck_slots_part", "part BETWEEN 1 AND 2");
@@ -1805,6 +1810,15 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                     .HasName("pk_data_protection_keys");
 
                 b.ToTable("data_protection_keys");
+            });
+
+        modelBuilder.Entity("CSAdvent.Web.Data.Announcement", b =>
+            {
+                b.HasOne("CSAdvent.Web.Data.Season", null)
+                    .WithMany()
+                    .HasForeignKey("SeasonYear")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .HasConstraintName("fk_announcements_seasons_season_year");
             });
 
         modelBuilder.Entity("CSAdvent.Web.Data.AnnouncementDelivery", b =>

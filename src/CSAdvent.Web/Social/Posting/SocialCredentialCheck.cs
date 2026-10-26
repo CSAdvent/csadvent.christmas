@@ -14,15 +14,13 @@ namespace CSAdvent.Web.Social.Posting;
 /// and emails the organizers when one fails, so a revoked or expired token shows up in November, not on December 1.
 /// <see cref="SocialPostingWorker"/> runs it. A check an organizer ran that day counts, and dry-run platforms aren't checked.
 /// </summary>
-public sealed partial class SocialCredentialCheck(
+public sealed class SocialCredentialCheck(
     AdventDbContext db,
     AdventSchedule schedule,
     SocialPlatformModes modes,
     EmailComposer composer,
-    IEmailSender sender,
     IOptions<SocialPostingOptions> options,
-    IOptions<SiteOptions> site,
-    ILogger<SocialCredentialCheck> logger)
+    IOptions<SiteOptions> site)
 {
     /// <summary>Checks what's due. Returns the platforms whose credentials failed.</summary>
     public async Task<IReadOnlyList<SocialPlatform>> RunAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
@@ -49,24 +47,15 @@ public sealed partial class SocialCredentialCheck(
             if (await modes.CheckAsync(platform.Platform, SocialPostingService.Automation, cancellationToken) is { } error)
             {
                 failed.Add(platform.Platform);
-                await AlertAsync(platform.Platform, error, cancellationToken);
+                await composer.TrySendAsync(
+                    CredentialsFailing(platform.Platform, error, site.Value),
+                    site.Value.OrganizersInbox,
+                    $"the {platform.Platform} credentials",
+                    cancellationToken);
             }
         }
 
         return failed;
-    }
-
-    private async Task AlertAsync(SocialPlatform platform, string error, CancellationToken cancellationToken)
-    {
-        try
-        {
-            var organizers = new EmailRecipient(site.Value.ContactEmail, "C# Advent organizers");
-            await sender.SendAsync(await composer.ComposeAsync(CredentialsFailing(platform, error, site.Value), organizers), cancellationToken);
-        }
-        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
-        {
-            LogAlertFailed(exception, platform);
-        }
     }
 
     /// <summary>Tells the organizers a platform's credentials failed today's check.</summary>
@@ -88,7 +77,4 @@ public sealed partial class SocialCredentialCheck(
         ],
         Reason = "You're getting this email because you're a C# Advent organizer.",
     };
-
-    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't queue the email telling the organizers that the {Platform} credentials failed")]
-    private partial void LogAlertFailed(Exception exception, SocialPlatform platform);
 }

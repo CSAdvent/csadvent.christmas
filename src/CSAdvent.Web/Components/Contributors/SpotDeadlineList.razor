@@ -74,6 +74,6 @@
     {
         var local = Schedule.ToLocalTime(moment);
         var time = local.TimeOfDay == TimeSpan.Zero ? "midnight" : local.ToString("h:mm tt", CultureInfo.InvariantCulture);
-        return string.Create(CultureInfo.InvariantCulture, $"{time} Eastern, {local:MMMM d}");
+        return string.Create(CultureInfo.InvariantCulture, $"{time} {Schedule.TimeZoneName}, {local:MMMM d}");
     }
 }

@@ -2,6 +2,7 @@ using CSAdvent.Web.Content;
 using CSAdvent.Web.Email;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using static CSAdvent.Web.Email.EmailBlocks;
@@ -30,12 +31,13 @@ public sealed class EmailComposerTests
 
     private static readonly EmailOptOutLinks Links = new(new EphemeralDataProtectionProvider(), Options.Create(Site));
 
-    private static EmailComposer CreateComposer() =>
+    private static EmailComposer CreateComposer(IEmailSender? sender = null, ILoggerFactory? loggerFactory = null) =>
         new(
             new ServiceCollection().BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
-            NullLoggerFactory.Instance,
+            loggerFactory ?? NullLoggerFactory.Instance,
             Options.Create(Site),
-            Links);
+            Links,
+            sender ?? new SendingSender());
 
     [Fact]
     public async Task TheHtmlIsBrandedAndEncoded()
@@ -148,5 +150,121 @@ public sealed class EmailComposerTests
         var email = await CreateComposer().ComposeAsync(Content, new EmailRecipient("ada@example.com"));
 
         Assert.Equal("Line oneBcc: someone@example.com", email.Subject);
+    }
+
+    [Fact]
+    public async Task TrySendQueuesTheComposedEmail()
+    {
+        var sender = new SendingSender();
+
+        var sent = await CreateComposer(sender).TrySendAsync(Content with { Kind = "claim-received" }, new EmailRecipient("ada@example.com", "Ada"), "claim request 7", TestContext.Current.CancellationToken);
+
+        Assert.True(sent);
+        var email = Assert.Single(sender.Sent);
+        Assert.Equal(("ada@example.com", "claim-received", "hello@csadvent.christmas"), (email.To.Address, email.Kind, email.ReplyTo));
+    }
+
+    [Fact]
+    public async Task TrySendCanSendRepliesElsewhere()
+    {
+        var sender = new SendingSender();
+
+        await CreateComposer(sender).TrySendAsync(Content, Site.OrganizersInbox, "grace@example.com", "post claim request 3", TestContext.Current.CancellationToken);
+
+        var email = Assert.Single(sender.Sent);
+        Assert.Equal(("hello@csadvent.christmas", "C# Advent organizers", "grace@example.com"), (email.To.Address, email.To.Name, email.ReplyTo));
+    }
+
+    [Fact]
+    public async Task AnEmailThatCantBeQueuedIsLoggedWithoutTheAddress()
+    {
+        var logs = new RecordingLoggerProvider();
+        using var loggerFactory = LoggerFactory.Create(builder => builder.AddProvider(logs));
+
+        var sent = await CreateComposer(new FailingSender(), loggerFactory)
+            .TrySendAsync(Content with { Kind = "backup-ask" }, new EmailRecipient("ada@example.com", "Ada"), "slot 12", TestContext.Current.CancellationToken);
+
+        Assert.False(sent);
+        var entry = Assert.Single(logs.Composer);
+        Assert.Equal(LogLevel.Error, entry.Level);
+        Assert.Equal("Couldn't queue the backup-ask email (slot 12)", entry.Message);
+        Assert.IsType<InvalidOperationException>(entry.Exception);
+        Assert.DoesNotContain("ada@example.com", entry.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task AnEmailWithoutAKindIsLoggedAsOther()
+    {
+        var logs = new RecordingLoggerProvider();
+        using var loggerFactory = LoggerFactory.Create(builder => builder.AddProvider(logs));
+
+        await CreateComposer(new FailingSender(), loggerFactory).TrySendAsync(Content, new EmailRecipient("ada@example.com"), "a sample", TestContext.Current.CancellationToken);
+
+        Assert.Equal("Couldn't queue the other email (a sample)", Assert.Single(logs.Composer).Message);
+    }
+
+    [Fact]
+    public async Task ACancelledSendIsntSwallowed()
+    {
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            CreateComposer(new CancelledSender()).TrySendAsync(Content, new EmailRecipient("ada@example.com"), "slot 12", cancelled.Token));
+    }
+
+    [Fact]
+    public void TheOrganizersInboxIsTheContactAddress() =>
+        Assert.Equal(new EmailRecipient("hello@csadvent.christmas", "C# Advent organizers"), Site.OrganizersInbox);
+
+    private sealed class SendingSender : IEmailSender
+    {
+        public List<OutgoingEmail> Sent { get; } = [];
+
+        public Task SendAsync(OutgoingEmail email, CancellationToken cancellationToken = default)
+        {
+            Sent.Add(email);
+            return Task.CompletedTask;
+        }
+    }
+
+    /// <summary>As the queue does when the database fails: an exception whose message could quote anything.</summary>
+    private sealed class FailingSender : IEmailSender
+    {
+        public Task SendAsync(OutgoingEmail email, CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("The database is down.");
+    }
+
+    private sealed class CancelledSender : IEmailSender
+    {
+        public Task SendAsync(OutgoingEmail email, CancellationToken cancellationToken = default) =>
+            Task.FromCanceled(cancellationToken);
+    }
+
+    private sealed record LogEntry(string Category, LogLevel Level, string Message, Exception? Exception);
+
+    private sealed class RecordingLoggerProvider : ILoggerProvider
+    {
+        public List<LogEntry> Entries { get; } = [];
+
+        /// <summary>What the composer logged (the renderer logs too, at Debug).</summary>
+        public IEnumerable<LogEntry> Composer => Entries.Where(e => e.Category == typeof(EmailComposer).FullName);
+
+        public ILogger CreateLogger(string categoryName) => new Logger(categoryName, Entries);
+
+        public void Dispose()
+        {
+        }
+
+        private sealed class Logger(string category, List<LogEntry> entries) : ILogger
+        {
+            public IDisposable? BeginScope<TState>(TState state)
+                where TState : notnull => null;
+
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
+                entries.Add(new LogEntry(category, logLevel, formatter(state, exception), exception));
+        }
     }
 }

@@ -7,7 +7,6 @@ using CSAdvent.Web.Entries;
 using CSAdvent.Web.Manage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Npgsql;
 
 namespace CSAdvent.Web.Contributors;
 
@@ -99,15 +98,13 @@ public sealed record PostClaimReview(
 /// isn't linked to anyone, every request emails the organizers, and an organizer approves (linking the post) or declines
 /// it. A post that's already on someone's account can't be requested: the pages say to email the organizers instead.
 /// </summary>
-public sealed partial class PostClaimService(
+public sealed class PostClaimService(
     AdventDbContext db,
     AdventSchedule schedule,
     AuthorService authors,
     TimeProvider timeProvider,
     EmailComposer composer,
-    IEmailSender sender,
-    IOptions<SiteOptions> site,
-    ILogger<PostClaimService> logger)
+    IOptions<SiteOptions> site)
 {
     /// <summary>Requests one contributor can make in an hour, since each one emails the organizers.</summary>
     public const int MaxPerHour = 10;
@@ -197,13 +194,13 @@ public sealed partial class PostClaimService(
         {
             await db.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        catch (DbUpdateException exception) when (exception.IsUniqueViolation())
         {
             return PostClaimOutcome.AlreadyRequested;
         }
 
         var details = new PostClaimEmailDetails(request.Id, requester.GithubLogin, requester.DisplayName, request.Note, post.Year, post.Day, post.Part, post.SlotsPerDay, post.Title, post.Author);
-        await SendAsync(request.Id, "new request", PostClaimEmails.NewRequest(details, site.Value), new EmailRecipient(site.Value.ContactEmail, "C# Advent organizers"), requester.Email, cancellationToken);
+        await composer.TrySendAsync(PostClaimEmails.NewRequest(details, site.Value), site.Value.OrganizersInbox, requester.Email, About(request.Id), cancellationToken);
         return PostClaimOutcome.Requested;
     }
 
@@ -368,24 +365,11 @@ public sealed partial class PostClaimService(
             .SingleOrDefaultAsync(cancellationToken);
         if (address is not null)
         {
-            await SendAsync(id, review.Status.ToString().ToLowerInvariant(), email(review.Email, site.Value), new EmailRecipient(address, review.RequesterName), null, cancellationToken);
+            await composer.TrySendAsync(email(review.Email, site.Value), new EmailRecipient(address, review.RequesterName), About(id), cancellationToken);
         }
     }
 
-    private async Task SendAsync(int requestId, string kind, EmailContent content, EmailRecipient to, string? replyTo, CancellationToken cancellationToken)
-    {
-        try
-        {
-            await sender.SendAsync(await composer.ComposeAsync(content, to, replyTo), cancellationToken);
-        }
-        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
-        {
-            LogSendFailed(exception, kind, requestId);
-        }
-    }
-
-    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't queue the {Kind} email for post claim request {RequestId}")]
-    private partial void LogSendFailed(Exception exception, string kind, int requestId);
+    private static string About(int requestId) => $"post claim request {requestId}";
 }
 
 /// <summary>Asking for an older post: a note for the organizers, and a ticked "I wrote this".</summary>

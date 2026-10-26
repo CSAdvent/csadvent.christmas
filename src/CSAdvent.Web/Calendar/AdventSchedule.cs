@@ -1,3 +1,4 @@
+using System.Globalization;
 using CSAdvent.Web.Data;
 using CSAdvent.Web.SeasonTesting;
 using Microsoft.Extensions.Options;
@@ -8,6 +9,11 @@ namespace CSAdvent.Web.Calendar;
 /// When each day's posts are revealed: midnight on December {day} of the season's year, in the configured time zone. The
 /// test season's days follow its rehearsal instead (<see cref="TestSeasons"/>), so everything built on these dates (reveals,
 /// reminders, backup asks) can be tried any time. Reveal times are always computed, never stored.
+/// <para>
+/// Each question about the time has an overload that takes <c>now</c>. Background runs are given the time they run at (the
+/// <c>/dev/.../run?at=</c> endpoints and the tests give any time), so they pass it on, rather than let the schedule read the
+/// real clock (#184). Pages ask without it.
+/// </para>
 /// </summary>
 public sealed class AdventSchedule
 {
@@ -17,11 +23,22 @@ public sealed class AdventSchedule
     public AdventSchedule(IOptions<AdventOptions> options, TimeProvider timeProvider, TestSeasons? testSeasons = null)
     {
         TimeZone = TimeZoneInfo.FindSystemTimeZoneById(options.Value.TimeZone);
+        TimeZoneName = options.Value.TimeZoneName;
         _timeProvider = timeProvider;
         _testSeasons = testSeasons;
     }
 
     public TimeZoneInfo TimeZone { get; }
+
+    /// <summary>What a time in <see cref="TimeZone"/> is called in emails and on pages, such as "Eastern".</summary>
+    public string TimeZoneName { get; }
+
+    /// <summary>A moment as emails and pages give it, in the reveal time zone: "10:00 AM Eastern on December 6".</summary>
+    public string Describe(DateTimeOffset moment)
+    {
+        var local = ToLocalTime(moment);
+        return string.Create(CultureInfo.InvariantCulture, $"{local:h:mm tt} {TimeZoneName} on {local:MMMM d}");
+    }
 
     /// <summary>The date of a day of Advent: December {day}, or the matching day of the test season's rehearsal.</summary>
     public DateOnly GetDate(int year, int day)
@@ -54,26 +71,36 @@ public sealed class AdventSchedule
 
     public DateTimeOffset GetRevealTime(Slot slot) => GetRevealTime(slot.SeasonYear, slot.Day);
 
-    public bool IsRevealed(int year, int day) => _timeProvider.GetUtcNow() >= GetRevealTime(year, day);
+    public bool IsRevealed(int year, int day) => IsRevealed(year, day, Now);
 
-    public bool IsRevealed(Slot slot) => IsRevealed(slot.SeasonYear, slot.Day);
+    public bool IsRevealed(int year, int day, DateTimeOffset now) => now >= GetRevealTime(year, day);
+
+    public bool IsRevealed(Slot slot) => IsRevealed(slot.SeasonYear, slot.Day, Now);
+
+    public bool IsRevealed(Slot slot, DateTimeOffset now) => IsRevealed(slot.SeasonYear, slot.Day, now);
 
     /// <summary>When a day ends: midnight at the start of the next day, in the reveal time zone.</summary>
     public DateTimeOffset GetDayEndTime(int year, int day) => FromLocalTime(GetDate(year, day).AddDays(1).ToDateTime(TimeOnly.MinValue));
 
-    public bool IsDayOver(int year, int day) => _timeProvider.GetUtcNow() >= GetDayEndTime(year, day);
+    public bool IsDayOver(int year, int day) => IsDayOver(year, day, Now);
+
+    public bool IsDayOver(int year, int day, DateTimeOffset now) => now >= GetDayEndTime(year, day);
 
     /// <summary>
     /// Whether the season's last day is revealed: its calendar is complete, and it's in the archive. It isn't
     /// <see cref="IsFinished"/> yet, so the last day's authors can still add their posts on My spots.
     /// </summary>
-    public bool IsLastDayRevealed(int year) => IsRevealed(year, Season.DaysInAdvent);
+    public bool IsLastDayRevealed(int year) => IsLastDayRevealed(year, Now);
+
+    public bool IsLastDayRevealed(int year, DateTimeOffset now) => IsRevealed(year, Season.DaysInAdvent, now);
 
     /// <summary>
     /// Whether the season is finished, and history: once its last day is over, at the end of December 25 (or of its
     /// rehearsal's last day). Until then its spots are managed on My spots, and its posts aren't anyone's history yet.
     /// </summary>
-    public bool IsFinished(int year) => IsDayOver(year, Season.DaysInAdvent);
+    public bool IsFinished(int year) => IsFinished(year, Now);
+
+    public bool IsFinished(int year, DateTimeOffset now) => IsDayOver(year, Season.DaysInAdvent, now);
 
     /// <summary>
     /// When the home page starts showing a season's calendar: when its sign-ups open, or at the first reveal if that's
@@ -89,11 +116,10 @@ public sealed class AdventSchedule
     public DateTimeOffset GetCalendarEnd(int year) => FromLocalTime(new DateTime(year + 1, 1, 1));
 
     /// <summary>Whether the home page shows this season's calendar now, rather than the page between seasons.</summary>
-    public bool IsCalendarShown(int year, DateTimeOffset? claimsOpenAt)
-    {
-        var now = _timeProvider.GetUtcNow();
-        return now >= GetCalendarStart(year, claimsOpenAt) && now < GetCalendarEnd(year);
-    }
+    public bool IsCalendarShown(int year, DateTimeOffset? claimsOpenAt) => IsCalendarShown(year, claimsOpenAt, Now);
+
+    public bool IsCalendarShown(int year, DateTimeOffset? claimsOpenAt, DateTimeOffset now) =>
+        now >= GetCalendarStart(year, claimsOpenAt) && now < GetCalendarEnd(year);
 
     /// <summary>
     /// When a season's requests and backup list are deleted: the start of February 1 after it, in the reveal time zone. The
@@ -102,7 +128,9 @@ public sealed class AdventSchedule
     public DateTimeOffset GetContactDeletionTime(int year) => FromLocalTime(new DateTime(year + 1, 2, 1));
 
     /// <summary>Claims are open from the season's <see cref="Season.ClaimsOpenAt"/>; never if it isn't scheduled.</summary>
-    public bool AreClaimsOpen(DateTimeOffset? claimsOpenAt) => claimsOpenAt is { } opensAt && _timeProvider.GetUtcNow() >= opensAt;
+    public bool AreClaimsOpen(DateTimeOffset? claimsOpenAt) => AreClaimsOpen(claimsOpenAt, Now);
+
+    public bool AreClaimsOpen(DateTimeOffset? claimsOpenAt, DateTimeOffset now) => claimsOpenAt is { } opensAt && now >= opensAt;
 
     /// <summary>
     /// How long after a season's sign-ups open they're still announced by themselves, so a season scheduled late doesn't
@@ -120,9 +148,13 @@ public sealed class AdventSchedule
         && TimeOnly.FromDateTime(ToLocalTime(now).DateTime) >= sendAt;
 
     /// <summary>Today's date in the reveal time zone.</summary>
-    public DateOnly Today => DateOnly.FromDateTime(ToLocalTime(_timeProvider.GetUtcNow()).DateTime);
+    public DateOnly Today => DateOf(Now);
 
+    /// <summary>The real clock's time. Runs that are given a time use theirs instead.</summary>
     public DateTimeOffset Now => _timeProvider.GetUtcNow();
+
+    /// <summary>The date of a moment in the reveal time zone.</summary>
+    public DateOnly DateOf(DateTimeOffset moment) => DateOnly.FromDateTime(ToLocalTime(moment).DateTime);
 
     public DateTimeOffset ToLocalTime(DateTimeOffset moment) => TimeZoneInfo.ConvertTime(moment, TimeZone);
 

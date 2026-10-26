@@ -9,7 +9,6 @@ using CSAdvent.Web.Manage;
 using CSAdvent.Web.Reminders;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Npgsql;
 using static CSAdvent.Web.Email.EmailBlocks;
 
 namespace CSAdvent.Web.Announcements;
@@ -36,7 +35,7 @@ public sealed record SubscriberCounts(int Confirmed, int Unconfirmed, int DailyP
 /// and the day's posts for readers (<see cref="ReaderDailyEmailService"/>), within <see cref="EmailQueueOptions.ListPerHour"/>.
 /// Unsubscribing takes back a copy still waiting.
 /// </summary>
-public sealed partial class AnnouncementService(
+public sealed class AnnouncementService(
     AdventDbContext db,
     AdventSchedule schedule,
     SeasonAdminService seasons,
@@ -44,12 +43,10 @@ public sealed partial class AnnouncementService(
     PastAuthorInvitationService invitations,
     ReaderDailyEmailService readers,
     EmailComposer composer,
-    IEmailSender sender,
     EmailOutbox outbox,
     IOptions<ReminderOptions> reminders,
     IOptions<SiteOptions> site,
-    TimeProvider timeProvider,
-    ILogger<AnnouncementService> logger)
+    TimeProvider timeProvider)
 {
     public const string Automation = "automation";
 
@@ -130,18 +127,7 @@ public sealed partial class AnnouncementService(
         }
 
         var content = Email(announcement, $"{site.Value.BaseUrl.TrimEnd('/')}{AnnouncementSubscriptions.StopPath}?token=test", site.Value);
-        try
-        {
-            await sender.SendAsync(
-                await composer.ComposeAsync(content with { Subject = $"[Test] {content.Subject}" }, new EmailRecipient(site.Value.ContactEmail, "C# Advent organizers")),
-                cancellationToken);
-            return true;
-        }
-        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
-        {
-            LogTestFailed(exception, id);
-            return false;
-        }
+        return await composer.TrySendAsync(content with { Subject = $"[Test] {content.Subject}" }, site.Value.OrganizersInbox, $"the test of announcement {id}", cancellationToken);
     }
 
     /// <summary>Sends a draft to the list: every subscriber confirmed by now gets it. Returns false if it's already been sent.</summary>
@@ -165,7 +151,7 @@ public sealed partial class AnnouncementService(
     /// <param name="signUpsYear">The season whose sign-ups to announce, instead of the current one (for the tests).</param>
     public async Task<int> RunAsync(DateTimeOffset now, int? signUpsYear = null, CancellationToken cancellationToken = default)
     {
-        var year = signUpsYear ?? await seasons.GetCurrentYearAsync(cancellationToken);
+        var year = signUpsYear ?? await seasons.GetCurrentYearAsync(now, cancellationToken);
         if (await SignUpsOpeningAsync(now, year, cancellationToken) is { } openingYear)
         {
             await QueueSignUpsOpenAsync(openingYear, now, cancellationToken);
@@ -296,7 +282,7 @@ public sealed partial class AnnouncementService(
         {
             await db.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        catch (DbUpdateException exception) when (exception.IsUniqueViolation())
         {
             // Queued by another replica at the same moment.
             db.ChangeTracker.Clear();
@@ -315,6 +301,9 @@ public sealed partial class AnnouncementService(
 
     private async Task<Delivery> DeliverAsync(Announcement announcement, int subscriberId, string email, DateTimeOffset now, CancellationToken cancellationToken)
     {
+        // Written before the copy is recorded, so nothing is recorded if its unsubscribe link can't be made.
+        var content = Email(announcement, subscriptions.StopLink(subscriberId), site.Value) with { Reference = Reference(announcement.Id) };
+
         // Recorded first: the unique index means only one run or replica queues each copy.
         var delivery = new AnnouncementDelivery { AnnouncementId = announcement.Id, SubscriberId = subscriberId, SentAt = now };
         db.AnnouncementDeliveries.Add(delivery);
@@ -322,35 +311,24 @@ public sealed partial class AnnouncementService(
         {
             await db.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation or PostgresErrorCodes.ForeignKeyViolation })
+        catch (DbUpdateException exception) when (exception.IsUniqueViolation() || exception.IsForeignKeyViolation())
         {
             // Another run queued it, or they unsubscribed just now.
             db.Entry(delivery).State = EntityState.Detached;
             return Delivery.NotNeeded;
         }
 
-        try
+        if (await composer.TrySendAsync(content, new EmailRecipient(email, email), $"announcement {announcement.Id} for subscriber {subscriberId}", cancellationToken))
         {
-            var content = Email(announcement, subscriptions.StopLink(subscriberId), site.Value) with { Reference = Reference(announcement.Id) };
-            await sender.SendAsync(await composer.ComposeAsync(content, new EmailRecipient(email, email)), cancellationToken);
             return Delivery.Queued;
         }
-        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
-        {
-            // Without the address: the logs never carry personal details. A later run tries again.
-            LogDeliveryFailed(exception, announcement.Id, subscriberId);
-            await db.AnnouncementDeliveries.Where(d => d.Id == delivery.Id).ExecuteDeleteAsync(cancellationToken);
-            return Delivery.Failed;
-        }
+
+        // A later run tries again.
+        await db.AnnouncementDeliveries.Where(d => d.Id == delivery.Id).ExecuteDeleteAsync(cancellationToken);
+        return Delivery.Failed;
     }
 
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-
-    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't queue the test of announcement {AnnouncementId}")]
-    private partial void LogTestFailed(Exception exception, int announcementId);
-
-    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't queue announcement {AnnouncementId} for subscriber {SubscriberId}; a later run will try again")]
-    private partial void LogDeliveryFailed(Exception exception, int announcementId, int subscriberId);
 }
 
 /// <summary>What an organizer writes: a subject, the message (blank lines between paragraphs), and an optional button.</summary>

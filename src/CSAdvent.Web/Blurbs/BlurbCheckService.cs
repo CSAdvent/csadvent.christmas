@@ -1,4 +1,3 @@
-using System.Globalization;
 using CSAdvent.Web.Backups;
 using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Content;
@@ -8,7 +7,6 @@ using CSAdvent.Web.Jobs;
 using CSAdvent.Web.Social.Posting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Npgsql;
 
 namespace CSAdvent.Web.Blurbs;
 
@@ -56,7 +54,6 @@ public sealed partial class BlurbCheckService(
     BlurbChecker checker,
     BackupService backups,
     EmailComposer composer,
-    IEmailSender sender,
     IOptions<BlurbOptions> options,
     IOptions<BackupOptions> backupOptions,
     IOptions<SocialPostingOptions> posting,
@@ -356,14 +353,14 @@ public sealed partial class BlurbCheckService(
         {
             await db.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        catch (DbUpdateException exception) when (exception.IsUniqueViolation())
         {
             db.Entry(record).State = EntityState.Detached;
             return 0;
         }
 
         var deadline = BlurbRules.Deadline(schedule, posting.Value, slot.SeasonYear, slot.Day, slot.Part);
-        var takesOver = Eastern(deadline > now + backupOptions.Value.OrganizersNotice ? deadline : now + backupOptions.Value.OrganizersNotice);
+        var takesOver = schedule.Describe(deadline > now + backupOptions.Value.OrganizersNotice ? deadline : now + backupOptions.Value.OrganizersNotice);
         var email = BlurbEmails.BackupStandingBy(PostOf(slot), new BlurbBackup(backup.AuthorName ?? "A backup", backup.PostTitle, backup.PostUrl), check.Detail ?? "", takesOver, site.Value);
         if (await SendAsync(email, Organizers, slot.Id, cancellationToken))
         {
@@ -424,7 +421,7 @@ public sealed partial class BlurbCheckService(
             {
                 await db.SaveChangesAsync(cancellationToken);
             }
-            catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+            catch (DbUpdateException exception) when (exception.IsUniqueViolation())
             {
                 // Another run created it at the same moment.
                 db.Entry(check).State = EntityState.Detached;
@@ -494,19 +491,8 @@ public sealed partial class BlurbCheckService(
         return claimed;
     }
 
-    private async Task<bool> SendAsync(EmailContent content, EmailRecipient to, int slotId, CancellationToken cancellationToken)
-    {
-        try
-        {
-            await sender.SendAsync(await composer.ComposeAsync(content, to), cancellationToken);
-            return true;
-        }
-        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
-        {
-            LogSendFailed(exception, content.Subject, slotId);
-            return false;
-        }
-    }
+    private Task<bool> SendAsync(EmailContent content, EmailRecipient to, int slotId, CancellationToken cancellationToken) =>
+        composer.TrySendAsync(content, to, $"slot {slotId}", cancellationToken);
 
     private Task<Slot?> LoadSlotAsync(int slotId, CancellationToken cancellationToken) =>
         db.Slots.AsNoTracking().Include(s => s.Contact).Include(s => s.Season).SingleOrDefaultAsync(s => s.Id == slotId, cancellationToken);
@@ -516,23 +502,13 @@ public sealed partial class BlurbCheckService(
         new BackupSpot(slot.SeasonYear, slot.Day, slot.Part, slot.Season.SlotsPerDay),
         slot.PostTitle,
         slot.PostUrl!,
-        Eastern(BlurbRules.Deadline(schedule, posting.Value, slot.SeasonYear, slot.Day, slot.Part)));
+        schedule.Describe(BlurbRules.Deadline(schedule, posting.Value, slot.SeasonYear, slot.Day, slot.Part)));
 
     /// <summary>Until when a post whose page doesn't load, or doesn't seem to be the post, counts as not published yet.</summary>
     private DateTimeOffset PublishBy(Slot slot) =>
         BlurbRules.Deadline(schedule, posting.Value, slot.SeasonYear, slot.Day, slot.Part) - options.Value.PublishedBy;
 
-    /// <summary>A time as emails give it: "10:00 AM Eastern on December 6".</summary>
-    private string Eastern(DateTimeOffset moment)
-    {
-        var local = schedule.ToLocalTime(moment);
-        return string.Create(CultureInfo.InvariantCulture, $"{local:h:mm tt} Eastern on {local:MMMM d}");
-    }
-
-    private EmailRecipient Organizers => new(site.Value.ContactEmail, "C# Advent organizers");
-
-    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't queue \"{Subject}\" for slot {SlotId}")]
-    private partial void LogSendFailed(Exception exception, string subject, int slotId);
+    private EmailRecipient Organizers => site.Value.OrganizersInbox;
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Checking the blurb of slot {SlotId}'s post failed. The next run tries it again")]
     private partial void LogSpotFailed(Exception exception, int slotId);

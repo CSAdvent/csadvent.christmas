@@ -107,18 +107,16 @@ public enum MySpotOutcome
 /// The test season saves straight away, since nothing in it is published.
 /// </para>
 /// </remarks>
-public sealed partial class MySpotsService(
+public sealed class MySpotsService(
     AdventDbContext db,
     AdventSchedule schedule,
     TimeProvider timeProvider,
     EmailComposer composer,
-    IEmailSender sender,
     BackupService backups,
     PostLinkService postLinks,
     IOptions<SiteOptions> site,
     IOptions<SocialPostingOptions> posting,
-    IOptions<BlurbOptions> blurbOptions,
-    ILogger<MySpotsService> logger)
+    IOptions<BlurbOptions> blurbOptions)
 {
     public async Task<MySpotsOverview> GetOverviewAsync(int contributorId, CancellationToken cancellationToken = default)
     {
@@ -408,23 +406,10 @@ public sealed partial class MySpotsService(
         }
     }
 
-    private async Task TellOrganizersAsync(EmailContent content, string kind, Slot slot, CancellationToken cancellationToken)
-    {
-        try
-        {
-            var email = await composer.ComposeAsync(content, new EmailRecipient(site.Value.ContactEmail, "C# Advent organizers"));
-            await sender.SendAsync(email, cancellationToken);
-        }
-        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
-        {
-            LogOrganizerEmailFailed(exception, kind, slot.SeasonYear, slot.Day, slot.Part);
-        }
-    }
+    private Task TellOrganizersAsync(EmailContent content, string kind, Slot slot, CancellationToken cancellationToken) =>
+        composer.TrySendAsync(content, site.Value.OrganizersInbox, $"{kind} on December {slot.Day}, {slot.SeasonYear}, part {slot.Part}", cancellationToken);
 
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-
-    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't queue the {Kind} email telling the organizers about December {Day}, {Year}, part {Part}")]
-    private partial void LogOrganizerEmailFailed(Exception exception, string kind, int year, int day, int part);
 }
 
 /// <summary>A contributor's edit of their own spot. Their name is required; the post's title and URL can come later.</summary>

@@ -51,6 +51,9 @@ builder.Services.AddOptions<AdventOptions>()
     .Validate(
         options => TimeZoneInfo.TryFindSystemTimeZoneById(options.TimeZone, out _),
         $"{AdventOptions.SectionName}:TimeZone must be a time zone ID, such as America/New_York.")
+    .Validate(
+        options => !string.IsNullOrWhiteSpace(options.TimeZoneName),
+        $"{AdventOptions.SectionName}:TimeZoneName must say what emails call the time zone, such as Eastern.")
     .ValidateOnStart();
 builder.Services.AddOptions<SiteOptions>()
     .BindConfiguration(SiteOptions.SectionName)
@@ -109,7 +112,10 @@ if (builder.Configuration.GetValue("OtherAdvents:FetchLogosInBackground", defaul
 {
     builder.Services.AddHostedService<OtherAdventLogoWorker>();
 }
-builder.Services.AddOptions<SocialAccountsOptions>().BindConfiguration(SocialAccountsOptions.SectionName);
+builder.Services.AddOptions<SocialAccountsOptions>()
+    .BindConfiguration(SocialAccountsOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
 
 // Posts each day's announcements on the platforms in Automatic mode (#61). Without credentials a platform stays copy and
 // paste, and in development and the tests dry-run mode only logs what it would post.
@@ -165,7 +171,10 @@ builder.Services.AddScoped<BlurbCheckService>();
 builder.Services.AddScoped<BlurbSelfCheckService>();
 builder.Services.AddScoped<BlurbQueries>();
 
-builder.Services.AddOptions<BackupOptions>().BindConfiguration(BackupOptions.SectionName);
+builder.Services.AddOptions<BackupOptions>()
+    .BindConfiguration(BackupOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
 builder.Services.AddScoped<BackupService>();
 builder.Services.AddScoped<IUndeliveredEmailHandler, BackupAskUndelivered>();
 builder.Services.AddScoped<BackupListService>();

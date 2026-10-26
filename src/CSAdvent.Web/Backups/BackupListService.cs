@@ -7,7 +7,6 @@ using CSAdvent.Web.Email;
 using CSAdvent.Web.SeasonTesting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Npgsql;
 
 namespace CSAdvent.Web.Backups;
 
@@ -75,15 +74,13 @@ public enum BackupSignupOutcome
 /// A season's backup list: anyone signed in can join while sign-ups are open (including people with a spot), and it's
 /// kept in sign-up order. The organizers can see it at <c>/manage/backups</c>.
 /// </summary>
-public sealed partial class BackupListService(
+public sealed class BackupListService(
     AdventDbContext db,
     AdventSchedule schedule,
     TimeProvider timeProvider,
     EmailComposer composer,
-    IEmailSender sender,
     IOptions<SiteOptions> site,
-    SeasonAccess access,
-    ILogger<BackupListService> logger)
+    SeasonAccess access)
 {
     public async Task<BackupSignupAvailability?> GetAvailabilityAsync(int year, CancellationToken cancellationToken = default)
     {
@@ -163,7 +160,7 @@ public sealed partial class BackupListService(
         {
             await db.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        catch (DbUpdateException exception) when (exception.IsUniqueViolation())
         {
             return BackupSignupOutcome.AlreadyOnList;
         }
@@ -182,23 +179,19 @@ public sealed partial class BackupListService(
         {
             await db.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        catch (DbUpdateException exception) when (exception.IsUniqueViolation())
         {
             db.Entry(record).State = EntityState.Detached;
             return BackupSignupOutcome.Rejoined;
         }
 
         var position = (await GetMembershipAsync(contributorId, year, cancellationToken))?.Position ?? 1;
-        try
+        if (!await composer.TrySendAsync(
+            BackupEmails.SignedUp(substitute.Name, year, position, site.Value),
+            new EmailRecipient(email, substitute.Name),
+            $"the {year} backup list",
+            cancellationToken))
         {
-            var message = await composer.ComposeAsync(
-                BackupEmails.SignedUp(substitute.Name, year, position, site.Value),
-                new EmailRecipient(email, substitute.Name));
-            await sender.SendAsync(message, cancellationToken);
-        }
-        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
-        {
-            LogSignupEmailFailed(exception, year);
             db.BackupSignupEmails.Remove(record);
             await db.SaveChangesAsync(CancellationToken.None);
         }
@@ -278,9 +271,6 @@ public sealed partial class BackupListService(
     /// <summary>Their place among the backups who haven't filled a spot yet, counting from 1.</summary>
     private static int? PositionOf(List<Substitute> list, Substitute substitute) =>
         substitute.AssignedSlotId is not null ? null : list.Where(s => s.AssignedSlotId is null).ToList().IndexOf(substitute) + 1;
-
-    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't queue the backup sign-up email for {Year}")]
-    private partial void LogSignupEmailFailed(Exception exception, int year);
 }
 
 public sealed class BackupSignupForm

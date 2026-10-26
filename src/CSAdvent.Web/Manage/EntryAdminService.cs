@@ -147,10 +147,15 @@ public sealed class EntryAdminService(AdventDbContext db, AdventSchedule schedul
         slot.PostUrl = Clean(form.PostUrl);
         slot.PostSummary = PostSummaries.Clean(form.PostSummary);
 
-        // A spot an organizer empties is no longer the contributor's.
+        // A spot an organizer empties is no longer the contributor's, and one they fill (a substitute put into a dropped spot,
+        // say) is no longer dropped out (#188).
         if (authorName is null)
         {
             slot.ContributorId = null;
+        }
+        else
+        {
+            slot.DroppedOutAt = null;
         }
 
         SetContact(slot, Clean(form.ContactEmail));

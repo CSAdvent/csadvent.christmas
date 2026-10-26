@@ -37,7 +37,9 @@ public sealed record SeasonCalendar(
 
     public static SeasonCalendar From(Season season, AdventSchedule schedule)
     {
-        var today = schedule.Today;
+        // One reading of the clock, so the reveals, today and the countdown agree even across midnight (#184).
+        var now = schedule.Now;
+        var today = schedule.DateOf(now);
 
         return new(
             season.Year,
@@ -45,7 +47,7 @@ public sealed record SeasonCalendar(
             season.Notes,
             season.ClaimsOpenAt is { } opensAt ? DateOnly.FromDateTime(schedule.ToLocalTime(opensAt).DateTime) : null,
             // The test season is always open to its testers; nobody else gets its calendar (SeasonAccess).
-            season.IsTest || schedule.AreClaimsOpen(season.ClaimsOpenAt),
+            season.IsTest || schedule.AreClaimsOpen(season.ClaimsOpenAt, now),
             [.. season.Slots
                 .GroupBy(slot => slot.Day)
                 .OrderBy(day => day.Key)
@@ -53,9 +55,9 @@ public sealed record SeasonCalendar(
                     day.Key,
                     schedule.GetRevealTime(season.Year, day.Key),
                     IsToday: today == schedule.GetDate(season.Year, day.Key),
-                    [.. day.OrderBy(slot => slot.Part).Select(slot => CalendarEntry.From(slot, schedule.IsRevealed(slot)))]))])
+                    [.. day.OrderBy(slot => slot.Part).Select(slot => CalendarEntry.From(slot, schedule.IsRevealed(slot, now)))]))])
         {
-            GeneratedAt = schedule.Now,
+            GeneratedAt = now,
         };
     }
 }

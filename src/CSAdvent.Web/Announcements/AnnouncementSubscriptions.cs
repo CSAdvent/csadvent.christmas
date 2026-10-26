@@ -9,7 +9,6 @@ using CSAdvent.Web.Email.Queue;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Npgsql;
 using static CSAdvent.Web.Email.EmailBlocks;
 
 namespace CSAdvent.Web.Announcements;
@@ -21,15 +20,13 @@ namespace CSAdvent.Web.Announcements;
 /// used to find out who's subscribed: the confirmation is only queued (#152), so the answer takes as long either way, give or
 /// take a database write.
 /// </summary>
-public sealed partial class AnnouncementSubscriptions(
+public sealed class AnnouncementSubscriptions(
     AdventDbContext db,
     IDataProtectionProvider dataProtection,
     EmailComposer composer,
-    IEmailSender sender,
     EmailOutbox outbox,
     IOptions<SiteOptions> site,
-    TimeProvider timeProvider,
-    ILogger<AnnouncementSubscriptions> logger)
+    TimeProvider timeProvider)
 {
     public const string ConfirmPath = "/emails/announcements/confirm";
     public const string StopPath = "/emails/announcements/stop";
@@ -82,23 +79,19 @@ public sealed partial class AnnouncementSubscriptions(
         {
             await db.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        catch (DbUpdateException exception) when (exception.IsUniqueViolation())
         {
             // The same address, entered twice at once: the other request sends the confirmation.
             return;
         }
 
-        try
-        {
-            var confirmation = Confirmation(ConfirmLink(subscriber.Id, dailyPosts), site.Value, dailyPosts);
-            await sender.SendAsync(await composer.ComposeAsync(confirmation, new EmailRecipient(address, address)), cancellationToken);
-        }
-        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
-        {
-            // Without the address: the logs never carry personal details. Entering it again after a day sends another. Only
-            // queueing can fail here (the database), never the email service.
-            LogConfirmationFailed(exception, subscriber.Id);
-        }
+        // If it can't be queued (only the database can fail here, never the email service), entering it again after a day
+        // sends another.
+        await composer.TrySendAsync(
+            Confirmation(ConfirmLink(subscriber.Id, dailyPosts), site.Value, dailyPosts),
+            new EmailRecipient(address, address),
+            $"announcement subscriber {subscriber.Id}",
+            cancellationToken);
     }
 
     /// <summary>
@@ -273,9 +266,6 @@ public sealed partial class AnnouncementSubscriptions(
             return false;
         }
     }
-
-    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't queue the confirmation email to announcement subscriber {SubscriberId}")]
-    private partial void LogConfirmationFailed(Exception exception, int subscriberId);
 }
 
 /// <summary>What the sign-up form posts. <see cref="Website"/> is a hidden trap for bots: a person never fills it in.</summary>

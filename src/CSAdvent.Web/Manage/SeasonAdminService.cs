@@ -41,10 +41,13 @@ public sealed class SeasonAdminService(AdventDbContext db, AdventSchedule schedu
     /// The season the organizer pages work on: the earliest one that isn't finished, so a season created early for next year
     /// never replaces this year's. None once the last one is finished; past seasons are opened from the overview.
     /// </summary>
-    public async Task<int?> GetCurrentYearAsync(CancellationToken cancellationToken = default)
+    public Task<int?> GetCurrentYearAsync(CancellationToken cancellationToken = default) => GetCurrentYearAsync(schedule.Now, cancellationToken);
+
+    /// <summary>The current season at <paramref name="now"/>, for runs that are given the time they run at (#184).</summary>
+    public async Task<int?> GetCurrentYearAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
     {
         var years = await db.Seasons.Where(s => s.Year != Season.TestYear).OrderBy(s => s.Year).Select(s => s.Year).ToListAsync(cancellationToken);
-        return CurrentYear(years, schedule.IsFinished);
+        return CurrentYear(years, year => schedule.IsFinished(year, now));
     }
 
     public static int? CurrentYear(IEnumerable<int> yearsInOrder, Func<int, bool> isFinished) =>

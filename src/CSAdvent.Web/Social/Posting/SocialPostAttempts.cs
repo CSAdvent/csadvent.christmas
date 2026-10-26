@@ -2,7 +2,6 @@ using System.Text.Json;
 using CSAdvent.Web.Claims;
 using CSAdvent.Web.Data;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 
 namespace CSAdvent.Web.Social.Posting;
 
@@ -85,7 +84,7 @@ public static class SocialPostAttempts
             await db.SaveChangesAsync(cancellationToken);
             return true;
         }
-        catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        catch (DbUpdateException exception) when (exception.IsUniqueViolation())
         {
             db.Entry(claim).State = EntityState.Detached;
             return false;

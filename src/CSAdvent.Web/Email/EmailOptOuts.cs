@@ -5,7 +5,6 @@ using CSAdvent.Web.Data;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Npgsql;
 
 namespace CSAdvent.Web.Email;
 
@@ -89,7 +88,7 @@ public sealed class EmailOptOuts(AdventDbContext db, TimeProvider timeProvider) 
         {
             await db.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        catch (DbUpdateException exception) when (exception.IsUniqueViolation())
         {
             // Unsubscribed twice at once (a mail provider's one-click and the button, say): either way it's done.
         }

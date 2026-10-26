@@ -206,4 +206,53 @@ public sealed class AdventScheduleTests
     [InlineData(26)]
     public void RejectsDaysOutsideAdvent(int day) =>
         Assert.Throws<ArgumentOutOfRangeException>(() => CreateSchedule().GetRevealTime(2026, day));
+
+    [Fact]
+    public void DescribesAMomentInTheRevealTimeZone()
+    {
+        var schedule = CreateSchedule();
+
+        // 3 PM UTC on December 6 is 10 AM Eastern; 5 AM UTC is midnight, the start of the day.
+        Assert.Equal("10:00 AM Eastern on December 6", schedule.Describe(new DateTimeOffset(2026, 12, 6, 15, 0, 0, TimeSpan.Zero)));
+        Assert.Equal("12:00 AM Eastern on December 7", schedule.Describe(new DateTimeOffset(2026, 12, 7, 5, 0, 0, TimeSpan.Zero)));
+        Assert.Equal("1:30 PM Eastern on November 20", schedule.Describe(new DateTimeOffset(2026, 11, 20, 18, 30, 0, TimeSpan.Zero)));
+    }
+
+    [Fact]
+    public void DescribesTimesInTheConfiguredTimeZoneByItsName()
+    {
+        var schedule = new AdventSchedule(Options.Create(new AdventOptions { TimeZone = "Europe/London", TimeZoneName = "UK time" }), TimeProvider.System);
+
+        Assert.Equal("UK time", schedule.TimeZoneName);
+        Assert.Equal("3:00 PM UK time on December 6", schedule.Describe(new DateTimeOffset(2026, 12, 6, 15, 0, 0, TimeSpan.Zero)));
+    }
+
+    [Fact]
+    public void AnswersForTheTimeItsGivenWhateverTheClockSays()
+    {
+        // The clock says October 2026, as the real one does while a run simulates December 2026 (#184).
+        var schedule = CreateSchedule(new FakeTimeProvider(new DateTimeOffset(2026, 10, 26, 12, 0, 0, TimeSpan.Zero)));
+        var december3 = new DateTimeOffset(2026, 12, 3, 12, 0, 0, TimeSpan.FromHours(-5));
+        var season = Season.Create(2026, slotsPerDay: 2, december3);
+        var opensAt = new DateTimeOffset(2026, 11, 1, 4, 0, 0, TimeSpan.Zero);
+
+        Assert.False(schedule.IsRevealed(2026, 3));
+        Assert.True(schedule.IsRevealed(2026, 3, december3));
+        Assert.False(schedule.IsRevealed(2026, 4, december3));
+        Assert.True(schedule.IsRevealed(season.Slots.First(s => s.Day == 3), december3));
+        Assert.True(schedule.IsDayOver(2026, 2, december3));
+        Assert.False(schedule.IsDayOver(2026, 3, december3));
+        Assert.False(schedule.AreClaimsOpen(opensAt));
+        Assert.True(schedule.AreClaimsOpen(opensAt, december3));
+        Assert.False(schedule.IsCalendarShown(2026, opensAt));
+        Assert.True(schedule.IsCalendarShown(2026, opensAt, december3));
+        Assert.Equal(new DateOnly(2026, 12, 3), schedule.DateOf(december3));
+        Assert.Equal(new DateOnly(2026, 10, 26), schedule.Today);
+
+        var christmasNight = new DateTimeOffset(2026, 12, 25, 23, 0, 0, TimeSpan.FromHours(-5));
+        Assert.True(schedule.IsLastDayRevealed(2026, christmasNight));
+        Assert.False(schedule.IsFinished(2026, christmasNight));
+        Assert.True(schedule.IsFinished(2026, christmasNight.AddHours(1)));
+        Assert.False(schedule.IsFinished(2026));
+    }
 }

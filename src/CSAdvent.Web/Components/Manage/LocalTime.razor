@@ -2,7 +2,7 @@
 @using System.Globalization
 @inject AdventSchedule Schedule
 
-<time datetime="@Value.ToString("O", CultureInfo.InvariantCulture)">@Schedule.ToLocalTime(Value).ToString("MMM d, yyyy, h:mm tt", CultureInfo.InvariantCulture) Eastern</time>
+<time datetime="@Value.ToString("O", CultureInfo.InvariantCulture)">@Schedule.ToLocalTime(Value).ToString("MMM d, yyyy, h:mm tt", CultureInfo.InvariantCulture) @Schedule.TimeZoneName</time>
 
 @code {
     [Parameter, EditorRequired]

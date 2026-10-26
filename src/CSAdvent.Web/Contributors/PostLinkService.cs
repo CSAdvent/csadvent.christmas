@@ -7,7 +7,6 @@ using CSAdvent.Web.Email;
 using CSAdvent.Web.Entries;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Npgsql;
 
 namespace CSAdvent.Web.Contributors;
 
@@ -111,14 +110,12 @@ public enum PostLinkSaveOutcome
 /// Posts in a season that isn't finished are changed on My spots instead (<see cref="MySpotsService"/>): straight away until
 /// they're revealed, and from then on a new link is a request here too (<see cref="RequestNewLinkAsync"/>, #155).
 /// </remarks>
-public sealed partial class PostLinkService(
+public sealed class PostLinkService(
     AdventDbContext db,
     AdventSchedule schedule,
     TimeProvider timeProvider,
     EmailComposer composer,
-    IEmailSender sender,
-    IOptions<SiteOptions> site,
-    ILogger<PostLinkService> logger)
+    IOptions<SiteOptions> site)
 {
     /// <summary>Requests one contributor can make in an hour, since each one emails the organizers.</summary>
     public const int MaxPerHour = 5;
@@ -229,7 +226,7 @@ public sealed partial class PostLinkService(
         {
             await db.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        catch (DbUpdateException exception) when (exception.IsUniqueViolation())
         {
             // My spots shares the context, so nothing is left to be saved again.
             db.Entry(request).State = EntityState.Detached;
@@ -243,7 +240,7 @@ public sealed partial class PostLinkService(
             requester.DisplayName,
             request.Note,
             [.. changes.Select(c => new PostLinkEmailChange(c.Post.Year, c.Post.Day, c.Post.Part, c.Post.SlotsPerDay, c.Post.Title, c.Post.PostUrl, c.NewUrl))]);
-        await SendAsync(request.Id, "new request", PostLinkEmails.NewRequest(details, site.Value), new EmailRecipient(site.Value.ContactEmail, "C# Advent organizers"), requester.Email!, cancellationToken);
+        await composer.TrySendAsync(PostLinkEmails.NewRequest(details, site.Value), site.Value.OrganizersInbox, requester.Email!, About(request.Id), cancellationToken);
         return PostLinkOutcome.Requested;
     }
 
@@ -458,24 +455,11 @@ public sealed partial class PostLinkService(
             .SingleOrDefaultAsync(cancellationToken);
         if (address is not null)
         {
-            await SendAsync(id, review.Status.ToString().ToLowerInvariant(), email(review.Email, site.Value), new EmailRecipient(address, review.RequesterName), null, cancellationToken);
+            await composer.TrySendAsync(email(review.Email, site.Value), new EmailRecipient(address, review.RequesterName), About(id), cancellationToken);
         }
     }
 
-    private async Task SendAsync(int requestId, string kind, EmailContent content, EmailRecipient to, string? replyTo, CancellationToken cancellationToken)
-    {
-        try
-        {
-            await sender.SendAsync(await composer.ComposeAsync(content, to, replyTo), cancellationToken);
-        }
-        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
-        {
-            LogSendFailed(exception, kind, requestId);
-        }
-    }
-
-    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't queue the {Kind} email for post link request {RequestId}")]
-    private partial void LogSendFailed(Exception exception, string kind, int requestId);
+    private static string About(int requestId) => $"post link request {requestId}";
 }
 
 /// <summary>New links for posts: one field for each post, filled in with its link, and a note for the organizers.</summary>

@@ -5,7 +5,6 @@ using CSAdvent.Web.Email;
 using CSAdvent.Web.Social.Posting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Npgsql;
 
 namespace CSAdvent.Web.Reminders;
 
@@ -31,17 +30,15 @@ public sealed record ReminderRun(int PostLinkReminders, int DailyShares, int Day
 /// arrive too late to be true (after the day it's about, or the last call after the announcement). Runs are cheap when
 /// there's nothing to do, so the worker calls this often.
 /// </summary>
-public sealed partial class ReminderService(
+public sealed class ReminderService(
     AdventDbContext db,
     AdventSchedule schedule,
     EmailComposer composer,
-    IEmailSender sender,
     DailyEmailOptOut optOut,
     DailyPosts dailyPosts,
     IOptions<ReminderOptions> options,
     IOptions<SocialPostingOptions> posting,
-    IOptions<SiteOptions> site,
-    ILogger<ReminderService> logger)
+    IOptions<SiteOptions> site)
 {
     public Task<ReminderRun> RunAsync(DateTimeOffset now, CancellationToken cancellationToken = default) =>
         RunAsync(now, onlyYear: null, cancellationToken);
@@ -237,19 +234,14 @@ public sealed partial class ReminderService(
         {
             await db.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        catch (DbUpdateException exception) when (exception.IsUniqueViolation())
         {
             db.Entry(record).State = EntityState.Detached;
             return false;
         }
 
-        try
+        if (!await composer.TrySendAsync(content, to, $"{kind} for slot {slotId}", cancellationToken))
         {
-            await sender.SendAsync(await composer.ComposeAsync(content, to), cancellationToken);
-        }
-        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
-        {
-            LogSendFailed(exception, kind, slotId);
             db.SentReminders.Remove(record);
             await db.SaveChangesAsync(CancellationToken.None);
             return false;
@@ -261,7 +253,4 @@ public sealed partial class ReminderService(
     private DateOnly FirstDay(int year) => schedule.GetDate(year, 1);
 
     private DateOnly LastDay(int year) => schedule.GetDate(year, Season.DaysInAdvent);
-
-    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't queue the {Kind} reminder for slot {SlotId}; a later run will try again")]
-    private partial void LogSendFailed(Exception exception, ReminderKind kind, int slotId);
 }

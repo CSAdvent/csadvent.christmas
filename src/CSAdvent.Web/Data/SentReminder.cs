@@ -3,22 +3,17 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace CSAdvent.Web.Data;
 
+/// <summary>
+/// What a <see cref="SentReminder"/> records. Stored by name, so values can be removed: <c>ContributorOnTrack</c>,
+/// <c>AdminMissingContact</c> and <c>AdminDailySummary</c> were never sent by any version, and went in #188.
+/// </summary>
 public enum ReminderKind
 {
-    /// <summary>The slot has a title and URL: "your day is coming up".</summary>
-    ContributorOnTrack,
-
     /// <summary>The slot has no post URL yet: "we need your link", 7, 5, 3, 2 and 1 days before its day.</summary>
     ContributorActionNeeded,
 
     /// <summary>The slot still has no post URL on its day: the last call, a few hours before it's announced.</summary>
     ContributorDayOf,
-
-    /// <summary>Tells the organizer a claimed slot has no contact email.</summary>
-    AdminMissingContact,
-
-    /// <summary>The organizer's summary of each reminder run.</summary>
-    AdminDailySummary,
 
     /// <summary>
     /// The daily "today's posts" email to an author in the season. Recorded against the author's first slot, so someone
@@ -58,7 +53,7 @@ public sealed class SentReminder
     /// <summary>The day of the reminder run, in the reveal time zone.</summary>
     public DateOnly RunDate { get; init; }
 
-    /// <summary>The slot the reminder is about. Empty for the organizer's daily summary.</summary>
+    /// <summary>The slot the reminder is about. Every kind recorded so far has one.</summary>
     public int? SlotId { get; init; }
 
     public Slot? Slot { get; private set; }

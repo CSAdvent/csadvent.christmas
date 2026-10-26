@@ -1,10 +1,12 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace CSAdvent.Web.Social;
 
 /// <summary>
 /// C# Advent's own social accounts: linked from the footer ("Follow C# Advent"), credited on shared links, and where
-/// announcements go. Any of them can be left empty.
+/// announcements go. Any of them can be left empty. Checked when the app starts (#188).
 /// </summary>
-public sealed class SocialAccountsOptions
+public sealed class SocialAccountsOptions : IValidatableObject
 {
     public const string SectionName = "Social";
 
@@ -63,6 +65,23 @@ public sealed class SocialAccountsOptions
         if (X is { Length: > 0 } x)
         {
             yield return ("X", $"https://x.com/{x}");
+        }
+    }
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        // Without both parts, the footer's link, the share links and fediverse:creator would all be wrong.
+        if (Mastodon is { Length: > 0 } && (MastodonUser is null || MastodonServer is null))
+        {
+            yield return new ValidationResult($"{SectionName}:Mastodon must be the whole account, such as @csadvent@mastodon.social.", [nameof(Mastodon)]);
+        }
+
+        foreach (var (name, url) in new[] { (nameof(FacebookUrl), FacebookUrl), (nameof(LinkedInUrl), LinkedInUrl) })
+        {
+            if (url is { Length: > 0 } && !(Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps))
+            {
+                yield return new ValidationResult($"{SectionName}:{name} must be the page's https:// address.", [name]);
+            }
         }
     }
 }
