@@ -205,8 +205,8 @@ Lines marked ✏️ **To fill in** are for the organizers: they aren't written d
 
 - **Lives at:** Hover, the registrar. Its name servers point at the Azure DNS zone, which holds every record
   (`infra/dns.bicep`); nothing else is set at Hover.
-- ✏️ **To fill in:** whose Hover account it's in, the expiry date, whether auto-renew is on (it should be), and the card it
-  renews on.
+- **Account:** Calvin's Hover account. Auto-renew is on, with Calvin's card on file; Hover's domain page shows the next
+  renewal date.
 - **If it lapses, everything stops:** the site, GitHub sign-in, the site's email (its sending domain is
   `mail.csadvent.christmas`), hello@, and the Bluesky handle.
 - **What notices:** only Hover's renewal emails to the account's owner, and the uptime check's domain expiry reminder if its
@@ -217,7 +217,8 @@ Lines marked ✏️ **To fill in** are for the organizers: they aren't written d
 
 - **Lives at:** an ImprovMX account, with an alias `hello` that forwards to the organizers. Its MX and SPF records are in
   `infra/dns.bicep`, and the site's address for it is `Site:ContactEmail` in `appsettings.json`.
-- ✏️ **To fill in:** whose ImprovMX account it is, the plan, and where `hello` forwards.
+- **Account:** Calvin's ImprovMX account, on the free plan. `hello` forwards to Calvin only, so Matt doesn't get the
+  site's organizer emails.
 - **If it fails:** mail to hello@ bounces or vanishes. That's every email the site sends the organizers (new requests,
   drop-outs, blurb decisions, failed credential checks, "no backups left") and replies to the site's emails.
 - **What notices:** nothing. The Azure alerts don't go through hello@, so they still arrive.
@@ -229,7 +230,7 @@ Lines marked ✏️ **To fill in** are for the organizers: they aren't written d
 - **Lives in:** variable `OAUTH_CLIENT_ID` and secret `OAUTH_CLIENT_SECRET` (AppHost parameters `github-client-id` and
   `github-client-secret`). The app itself is under a GitHub account's **Settings → Developer settings → OAuth Apps**, with
   the callback `/signin-github` on the site.
-- ✏️ **To fill in:** which account or organization the OAuth app belongs to.
+- **Owner:** the CodingWithCalvin GitHub organization (its **Settings → Developer settings → OAuth Apps**).
 - **If it fails** (the secret is revoked or the app deleted): nobody can sign in, so contributors can't claim spots or add
   their posts, and organizers can't reach `/manage`. The public pages keep working.
 - **What notices:** nothing. The uptime check and the alerts stay green, so sign in to the live site each November.
@@ -240,7 +241,8 @@ Lines marked ✏️ **To fill in** are for the organizers: they aren't written d
 
 - **Lives in:** secret `ANTHROPIC_API_KEY` (parameter `anthropic-api-key`). The key belongs to a workspace in the
   [Anthropic Console](https://console.anthropic.com).
-- ✏️ **To fill in:** whose Anthropic organization it is, and the workspace's monthly spend limit and usage alert.
+- **Organization:** a C# Advent organization of its own in the Anthropic Console, with a spend limit of $25 a month.
+- ✏️ **To fill in:** the usage notification below the limit, if one is set.
 - **If it fails** (revoked, or the workspace reaches its spend limit): every post is Couldn't check, and posts aren't
   announced automatically until an organizer marks them.
 - **What notices:** an email to the organizers once a post couldn't be checked for 30 minutes. Posts are only checked from
@@ -253,7 +255,7 @@ Lines marked ✏️ **To fill in** are for the organizers: they aren't written d
 ### 🐘 Mastodon Access Token
 
 - **Lives in:** secret `MASTODON_ACCESS_TOKEN` (parameter `mastodon-access-token`), for `@csadvent@mastodon.social`.
-- ✏️ **To fill in:** who can sign in to the account.
+- **Who can sign in:** Calvin only.
 - **If it fails:** automatic Mastodon posts fail, each with its error and **Retry now**. Copy and paste still works.
 - **What notices:** the 8 AM credential check emails the organizers, but only while Mastodon is Automatic.
 - **Rotating:** on mastodon.social, **Preferences → Development**, open the application and regenerate its access token
@@ -263,7 +265,7 @@ Lines marked ✏️ **To fill in** are for the organizers: they aren't written d
 ### 🦋 Bluesky App Password
 
 - **Lives in:** secret `BLUESKY_APP_PASSWORD` (parameter `bluesky-app-password`), for the `csadvent.christmas` account.
-- ✏️ **To fill in:** who can sign in to the account.
+- **Who can sign in:** Calvin only.
 - **If it fails, and what notices:** the same as Mastodon.
 - **Rotating:** in Bluesky's **Settings → Privacy and security → App passwords**, add a new one. Set the secret, deploy,
   press **Check**, then delete the old app password.
@@ -272,7 +274,7 @@ Lines marked ✏️ **To fill in** are for the organizers: they aren't written d
 
 - **Lives in:** variable `FACEBOOK_PAGE_ID` and secret `FACEBOOK_PAGE_TOKEN` (parameters `facebook-page-id` and
   `facebook-page-token`). The token comes from the Meta app on developers.facebook.com.
-- ✏️ **To fill in:** whose Facebook account has the Page role and owns the Meta app.
+- **Accounts:** Calvin's Facebook account has the Page role and owns the Meta app.
 - **If it fails:** automatic Facebook posts fail. A Facebook password change, losing the Page role, or Meta limiting the app
   all stop the token working.
 - **What notices:** the 8 AM credential check, while Facebook is Automatic.
@@ -284,8 +286,8 @@ Lines marked ✏️ **To fill in** are for the organizers: they aren't written d
 - **Lives in:** secrets `X_API_KEY`, `X_API_KEY_SECRET`, `X_ACCESS_TOKEN` and `X_ACCESS_TOKEN_SECRET` (parameters
   `x-api-key`, `x-api-key-secret`, `x-access-token` and `x-access-token-secret`). All four are needed, or X stays copy and
   paste. They come from the app on [console.x.com](https://console.x.com), owned by `@csadvent`.
-- ✏️ **To fill in:** who can sign in to `@csadvent`, the card on the X developer account, its spending limit, and the
-  credit left.
+- **Who can sign in:** Calvin and Matt. The X developer account has Calvin's card on file and a monthly spending limit; the
+  console shows the limit and the credit left.
 - **If it fails:** automatic X posts fail. Besides a revoked key, X's API is paid per use, so running out of credit stops
   it too.
 - **What notices:** the 8 AM credential check, while X is Automatic (each check costs about a cent).
@@ -309,7 +311,7 @@ Lines marked ✏️ **To fill in** are for the organizers: they aren't written d
 - **Lives in:** no secret. Variables `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID` name the managed
   identity `id-csadvent-github` (resource group `rg-csadvent-github`, Owner of the subscription), which trusts GitHub's
   OIDC tokens for this repository's `production` environment through its federated credential `github-production`.
-- ✏️ **To fill in:** who else is an Owner of the subscription, and who pays for it.
+- **Owners and billing:** Calvin is the subscription's only Owner (besides this identity), and pays for it.
 - **If it fails:** nothing deploys. It breaks if the identity, its federated credential or its role assignment is deleted,
   or if the repository is re-created or transferred, because the credential names the repository by its ID. Renaming the
   repository, or making it public, doesn't matter.
@@ -458,7 +460,8 @@ pace November's allowance runs out mid-month.
 Either way, check the organization's **Settings → Billing and licensing → Usage** (filtered to Actions) before November,
 and again in early December.
 
-- ✏️ **To fill in:** which option, when, and the budget amount if there is one.
+- **Decided (October 26, 2026):** make the repository public. Until it is, #140 stays open and CI still uses the free
+  minutes, so check the usage page in early November.
 
 ---
 
@@ -532,14 +535,16 @@ need to be on it.
    fine and 503 when the database is down, and never redirects.
 2. Turn on the **certificate expiry** reminder if the plan has one, and the domain expiry one too.
 3. Alert **both organizers** by email and by the service's phone app.
-4. ✏️ **To fill in:** which service, whose account, and who gets its alerts.
+4. **Set up:** UptimeRobot's free tier, on Calvin's account, alerting Calvin.
 
 ### 💰 A Budget Alert (Optional, by Hand)
 
 Budgets are set on the subscription, outside the deploy. In the portal: **Cost Management → Budgets → Add**, monthly, with
 alerts to both organizers at 80% and 100%. It's free, and only warns: nothing is stopped.
 
-- ✏️ **To fill in:** the monthly amount, and whether it's set up.
+- **Set up (October 26, 2026):** `csadvent-monthly`, $75 a month on the C# Advent subscription. It alerts the
+  `csadvent-organizers` action group (the `ALERT_EMAILS` addresses) when actual spending passes 80% ($60), and when the
+  month's forecast passes $75.
 
 ---
 
