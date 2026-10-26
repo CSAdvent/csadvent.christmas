@@ -1,8 +1,13 @@
 using System.Net.Http.Json;
+using CSAdvent.Web.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace CSAdvent.IntegrationTests;
 
-/// <summary>Reads what the site sent from MailPit's API. Every test run starts with an empty MailPit.</summary>
+/// <summary>
+/// Reads what the site sent from MailPit's API. Every test run starts with an empty MailPit. The site queues its emails
+/// (#152), and the queue's worker sends them a moment later, so these wait for it.
+/// </summary>
 internal static class TestMailbox
 {
     /// <summary>
@@ -13,7 +18,7 @@ internal static class TestMailbox
     {
         using var mailPit = CreateClient(fixture);
 
-        for (var attempt = 0; attempt < 50; attempt++)
+        for (var attempt = 0; attempt < 200; attempt++)
         {
             if ((await SearchAsync(mailPit, to, subject)).FirstOrDefault() is { } found)
             {
@@ -27,13 +32,32 @@ internal static class TestMailbox
     }
 
     /// <summary>
-    /// How many emails to <paramref name="to"/> have <paramref name="subject"/> in their subject. Only use it after whatever
-    /// sends them has finished, such as a completed reminder run.
+    /// How many emails to <paramref name="to"/> have <paramref name="subject"/> in their subject, once the email queue has
+    /// nothing left for them. Only use it after whatever queues them has finished, such as a completed reminder run.
     /// </summary>
     public static async Task<int> CountEmailsAsync(this AppHostFixture fixture, string to, string subject)
     {
+        await fixture.WaitForQueueAsync(to);
         using var mailPit = CreateClient(fixture);
         return (await SearchAsync(mailPit, to, subject)).Count;
+    }
+
+    /// <summary>Waits until no email to <paramref name="to"/> is waiting in the email queue.</summary>
+    public static async Task WaitForQueueAsync(this AppHostFixture fixture, string to)
+    {
+        await using var db = await fixture.CreateDbContextAsync();
+        var address = to.ToLowerInvariant();
+        for (var attempt = 0; attempt < 200; attempt++)
+        {
+            if (!await db.EmailOutbox.AnyAsync(e => e.Status == QueuedEmailStatus.Pending && e.ToAddress.ToLower() == address, TestContext.Current.CancellationToken))
+            {
+                return;
+            }
+
+            await Task.Delay(100, TestContext.Current.CancellationToken);
+        }
+
+        throw new InvalidOperationException($"Emails to {to} are still waiting in the email queue.");
     }
 
     public static async Task<Dictionary<string, string[]>> GetHeadersAsync(this AppHostFixture fixture, MailPitMessage message)

@@ -30,6 +30,7 @@ public static class PostLinkEmails
     /// <summary>To the organizers, for every request. Replies go to the requester.</summary>
     public static EmailContent NewRequest(PostLinkEmailDetails request, SiteOptions site) => new()
     {
+        Kind = "post-links-new-request",
         Subject = SingleLine($"New post links? {request.Login} asked to change the links to {request.Posts}"),
         Preview = SingleLine($"{request.Who} asked for new links to {request.Posts} from earlier seasons of C# Advent."),
         Heading = "Someone wants new links to their posts",
@@ -55,6 +56,7 @@ public static class PostLinkEmails
     /// <summary>To the requester, once it's approved.</summary>
     public static EmailContent Approved(PostLinkEmailDetails request, SiteOptions site) => new()
     {
+        Kind = "post-links-approved",
         Subject = "Your C# Advent posts' links are updated",
         Preview = SingleLine($"We've changed the links to {request.Posts}."),
         Heading = "Your links are updated",
@@ -77,6 +79,7 @@ public static class PostLinkEmails
     /// <summary>To the requester, if it's declined. Replies go to the organizers.</summary>
     public static EmailContent Declined(PostLinkEmailDetails request, SiteOptions site) => new()
     {
+        Kind = "post-links-declined",
         Subject = "About your C# Advent posts' links",
         Preview = SingleLine($"We didn't change the links to {request.Posts}."),
         Heading = "We didn't change them",

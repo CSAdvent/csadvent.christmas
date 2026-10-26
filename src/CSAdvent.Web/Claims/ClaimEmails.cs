@@ -47,6 +47,7 @@ public static class ClaimEmails
 {
     public static EmailContent Received(ClaimEmailDetails claim, SiteOptions site) => new()
     {
+        Kind = "claim-received",
         Subject = $"We received your C# Advent request for December {claim.Day}",
         Preview = "The organizers review every request. You'll hear from us once they've decided.",
         Heading = $"Thanks, {claim.DisplayName}!",
@@ -66,6 +67,7 @@ public static class ClaimEmails
 
     public static EmailContent NewRequest(ClaimEmailDetails claim, SiteOptions site) => new()
     {
+        Kind = "claim-new-request",
         Subject = $"New C# Advent request: {claim.DisplayName} for December {claim.Day}",
         Preview = $"{claim.DisplayName} asked for {claim.Spot}.",
         Heading = "New claim request",
@@ -86,6 +88,7 @@ public static class ClaimEmails
 
     public static EmailContent Approved(ClaimEmailDetails claim, SiteOptions site) => new()
     {
+        Kind = claim.AskedFor is null ? "claim-approved" : "claim-approved-other-spot",
         Subject = $"You're on the C# Advent calendar: December {claim.Day}",
         Preview = "Your request is approved. Here's what happens next.",
         Heading = $"You're in, {claim.DisplayName}!",
@@ -120,6 +123,7 @@ public static class ClaimEmails
     /// <summary>To the contributor, when an organizer declines their request.</summary>
     public static EmailContent Declined(ClaimEmailDetails claim, ClaimDeclineReason reason, SiteOptions site) => new()
     {
+        Kind = reason switch { ClaimDeclineReason.SpotTaken => "claim-declined-taken", ClaimDeclineReason.SeasonFull => "claim-declined-full", _ => "claim-declined" },
         Subject = $"About your C# Advent request for December {claim.Day}",
         Preview = reason is ClaimDeclineReason.NotApproved
             ? "We couldn't approve your request this time."

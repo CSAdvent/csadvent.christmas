@@ -24,6 +24,7 @@ public static class PostClaimEmails
     /// <summary>To the organizers, for every request. Replies go to the requester.</summary>
     public static EmailContent NewRequest(PostClaimEmailDetails request, SiteOptions site) => new()
     {
+        Kind = "post-claim-new-request",
         Subject = SingleLine($"Is this their post? {request.Login} asked for a C# Advent {request.Year} post"),
         Preview = SingleLine($"{request.Who} asked to add “{request.Title}” to their account."),
         Heading = "Someone wants a post on their account",
@@ -46,6 +47,7 @@ public static class PostClaimEmails
     /// <summary>To the requester, once it's approved.</summary>
     public static EmailContent Approved(PostClaimEmailDetails request, SiteOptions site) => new()
     {
+        Kind = "post-claim-approved",
         Subject = SingleLine($"Your C# Advent {request.Year} post is on your account"),
         Preview = SingleLine($"“{request.Title}” is now part of your C# Advent history."),
         Heading = "It's on your account",
@@ -69,6 +71,7 @@ public static class PostClaimEmails
     /// <summary>To the requester, if it's declined. Replies go to the organizers.</summary>
     public static EmailContent Declined(PostClaimEmailDetails request, SiteOptions site) => new()
     {
+        Kind = "post-claim-declined",
         Subject = SingleLine($"About your C# Advent {request.Year} post"),
         Preview = SingleLine($"We couldn't add “{request.Title}” to your account."),
         Heading = "We couldn't add it",

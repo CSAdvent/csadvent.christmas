@@ -94,7 +94,8 @@ public sealed class PastAuthorInvitationTests(AppHostFixture fixture)
         Assert.Contains("Invited 1 past author so far, with", page);
         Assert.Contains("still to go", page);
 
-        // Three days after sign-ups opened, the ones still waiting are invited, 40 an hour (other tests add past authors too).
+        // Three days after sign-ups opened, the ones still waiting are invited, as fast as the email queue has room for them
+        // (other tests add past authors too).
         foreach (var hour in new[] { 0, 1, 2 })
         {
             await RunAsync(opensAt.AddDays(3).AddHours(hour), LaterYear);

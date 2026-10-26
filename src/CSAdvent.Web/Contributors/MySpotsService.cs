@@ -307,7 +307,7 @@ public sealed partial class MySpotsService(
 
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't email the organizers that December {Day}, {Year}, part {Part} was dropped")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't queue the email telling the organizers that December {Day}, {Year}, part {Part} was dropped")]
     private partial void LogDropoutEmailFailed(Exception exception, int year, int day, int part);
 }
 

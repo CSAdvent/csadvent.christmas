@@ -1,6 +1,8 @@
 @page "/manage/emails"
 @using CSAdvent.Web.Email
+@using CSAdvent.Web.Email.Queue
 @inject SampleEmailService Samples
+@inject EmailOutbox Outbox
 @inject NavigationManager Navigation
 
 <PageTitle>Emails · Manage · C# Advent</PageTitle>
@@ -12,6 +14,24 @@
     Every email the site sends, when it goes out and who gets it. Preview any of them, or send one now with sample names and
     dates to see exactly what lands in an inbox. Samples start with "[Sample]".
 </p>
+
+<section class="mt-6 max-w-3xl rounded-xl bg-slate-50 p-5 ring-1 ring-slate-200" aria-labelledby="queue">
+    <h2 id="queue" class="text-lg font-semibold text-slate-900">Email queue</h2>
+    <p class="mt-1 text-sm text-slate-600">
+        @if (_queue.TableMissing)
+        {
+            <text>The queue isn't set up yet (the deploy's migrations haven't run), so emails are going straight out.</text>
+        }
+        else
+        {
+            <text>
+                @_queue.Waiting.Sum(w => w.Count) waiting, @_queue.Sent.LastHour sent in the last hour (of @Outbox.Limits.PerHour),
+                @_queue.Failed.Count failed.
+            </text>
+        }
+        <a href="manage/emails/queue" class="font-medium text-advent-700 underline">Open the email queue</a>
+    </p>
+</section>
 
 @if (Message is { } message)
 {
@@ -76,6 +96,7 @@
 
 @code {
     private IReadOnlyList<SampleRecipient> _recipients = [];
+    private EmailQueueStatus _queue = EmailQueueStatus.Missing;
 
     [CascadingParameter]
     private Task<AuthenticationState> AuthenticationState { get; set; } = null!;
@@ -88,8 +109,8 @@
 
     private string? Message => Done switch
     {
-        "sent" => "Sample sent. It can take a minute to arrive.",
-        "failed" => "The email service didn't accept it. Until the sending domain is verified (after the DNS switch), nothing can be sent.",
+        "sent" => "Sample queued, ahead of everything but other urgent emails. It can take a minute to arrive; if the email service refuses it, it shows up as failed in the email queue.",
+        "failed" => "It couldn't be queued. Try again in a minute.",
         "not-allowed" => "Choose an email and someone from the list.",
         _ => null,
     };
@@ -99,6 +120,7 @@
         // Static rendering starts at the first await, so the form needs its model first.
         Form ??= new SampleEmailForm();
         _recipients = await Samples.GetRecipientsAsync((await AuthenticationState).User);
+        _queue = await Outbox.GetStatusAsync();
         if (string.IsNullOrEmpty(Form.To) && _recipients.Count > 0)
         {
             Form.To = _recipients[0].Address;

@@ -34,6 +34,7 @@ public static class BackupEmails
 
     public static EmailContent SignedUp(string name, int year, int position, SiteOptions site) => new()
     {
+        Kind = "backup-signed-up",
         Subject = $"You're on the C# Advent {year} backup list",
         Preview = $"You're number {position} on the list. We'll email you if a spot needs filling.",
         Heading = $"Thanks for being a backup, {name}!",
@@ -94,6 +95,7 @@ public static class BackupEmails
 
         return new EmailContent
         {
+            Kind = reason switch { BackupReason.DroppedOut => "backup-ask-dropped", BackupReason.BlurbMissing => "backup-ask-blurb", _ => "backup-ask-missing" },
             Subject = $"Can you fill in on C# Advent, December {spot.Day}?",
             Preview = reason switch
             {
@@ -110,6 +112,7 @@ public static class BackupEmails
 
     public static EmailContent YoureOn(string name, BackupSpot spot, string postTitle, SiteOptions site) => new()
     {
+        Kind = "backup-used",
         Subject = $"Your post is on the C# Advent calendar: December {spot.Day}",
         Preview = "Thanks for stepping in!",
         Heading = $"Thank you, {name}!",
@@ -126,6 +129,7 @@ public static class BackupEmails
 
     public static EmailContent NotNeeded(string name, BackupSpot spot, SiteOptions site) => new()
     {
+        Kind = "backup-not-needed",
         Subject = $"You're off the hook for C# Advent, December {spot.Day}",
         Preview = "The original author came through. Thanks for being ready!",
         Heading = "The original author came through",
@@ -141,6 +145,7 @@ public static class BackupEmails
 
     public static EmailContent SpotFilled(string backupName, BackupSpot spot, BackupReason reason, SiteOptions site) => new()
     {
+        Kind = "backup-spot-filled",
         Subject = $"A backup poster filled C# Advent, December {spot.Day}",
         Preview = $"{backupName} stepped in for {spot.Name}.",
         Heading = "A backup poster stepped in",
@@ -159,6 +164,7 @@ public static class BackupEmails
 
     public static EmailContent NoBackups(BackupSpot spot, SiteOptions site) => new()
     {
+        Kind = "backup-none-left",
         Subject = $"No backup poster for C# Advent, December {spot.Day}",
         Preview = $"Every backup has been asked about {spot.Name}, and nobody could take it.",
         Heading = "We ran out of backups",
@@ -173,6 +179,7 @@ public static class BackupEmails
 
     public static EmailContent Replaced(string authorName, BackupSpot spot, SiteOptions site, BackupReason reason = BackupReason.LinkMissing) => new()
     {
+        Kind = reason is BackupReason.BlurbMissing ? "backup-replaced-blurb" : "backup-replaced",
         Subject = $"Your C# Advent spot went to a backup poster",
         Preview = reason is BackupReason.BlurbMissing
             ? $"Your post for {spot.Name} didn't open with the C# Advent blurb in time."

@@ -381,7 +381,7 @@ public sealed partial class PostClaimService(
         }
     }
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't send the {Kind} email for post claim request {RequestId}")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't queue the {Kind} email for post claim request {RequestId}")]
     private partial void LogSendFailed(Exception exception, string kind, int requestId);
 }
 

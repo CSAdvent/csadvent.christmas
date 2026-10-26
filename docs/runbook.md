@@ -56,13 +56,15 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
    LinkedIn and Reddit are always copy and paste. X is paid per use, so make sure its app has credit for the season.
    If Facebook's check says a permission "must be granted before impersonating a user's page", Meta has probably limited
    the app until you answer a request in its developer portal (the README's Facebook setup has the rest).
-7. **Check email:** send yourself a sample from `/manage/emails`, and send a test email to hello@csadvent.christmas from
-   another address (it forwards through ImprovMX).
+7. **Check email:** send yourself a sample from `/manage/emails` (it goes through the email queue, so it proves both),
+   check `/manage/emails/queue` has nothing failed, and send a test email to hello@csadvent.christmas from another address
+   (it forwards through ImprovMX).
 8. **Keep the stack current:** dependency updates, and a deploy (every merge to `main` deploys, unless it only changes
    documentation).
 9. **Check the announcements list** at `/manage/announcements`. The "sign-ups are open" email goes to every confirmed
-   subscriber by itself at 9 AM on the day sign-ups open, 40 an hour. Write any other news there: save a draft, send a
-   test to the organizers' inbox, then send it.
+   subscriber by itself at 9 AM on the day sign-ups open: queued for everyone at once, and sent as list mail, after the
+   claim emails (see Email Sending Limits). Write any other news there: save a draft, send a test to the organizers'
+   inbox, then send it.
 10. **Post "sign-ups open soon"** from `/manage/social/signups` as the day approaches (a week out, the day before). It counts
     down by itself; post it with **Post now**, or copy it for LinkedIn and Reddit.
 11. **Try the blurb check** in the test round: give a test spot a real post with the blurb and one without, move "today" to
@@ -91,9 +93,14 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 - **Backup posters** sign up at `/backups/{year}`, and you can see them at `/manage/backups`. Point people there once
   the calendar fills up. The welcome email goes once per person and season, however often they leave and join again.
 - **Authors** add their post's title and URL themselves on My spots. Nobody sends them by email.
-- **Past authors** get an invitation by themselves from 9 AM on the day sign-ups open, a few at a time alongside the
-  announcement (40 an hour between them), and it carries on until everyone's had one, for as long as sign-ups are open.
-  `/manage/announcements` shows how many are still to go. Nothing to do.
+- **Past authors** get an invitation by themselves from 9 AM on the day sign-ups open, after the announcement, only as
+  fast as the email queue has room for them, and it carries on until everyone's had one, for as long as sign-ups are open.
+  `/manage/announcements` shows how many have been invited, how many are still in the queue and how many are still to go.
+  Nothing to do.
+- **Sign-up day's email** (see Email Sending Limits): the claim emails go first, and the announcement and invitations go a
+  minute at a time with what's left of each hour. Beyond about 40 claims in an hour, some claim emails wait for the next
+  hour, so keep an eye on `/manage/requests` rather than waiting for the "New request" emails, and on
+  `/manage/emails/queue`: how much is waiting, the hour's sends against 90, and anything failed.
 
 ---
 
@@ -120,9 +127,13 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
   - Reddit posts go to r/csadvent only, never r/csharp or r/dotnet.
   - A failed automatic post shows its error and a **Retry now** button.
 - **The daily email** goes to everyone with a spot as soon as both of the day's posts are in, from 9 AM, or at 2 PM with
-  whichever are, leaving out any without the blurb. Announcement subscribers who asked for the daily posts get the same
-  email at the same time, 40 an hour (before any announcement), until midnight (see Email Sending Limits).
-  `/manage/announcements` shows how many readers there are and how long a day's send takes.
+  whichever are, leaving out any without the blurb. Announcement subscribers who asked for the daily posts are queued the
+  same email at the same time, and get it after the authors, as list mail (before any announcement), until midnight, when
+  any still waiting are dropped (see Email Sending Limits). `/manage/announcements` shows how many readers there are and
+  how long a day's send takes.
+- **Watch the email queue around 9 AM** at `/manage/emails/queue`: the authors' daily email, post link reminders and the
+  readers' copies all go then, within the limits, and backup asks and blurb emails go ahead of them. Anything failed has
+  its error and a **Retry** button; the error alert means the queue gave up on one.
 - **The blurb check** runs every 15 minutes, and only posts that pass are announced automatically.
   - **A missing blurb** emails its author (once) and asks the backups from midnight, an hour each. A backup who accepts takes
     the spot at the post's announcement unless the author adds the blurb first. If nobody has by then, you get an email: the
@@ -161,8 +172,9 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 
   The README's deploy setup says how to get each one. Replace the secret in the repository's `production`
   environment, run the Deploy workflow, and press **Check**.
-- **Email:** a sample from `/manage/emails` proves the sending domain is still connected. The site can send 30 emails
-  a minute and 100 an hour unless Azure has raised that (see Email Sending Limits, below).
+- **Email:** a sample from `/manage/emails` proves the sending domain is still connected and the email queue is
+  sending. The site can send 30 emails a minute and 100 an hour, and the queue keeps it under that (see Email Sending
+  Limits, below).
 - **The announcements sign-up limit** (5 an IP address per 10 minutes): once someone has signed up after a deploy,
   Application Insights should have "The announcements sign-up limit counts by each visitor's public IP address." A warning
   instead means every visitor is sharing one limit, so the forwarded headers need checking (#137).
@@ -308,9 +320,11 @@ Lines marked ✏️ **To fill in** are for the organizers: they aren't written d
 
 - **Lives in:** no key. The site's managed identity (`web-identity`) has the Communication and Email Service Owner role on
   the Communication Service `csadvent-acs`, so its `email` connection string is just the endpoint.
-- **If it fails:** no email goes out. That happens if the role assignment is removed, the sending domain is disconnected,
-  or the sending limit is reached (below).
-- **What notices:** the error alert (every failed send logs an error), and a sample from `/manage/emails`.
+- **If it fails:** no email goes out. That happens if the role assignment is removed or the sending domain is
+  disconnected. Emails wait in the queue meanwhile, tried again after 1, 5 and 15 minutes, then hourly.
+- **What notices:** `/manage/emails/queue` (emails piling up, and failed ones with the service's answer), the error alert
+  once the queue gives up on an email (after about 2 hours 20 minutes of tries), and a sample from `/manage/emails`. Once
+  it's fixed, **Retry all** on the queue page sends the failed ones.
 - **Rotating:** nothing to rotate.
 
 ### 🚨 Alert Recipients
@@ -344,16 +358,40 @@ for a custom domain. They're **per subscription**, so everything the site sends 
 - blurb emails;
 - the organizers' notices.
 
-Over the limit, Azure refuses with 429 (Too Many Requests). Claim emails aren't retried: they're logged, which trips the
-error alert. Only announcements, invitations and readers' daily posts are budgeted (`Announcements:PerHour`, 40, shared
-by all three; a day's daily posts reach at most about 400 readers between 2 PM and midnight, or 600 from 9 AM), and
-`Reminders:PauseBetweenEmails` (2 seconds) only paces one loop on one replica. So on sign-up day, about 30 claims in the
-first hour plus the announcement can reach the limit.
+**The organizers decided not to ask Azure for more** (#136). Instead, everything the site sends goes through an email queue
+(#152) that keeps the whole site under the limits, whichever replica sends:
+
+- **25 a minute and 90 an hour** (`Email:Queue:PerMinute` and `PerHour` in `appsettings.json`), counted from what's really
+  been sent, leaving a little headroom.
+- **What goes first:** emails people are waiting for (claim emails, approvals and declines, backup asks, blurb emails,
+  the last call, and everything to the organizers' inbox), then the authors' daily email and post link reminders, then
+  list mail: readers' daily posts, then announcements, then past authors' invitations.
+- **List mail only goes while the last hour's emails are under 50** (`ListPerHour`), a minute at a time (1 a minute), so
+  whatever happens, there's room in the hour for the emails people are waiting for. In a quiet hour that's 50 list emails;
+  in a busy one, fewer.
+- **Deadlines:** a day's emails that haven't gone by midnight are dropped rather than sent a day late, a backup ask that
+  hasn't gone when the next backup is asked is dropped (and the next backup is asked straight away), and invitations
+  stop when sign-ups close. `/manage/emails/queue` shows how many expired in the last day.
+- **If Azure still says 429** (something else in the subscription sending, say), the queue stops for as long as Azure
+  asks, and nothing is lost.
+
+**What that means in practice:**
+
+- **Sign-up day:** each claim is two emails (the contributor's, and the organizers'), so 40 claims in the first hour are
+  80 emails, which nearly fills the hour by themselves. Claim emails go first. The announcement goes a minute at a time
+  and stops once the hour's emails reach 50, so it yields to the claims it brings in (at 50 an hour, 200 subscribers take
+  about 4 hours, and past authors follow). Beyond about 40 claims in an hour, some claim emails wait for the next hour:
+  watch `/manage/requests`, not the inbox.
+- **December's 9 AM:** about 50 authors' daily emails and a few reminders go in the first minutes; readers' daily posts
+  follow a minute at a time, up to 50 an hour once the morning's burst has aged out of the hour (so N readers take about
+  N/50 hours, and any not reached by midnight are dropped).
+- **What to watch:** `/manage/emails/queue` shows what's waiting by kind, the last minute's and hour's sends against the
+  limits, and anything that failed, with **Retry** and **Discard**.
 
 The current limits are in the portal: the Email Communication Service `csadvent-email` → **Provision domains** →
 `mail.csadvent.christmas` shows **Email send quota per minute** and **per hour**.
 
-**Asking for more** (#136): it's free, reviewed by hand, and can take up to 72 hours, so ask well before November.
+**If you ever do ask for more**: it's free, reviewed by hand, and can take up to 72 hours, so ask well before November.
 
 1. Copy the questionnaire from [Quota increase for email domains](https://learn.microsoft.com/azure/communication-services/concepts/email/email-quota-increase)
    into a `.txt` file and answer it. It asks for company details: C# Advent is a personal, volunteer-run community
@@ -375,13 +413,8 @@ The current limits are in the portal: the Email Communication Service `csadvent-
 5. **Approval depends on sender reputation.** Keep the failure rate under 2% (Microsoft's bar). The docs also recommend an
    MX record on the sending domain; `mail.csadvent.christmas` doesn't have one (`dns.bicep` only has the apex's ImprovMX
    records).
-6. **If it's refused**, sending emails through an outbox that respects the limit becomes urgent.
-7. **Once it's granted**, record the new limits here and in CLAUDE.md, and raise `Announcements:PerHour` and lower
-   `Reminders:PauseBetweenEmails` to match.
-
-- ✏️ **To fill in:** when it was requested, the support request's number, and the outcome.
-
-**Until it's granted**, watch `/manage/requests` on sign-up day rather than waiting for the email notices.
+6. **Once it's granted**, record the new limits here and in CLAUDE.md, and raise `Email:Queue:PerMinute`, `PerHour` and
+   `ListPerHour` in `appsettings.json` to match, keeping some headroom under each.
 
 ---
 
@@ -455,7 +488,8 @@ a sample to everyone.
      message and `customDimensions.CategoryName`.
   2. Background runs try again by themselves (every few minutes, or hourly for retention), so one error that clears is
      usually nothing. One that keeps coming back needs a fix.
-  3. On sign-up day, emails refused with 429 are the email sending limit (below).
+  3. "Gave up on … email" means the email queue tried an email 6 times over about 2 hours 20 minutes. It's on
+     `/manage/emails/queue` with the email service's answer: fix the cause, then **Retry** (or **Retry all**).
 
   The duplicate inserts that the reminders, backups and announcements expect, which EF Core logs as errors all day, are left
   out of this alert until #157 stops them being logged.
@@ -515,7 +549,8 @@ alerts to both organizers at 80% and 100%. It's free, and only warns: nothing is
 - **The site:** every deploy runs the database migrations job and checks the site. A new revision that can't reach the
   database never takes traffic, because the health probes keep the old one serving.
 - **Logs and telemetry:** Application Insights, in the `rg-csadvent` resource group.
-- **Emails not arriving:** check `/manage/emails` (send a sample) and the Communication Service in Azure.
+- **Emails not arriving:** check `/manage/emails/queue` (waiting, the hour's sends, failed), send a sample from
+  `/manage/emails`, and look at the Communication Service in Azure.
 - **Every post says "Couldn't check":** Claude isn't answering. Each entry's page says why (a rate limit, an expired key,
   or the workspace's spend limit). Posts aren't announced automatically meanwhile, so mark the day's posts as passed (or
   announce them anyway) by hand.

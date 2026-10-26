@@ -6,6 +6,7 @@ using CSAdvent.Web.Claims;
 using CSAdvent.Web.Content;
 using CSAdvent.Web.Data;
 using CSAdvent.Web.Email;
+using CSAdvent.Web.Email.Queue;
 using CSAdvent.Web.Social.Posting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -68,6 +69,11 @@ public sealed record BackupOfferView(
 /// </list>
 /// Each backup has <see cref="BackupOptions.AnswerWithin"/> before the next is asked too; anyone asked can accept while the
 /// spot still needs a post. When everybody's been asked, the organizers hear about it once.
+/// <para>
+/// Asks go through the email queue (#152), which drops one not sent by the time the next backup is asked. If an ask can't be
+/// queued, the offer goes and the same backup is asked by the next run; if the queue gives up on it (#149), its time to answer
+/// ends there and the next backup is asked straight away (<see cref="AskUndeliveredAsync"/>).
+/// </para>
 /// </summary>
 public sealed partial class BackupService(
     AdventDbContext db,
@@ -165,6 +171,38 @@ public sealed partial class BackupService(
     /// <summary>Starts on a spot straight away (after a dropout or release), instead of waiting for the next run.</summary>
     public Task<BackupRun> OfferNowAsync(int slotId, DateTimeOffset now, CancellationToken cancellationToken = default) =>
         AdvanceAsync(slotId, now, cancellationToken);
+
+    /// <summary>What the email queue knows an offer's ask by.</summary>
+    public static string OfferReference(int offerId) => string.Create(CultureInfo.InvariantCulture, $"backup-offer:{offerId}");
+
+    public static bool TryReadOfferReference(string? reference, out int offerId)
+    {
+        offerId = 0;
+        return reference is not null && reference.StartsWith("backup-offer:", StringComparison.Ordinal)
+            && int.TryParse(reference.AsSpan("backup-offer:".Length), NumberStyles.None, CultureInfo.InvariantCulture, out offerId);
+    }
+
+    /// <summary>
+    /// The email queue gave up on an ask (it failed for good, or expired unsent) (#149). The backup never heard, so their
+    /// time to answer ends now and the next backup is asked straight away, instead of the spot waiting out their hours.
+    /// </summary>
+    public async Task<BackupRun> AskUndeliveredAsync(int offerId, DateTimeOffset now, CancellationToken cancellationToken = default)
+    {
+        var slotId = await db.BackupOffers.Where(o => o.Id == offerId).Select(o => (int?)o.SlotId).SingleOrDefaultAsync(cancellationToken);
+        var ended = await db.BackupOffers
+            .Where(o => o.Id == offerId && o.Status == BackupOfferStatus.Asked && o.ExpiresAt > now)
+            .ExecuteUpdateAsync(o => o.SetProperty(x => x.ExpiresAt, now), cancellationToken);
+        if (slotId is null || ended == 0)
+        {
+            return BackupRun.None;
+        }
+
+        LogAskUndelivered(offerId, slotId.Value);
+
+        // Anything tracked from before the update would still have the old time.
+        db.ChangeTracker.Clear();
+        return await AdvanceAsync(slotId.Value, now, cancellationToken);
+    }
 
     public async Task<BackupOfferView?> GetOfferAsync(int contributorId, int offerId, DateTimeOffset now, CancellationToken cancellationToken = default)
     {
@@ -365,19 +403,24 @@ public sealed partial class BackupService(
         }
 
         var answerBy = schedule.ToLocalTime(offer.ExpiresAt);
-        await SendAsync(
-            BackupEmails.Ask(
-                candidate.Name,
-                SpotOf(slot),
-                reason,
-                string.Create(CultureInfo.InvariantCulture, $"{answerBy:h:mm tt} Eastern on {answerBy:MMMM d}"),
-                $"{Site}/backups/offers/{offer.Id}",
-                site.Value,
-                reason is BackupReason.BlurbMissing ? Eastern(GetBlurbDeadline(slot)) : null),
-            new EmailRecipient(candidate.Email, candidate.Name),
-            "backup ask",
-            slot.Id,
-            cancellationToken);
+        var ask = BackupEmails.Ask(
+            candidate.Name,
+            SpotOf(slot),
+            reason,
+            string.Create(CultureInfo.InvariantCulture, $"{answerBy:h:mm tt} Eastern on {answerBy:MMMM d}"),
+            $"{Site}/backups/offers/{offer.Id}",
+            site.Value,
+            reason is BackupReason.BlurbMissing ? Eastern(GetBlurbDeadline(slot)) : null);
+
+        // Once their time's up the next backup is asked too, so an ask still waiting in the queue by then is dropped.
+        if (!await SendAsync(ask with { SendBefore = offer.ExpiresAt, Reference = OfferReference(offer.Id) }, new EmailRecipient(candidate.Email, candidate.Name), "backup ask", slot.Id, cancellationToken))
+        {
+            // They were never asked, through no fault of theirs, so the offer goes and the next run asks them again (#149).
+            db.BackupOffers.Remove(offer);
+            await db.SaveChangesAsync(CancellationToken.None);
+            return BackupRun.None;
+        }
+
         return BackupRun.None with { Asked = 1 };
     }
 
@@ -489,7 +532,14 @@ public sealed partial class BackupService(
             return BackupRun.None;
         }
 
-        await SendAsync(BackupEmails.NoBackups(SpotOf(slot), site.Value), Organizers, "no backups left", slot.Id, cancellationToken);
+        if (!await SendAsync(BackupEmails.NoBackups(SpotOf(slot), site.Value), Organizers, "no backups left", slot.Id, cancellationToken))
+        {
+            // Not queued, so not recorded either: the next run tries again (#149).
+            db.SentReminders.Remove(record);
+            await db.SaveChangesAsync(CancellationToken.None);
+            return BackupRun.None;
+        }
+
         return BackupRun.None with { Exhausted = 1 };
     }
 
@@ -500,15 +550,18 @@ public sealed partial class BackupService(
             .Include(o => o.Slot).ThenInclude(s => s.Season)
             .SingleOrDefaultAsync(o => o.Id == offerId && o.Substitute.ContributorId == contributorId, cancellationToken);
 
-    private async Task SendAsync(EmailContent content, EmailRecipient to, string kind, int slotId, CancellationToken cancellationToken)
+    /// <summary>Queues the email. False if it couldn't be queued (the database failed), which is logged.</summary>
+    private async Task<bool> SendAsync(EmailContent content, EmailRecipient to, string kind, int slotId, CancellationToken cancellationToken)
     {
         try
         {
             await sender.SendAsync(await composer.ComposeAsync(content, to), cancellationToken);
+            return true;
         }
         catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
         {
             LogSendFailed(exception, kind, slotId);
+            return false;
         }
     }
 
@@ -527,8 +580,26 @@ public sealed partial class BackupService(
 
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't send the {Kind} email for slot {SlotId}")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't queue the {Kind} email for slot {SlotId}")]
     private partial void LogSendFailed(Exception exception, string kind, int slotId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Backup offer {OfferId}'s ask for slot {SlotId} couldn't be sent, so the next backup is being asked")]
+    private partial void LogAskUndelivered(int offerId, int slotId);
+}
+
+/// <summary>
+/// When the email queue gives up on a backup ask (#149), its offer ends so the next backup is asked
+/// (<see cref="BackupService.AskUndeliveredAsync"/>).
+/// </summary>
+public sealed class BackupAskUndelivered(BackupService backups) : IUndeliveredEmailHandler
+{
+    public async Task HandleAsync(UndeliveredEmail email, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        if (BackupService.TryReadOfferReference(email.Reference, out var offerId))
+        {
+            await backups.AskUndeliveredAsync(offerId, now, cancellationToken);
+        }
+    }
 }
 
 /// <summary>What a backup sends to fill a spot: their post, and how they appear on the calendar.</summary>

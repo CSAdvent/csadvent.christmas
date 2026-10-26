@@ -102,6 +102,22 @@ public sealed partial class ContentTests(AppHostFixture fixture)
             id = season.OtherAdvents.Single().Id;
         }
 
+        try
+        {
+            await UploadsAndServesALogoAsync(id);
+        }
+        finally
+        {
+            // Taken off again: the public page shows the latest list up to the current season, which can be 2117 when this
+            // class runs before the classes with earlier seasons, and TheOtherAdventsPageListsCalendarsAndOnlyOrganizersEditThem
+            // expects the suggestions.
+            await using var db = await fixture.CreateDbContextAsync();
+            await db.OtherAdvents.Where(a => a.Id == id).ExecuteDeleteAsync(CancellationToken.None);
+        }
+    }
+
+    private async Task UploadsAndServesALogoAsync(int id)
+    {
         using var organizer = await fixture.SignInAsync("organizer", AppHostFixture.OrganizerGitHubId);
         const string page = "/manage/other-advents?year=2117";
         var html = await organizer.GetStringAsync(page, CancellationToken);

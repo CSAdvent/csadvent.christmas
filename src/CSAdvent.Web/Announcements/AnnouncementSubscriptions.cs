@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using CSAdvent.Web.Content;
 using CSAdvent.Web.Data;
 using CSAdvent.Web.Email;
+using CSAdvent.Web.Email.Queue;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -17,13 +18,15 @@ namespace CSAdvent.Web.Announcements;
 /// The announcements list (#49): signing up with a confirmed email, optionally for each December day's posts too (#206), and
 /// unsubscribing. Links in emails carry the subscriber's ID protected with the app's data protection keys, so they work
 /// without signing in and can't be forged. Nothing here says whether an address is already on the list, so the form can't be
-/// used to find out who's subscribed.
+/// used to find out who's subscribed: the confirmation is only queued (#152), so the answer takes as long either way, give or
+/// take a database write.
 /// </summary>
 public sealed partial class AnnouncementSubscriptions(
     AdventDbContext db,
     IDataProtectionProvider dataProtection,
     EmailComposer composer,
     IEmailSender sender,
+    EmailOutbox outbox,
     IOptions<SiteOptions> site,
     TimeProvider timeProvider,
     ILogger<AnnouncementSubscriptions> logger)
@@ -92,7 +95,8 @@ public sealed partial class AnnouncementSubscriptions(
         }
         catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
         {
-            // Without the address: the logs never carry personal details. Entering it again after a day sends another.
+            // Without the address: the logs never carry personal details. Entering it again after a day sends another. Only
+            // queueing can fail here (the database), never the email service.
             LogConfirmationFailed(exception, subscriber.Id);
         }
     }
@@ -117,18 +121,43 @@ public sealed partial class AnnouncementSubscriptions(
         return await db.AnnouncementSubscribers.AnyAsync(s => s.Id == subscriberId, cancellationToken);
     }
 
-    /// <summary>Turns off the daily posts and keeps them on the list. Returns false if they're gone.</summary>
+    /// <summary>
+    /// Turns off the daily posts and keeps them on the list, taking back any still waiting in the email queue. Returns false
+    /// if they're gone.
+    /// </summary>
     public async Task<bool> StopDailyPostsAsync(int subscriberId, CancellationToken cancellationToken = default)
     {
         await db.AnnouncementSubscribers
             .Where(s => s.Id == subscriberId && s.DailyPostsSince != null)
             .ExecuteUpdateAsync(s => s.SetProperty(x => x.DailyPostsSince, (DateTimeOffset?)null), cancellationToken);
-        return await ExistsAsync(subscriberId, cancellationToken);
+        if (await AddressOfAsync(subscriberId, cancellationToken) is not { } address)
+        {
+            return false;
+        }
+
+        await outbox.CancelAsync(address, ReaderDailyEmailService.ReferencePrefix, cancellationToken);
+        return true;
     }
 
-    /// <summary>Deletes the subscriber: unsubscribing removes the address, not just a flag. Returns false if they were already gone.</summary>
-    public async Task<bool> UnsubscribeAsync(int subscriberId, CancellationToken cancellationToken = default) =>
-        await db.AnnouncementSubscribers.Where(s => s.Id == subscriberId).ExecuteDeleteAsync(cancellationToken) > 0;
+    /// <summary>
+    /// Deletes the subscriber: unsubscribing removes the address, not just a flag. Announcements and daily posts still waiting
+    /// in the email queue are taken back too. Returns false if they were already gone.
+    /// </summary>
+    public async Task<bool> UnsubscribeAsync(int subscriberId, CancellationToken cancellationToken = default)
+    {
+        var address = await AddressOfAsync(subscriberId, cancellationToken);
+        if (await db.AnnouncementSubscribers.Where(s => s.Id == subscriberId).ExecuteDeleteAsync(cancellationToken) == 0 || address is null)
+        {
+            return false;
+        }
+
+        await outbox.CancelAsync(address, AnnouncementService.ReferencePrefix, cancellationToken);
+        await outbox.CancelAsync(address, ReaderDailyEmailService.ReferencePrefix, cancellationToken);
+        return true;
+    }
+
+    private Task<string?> AddressOfAsync(int subscriberId, CancellationToken cancellationToken) =>
+        db.AnnouncementSubscribers.Where(s => s.Id == subscriberId).Select(s => s.Email).SingleOrDefaultAsync(cancellationToken);
 
     public Task<bool> ExistsAsync(int subscriberId, CancellationToken cancellationToken = default) =>
         db.AnnouncementSubscribers.AnyAsync(s => s.Id == subscriberId, cancellationToken);
@@ -183,6 +212,7 @@ public sealed partial class AnnouncementSubscriptions(
     public static EmailContent Confirmation(string confirmLink, SiteOptions site, bool dailyPosts = false) => dailyPosts
         ? new()
         {
+            Kind = "announcements-confirm-daily",
             Subject = "Confirm C# Advent's daily posts",
             Preview = "One click, and we'll email you each day's new posts in December.",
             Heading = "Confirm your email",
@@ -201,6 +231,7 @@ public sealed partial class AnnouncementSubscriptions(
         }
         : new()
         {
+            Kind = "announcements-confirm",
             Subject = "Confirm your C# Advent announcements",
             Preview = "One click, and we'll email you when sign-ups open each year.",
             Heading = "Confirm your email",
@@ -243,7 +274,7 @@ public sealed partial class AnnouncementSubscriptions(
         }
     }
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't send the confirmation email to announcement subscriber {SubscriberId}")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't queue the confirmation email to announcement subscriber {SubscriberId}")]
     private partial void LogConfirmationFailed(Exception exception, int subscriberId);
 }
 

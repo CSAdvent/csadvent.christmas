@@ -1,12 +1,13 @@
 using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Data;
+using CSAdvent.Web.Email.Queue;
 using Microsoft.EntityFrameworkCore;
 
 namespace CSAdvent.Web.Retention;
 
-public sealed record ContactDeletion(int ClaimRequests, int Substitutes, int ContributorEmails, int PostClaimRequests = 0, int PostLinkRequests = 0, int PastAuthorInvitations = 0)
+public sealed record ContactDeletion(int ClaimRequests, int Substitutes, int ContributorEmails, int PostClaimRequests = 0, int PostLinkRequests = 0, int PastAuthorInvitations = 0, int QueuedEmails = 0)
 {
-    public static readonly ContactDeletion None = new(0, 0, 0, 0, 0, 0);
+    public static readonly ContactDeletion None = new(0, 0, 0, 0, 0, 0, 0);
 
     public bool DeletedAnything => this != None;
 }
@@ -17,8 +18,9 @@ public sealed record ContactDeletion(int ClaimRequests, int Substitutes, int Con
 /// a spot and hasn't signed in since. <b>Authors keep their email addresses</b>, on their account and on their spots, so they
 /// can hear about the next season. The public calendar is left as it is. Requests to add an older post to someone's account
 /// go <see cref="PostClaimsKeptFor"/> after an organizer decides them, and requests for new links to someone's older posts go
-/// <see cref="PostLinkRequestsKeptFor"/> after they're decided or withdrawn, whatever the season. Deleting is idempotent, so
-/// it's safe to run often and from every replica.
+/// <see cref="PostLinkRequestsKeptFor"/> after they're decided or withdrawn, whatever the season. Emails in the email queue
+/// (#152), which hold their recipient's address and the whole email, go <see cref="QueuedEmailsKeptFor"/> after they're sent,
+/// expire or fail. Deleting is idempotent, so it's safe to run often and from every replica.
 /// </summary>
 public sealed class ContactRetention(AdventDbContext db, AdventSchedule schedule, TimeProvider timeProvider, ILogger<ContactRetention> logger)
 {
@@ -28,9 +30,13 @@ public sealed class ContactRetention(AdventDbContext db, AdventSchedule schedule
     /// <summary>How long a decided or withdrawn request for new links to someone's older posts is kept.</summary>
     public static readonly TimeSpan PostLinkRequestsKeptFor = TimeSpan.FromDays(30);
 
+    /// <summary>How long an email stays in the queue after it's sent, expires or fails: long enough to look into a problem.</summary>
+    public static readonly TimeSpan QueuedEmailsKeptFor = TimeSpan.FromDays(7);
+
     public async Task<ContactDeletion> DeleteExpiredAsync(CancellationToken cancellationToken = default)
     {
         var now = timeProvider.GetUtcNow();
+        var queuedEmails = await DeleteFinishedEmailsAsync(now - QueuedEmailsKeptFor, cancellationToken);
 
         var decidedBefore = now - PostClaimsKeptFor;
         var postClaimRequests = await db.PostClaimRequests
@@ -48,7 +54,7 @@ public sealed class ContactRetention(AdventDbContext db, AdventSchedule schedule
         var expired = years.Where(year => schedule.GetContactDeletionTime(year) <= now).ToList();
         if (expired.Count == 0)
         {
-            return Logged(ContactDeletion.None with { PostClaimRequests = postClaimRequests, PostLinkRequests = postLinkRequests });
+            return Logged(ContactDeletion.None with { PostClaimRequests = postClaimRequests, PostLinkRequests = postLinkRequests, QueuedEmails = queuedEmails });
         }
 
         var claimRequests = await db.ClaimRequests
@@ -77,7 +83,23 @@ public sealed class ContactRetention(AdventDbContext db, AdventSchedule schedule
                     .SetProperty(c => c.EmailVerifiedAt, (DateTimeOffset?)null),
                 cancellationToken);
 
-        return Logged(new ContactDeletion(claimRequests, substitutes, contributorEmails, postClaimRequests, postLinkRequests, invitations));
+        return Logged(new ContactDeletion(claimRequests, substitutes, contributorEmails, postClaimRequests, postLinkRequests, invitations, queuedEmails));
+    }
+
+    /// <summary>Emails that were sent, expired or failed before <paramref name="finishedBefore"/>. Never one still waiting.</summary>
+    private async Task<int> DeleteFinishedEmailsAsync(DateTimeOffset finishedBefore, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await db.EmailOutbox
+                .Where(e => e.Status != QueuedEmailStatus.Pending && e.FinishedAt != null && e.FinishedAt < finishedBefore)
+                .ExecuteDeleteAsync(cancellationToken);
+        }
+        catch (Exception exception) when (EmailOutbox.IsMissingTable(exception))
+        {
+            // The worker runs this as the app starts, which can be before the deploy's migrations create the queue.
+            return 0;
+        }
     }
 
     private ContactDeletion Logged(ContactDeletion deletion)
@@ -85,13 +107,14 @@ public sealed class ContactRetention(AdventDbContext db, AdventSchedule schedule
         if (deletion.DeletedAnything)
         {
             logger.LogInformation(
-                "Deleted expired contact details: {ClaimRequests} claim requests, {Substitutes} substitutes, {ContributorEmails} contributor emails, {PostClaimRequests} post claim requests, {PostLinkRequests} post link requests and {PastAuthorInvitations} past author invitations.",
+                "Deleted expired contact details: {ClaimRequests} claim requests, {Substitutes} substitutes, {ContributorEmails} contributor emails, {PostClaimRequests} post claim requests, {PostLinkRequests} post link requests, {PastAuthorInvitations} past author invitations and {QueuedEmails} finished emails.",
                 deletion.ClaimRequests,
                 deletion.Substitutes,
                 deletion.ContributorEmails,
                 deletion.PostClaimRequests,
                 deletion.PostLinkRequests,
-                deletion.PastAuthorInvitations);
+                deletion.PastAuthorInvitations,
+                deletion.QueuedEmails);
         }
 
         return deletion;

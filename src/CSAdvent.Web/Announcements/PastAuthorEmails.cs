@@ -20,6 +20,8 @@ public static class PastAuthorEmails
 
         return new EmailContent
         {
+            Kind = "past-author-invitation",
+            Priority = EmailPriority.Invitation,
             Subject = SingleLine($"C# Advent {year} sign-ups are open: you wrote for us before"),
             Preview = "Claim a day in December and write for C# Advent again.",
             Heading = SingleLine($"Come back for C# Advent {year}, {author.Name}!"),

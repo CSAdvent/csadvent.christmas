@@ -26,7 +26,7 @@ else if (_announcement is { SentAt: not null } sent)
     <h1 class="text-3xl font-bold tracking-tight text-slate-900">@sent.Subject</h1>
     <p class="mt-2 text-slate-600">
         Sent <LocalTime Value="sent.SentAt.Value" /> by @sent.CreatedBy:
-        @(sent.FinishedAt is null ? "it's still going out, a few at a time." : "every subscriber has it.")
+        @(sent.FinishedAt is null ? "its copies are still being queued." : "every subscriber's copy is in the email queue, which sends them after the emails people are waiting for.")
     </p>
     <AnnouncementPreview Announcement="sent" />
 }
@@ -125,9 +125,9 @@ else
     private string? Message => Done switch
     {
         "saved" => "Saved.",
-        "tested" => "Test sent to the organizers' inbox.",
-        "test-failed" => "The test didn't send. Check the email settings.",
-        "sent" => "Sent. It goes out a few at a time, so the last subscribers may get it a few hours from now.",
+        "tested" => "Test queued for the organizers' inbox, first in line. If the email service refuses it, it shows up as failed in the email queue.",
+        "test-failed" => "The test couldn't be queued. Try again in a minute.",
+        "sent" => "Sent. Every copy is queued within 5 minutes, and the email queue sends them after the emails people are waiting for, so the last subscribers may get it a few hours from now.",
         _ => null,
     };
 

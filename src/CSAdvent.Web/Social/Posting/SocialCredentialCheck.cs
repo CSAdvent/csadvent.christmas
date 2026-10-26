@@ -72,6 +72,7 @@ public sealed partial class SocialCredentialCheck(
     /// <summary>Tells the organizers a platform's credentials failed today's check.</summary>
     public static EmailContent CredentialsFailing(SocialPlatform platform, string error, SiteOptions site) => new()
     {
+        Kind = "social-credentials-failing",
         Subject = $"Automatic posting to {platform} has stopped working",
         Preview = $"C# Advent's {platform} credentials failed today's check.",
         Heading = $"{platform} needs new credentials",
@@ -88,6 +89,6 @@ public sealed partial class SocialCredentialCheck(
         Reason = "You're getting this email because you're a C# Advent organizer.",
     };
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't email the organizers that the {Platform} credentials failed")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't queue the email telling the organizers that the {Platform} credentials failed")]
     private partial void LogAlertFailed(Exception exception, SocialPlatform platform);
 }

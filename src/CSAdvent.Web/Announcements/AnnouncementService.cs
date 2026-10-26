@@ -4,6 +4,7 @@ using CSAdvent.Web.Claims;
 using CSAdvent.Web.Content;
 using CSAdvent.Web.Data;
 using CSAdvent.Web.Email;
+using CSAdvent.Web.Email.Queue;
 using CSAdvent.Web.Manage;
 using CSAdvent.Web.Reminders;
 using Microsoft.EntityFrameworkCore;
@@ -14,32 +15,26 @@ using static CSAdvent.Web.Email.EmailBlocks;
 namespace CSAdvent.Web.Announcements;
 
 /// <summary>An announcement in the organizers' list, with how far its delivery has got.</summary>
+/// <param name="Delivered">Copies queued for subscribers so far (each is recorded when it's queued).</param>
+/// <param name="Recipients">Everyone it's for: subscribers confirmed when it was sent.</param>
 public sealed record AnnouncementRow(int Id, AnnouncementKind Kind, string Subject, string CreatedBy, DateTimeOffset CreatedAt, DateTimeOffset? SentAt, DateTimeOffset? FinishedAt, int Delivered, int Recipients)
 {
     public bool IsDraft => SentAt is null;
+
+    /// <summary>Where its queued copies are, while the email queue keeps them (a week).</summary>
+    public QueueProgress Queue { get; init; } = QueueProgress.None;
 }
 
 /// <param name="DailyPosts">Confirmed subscribers who get each December day's posts too (#206).</param>
 public sealed record SubscriberCounts(int Confirmed, int Unconfirmed, int DailyPosts = 0);
 
-public sealed class AnnouncementOptions
-{
-    public const string SectionName = "Announcements";
-
-    /// <summary>
-    /// How many emails to the list go out an hour (announcements, past authors' invitations and readers' daily posts together),
-    /// leaving room under the email service's limit (100 an hour for a new custom domain) for reminders and the rest.
-    /// </summary>
-    [Range(1, 10000)]
-    public int PerHour { get; set; } = 40;
-}
-
 /// <summary>
 /// Announcements to the list (#49): organizers write them at <c>/manage/announcements</c>, and the season's "sign-ups are
 /// open" email is queued automatically, when past authors start being invited too (<see cref="PastAuthorInvitationService"/>).
-/// <see cref="AnnouncementWorker"/> delivers them a few at a time, within <see cref="AnnouncementOptions.PerHour"/> for every
-/// email to the list together (readers' daily posts too, <see cref="ReaderDailyEmailService"/>), recording each copy before
-/// sending it, so nobody gets one twice even across replicas.
+/// <see cref="AnnouncementWorker"/> puts every copy in the email queue (#152) at once, recording each before it's queued, so
+/// nobody gets one twice even across replicas. The queue sends them as list mail, after the emails people are waiting for
+/// and the day's posts for readers (<see cref="ReaderDailyEmailService"/>), within <see cref="EmailQueueOptions.ListPerHour"/>.
+/// Unsubscribing takes back a copy still waiting.
 /// </summary>
 public sealed partial class AnnouncementService(
     AdventDbContext db,
@@ -50,7 +45,7 @@ public sealed partial class AnnouncementService(
     ReaderDailyEmailService readers,
     EmailComposer composer,
     IEmailSender sender,
-    IOptions<AnnouncementOptions> options,
+    EmailOutbox outbox,
     IOptions<ReminderOptions> reminders,
     IOptions<SiteOptions> site,
     TimeProvider timeProvider,
@@ -61,7 +56,21 @@ public sealed partial class AnnouncementService(
     /// <summary>The "sign-ups are open" email is only queued this soon after sign-ups open, so creating a season late doesn't send a stale one.</summary>
     public static readonly TimeSpan SignUpsAnnouncedWithin = TimeSpan.FromDays(2);
 
-    public async Task<IReadOnlyList<AnnouncementRow>> ListAsync(CancellationToken cancellationToken = default) =>
+    /// <summary>What the email queue knows an announcement's copies by.</summary>
+    public static string Reference(int announcementId) => string.Create(System.Globalization.CultureInfo.InvariantCulture, $"announcement:{announcementId}");
+
+    /// <summary>Every announcement's copies, for taking back the ones still waiting when someone unsubscribes.</summary>
+    public const string ReferencePrefix = "announcement:";
+
+    /// <summary>Every announcement, newest first, with how far its copies have got.</summary>
+    public async Task<IReadOnlyList<AnnouncementRow>> ListAsync(CancellationToken cancellationToken = default)
+    {
+        var rows = await ListRowsAsync(cancellationToken);
+        var progress = await outbox.GetProgressAsync(ReferencePrefix, cancellationToken);
+        return [.. rows.Select(row => row with { Queue = progress.GetValueOrDefault(Reference(row.Id), QueueProgress.None) })];
+    }
+
+    private async Task<IReadOnlyList<AnnouncementRow>> ListRowsAsync(CancellationToken cancellationToken) =>
         await db.Announcements
             .AsNoTracking()
             .OrderByDescending(a => a.CreatedAt)
@@ -151,9 +160,10 @@ public sealed partial class AnnouncementService(
         await db.Announcements.Where(a => a.Id == id && a.SentAt == null).ExecuteDeleteAsync(cancellationToken) == 1;
 
     /// <summary>
-    /// Queues the "sign-ups are open" email when it's due, then sends what it can within the hour's allowance: the day's posts
-    /// to readers first (they're only news that day), then announcements, then past authors' invitations while the season's
-    /// sign-ups are open. Returns how many emails went out.
+    /// Queues the "sign-ups are open" email when it's due, then puts what's due in the email queue: the day's posts to readers
+    /// and every copy of the announcements being sent, all at once (the queue's priorities send the readers' first), then as
+    /// many past authors' invitations as the queue has room for, while the season's sign-ups are open. Returns how many
+    /// emails were queued.
     /// </summary>
     /// <param name="signUpsYear">The season whose sign-ups to announce, instead of the current one (for the tests).</param>
     public async Task<int> RunAsync(DateTimeOffset now, int? signUpsYear = null, CancellationToken cancellationToken = default)
@@ -164,53 +174,46 @@ public sealed partial class AnnouncementService(
             await QueueSignUpsOpenAsync(openingYear, now, cancellationToken);
         }
 
-        // Only the hour up to now counts, so a run at another time (the tests' runs in other years) never uses it up.
-        var hourAgo = now - TimeSpan.FromHours(1);
-        var budget = options.Value.PerHour
-            - await db.AnnouncementDeliveries.CountAsync(d => d.SentAt > hourAgo && d.SentAt <= now, cancellationToken)
-            - await invitations.CountSentAsync(hourAgo, now, cancellationToken)
-            - await readers.CountSentAsync(hourAgo, now, cancellationToken);
-        var sent = await readers.RunAsync(now, budget, cancellationToken);
-        budget -= sent;
+        var queued = await readers.RunAsync(now, cancellationToken);
         foreach (var announcement in await db.Announcements.AsNoTracking().Where(a => a.SentAt != null && a.FinishedAt == null).OrderBy(a => a.SentAt).ToListAsync(cancellationToken))
         {
-            if (budget <= 0)
-            {
-                break;
-            }
-
             var waiting = await db.AnnouncementSubscribers
                 .AsNoTracking()
                 .Where(s => s.ConfirmedAt != null && s.ConfirmedAt <= announcement.SentAt
                     && !db.AnnouncementDeliveries.Any(d => d.AnnouncementId == announcement.Id && d.SubscriberId == s.Id))
                 .OrderBy(s => s.Id)
-                .Take(budget)
                 .Select(s => new { s.Id, s.Email })
                 .ToListAsync(cancellationToken);
-            if (waiting.Count == 0)
-            {
-                await db.Announcements.Where(a => a.Id == announcement.Id).ExecuteUpdateAsync(s => s.SetProperty(a => a.FinishedAt, now), cancellationToken);
-                continue;
-            }
 
+            var allQueued = true;
             foreach (var subscriber in waiting)
             {
-                budget--;
-                if (await DeliverAsync(announcement, subscriber.Id, subscriber.Email, now, cancellationToken))
+                switch (await DeliverAsync(announcement, subscriber.Id, subscriber.Email, now, cancellationToken))
                 {
-                    sent++;
-                    await Task.Delay(reminders.Value.PauseBetweenEmails, timeProvider, cancellationToken);
+                    case Delivery.Queued:
+                        queued++;
+                        break;
+                    case Delivery.Failed:
+                        allQueued = false;
+                        break;
                 }
+            }
+
+            // Finished once every copy is in the queue. One that couldn't be queued is, by the next run.
+            if (allQueued)
+            {
+                await db.Announcements.Where(a => a.Id == announcement.Id).ExecuteUpdateAsync(s => s.SetProperty(a => a.FinishedAt, now), cancellationToken);
             }
         }
 
-        // The invitations decide for themselves whether they're going out: from the same morning, until sign-ups close.
+        // The invitations decide for themselves whether they're going out: from the same morning, until sign-ups close. Only
+        // as many as the queue has room for, after the readers' posts and the announcements just queued.
         if (year is { } invitingYear)
         {
-            sent += await invitations.RunAsync(invitingYear, now, budget, cancellationToken);
+            queued += await invitations.RunAsync(invitingYear, now, await outbox.GetListRoomAsync(cancellationToken), cancellationToken);
         }
 
-        return sent;
+        return queued;
     }
 
     /// <summary>The announcement as an email, with the subscriber's own unsubscribe link (also its one-click header).</summary>
@@ -225,6 +228,8 @@ public sealed partial class AnnouncementService(
         body.Add(Paragraph("Thanks,", EmailSpan.LineBreak, "Matt and Calvin, the C# Advent organizers"));
         return new EmailContent
         {
+            Kind = announcement.Kind is AnnouncementKind.SignUpsOpen ? "announcement-signups-open" : "announcement",
+            Priority = EmailPriority.Announcement,
             Subject = announcement.Subject,
             Preview = Paragraphs(announcement.Message).FirstOrDefault() ?? announcement.Subject,
             Heading = announcement.Subject,
@@ -295,9 +300,19 @@ public sealed partial class AnnouncementService(
         }
     }
 
-    private async Task<bool> DeliverAsync(Announcement announcement, int subscriberId, string email, DateTimeOffset now, CancellationToken cancellationToken)
+    private enum Delivery
     {
-        // Recorded first: the unique index means only one run or replica sends each copy.
+        Queued,
+
+        /// <summary>Another run queued it, or they unsubscribed just now.</summary>
+        NotNeeded,
+
+        Failed,
+    }
+
+    private async Task<Delivery> DeliverAsync(Announcement announcement, int subscriberId, string email, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        // Recorded first: the unique index means only one run or replica queues each copy.
         var delivery = new AnnouncementDelivery { AnnouncementId = announcement.Id, SubscriberId = subscriberId, SentAt = now };
         db.AnnouncementDeliveries.Add(delivery);
         try
@@ -306,32 +321,32 @@ public sealed partial class AnnouncementService(
         }
         catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation or PostgresErrorCodes.ForeignKeyViolation })
         {
-            // Another run sent it, or they unsubscribed just now.
+            // Another run queued it, or they unsubscribed just now.
             db.Entry(delivery).State = EntityState.Detached;
-            return false;
+            return Delivery.NotNeeded;
         }
 
         try
         {
-            var content = Email(announcement, subscriptions.StopLink(subscriberId), site.Value);
+            var content = Email(announcement, subscriptions.StopLink(subscriberId), site.Value) with { Reference = Reference(announcement.Id) };
             await sender.SendAsync(await composer.ComposeAsync(content, new EmailRecipient(email, email)), cancellationToken);
-            return true;
+            return Delivery.Queued;
         }
         catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
         {
             // Without the address: the logs never carry personal details. A later run tries again.
             LogDeliveryFailed(exception, announcement.Id, subscriberId);
             await db.AnnouncementDeliveries.Where(d => d.Id == delivery.Id).ExecuteDeleteAsync(cancellationToken);
-            return false;
+            return Delivery.Failed;
         }
     }
 
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't send the test of announcement {AnnouncementId}")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't queue the test of announcement {AnnouncementId}")]
     private partial void LogTestFailed(Exception exception, int announcementId);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't send announcement {AnnouncementId} to subscriber {SubscriberId}; a later run will try again")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't queue announcement {AnnouncementId} for subscriber {SubscriberId}; a later run will try again")]
     private partial void LogDeliveryFailed(Exception exception, int announcementId, int subscriberId);
 }
 

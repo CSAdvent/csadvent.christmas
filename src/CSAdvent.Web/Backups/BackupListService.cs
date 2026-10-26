@@ -181,7 +181,7 @@ public sealed partial class BackupListService(
     private static int? PositionOf(List<Substitute> list, Substitute substitute) =>
         substitute.AssignedSlotId is not null ? null : list.Where(s => s.AssignedSlotId is null).ToList().IndexOf(substitute) + 1;
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't send the backup sign-up email for {Year}")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't queue the backup sign-up email for {Year}")]
     private partial void LogSignupEmailFailed(Exception exception, int year);
 }
 
