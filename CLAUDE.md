@@ -266,7 +266,7 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 
 ## Blurb Check
 
-- **The rule** (#128, `Blurbs/`): every post from 2026 on (`BlurbRules.AppliesTo`, the test season too) opens by saying it's part of that year's C# Advent calendar, with a link to csadvent.christmas. **The wording is the author's**; `SuggestedBlurb` is only a ready-to-paste example (text, Markdown, HTML) on My spots, and the approval email and terms explain the rule.
+- **The rule** (#128, `Blurbs/`): every post from 2026 on (`BlurbRules.AppliesTo`, the test season too) opens by saying it's part of that year's C# Advent calendar, with a link to csadvent.christmas. **The wording is the author's**; `SuggestedBlurb` is only a ready-to-paste example (text, Markdown, HTML) on My spots. Authors see the rule with that example before they request a day (on the claim page, next to the terms) and in the request-received email, and the approval email and terms explain it again.
 - **Checking a post** (`BlurbChecker`, which saves nothing):
   - `WebPostFetcher` fetches it with its own client, like the logo fetcher: `PublicAddresses`, 15 seconds, 2 MB, no factory retries. Video sites can't be read, so they're Couldn't check.
   - `ArticleReader` (AngleSharp) reads the opening: the article without its site, `nav`, `aside`, `footer`, scripts or forms, up to `Blurbs:OpeningCharacters` (2,000) visible characters, with links as `[words](url)`. A blurb in the post's footer isn't at the top.

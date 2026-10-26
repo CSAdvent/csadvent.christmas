@@ -39,6 +39,20 @@ public sealed partial class ClaimPageTests(AppHostFixture fixture)
     }
 
     [Fact]
+    public async Task TheFormShowsTheBlurbRuleWithTheExample()
+    {
+        await EnsureSeasonsAsync();
+        using var browser = await SignInAsync("claim-blurb", 6031);
+
+        var html = await browser.GetStringAsync("/claim/2097/2/1", CancellationToken);
+
+        Assert.Contains("Your post opens with the C# Advent blurb.", html);
+        Assert.Contains("This post is part of the <a href=\"https://csadvent.christmas\" class=\"text-advent-700 underline\">2097 C# Advent calendar</a>", html);
+        Assert.Contains("it opens with the C# Advent blurb, linking back to the", html);
+        Assert.DoesNotContain("it links back to C# Advent", html);
+    }
+
+    [Fact]
     public async Task SocialAccountsAreSavedOnTheContributorAndPrefilledNextTime()
     {
         await EnsureSeasonsAsync();

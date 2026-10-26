@@ -1,3 +1,4 @@
+using CSAdvent.Web.Blurbs;
 using CSAdvent.Web.Content;
 using CSAdvent.Web.Email;
 using static CSAdvent.Web.Email.EmailBlocks;
@@ -57,6 +58,7 @@ public static class ClaimEmails
             Paragraph(
                 "The organizers review every request, and you'll get another email once they've decided. If that day goes to " +
                 "someone else, we'll tell you, so you can pick another."),
+            .. BlurbExample(claim),
             Paragraph("Changed your mind? Withdraw it from your ", Link("My spots", MySpots(site)), " page while it's waiting."),
             Paragraph("Questions? Just reply to this email."),
             SignOff,
@@ -64,6 +66,27 @@ public static class ClaimEmails
         Reason = $"You're getting this email because you requested a spot in C# Advent {claim.Year}.",
         Transactional = true,
     };
+
+    /// <summary>
+    /// The blurb rule with the example from My spots, so it's in writing before a request is approved. Nothing for a season
+    /// without the rule (<see cref="BlurbRules.AppliesTo"/>).
+    /// </summary>
+    private static IEnumerable<EmailBlock> BlurbExample(ClaimEmailDetails claim)
+    {
+        if (!BlurbRules.AppliesTo(claim.Year))
+        {
+            yield break;
+        }
+
+        var blurb = SuggestedBlurb.For(claim.Year, claim.SlotsPerDay);
+        yield return Paragraph(
+            $"One thing to know now: every post opens with the C# Advent blurb, a line saying it's part of the {claim.Year} C# Advent " +
+            $"calendar with a link to {BlurbRules.Host}. Any wording is fine. For example:");
+        yield return Paragraph("This post is part of the ", Link(blurb.Calendar, BlurbRules.SiteUrl), $": {blurb.Rest}");
+        yield return Paragraph(
+            "We check every post, and one without it when it's announced may go to a backup poster. Once you have a spot, this " +
+            "example is ready to copy on your My spots page.");
+    }
 
     public static EmailContent NewRequest(ClaimEmailDetails claim, SiteOptions site) => new()
     {

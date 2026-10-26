@@ -1,3 +1,4 @@
+using CSAdvent.Web.Blurbs;
 using CSAdvent.Web.Claims;
 using CSAdvent.Web.Content;
 using CSAdvent.Web.Email;
@@ -25,6 +26,30 @@ public sealed class ClaimEmailsTests
         Assert.Equal("We received your C# Advent request for December 3", email.Subject);
         Assert.Equal("Thanks, Ada Lovelace!", email.Heading);
         Assert.Contains("December 3, 2026 (post 2)", Text(email));
+    }
+
+    [Theory]
+    [InlineData(2, "two C# posts a day, December 1–25.")]
+    [InlineData(1, "a C# post a day, December 1–25.")]
+    public void TheReceivedEmailExplainsTheBlurbWithTheExample(int slotsPerDay, string rest)
+    {
+        var email = ClaimEmails.Received(Claim(slotsPerDay), Site);
+        var text = Text(email);
+
+        Assert.Contains("every post opens with the C# Advent blurb", text);
+        Assert.Contains(SuggestedBlurb.For(2026, slotsPerDay).Text, text);
+        Assert.EndsWith(rest, SuggestedBlurb.For(2026, slotsPerDay).Text);
+        Assert.Contains("may go to a backup poster", text);
+        var link = Assert.Single(email.Body.OfType<ParagraphBlock>().SelectMany(p => p.Spans).OfType<LinkSpan>(), l => l.Text == "2026 C# Advent calendar");
+        Assert.Equal(BlurbRules.SiteUrl, link.Url);
+    }
+
+    [Fact]
+    public void TheReceivedEmailLeavesTheBlurbOutForSeasonsWithoutTheRule()
+    {
+        var text = Text(ClaimEmails.Received(Claim() with { Year = BlurbRules.FirstYear - 1 }, Site));
+
+        Assert.DoesNotContain("C# Advent blurb", text);
     }
 
     [Fact]
