@@ -47,35 +47,52 @@
 
     <EditForm Model="Form" FormName="spot" OnValidSubmit="SaveAsync" class="mt-8 flex max-w-2xl flex-col gap-5">
         <DataAnnotationsValidator />
-        <ValidationSummary class="rounded-xl bg-red-50 p-4 text-sm ring-1 ring-red-200" />
+        <div role="alert" class="[&:not(:has(li))]:hidden"><ValidationSummary class="rounded-xl bg-red-50 p-4 text-sm ring-1 ring-red-200" /></div>
         <input type="hidden" name="Form.Version" value="@Form!.Version" />
 
         <fieldset class="flex flex-col gap-4">
             <legend class="font-semibold text-slate-900">Your post</legend>
-            <label class="flex flex-col text-sm font-medium text-slate-700">
-                Title
-                <InputText @bind-Value="Form!.PostTitle" maxlength="300" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
-            </label>
-            <label class="flex flex-col text-sm font-medium text-slate-700">
-                URL
-                <InputText @bind-Value="Form!.PostUrl" type="url" maxlength="500" placeholder="https://" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
-            </label>
-            <label class="flex flex-col text-sm font-medium text-slate-700">
-                Summary <span class="font-normal text-slate-500">(optional; your post in one line, up to 160 characters, for its page, the RSS feed and our social posts. Like the title, it's only shown once your post is revealed)</span>
-                <InputText @bind-Value="Form!.PostSummary" maxlength="160" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
-            </label>
+            <div>
+                <label class="flex flex-col text-sm font-medium text-slate-700">
+                    Title
+                    <InputText @bind-Value="Form!.PostTitle" maxlength="300" aria-describedby="title-error" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                </label>
+                <div id="title-error"><ValidationMessage For="() => Form!.PostTitle" /></div>
+            </div>
+            <div>
+                <label class="flex flex-col text-sm font-medium text-slate-700">
+                    URL
+                    <InputText @bind-Value="Form!.PostUrl" type="url" maxlength="500" placeholder="https://" aria-describedby="url-error" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                </label>
+                <div id="url-error"><ValidationMessage For="() => Form!.PostUrl" /></div>
+            </div>
+            <div>
+                <label class="flex flex-col text-sm font-medium text-slate-700">
+                    <span>Summary <span class="font-normal text-slate-500">(optional)</span></span>
+                    <InputText @bind-Value="Form!.PostSummary" maxlength="160" aria-describedby="summary-help summary-error" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                </label>
+                <p id="summary-help" class="mt-1 text-sm text-slate-500">Your post in one line, up to 160 characters, for its page, the RSS feed and our social posts. Like the title, it's only shown once your post is revealed.</p>
+                <div id="summary-error"><ValidationMessage For="() => Form!.PostSummary" /></div>
+            </div>
         </fieldset>
 
         <fieldset class="flex flex-col gap-4">
             <legend class="font-semibold text-slate-900">You</legend>
-            <label class="flex flex-col text-sm font-medium text-slate-700">
-                Name <span class="font-normal text-slate-500">(shown on the calendar)</span>
-                <InputText @bind-Value="Form!.AuthorName" maxlength="50" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
-            </label>
-            <label class="flex flex-col text-sm font-medium text-slate-700">
-                Your website or blog <span class="font-normal text-slate-500">(optional; not the post or a social media profile. Without one, your name links to your GitHub profile)</span>
-                <InputText @bind-Value="Form!.AuthorUrl" type="url" maxlength="200" placeholder="https://" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
-            </label>
+            <div>
+                <label class="flex flex-col text-sm font-medium text-slate-700">
+                    <span>Name <span class="font-normal text-slate-500">(shown on the calendar)</span></span>
+                    <InputText @bind-Value="Form!.AuthorName" maxlength="50" aria-describedby="name-error" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                </label>
+                <div id="name-error"><ValidationMessage For="() => Form!.AuthorName" /></div>
+            </div>
+            <div>
+                <label class="flex flex-col text-sm font-medium text-slate-700">
+                    <span>Your website or blog <span class="font-normal text-slate-500">(optional)</span></span>
+                    <InputText @bind-Value="Form!.AuthorUrl" type="url" maxlength="200" placeholder="https://" aria-describedby="website-help website-error" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                </label>
+                <p id="website-help" class="mt-1 text-sm text-slate-500">Not the post or a social media profile. Without one, your name links to your GitHub profile.</p>
+                <div id="website-error"><ValidationMessage For="() => Form!.AuthorUrl" /></div>
+            </div>
         </fieldset>
 
         <div>

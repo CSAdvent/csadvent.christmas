@@ -42,6 +42,18 @@ public sealed record BackupListEntry(
     DateTimeOffset SignedUpAt,
     string Status);
 
+/// <summary>A backup poster asked about one spot, for its entry editor: who, when, and what they said (#173).</summary>
+public sealed record SpotBackupOffer(
+    string Name,
+    string? GithubLogin,
+    string Email,
+    DateTimeOffset AskedAt,
+    DateTimeOffset ExpiresAt,
+    BackupOfferStatus Status,
+    DateTimeOffset? RespondedAt,
+    string? PostTitle,
+    string? PostUrl);
+
 public enum BackupSignupOutcome
 {
     SignedUp,
@@ -214,6 +226,24 @@ public sealed partial class BackupListService(
             return new BackupListEntry(PositionOf(list, s), s.Name, s.Contributor?.GithubLogin, s.Email, s.Notes, s.SignedUpAt, status);
         })];
     }
+
+    /// <summary>Every backup asked about a spot, in the order they were asked.</summary>
+    public Task<List<SpotBackupOffer>> ListOffersAsync(int slotId, CancellationToken cancellationToken = default) =>
+        db.BackupOffers
+            .AsNoTracking()
+            .Where(o => o.SlotId == slotId)
+            .OrderBy(o => o.AskedAt).ThenBy(o => o.Id)
+            .Select(o => new SpotBackupOffer(
+                o.Substitute.Name,
+                o.Substitute.Contributor == null ? null : o.Substitute.Contributor.GithubLogin,
+                o.Substitute.Email,
+                o.AskedAt,
+                o.ExpiresAt,
+                o.Status,
+                o.RespondedAt,
+                o.PostTitle,
+                o.PostUrl))
+            .ToListAsync(cancellationToken);
 
     private Task<List<Substitute>> OrderedAsync(int year, CancellationToken cancellationToken) =>
         db.Substitutes

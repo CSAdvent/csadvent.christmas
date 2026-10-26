@@ -5,8 +5,9 @@
 @using Microsoft.Extensions.Options
 @inject IOptions<SocialPostingOptions> Posting
 
-@* How each platform's announcements go out (#61): its mode, and a check of its credentials. Not tied to a season. *@
-<section class="mt-6 max-w-4xl rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
+@* How each platform's announcements go out (#61): its mode, and a check of its credentials. Not tied to a season. It scrolls
+   sideways on a phone, where its table is wider than the screen (#170). *@
+<section class="mt-6 max-w-4xl overflow-x-auto rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
     <h2 class="font-semibold text-slate-900">How each platform is posted</h2>
     <p class="mt-1 text-sm text-slate-600">
         <strong>Automatic</strong> platforms post each entry on its day at @Time(1) (post 1) and @Time(2) (post 2) Eastern,

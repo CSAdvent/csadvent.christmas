@@ -2,6 +2,8 @@
 @using CSAdvent.Web.Blurbs
 @inject EntryAdminService Entries
 @inject BlurbQueries Blurbs
+@inject CSAdvent.Web.Backups.BackupListService Backups
+@inject AdventSchedule Schedule
 @inject NavigationManager Navigation
 
 @if (_entry is { } entry)
@@ -92,12 +94,18 @@
         </section>
     }
 
-    <BlurbPanel Details="_blurb" ReturnUrl="@($"manage/entries/{SlotId}")" Action="@BlurbDone" />
+    <SpotBackupOffers Offers="_offers" Year="entry.Year" IsDayOver="Schedule.IsDayOver(entry.Year, entry.Day)" Now="Schedule.Now" />
+
+    @* Its buttons come back to it, not to the top of the page (#170). *@
+    <div id="blurb" class="scroll-mt-4">
+        <BlurbPanel Details="_blurb" ReturnUrl="@($"manage/entries/{SlotId}#blurb")" Action="@BlurbDone" />
+    </div>
 }
 
 @code {
     private EntryDetails? _entry;
     private BlurbDetails? _blurb;
+    private List<CSAdvent.Web.Backups.SpotBackupOffer> _offers = [];
     private bool _claimed;
     private bool _releasePosted;
     private string? _error;
@@ -133,6 +141,7 @@
         _claimed = _entry.Values.AuthorName is not null;
         Form ??= _entry.Values;
         _blurb = await Blurbs.GetAsync(SlotId);
+        _offers = await Backups.ListOffersAsync(SlotId);
     }
 
     private async Task SaveAsync() => await HandleAsync(await Entries.SaveAsync(SlotId, Form!));

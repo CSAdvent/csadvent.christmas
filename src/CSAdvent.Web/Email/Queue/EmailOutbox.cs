@@ -62,6 +62,19 @@ public sealed class EmailOutbox(AdventDbContext db, EmailQueueSignal signal, IOp
         }
     }
 
+    /// <summary>How many emails the queue gave up on, for the badge in the organizer area's navigation.</summary>
+    public async Task<int> CountFailedAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await db.EmailOutbox.CountAsync(e => e.Status == QueuedEmailStatus.Failed, cancellationToken);
+        }
+        catch (Exception exception) when (MissingSchema.IsMissingTableOrColumn(exception))
+        {
+            return 0;
+        }
+    }
+
     /// <summary>Sends a failed email again from scratch, whatever its deadline was. False if it isn't failed any more.</summary>
     public async Task<bool> RetryAsync(int id, CancellationToken cancellationToken = default) =>
         await RetryWhereAsync(db.EmailOutbox.Where(e => e.Id == id), cancellationToken) == 1;

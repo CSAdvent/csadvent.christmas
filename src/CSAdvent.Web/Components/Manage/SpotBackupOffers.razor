@@ -1,0 +1,101 @@
+@* The backup posters asked about a spot, on its entry editor (#173): who, when, and their answer, so handling a missing
+   author doesn't need a trip to Backups. *@
+@using CSAdvent.Web.Backups
+@using CSAdvent.Web.Data
+
+@if (Offers.Count > 0 || !IsDayOver)
+{
+    <section class="mt-12 max-w-3xl">
+        <h2 class="font-semibold text-slate-900">Backup posters asked</h2>
+        @if (Offers.Count == 0)
+        {
+            <p class="mt-2 text-sm text-slate-600">
+                Nobody yet. If this spot needs a backup, they're asked one at a time, in the order they signed up:
+                <a href="manage/backups?year=@Year" class="text-advent-700 underline">see the backup list</a>.
+            </p>
+        }
+        else
+        {
+            <ol class="mt-3 flex flex-col gap-2 text-sm">
+                @foreach (var offer in Offers)
+                {
+                    <li class="rounded-lg p-3 ring-1 ring-slate-200">
+                        <p class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <span class="font-medium text-slate-900">@offer.Name</span>
+                            @if (offer.GithubLogin is { } login)
+                            {
+                                <span class="text-slate-500">@login</span>
+                            }
+                            <a href="mailto:@offer.Email" class="text-advent-700 underline">@offer.Email</a>
+                            <span class="ml-auto rounded-full px-2 py-0.5 text-xs font-semibold @Badge(offer.Status)">@Label(offer.Status)</span>
+                        </p>
+                        @* Each sentence starts with its own space, because Razor drops the whitespace between them. *@
+                        <p class="mt-1 text-slate-600">
+                            Asked <LocalTime Value="offer.AskedAt" />.
+                            @if (offer.RespondedAt is { } answeredAt)
+                            {
+                                <span> Answered <LocalTime Value="answeredAt" />.</span>
+                            }
+                            @if (offer.Status is BackupOfferStatus.Asked && offer.ExpiresAt > Now)
+                            {
+                                <span> No answer yet. If there's still none at <LocalTime Value="offer.ExpiresAt" />, the next backup is asked too.</span>
+                            }
+                            else if (offer.Status is BackupOfferStatus.Asked)
+                            {
+                                <span> No answer by <LocalTime Value="offer.ExpiresAt" />, so the next backup is asked too. They can still accept.</span>
+                            }
+                            else
+                            {
+                                <span>@($" {Outcome(offer.Status)}")</span>
+                            }
+                            @if (offer.Status is BackupOfferStatus.Accepted or BackupOfferStatus.Used && offer.PostUrl is { } postUrl)
+                            {
+                                <span>@(" ")<a href="@postUrl" target="_blank" rel="noopener" class="text-advent-700 underline">@(offer.PostTitle ?? postUrl)</a></span>
+                            }
+                        </p>
+                    </li>
+                }
+            </ol>
+        }
+    </section>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public required IReadOnlyList<SpotBackupOffer> Offers { get; set; }
+
+    [Parameter, EditorRequired]
+    public int Year { get; set; }
+
+    /// <summary>The spot's day is over, so it won't need a backup any more.</summary>
+    [Parameter]
+    public bool IsDayOver { get; set; }
+
+    [Parameter, EditorRequired]
+    public DateTimeOffset Now { get; set; }
+
+    private static string Outcome(BackupOfferStatus status) => status switch
+    {
+        BackupOfferStatus.Declined => "They said not this time.",
+        BackupOfferStatus.Accepted => "They're standing by with their post:",
+        BackupOfferStatus.Used => "Their post took the spot:",
+        _ => "Not needed after all.",
+    };
+
+    private static string Label(BackupOfferStatus status) => status switch
+    {
+        BackupOfferStatus.Asked => "Asked",
+        BackupOfferStatus.Declined => "Declined",
+        BackupOfferStatus.Accepted => "Standing by",
+        BackupOfferStatus.Used => "Took the spot",
+        _ => "Not needed",
+    };
+
+    private static string Badge(BackupOfferStatus status) => status switch
+    {
+        BackupOfferStatus.Asked => "bg-amber-100 text-amber-800",
+        BackupOfferStatus.Accepted => "bg-advent-100 text-advent-800",
+        BackupOfferStatus.Used => "bg-green-100 text-green-800",
+        _ => "bg-slate-100 text-slate-700",
+    };
+}

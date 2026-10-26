@@ -31,4 +31,16 @@
 
     tick();
     setInterval(tick, 1000);
+
+    // The reveal in the visitor's own time zone too (#176): <span data-reveal-local="{reveal}">, whose date and time as written
+    // are midnight Eastern. Left empty when the visitor's clock says the same, because they're on Eastern time too.
+    const language = (navigator.languages ?? []).find((tag) => tag.startsWith('en')) ?? 'en';
+    for (const span of document.querySelectorAll('[data-reveal-local]')) {
+        const reveal = new Date(Date.parse(span.dataset.revealLocal));
+        const local = `${reveal.getFullYear()}-${pad(reveal.getMonth() + 1)}-${pad(reveal.getDate())}T${pad(reveal.getHours())}:${pad(reveal.getMinutes())}`;
+        if (local !== span.dataset.revealLocal.slice(0, 16)) {
+            const time = new Intl.DateTimeFormat(language, { weekday: 'long', hour: 'numeric', minute: '2-digit' }).format(reveal);
+            span.textContent = ` (${time} your time)`;
+        }
+    }
 })();

@@ -57,19 +57,25 @@ else if (Message is { } message)
 
     <EditForm Model="Form" FormName="profile" OnValidSubmit="SaveAsync" class="mt-8 flex max-w-2xl flex-col gap-6">
         <DataAnnotationsValidator />
-        <ValidationSummary class="rounded-xl bg-red-50 p-4 text-sm ring-1 ring-red-200" />
+        <div role="alert" class="[&:not(:has(li))]:hidden"><ValidationSummary class="rounded-xl bg-red-50 p-4 text-sm ring-1 ring-red-200" /></div>
 
         <fieldset class="flex flex-col gap-4">
             <legend class="font-semibold text-slate-900">On the calendar</legend>
-            <label class="flex flex-col text-sm font-medium text-slate-700">
-                Name
-                <InputText @bind-Value="Form!.Name" maxlength="50" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
-            </label>
-            <label class="flex flex-col text-sm font-medium text-slate-700">
-                Your website or blog <span class="font-normal text-slate-500">(optional)</span>
-                <InputText @bind-Value="Form!.Link" type="url" maxlength="200" placeholder="https://" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
-                <span class="mt-1 font-normal text-slate-500">Your name links here, or to your GitHub profile if you leave it blank. Not a post, and not a social media profile: those go below.</span>
-            </label>
+            <div>
+                <label class="flex flex-col text-sm font-medium text-slate-700">
+                    Name
+                    <InputText @bind-Value="Form!.Name" maxlength="50" aria-describedby="name-error" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                </label>
+                <div id="name-error"><ValidationMessage For="() => Form!.Name" /></div>
+            </div>
+            <div>
+                <label class="flex flex-col text-sm font-medium text-slate-700">
+                    <span>Your website or blog <span class="font-normal text-slate-500">(optional)</span></span>
+                    <InputText @bind-Value="Form!.Link" type="url" maxlength="200" placeholder="https://" aria-describedby="link-help link-error" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                </label>
+                <p id="link-help" class="mt-1 text-sm text-slate-500">Your name links here, or to your GitHub profile if you leave it blank. Not a post, and not a social media profile: those go below.</p>
+                <div id="link-error"><ValidationMessage For="() => Form!.Link" /></div>
+            </div>
             @if (account.Spots > 0)
             {
                 <label class="flex items-start gap-3 text-sm text-slate-700">
@@ -86,30 +92,48 @@ else if (Message is { } message)
             <legend class="px-1 font-semibold text-slate-900">Social accounts <span class="font-normal text-slate-500">(optional)</span></legend>
             <p class="text-sm text-slate-600">If you add an account, we'll tag you there when we post about your article on that service, and link to it from your articles' pages here. Leave any blank that you don't use.</p>
             <div class="mt-4 grid gap-4 sm:grid-cols-2">
-                <label class="flex flex-col text-sm font-medium text-slate-700">
-                    Bluesky
-                    <InputText @bind-Value="Form!.Bluesky" maxlength="253" placeholder="you.bsky.social" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
-                </label>
-                <label class="flex flex-col text-sm font-medium text-slate-700">
-                    Mastodon
-                    <InputText @bind-Value="Form!.Mastodon" maxlength="100" placeholder="@("@you@mastodon.social")" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
-                </label>
-                <label class="flex flex-col text-sm font-medium text-slate-700">
-                    LinkedIn
-                    <InputText @bind-Value="Form!.LinkedIn" maxlength="200" placeholder="https://www.linkedin.com/in/you" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
-                </label>
-                <label class="flex flex-col text-sm font-medium text-slate-700">
-                    Facebook
-                    <InputText @bind-Value="Form!.Facebook" maxlength="200" placeholder="https://www.facebook.com/you" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
-                </label>
-                <label class="flex flex-col text-sm font-medium text-slate-700">
-                    Reddit
-                    <InputText @bind-Value="Form!.Reddit" maxlength="40" placeholder="u/you" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
-                </label>
-                <label class="flex flex-col text-sm font-medium text-slate-700">
-                    X
-                    <InputText @bind-Value="Form!.X" maxlength="100" placeholder="@("@you")" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
-                </label>
+                <div>
+                    <label class="flex flex-col text-sm font-medium text-slate-700">
+                        Bluesky
+                        <InputText @bind-Value="Form!.Bluesky" maxlength="253" placeholder="you.bsky.social" aria-describedby="bluesky-error" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                    </label>
+                    <div id="bluesky-error"><ValidationMessage For="() => Form!.Bluesky" /></div>
+                </div>
+                <div>
+                    <label class="flex flex-col text-sm font-medium text-slate-700">
+                        Mastodon
+                        <InputText @bind-Value="Form!.Mastodon" maxlength="100" placeholder="@("@you@mastodon.social")" aria-describedby="mastodon-error" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                    </label>
+                    <div id="mastodon-error"><ValidationMessage For="() => Form!.Mastodon" /></div>
+                </div>
+                <div>
+                    <label class="flex flex-col text-sm font-medium text-slate-700">
+                        LinkedIn
+                        <InputText @bind-Value="Form!.LinkedIn" maxlength="200" placeholder="https://www.linkedin.com/in/you" aria-describedby="linkedin-error" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                    </label>
+                    <div id="linkedin-error"><ValidationMessage For="() => Form!.LinkedIn" /></div>
+                </div>
+                <div>
+                    <label class="flex flex-col text-sm font-medium text-slate-700">
+                        Facebook
+                        <InputText @bind-Value="Form!.Facebook" maxlength="200" placeholder="https://www.facebook.com/you" aria-describedby="facebook-error" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                    </label>
+                    <div id="facebook-error"><ValidationMessage For="() => Form!.Facebook" /></div>
+                </div>
+                <div>
+                    <label class="flex flex-col text-sm font-medium text-slate-700">
+                        Reddit
+                        <InputText @bind-Value="Form!.Reddit" maxlength="40" placeholder="u/you" aria-describedby="reddit-error" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                    </label>
+                    <div id="reddit-error"><ValidationMessage For="() => Form!.Reddit" /></div>
+                </div>
+                <div>
+                    <label class="flex flex-col text-sm font-medium text-slate-700">
+                        X
+                        <InputText @bind-Value="Form!.X" maxlength="100" placeholder="@("@you")" aria-describedby="x-error" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                    </label>
+                    <div id="x-error"><ValidationMessage For="() => Form!.X" /></div>
+                </div>
             </div>
         </fieldset>
 

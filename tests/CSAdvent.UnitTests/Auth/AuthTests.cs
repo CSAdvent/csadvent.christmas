@@ -32,6 +32,14 @@ public sealed class ReturnUrlTests
     [InlineData("/archive\u007F")]
     [InlineData("/archive\u0085")]
     public void SendsUrlsWithControlCharactersHome(string url) => Assert.Equal("/", ReturnUrl.Sanitize(url));
+
+    // An organizer's button comes back to the item it was on (#170), with what happened in the query string.
+    [Theory]
+    [InlineData("/manage/social", "/manage/social?error=x")]
+    [InlineData("/manage/social?year=2026&day=6", "/manage/social?year=2026&day=6&error=x")]
+    [InlineData("/manage/social?year=2026&day=6#announcement-4-Bluesky-card", "/manage/social?year=2026&day=6&error=x#announcement-4-Bluesky-card")]
+    [InlineData("/manage/entries/4#blurb", "/manage/entries/4?error=x#blurb")]
+    public void AddsToTheQueryBeforeTheFragment(string url, string expected) => Assert.Equal(expected, ReturnUrl.WithQuery(url, "error", "x"));
 }
 
 public sealed class GitHubSignInTests

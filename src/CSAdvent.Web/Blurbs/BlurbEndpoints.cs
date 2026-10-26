@@ -76,7 +76,7 @@ public static partial class BlurbEndpoints
             && !url.Contains("//", StringComparison.Ordinal)
             ? $"/{url}"
             : $"/manage/entries/{slotId}";
-        return done is null ? target : $"{target}{(target.Contains('?', StringComparison.Ordinal) ? '&' : '?')}blurb={done}";
+        return done is null ? target : ReturnUrl.WithQuery(target, "blurb", done);
     }
 
     /// <summary>Back to the My spots page the button was on (only those), saying how the check went, at the spot's box.</summary>

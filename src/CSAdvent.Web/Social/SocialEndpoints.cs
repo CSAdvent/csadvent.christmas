@@ -134,6 +134,6 @@ public static class SocialEndpoints
         var target = returnUrl is { } url && url.StartsWith("manage/social", StringComparison.Ordinal) && !url.Contains("//", StringComparison.Ordinal)
             ? $"/{url}"
             : "/manage/social";
-        return error is null ? target : $"{target}{(target.Contains('?', StringComparison.Ordinal) ? '&' : '?')}error={error}";
+        return error is null ? target : ReturnUrl.WithQuery(target, "error", error);
     }
 }

@@ -99,6 +99,10 @@ public sealed class ClaimReviewService(AdventDbContext db, AdventSchedule schedu
         Items(db.ClaimRequests.Where(r => r.Slot.SeasonYear == year && r.Status == status).OrderBy(r => r.SubmittedAt))
             .ToListAsync(cancellationToken);
 
+    /// <summary>A season's requests still waiting for an organizer.</summary>
+    public Task<int> CountPendingAsync(int year, CancellationToken cancellationToken = default) =>
+        db.ClaimRequests.CountAsync(r => r.Slot.SeasonYear == year && r.Status == ClaimRequestStatus.Pending, cancellationToken);
+
     public async Task<RequestDetails?> GetAsync(int id, CancellationToken cancellationToken = default)
     {
         var request = await db.ClaimRequests

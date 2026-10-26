@@ -17,7 +17,20 @@ public enum EntryStatus
     Ready,
 }
 
-public sealed record EntryListItem(int SlotId, int Day, int Part, string? AuthorName, bool HasContact, string? PostTitle, string? PostUrl, EntryStatus Status);
+/// <summary>A spot on the organizers' entries list. <paramref name="DroppedOut"/>: its author dropped out or was released.</summary>
+public sealed record EntryListItem(
+    int SlotId,
+    int Day,
+    int Part,
+    string? AuthorName,
+    string? ContactEmail,
+    bool DroppedOut,
+    string? PostTitle,
+    string? PostUrl,
+    EntryStatus Status)
+{
+    public bool HasContact => ContactEmail is not null;
+}
 
 public sealed record EntryDetails(
     int SlotId,
@@ -55,15 +68,36 @@ public sealed class EntryAdminService(AdventDbContext db, AdventSchedule schedul
             _ => EntryStatus.ClaimedWithoutPost,
         };
 
+    /// <summary>
+    /// Whether a spot needs an organizer (#173): its day isn't over, and its author dropped out with nobody in their place
+    /// yet, its post has no link (or no title) yet, or its blurb check is missing or needs a decision.
+    /// </summary>
+    public static bool NeedsAttention(EntryListItem entry, BlurbStatus? blurb, bool isDayOver) =>
+        !isDayOver
+        && ((entry.AuthorName is null && entry.DroppedOut)
+            || entry.Status is EntryStatus.ClaimedWithoutPost or EntryStatus.TitleOnly or EntryStatus.UrlOnly
+            || blurb is BlurbStatus.Missing or BlurbStatus.NeedsDecision or BlurbStatus.CouldNotCheck);
+
     public async Task<List<EntryListItem>> ListAsync(int year, CancellationToken cancellationToken = default)
     {
         var slots = await db.Slots
             .Where(s => s.SeasonYear == year)
             .OrderBy(s => s.Day).ThenBy(s => s.Part)
-            .Select(s => new { s.Id, s.Day, s.Part, s.AuthorName, HasContact = s.Contact != null, s.PostTitle, s.PostUrl })
+            .Select(s => new
+            {
+                s.Id,
+                s.Day,
+                s.Part,
+                s.AuthorName,
+                ContactEmail = s.Contact == null ? null : s.Contact.Email,
+                DroppedOut = s.DroppedOutAt != null,
+                s.PostTitle,
+                s.PostUrl,
+            })
             .ToListAsync(cancellationToken);
 
-        return [.. slots.Select(s => new EntryListItem(s.Id, s.Day, s.Part, s.AuthorName, s.HasContact, s.PostTitle, s.PostUrl, StatusOf(s.AuthorName, s.PostTitle, s.PostUrl)))];
+        return [.. slots.Select(s => new EntryListItem(
+            s.Id, s.Day, s.Part, s.AuthorName, s.ContactEmail, s.DroppedOut, s.PostTitle, s.PostUrl, StatusOf(s.AuthorName, s.PostTitle, s.PostUrl)))];
     }
 
     public async Task<EntryDetails?> GetAsync(int slotId, CancellationToken cancellationToken = default)

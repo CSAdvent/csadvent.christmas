@@ -113,4 +113,23 @@ public sealed class HomeComponentsTests : BunitContext
         Assert.Equal("C# Advent", page.Find("h1").TextContent);
         Assert.Equal(["archive", "rss", "others"], page.FindAll("a").Select(a => a.GetAttribute("href")));
     }
+
+    [Fact]
+    public void InDecemberItJumpsToToday()
+    {
+        var page = Render<CurrentSeason>(p => p.Add(c => c.Calendar, CalendarFixtures.Calendar(November1)));
+
+        var jump = page.Find("a[href$='#december-10']");
+        Assert.Equal("#december-10", jump.GetAttribute("href"));
+        Assert.Contains("Jump to today, December 10", jump.TextContent);
+        Assert.NotNull(page.Find("#december-10"));
+    }
+
+    [Fact]
+    public void BeforeDecemberThereIsNoTodayToJumpTo()
+    {
+        var page = Render<CurrentSeason>(p => p.Add(c => c.Calendar, CalendarFixtures.Calendar(November1, now: October20)));
+
+        Assert.DoesNotContain("Jump to today", page.Markup);
+    }
 }

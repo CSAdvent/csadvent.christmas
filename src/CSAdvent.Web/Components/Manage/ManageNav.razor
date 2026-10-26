@@ -1,15 +1,42 @@
-@* The organizer area's navigation. *@
+@* The organizer area's navigation, with a count on each page that has something waiting for an organizer (#173). *@
+@using CSAdvent.Web.Manage
 @inject NavigationManager Navigation
+@inject OrganizerAttention Attention
 
-<nav aria-label="Organizer" class="mb-8 flex flex-wrap gap-2 border-b border-slate-200 pb-4 text-sm font-medium">
-    @foreach (var (href, label) in Links)
-    {
-        <a href="@href" aria-current="@(IsCurrent(href) ? "page" : null)"
-           class="rounded-lg px-3 py-1.5 @(IsCurrent(href) ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100")">@label</a>
-    }
-</nav>
+@* On a phone the links would push every page half a screen down, so they fold away there (#170), showing what's waiting. *@
+<details class="mb-6 border-b border-slate-200 pb-3 sm:hidden">
+    <summary class="cursor-pointer py-1 text-sm font-medium text-slate-700">
+        Organizer pages
+        @foreach (var item in _items.Where(item => item.Count > 0))
+        {
+            <span class="ml-1 whitespace-nowrap">@($" {item.Label} ")@Count(item)</span>
+        }
+    </summary>
+    <nav aria-label="Organizer" class="mt-2 flex flex-wrap gap-1.5 text-sm font-medium">@LinkList</nav>
+</details>
+<nav aria-label="Organizer" class="mb-8 hidden flex-wrap gap-2 border-b border-slate-200 pb-4 text-sm font-medium sm:flex">@LinkList</nav>
 
 @code {
+    private RenderFragment LinkList => @<text>
+        @foreach (var item in _items)
+        {
+            <a href="@item.Href" aria-current="@(item.IsCurrent ? "page" : null)"
+               class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 @(item.IsCurrent ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100")">
+                @item.Label
+                @if (item.Count > 0)
+                {
+                    @Count(item)
+                }
+            </a>
+        }
+    </text>;
+
+    private static RenderFragment Count(Item item) =>
+        @<span class="rounded-full px-1.5 text-xs font-semibold tabular-nums @(item.IsFailure ? "bg-red-600 text-white" : "bg-amber-300 text-slate-900")"><span class="sr-only"> (</span>@item.Count<span class="sr-only">@(item.IsFailure ? " failed)" : " waiting)")</span></span>;
+
+    /// <summary>A link, with how many things on its page are waiting, and whether that's emails that failed.</summary>
+    public sealed record Item(string Href, string Label, int Count, bool IsFailure, bool IsCurrent);
+
     private static readonly (string Href, string Label)[] Links =
     [
         ("manage", "Overview"),
@@ -17,18 +44,50 @@
         ("manage/entries", "Entries"),
         ("manage/backups", "Backups"),
         ("manage/social", "Social"),
+        ("manage/social/signups", "Sign-ups posts"),
         ("manage/content", "Content"),
         ("manage/authors", "Authors"),
+        ("manage/authors/requests", "Post claims"),
+        ("manage/authors/link-changes", "Link changes"),
         ("manage/emails", "Emails"),
+        ("manage/emails/queue", "Email queue"),
         ("manage/announcements", "Announcements"),
         ("manage/retrospectives", "Retrospectives"),
         ("manage/seasons", "Seasons"),
         ("manage/testing", "Testing"),
     ];
 
-    private bool IsCurrent(string href)
+    private IReadOnlyList<Item> _items = [];
+
+    protected override async Task OnInitializedAsync()
     {
         var path = Navigation.ToBaseRelativePath(Navigation.Uri).Split('?', '#')[0].TrimEnd('/');
-        return href == "manage" ? path == "manage" : path == href || path.StartsWith(href + "/", StringComparison.Ordinal);
+        _items = Items(path, await Attention.GetAsync());
+    }
+
+    /// <summary>
+    /// The links with their counts. The current one is the longest address the page is under, so a post claim's page is
+    /// Post claims, not Authors.
+    /// </summary>
+    public static IReadOnlyList<Item> Items(string path, AttentionCounts counts)
+    {
+        var current = Links
+            .Select(link => link.Href)
+            .Where(href => href == "manage" ? path == "manage" : path == href || path.StartsWith(href + "/", StringComparison.Ordinal))
+            .MaxBy(href => href.Length);
+
+        return [.. Links.Select(link => new Item(
+            link.Href,
+            link.Label,
+            link.Href switch
+            {
+                "manage/requests" => counts.Requests,
+                "manage/authors/requests" => counts.PostClaims,
+                "manage/authors/link-changes" => counts.LinkChanges,
+                "manage/emails/queue" => counts.FailedEmails,
+                _ => 0,
+            },
+            IsFailure: link.Href == "manage/emails/queue",
+            IsCurrent: link.Href == current))];
     }
 }

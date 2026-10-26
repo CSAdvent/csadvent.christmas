@@ -9,36 +9,38 @@
 <h1 class="text-3xl font-bold tracking-tight text-slate-900">Site content</h1>
 <p class="mt-2 max-w-2xl text-slate-600">Copy you can change without a redeploy, in Markdown. Every save is kept, so earlier versions can be brought back.</p>
 
-<table class="mt-6 w-full max-w-4xl text-left text-sm">
-    <thead class="border-b border-slate-200 text-slate-500">
-        <tr>
-            <th class="py-2 pr-4 font-medium">Block</th>
-            <th class="py-2 pr-4 font-medium">Shown on</th>
-            <th class="py-2 pr-4 font-medium">Last changed</th>
-            <th class="py-2 font-medium"><span class="sr-only">Actions</span></th>
-        </tr>
-    </thead>
-    <tbody class="divide-y divide-slate-100">
-        @foreach (var block in _blocks)
-        {
+<div class="relative mt-6 overflow-x-auto">
+    <table class="w-full max-w-4xl text-left text-sm">
+        <thead class="border-b border-slate-200 text-slate-500">
             <tr>
-                <td class="py-2 pr-4 font-medium text-slate-900">@block.Definition.Name</td>
-                <td class="py-2 pr-4 text-slate-600">@block.Definition.UsedOn</td>
-                <td class="py-2 pr-4 whitespace-nowrap">
-                    @if (block.UpdatedAt is { } updatedAt)
-                    {
-                        <LocalTime Value="updatedAt" /> @(block.UpdatedBy is { } by ? $"by {by}" : "")
-                    }
-                    else
-                    {
-                        <span class="text-slate-500">Never (the default copy)</span>
-                    }
-                </td>
-                <td class="py-2 text-right"><a href="manage/content/@block.Definition.Key" class="text-advent-700 underline">Edit</a></td>
+                <th class="py-2 pr-4 font-medium">Block</th>
+                <th class="py-2 pr-4 font-medium">Shown on</th>
+                <th class="py-2 pr-4 font-medium">Last changed</th>
+                <th class="py-2 font-medium"><span class="sr-only">Actions</span></th>
             </tr>
-        }
-    </tbody>
-</table>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+            @foreach (var block in _blocks)
+            {
+                <tr>
+                    <td class="py-2 pr-4 font-medium text-slate-900">@block.Definition.Name</td>
+                    <td class="py-2 pr-4 text-slate-600">@block.Definition.UsedOn</td>
+                    <td class="py-2 pr-4 whitespace-nowrap">
+                        @if (block.UpdatedAt is { } updatedAt)
+                        {
+                            <LocalTime Value="updatedAt" /> @(block.UpdatedBy is { } by ? $"by {by}" : "")
+                        }
+                        else
+                        {
+                            <span class="text-slate-500">Never (the default copy)</span>
+                        }
+                    </td>
+                    <td class="py-2 text-right"><a href="manage/content/@block.Definition.Key" class="text-advent-700 underline">Edit</a></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
 
 <h2 class="mt-12 text-xl font-semibold text-slate-900">Other Advents</h2>
 <p class="mt-2 text-slate-600">
