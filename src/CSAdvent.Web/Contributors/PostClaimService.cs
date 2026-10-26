@@ -34,6 +34,9 @@ public static class PostClaimLinks
 {
     /// <summary>Where a signed-in contributor asks for the post to be added to their account.</summary>
     public static string Claim(int year, int day, int part) => $"my-spots/claim/{year}/{day}/{part}";
+
+    /// <summary>My spots' search for older posts under a name ("Wrote for C# Advent before?"), linked from an archive author's page.</summary>
+    public static string Find(string name) => $"my-spots?find={Uri.EscapeDataString(name)}#older-posts";
 }
 
 public enum PostClaimOutcome

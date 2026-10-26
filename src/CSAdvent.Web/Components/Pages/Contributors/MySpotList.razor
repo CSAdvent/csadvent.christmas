@@ -81,7 +81,7 @@
                         }
                         @if (spot.IsRevealed && spot.Status is EntryStatus.Ready)
                         {
-                            <p class="mt-1 text-sm text-slate-500">@(spot.Traffic.Any ? Traffic(spot.Traffic) : "No visits or clicks counted yet.")</p>
+                            <p class="mt-1 text-sm text-slate-500">@(spot.Traffic.Any ? Traffic(spot.Traffic) : "No clicks counted yet.")</p>
                         }
                         <SpotDeadlineList Spot="spot" ChecksBlurb="checksBlurb" />
                     </div>
@@ -186,10 +186,11 @@
     @if (overview.Spots.Any(s => s.IsRevealed && s.Status is EntryStatus.Ready) || _history.Any(p => p.Traffic.Any))
     {
         <p class="mt-10 max-w-3xl text-sm text-slate-500">
-            Visits are people opening your post's page on our site, and clicks are readers following a link through to your post,
-            from the calendar or that page. They're counted from 2026 on, without search engines, link previews or other bots, and
-            nothing about the readers is recorded. Only you see these for your posts; the season's retrospective shows its totals
-            and its ten most-read posts.
+            Clicks are readers following one of our links through to your post: from the calendar, our social media posts, the
+            daily email or the RSS feed. They're counted from 2026 on, without search engines, link previews or other bots, and
+            nothing about the readers is recorded. Until October 2026 our links opened a page about your post first, and visits to
+            it were counted too; now they go straight to your post. Only you see these for your posts; the season's retrospective
+            shows its totals and its ten most-read posts.
         </p>
     }
 
@@ -285,9 +286,15 @@
     [CascadingParameter]
     private Task<AuthenticationState> AuthenticationState { get; set; } = null!;
 
-    private static string Traffic(PostTraffic traffic) => string.Create(
-        System.Globalization.CultureInfo.InvariantCulture,
-        $"{traffic.Views:N0} {(traffic.Views == 1 ? "visit" : "visits")}, {traffic.Clicks:N0} {(traffic.Clicks == 1 ? "click" : "clicks")} through to your post");
+    // Visits to the post's page stopped once our links went straight to the post (October 2026), so they're history.
+    private static string Traffic(PostTraffic traffic)
+    {
+        var culture = System.Globalization.CultureInfo.InvariantCulture;
+        var clicks = string.Create(culture, $"{traffic.Clicks:N0} {(traffic.Clicks == 1 ? "click" : "clicks")} through to your post");
+        return traffic.Views == 0
+            ? clicks
+            : string.Create(culture, $"{clicks}, and {traffic.Views:N0} {(traffic.Views == 1 ? "visit" : "visits")} to its page here until October 2026");
+    }
 
     protected override async Task OnInitializedAsync()
     {

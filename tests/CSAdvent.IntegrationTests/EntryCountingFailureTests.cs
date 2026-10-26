@@ -4,8 +4,8 @@ using Microsoft.EntityFrameworkCore;
 namespace CSAdvent.IntegrationTests;
 
 /// <summary>
-/// A visit or click that can't be counted never costs the reader the page or the post (#196). The database refuses every
-/// count for one 2023 post from December 20 on (no other test counts those), with a trigger that only exists during the test.
+/// A click that can't be counted never costs the reader the post (#196). The database refuses every count for one 2023 post
+/// from December 20 on (no other test counts those), with a trigger that only exists during the test.
 /// </summary>
 public sealed class EntryCountingFailureTests(AppHostFixture fixture)
 {
@@ -14,7 +14,7 @@ public sealed class EntryCountingFailureTests(AppHostFixture fixture)
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
     [Fact]
-    public async Task TheEntryPageAndTheRedirectWorkWhenCountingFails()
+    public async Task TheEntryPagesLinkAndTheRedirectWorkWhenCountingFails()
     {
         await using var db = await fixture.CreateDbContextAsync();
         var slot = await db.Slots.AsNoTracking()
@@ -38,8 +38,9 @@ public sealed class EntryCountingFailureTests(AppHostFixture fixture)
             using var person = fixture.CreateBrowser();
             person.DefaultRequestHeaders.UserAgent.ParseAdd(Browser);
 
-            var page = await person.GetPageAsync($"/2023/day/{slot.Day}/{slot.Part}?via=mastodon");
-            Assert.Contains(System.Text.Encodings.Web.HtmlEncoder.Default.Encode(slot.PostTitle!), page);
+            var followed = await person.GetAsync($"/2023/day/{slot.Day}/{slot.Part}?via=mastodon", CancellationToken);
+            Assert.Equal(HttpStatusCode.Redirect, followed.StatusCode);
+            Assert.Equal(slot.PostUrl, followed.Headers.Location!.OriginalString);
 
             var click = await person.GetAsync($"/go/2023/{slot.Day}/{slot.Part}?via=mastodon", CancellationToken);
             Assert.Equal(HttpStatusCode.Redirect, click.StatusCode);

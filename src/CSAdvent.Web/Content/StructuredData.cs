@@ -4,15 +4,14 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Data;
-using CSAdvent.Web.Entries;
 using CSAdvent.Web.Social;
 
 namespace CSAdvent.Web.Content;
 
 /// <summary>
 /// schema.org structured data for search engines (#195), rendered as JSON-LD by <c>JsonLd</c>: the site on the home page,
-/// each season as an event, and each revealed entry as a blog post whose original is the author's own post. Nothing about a
-/// post before its reveal (#5): an entry only gets one once its page shows the post.
+/// and each season as an event. Entry pages have none: search engines go straight to the author's post (decided 2026-10-26),
+/// and the link previews that still get the page read its Open Graph tags.
 /// </summary>
 public static class StructuredData
 {
@@ -57,47 +56,6 @@ public static class StructuredData
             ["image"] = new JsonArray($"{Root(baseUrl)}/{image}"),
             ["isAccessibleForFree"] = true,
             ["organizer"] = Organization(baseUrl),
-        };
-    }
-
-    /// <summary>
-    /// A revealed entry: the author's post (its <c>url</c>, the original), described by our page about it, published as part
-    /// of C# Advent when it was revealed.
-    /// </summary>
-    /// <param name="image">The entry's card, relative to the base URL.</param>
-    public static JsonObject Entry(EntryView entry, string baseUrl, string description, string image)
-    {
-        if (entry is not { IsRevealed: true, PostTitle: { } title, PostUrl: { } postUrl, AuthorName: { } author })
-        {
-            throw new ArgumentException("Only a revealed entry with a post has structured data (#5).", nameof(entry));
-        }
-
-        var root = Root(baseUrl);
-        var person = new JsonObject { ["@type"] = "Person", ["name"] = author };
-        if (entry.AuthorUrl is { } authorUrl)
-        {
-            person["url"] = authorUrl;
-        }
-
-        return new()
-        {
-            ["@context"] = "https://schema.org",
-            ["@type"] = "BlogPosting",
-            ["headline"] = title,
-            ["description"] = description,
-            ["url"] = postUrl,
-            ["mainEntityOfPage"] = EntryLinks.Absolute(root, EntryLinks.Page(entry.Year, entry.Day, entry.Part)),
-            ["datePublished"] = Iso(entry.RevealsAt),
-            ["author"] = person,
-            ["image"] = $"{root}/{image}",
-            ["inLanguage"] = "en",
-            ["isPartOf"] = new JsonObject
-            {
-                ["@type"] = "CreativeWorkSeries",
-                ["name"] = $"C# Advent {entry.Year}",
-                ["url"] = entry.IsInArchive ? $"{root}/archive/{entry.Year}" : $"{root}/",
-            },
-            ["publisher"] = Organization(baseUrl),
         };
     }
 

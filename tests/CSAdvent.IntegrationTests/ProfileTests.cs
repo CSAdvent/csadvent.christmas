@@ -97,7 +97,8 @@ public sealed class ProfileTests(AppHostFixture fixture)
         }
 
         using var reader = fixture.CreateBrowser();
-        var page = await reader.GetStringAsync($"/2025/day/{day}/{part}", CancellationToken);
+        using var preview = fixture.CreateLinkPreview();
+        var page = await preview.GetStringAsync($"/2025/day/{day}/{part}", CancellationToken);
         Assert.Contains("<a href=\"https://github.com/links-lee\" class=\"font-medium text-advent-700 underline\">Lee Links</a>", page);
         Assert.Contains("<a href=\"https://bsky.app/profile/lee.bsky.social\" class=\"text-advent-700 underline\">Bluesky</a>", page);
         Assert.Contains("href=\"https://github.com/links-lee\"", await reader.GetStringAsync("/archive/2025", CancellationToken));

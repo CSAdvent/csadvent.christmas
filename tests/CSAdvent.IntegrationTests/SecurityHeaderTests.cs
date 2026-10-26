@@ -74,11 +74,12 @@ public sealed class SecurityHeaderTests(AppHostFixture fixture)
         }
 
         using var reader = fixture.CreateBrowser();
+        using var preview = fixture.CreateLinkPreview();
         using var author = await fixture.SignInAsync("csp-author", 244201);
         using var organizer = await fixture.SignInAsync("organizer", AppHostFixture.OrganizerGitHubId);
         var pages = new (HttpClient Browser, string Path)[]
         {
-            (reader, "/"), (reader, "/archive"), (reader, "/archive/2023"), (reader, entry), (reader, "/about"), (reader, "/authors"),
+            (reader, "/"), (reader, "/archive"), (reader, "/archive/2023"), (preview, entry), (reader, "/about"), (reader, "/authors"),
             (reader, "/others"), (reader, "/announcements"), (reader, "/backups/2442"), (reader, "/no-such-page"),
             (author, "/my-spots"), (author, "/profile"), (author, "/backups/2442"), (author, "/claim/2442/5/1"),
             (organizer, "/manage"), (organizer, "/manage/entries"), (organizer, "/manage/social"), (organizer, "/manage/emails"),

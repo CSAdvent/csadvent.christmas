@@ -109,7 +109,9 @@ public sealed class WebTests(AppHostFixture fixture)
 
         var sitemap = await client.GetStringAsync("/sitemap.xml", cancellationToken);
         Assert.Contains("<loc>https://localhost:7092/archive/2017</loc>", sitemap);
-        Assert.Contains("<loc>https://localhost:7092/2017/day/1/1</loc>", sitemap);
+        Assert.Contains("<loc>https://localhost:7092/authors</loc>", sitemap);
+        // Not entry pages, which send crawlers on to the authors' posts.
+        Assert.DoesNotContain("/day/", sitemap);
         Assert.Contains("<loc>https://localhost:7092/about</loc>", sitemap);
 
         // Never the test season, and never a season that isn't over (the tests' far-future ones).

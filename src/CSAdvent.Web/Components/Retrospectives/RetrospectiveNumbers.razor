@@ -42,7 +42,7 @@
     @if (Stats.HasTraffic && Stats.ClicksPerDay.Count > 0)
     {
         <ColumnChart Title="Clicks each day in December"
-                     Description="Clicks through to the season's posts, from the calendar and the posts' pages."
+                     Description="Clicks through to the season's posts, from every link we shared."
                      Columns="ClicksPerDay" Series="@(["Clicks"])" LabelHeader="Day" Unit="clicks" Emphasis="true" />
     }
 

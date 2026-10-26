@@ -10,7 +10,10 @@ namespace CSAdvent.Web.Entries;
 /// <summary>Links to an entry's page and to its tracked "Read the post" redirect.</summary>
 public static class EntryLinks
 {
-    /// <summary>The entry's page on our site, relative to the base URL. Social posts link here, for the preview card.</summary>
+    /// <summary>
+    /// The entry's page on our site, relative to the base URL. Social posts link here, for the preview card; once the post is
+    /// revealed, readers following it go straight to the post, counted like <see cref="Go"/>.
+    /// </summary>
     public static string Page(int year, int day, int part, string? via = null) => $"{year}/day/{day}/{part}{Query(via)}";
 
     /// <summary>The redirect that counts a click and sends the reader on to the author's post.</summary>
@@ -28,10 +31,10 @@ public sealed record SiblingEntry(int Part, string PostTitle, string AuthorName)
 public sealed record AdjacentEntry(int Day, int Part, string PostTitle, string AuthorName);
 
 /// <summary>
-/// An entry's page. Before its reveal it carries nothing about the post or its author (#5), only when it's revealed.
+/// An entry's page. Before its reveal it carries nothing about the post or its author (#5), only when it's revealed. Once
+/// it's revealed, only link previews and organizers see it: everyone else goes straight to the post (<see cref="EntryEndpoints"/>).
 /// </summary>
 /// <param name="IsInArchive">Whether the season's last day is revealed, so its calendar is in the archive.</param>
-/// <param name="IsLinked">Whether the post is on someone's account. A finished season's post that isn't can be asked for (#120).</param>
 public sealed record EntryView(
     int SlotId,
     int Year,
@@ -46,8 +49,7 @@ public sealed record EntryView(
     string? AuthorUrl,
     IReadOnlyList<AuthorLink> AuthorLinks,
     IReadOnlyList<SiblingEntry> Siblings,
-    bool IsInArchive,
-    bool IsLinked = false)
+    bool IsInArchive)
 {
     public string Spot => SlotsPerDay > 1 ? $"December {Day}, {Year} · Post {Part}" : $"December {Day}, {Year}";
 
@@ -62,12 +64,12 @@ public sealed record EntryView(
 
     /// <summary>The author's public page, with all of their posts (#203). None for the test season.</summary>
     public string? AuthorPage { get; init; }
-
-    /// <summary>Whether the season's last day is over, so it's history and a post that isn't on anyone's account can be asked for.</summary>
-    public bool IsSeasonFinished { get; init; }
 }
 
-/// <summary>Entry pages, the tracked redirect to each post, and their visit and click counts.</summary>
+/// <summary>
+/// Entry pages, the tracked redirect to each post, and their click counts. Visits to entry pages were counted too, until
+/// readers started going straight to the post (October 2026); those are kept as history.
+/// </summary>
 public sealed partial class EntryService(AdventDbContext db, AdventSchedule schedule, TimeProvider timeProvider, SeasonAccess access, ILogger<EntryService> logger)
 {
     /// <summary>
@@ -145,14 +147,12 @@ public sealed partial class EntryService(AdventDbContext db, AdventSchedule sche
             [.. slots
                 .Where(s => s.Part != part && s.PostTitle is not null && s.PostUrl is not null && s.AuthorName is not null)
                 .Select(s => new SiblingEntry(s.Part, s.PostTitle!, s.AuthorName!))],
-            schedule.IsLastDayRevealed(year),
-            slot.GithubLogin is not null)
+            schedule.IsLastDayRevealed(year))
         {
             PostSummary = slot.PostSummary,
             Previous = previous,
             Next = next,
             AuthorPage = year == Season.TestYear ? null : AuthorPageLinks.For(slot.GithubLogin, slot.AuthorName),
-            IsSeasonFinished = schedule.IsFinished(year),
         };
     }
 
@@ -168,10 +168,13 @@ public sealed partial class EntryService(AdventDbContext db, AdventSchedule sche
             revealed.FirstOrDefault(p => p.Day > day || (p.Day == day && p.Part > part)));
     }
 
-    /// <summary>The post a click should go to: only a revealed entry's own post, so the redirect can't be pointed anywhere else.</summary>
-    public async Task<(int SlotId, string PostUrl)?> FindPostAsync(int year, int day, int part, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// The post a click should go to: only a revealed entry's own post, so the redirect can't be pointed anywhere else.
+    /// <c>HasTitle</c> says whether it has a page too (<see cref="GetAsync"/>), whose link then goes to the post as well.
+    /// </summary>
+    public async Task<(int SlotId, string PostUrl, bool HasTitle)?> FindPostAsync(int year, int day, int part, CancellationToken cancellationToken = default)
     {
-        if (!access.CanSee(year) || !schedule.IsRevealed(year, day))
+        if (!access.CanSee(year))
         {
             return null;
         }
@@ -179,9 +182,12 @@ public sealed partial class EntryService(AdventDbContext db, AdventSchedule sche
         var slot = await db.Slots
             .AsNoTracking()
             .Where(s => s.SeasonYear == year && s.Day == day && s.Part == part && s.PostUrl != null && s.AuthorName != null)
-            .Select(s => new { s.Id, s.PostUrl })
+            .Select(s => new { s.Id, s.PostUrl, HasTitle = s.PostTitle != null })
             .SingleOrDefaultAsync(cancellationToken);
-        return slot is null ? null : (slot.Id, slot.PostUrl!);
+
+        // The reveal is checked once the spot is known to exist (here, not in SQL, #5), so an address that isn't a spot, such
+        // as December 26, is just not found.
+        return slot is null || !schedule.IsRevealed(year, day) ? null : (slot.Id, slot.PostUrl!, slot.HasTitle);
     }
 
     /// <summary>

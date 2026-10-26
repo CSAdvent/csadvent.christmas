@@ -29,9 +29,13 @@ public sealed class AuthorPageTests(AppHostFixture fixture)
         Assert.DoesNotContain("Unrevealed Quill", page);
         Assert.DoesNotContain($"{Year}/day", page);
 
-        // Its name in any case or spacing finds it, and its entries link to it.
+        // Their posts aren't on anyone's account, so they can ask for them from My spots (#120).
+        Assert.Contains("href=\"my-spots?find=%C3%84rchie%20Quill#older-posts\"", page);
+
+        // Its name in any case or spacing finds it, and its entries' pages (for link previews) link to it.
         Assert.Contains($">{Encode("Ärchie Quill")}</h1>", await reader.GetPageAsync("/authors/name/%C3%84RCHIE%20%20QUILL"));
-        Assert.Contains("href=\"authors/name/%C3%A4rchie%20quill\"", await reader.GetPageAsync("/2021/day/2/1"));
+        using var preview = fixture.CreateLinkPreview();
+        Assert.Contains("href=\"authors/name/%C3%A4rchie%20quill\"", await preview.GetPageAsync("/2021/day/2/1"));
     }
 
     [Fact]
@@ -47,8 +51,10 @@ public sealed class AuthorPageTests(AppHostFixture fixture)
         Assert.Contains("href=\"https://github.com/author-page-lin\"", page);
         Assert.Contains("href=\"https://bsky.app/profile/lin.bsky.social\"", page);
         Assert.DoesNotContain("secret 2332", page);
+        Assert.DoesNotContain("my-spots?find=", page);
         Assert.Contains(">Lin Linked</h1>", await reader.GetPageAsync("/authors/AUTHOR-PAGE-LIN"));
-        Assert.Contains("href=\"authors/author-page-lin\"", await reader.GetPageAsync("/2021/day/3/1"));
+        using var preview = fixture.CreateLinkPreview();
+        Assert.Contains("href=\"authors/author-page-lin\"", await preview.GetPageAsync("/2021/day/3/1"));
     }
 
     [Fact]

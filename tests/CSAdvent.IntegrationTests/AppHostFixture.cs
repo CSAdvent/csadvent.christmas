@@ -22,6 +22,9 @@ public sealed class AppHostFixture : IAsyncLifetime
     /// </summary>
     public const long OrganizerGitHubId = 9001;
 
+    /// <summary>Facebook's link previews, which (like every link preview, and the organizers) get a revealed entry's page.</summary>
+    public const string LinkPreviewAgent = "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)";
+
     private DistributedApplication? _app;
 
     public DistributedApplication App => _app ?? throw new InvalidOperationException("The AppHost hasn't started.");
@@ -51,11 +54,26 @@ public sealed class AppHostFixture : IAsyncLifetime
         await _app.ResourceNotifications.WaitForResourceHealthyAsync("web", timeout.Token);
     }
 
+    /// <summary>
+    /// A client that follows redirects. Never point it at a revealed entry's page: that redirects to the author's real post,
+    /// on the internet. Read those pages with <see cref="CreateLinkPreview"/>.
+    /// </summary>
     public HttpClient CreateWebClient() => App.CreateHttpClient("web");
 
     /// <summary>A client with its own cookies that doesn't follow redirects, like a fresh browser session.</summary>
     public HttpClient CreateBrowser() =>
         new(new HttpClientHandler { CookieContainer = new(), AllowAutoRedirect = false }) { BaseAddress = App.GetEndpoint("web", "http") };
+
+    /// <summary>
+    /// A link preview fetching pages for their cards: the only visitor besides the organizers who gets a revealed entry's page,
+    /// where readers and crawlers go straight to the post. It doesn't follow redirects either, so it never reaches a real post.
+    /// </summary>
+    public HttpClient CreateLinkPreview()
+    {
+        var client = CreateBrowser();
+        client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", LinkPreviewAgent);
+        return client;
+    }
 
     /// <summary>A context on the database the AppHost created and migrated.</summary>
     public async Task<AdventDbContext> CreateDbContextAsync()

@@ -104,12 +104,12 @@ dotnet test
 - 📝 **Contributors add their own post's title and URL** at `/my-spots` after signing in. That's how posts get onto the calendar.
 - 🚪 **Dropping out** there frees the spot straight away, without naming the author, emails the organizers, and offers the day to the backup posters
 - 📜 **Your C# Advent history:** returning authors see every post they've written, season by season, once an organizer has linked their archive posts to their GitHub account at `/manage/authors`. Organizers see them as returning on their requests
-- 📈 **How your posts did:** each revealed post shows its visits and clicks, to its author only
-- 🙋 **Older posts:** wrote for an earlier season? Find your posts on My spots, or from the post's page, and ask for them to be added to your account. Every request emails the organizers, who approve or decline it at `/manage/authors/requests`. A post already on someone else's account goes through hello@csadvent.christmas instead
-- 🚚 **Moved your blog?** Authors give their older posts' new links in one go from My spots (`/my-spots/links`). An organizer checks them and approves or declines the whole request at `/manage/authors/link-changes`, and can change any author's links directly from their author page. The calendar, the archive and entry pages link through `/go`, so a new link applies to all of them at once
+- 📈 **How your posts did:** each revealed post shows how many readers our links sent to it, to its author only
+- 🙋 **Older posts:** wrote for an earlier season? Find your posts on My spots, or from your author page, and ask for them to be added to your account. Every request emails the organizers, who approve or decline it at `/manage/authors/requests`. A post already on someone else's account goes through hello@csadvent.christmas instead
+- 🚚 **Moved your blog?** Authors give their older posts' new links in one go from My spots (`/my-spots/links`). An organizer checks them and approves or declines the whole request at `/manage/authors/link-changes`, and can change any author's links directly from their author page. Every link we publish goes through `/go` or the post's entry page, so a new link applies to all of them at once
 - 🪪 **Profiles:** contributors set the name, website and social accounts they're credited with at `/profile`, and can put them on every spot they've had. It fills in their next claim
 - 🐙 **Accounts from GitHub:** the first sign-in fills in any Bluesky, Mastodon, LinkedIn, Facebook, Reddit or X account linked on the contributor's GitHub profile, and **Fill in from GitHub** on their profile does it again
-- 🔗 **Author links:** an author's name links to their website or blog, or to their GitHub profile if they didn't give one. Social media profiles go in their own fields, and each entry's page links the author's website, GitHub and social accounts
+- 🔗 **Author links:** an author's name links to their website or blog, or to their GitHub profile if they didn't give one. Social media profiles go in their own fields, and each author's page links their website, GitHub and social accounts
 - 👥 **Authors:** organizers see every author across every season at `/manage/authors`, with each season linking to the post. They can edit anyone's profile, combine names that belong to the same person, and rename or link archive authors
 
 ## 📝 Content
@@ -151,15 +151,16 @@ dotnet test
 - 🤖 **Claude Haiku 5.5 checks the rest**, through Anthropic's API. Its quote of the blurb has to really be in the post and name C# Advent and the year, and anything it's unsure about goes to an organizer
 - 📨 **A missing blurb emails the author** once, with the blurb to paste and the deadline (the post's announcement), and lines up a backup. Fixing it is noticed within 15 minutes, with no reply needed
 - ⏸️ **Announcements wait for it**: automatic social posts only go out once a post passes (or an organizer lets it through), and the daily email leaves out a post without it
-- 🧑‍⚖️ **Organizers decide on each entry's page**: Claude's answer, **Check now**, **Mark as passed**, **Mark as missing**, **Announce anyway** and **Use a backup**
+- 🧑‍⚖️ **Organizers decide in each entry's editor**: Claude's answer, **Check now**, **Mark as passed**, **Mark as missing**, **Announce anyway** and **Use a backup**
 - 🧪 **Try it**: `POST https://localhost:7092/dev/blurbs/run?at=2026-12-05T06:00:00Z` (Development only). Development and the tests use a stand-in for Claude and built-in sample posts (`https://samples.csadvent.test/with-blurb?year=2026` and the others in `SamplePosts`), so they never reach Anthropic or the internet
 
 ## 🔗 Entry Pages
 
-- 📄 **Every revealed post has its own page** at `/{year}/day/{day}/{part}`, with preview tags for Facebook, LinkedIn, Mastodon, Bluesky, Reddit, X, Slack, Teams and Discord
+- 📄 **Every revealed post has its own page** at `/{year}/day/{day}/{part}`, the link we share, with preview tags for Facebook, LinkedIn, Mastodon, Bluesky, Reddit, X, Slack, Teams and Discord
+- 🎯 **Readers go straight to the post:** following that link counts the click and redirects to the author's post, for search engines too. Only link previews (for our card) and signed-in organizers get the page
 - 🖼️ **Shared links get a generated card** showing the post's title, author and day (seasons get one too), drawn with SkiaSharp and the embedded Inter font
 - 📡 **RSS:** `/rss` has the latest 100 posts from every season, newest first, and `/archive/{year}/rss` has all of one season's
-- 📈 **Read the post** goes through `/go/...`, which counts the click (people only, nothing personal) and redirects to the post. Links we publish carry `?via=` (bluesky, rss, email, calendar...), so the stats show where readers came from
+- 📈 **The calendar and the daily email** link through `/go/...`, which counts the click (people only, nothing personal) and redirects to the post. Links we publish carry `?via=` (bluesky, rss, email, calendar...), so the stats show where readers came from
 
 ## 🎁 Retrospectives
 

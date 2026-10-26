@@ -7,19 +7,8 @@
     {
         <li id="december-@day.Day" class="flex flex-col rounded-xl bg-white p-4 shadow-sm @(day.IsToday ? "ring-2 ring-advent-500" : "ring-1 ring-slate-200")">
             <h2 class="flex items-baseline gap-2">
-                @if (Calendar.SlotsPerDay == 1 && day.Entries is [{ HasPage: true } only])
-                {
-                    @* With one post a day, the day is the post's label, so it links the post's page (#167). *@
-                    <a href="@EntryLinks.Page(Calendar.Year, day.Day, only.Part)" class="flex items-baseline gap-2 hover:underline">
-                        <span class="text-2xl font-bold tabular-nums text-slate-900">@day.Day</span>
-                        <span class="text-sm font-medium uppercase tracking-wide text-slate-500">December</span>
-                    </a>
-                }
-                else
-                {
-                    <span class="text-2xl font-bold tabular-nums text-slate-900">@day.Day</span>
-                    <span class="text-sm font-medium uppercase tracking-wide text-slate-500">December</span>
-                }
+                <span class="text-2xl font-bold tabular-nums text-slate-900">@day.Day</span>
+                <span class="text-sm font-medium uppercase tracking-wide text-slate-500">December</span>
                 @if (day.IsToday)
                 {
                     <span class="ml-auto rounded-full bg-advent-600 px-2.5 py-0.5 text-xs font-semibold text-white">Today</span>
@@ -39,21 +28,12 @@
             <ul class="mt-3 flex flex-1 flex-col gap-2">
                 @foreach (var entry in day.Entries)
                 {
-                    @* Each spot is its own box, labeled when the day has more than one, so it's clear which one you're claiming. *@
+                    @* Each spot is its own box, labeled when the day has more than one, so it's clear which one you're claiming. The
+                       label isn't a link: the title goes to the post, and so would the post's page (decided 2026-10-26). *@
                     <li class="rounded-lg bg-slate-50 px-3 py-2.5 ring-1 ring-slate-100">
                         @if (Calendar.SlotsPerDay > 1)
                         {
-                            <p class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                @if (entry.HasPage)
-                                {
-                                    @* The post's page on our site (#167), which search engines can follow; the title goes to the post. *@
-                                    <a href="@EntryLinks.Page(Calendar.Year, day.Day, entry.Part)" class="hover:text-advent-700 hover:underline">Post @entry.Part</a>
-                                }
-                                else
-                                {
-                                    <text>Post @entry.Part</text>
-                                }
-                            </p>
+                            <p class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Post @entry.Part</p>
                         }
                         @if (Calendar.Marks.IsMine(day.Day, entry.Part))
                         {
