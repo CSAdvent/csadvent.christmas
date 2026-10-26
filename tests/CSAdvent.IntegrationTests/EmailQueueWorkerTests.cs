@@ -26,7 +26,8 @@ public sealed class EmailQueueWorkerTests(AppHostFixture fixture)
     [Fact]
     public async Task ItWaitsForTheMigrationsThenSendsWhatsQueued()
     {
-        // A new revision starts before the deploy's migrations job has created the queue's table (#151).
+        // A revision started without its migrations, so the queue's table isn't there: deploys run them first since #151, but
+        // one started by hand needn't.
         await using var database = await ThrowawayDatabase.CreateAsync(fixture, "csadvent_worker_2624");
         var clock = new FakeTimeProvider(DateTimeOffset.UtcNow);
         await using var queue = new WorkerUnderTest(database.ConnectionString, clock);

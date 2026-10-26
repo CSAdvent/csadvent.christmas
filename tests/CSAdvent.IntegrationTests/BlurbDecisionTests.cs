@@ -37,7 +37,7 @@ public sealed partial class BlurbDecisionTests(AppHostFixture fixture)
         // Three hours before its deadline an organizer decides, and nobody else hears about it.
         await RunAsync(year, "2460-12-14T12:00:00Z");
         Assert.Equal(BlurbStatus.NeedsDecision, (await CheckOfAsync(slotId)).Status);
-        var email = await fixture.WaitForEmailAsync(Organizers, "C# Advent, December 14: a post's blurb needs your decision");
+        var email = await fixture.WaitForEmailAsync(Organizers, "C# Advent, December 14: a post's blurb needs your decision", containing: Sample("javascript-shell", year));
         Assert.Contains("doesn't seem to be the post", email.Text);
         Assert.Equal(0, await fixture.CountEmailsAsync("jay-2460@example.com", "Please add the C# Advent blurb"));
         await using var db = await fixture.CreateDbContextAsync();
@@ -54,14 +54,14 @@ public sealed partial class BlurbDecisionTests(AppHostFixture fixture)
         await RunAsync(year, "2461-12-16T05:30:00Z");
         await RunAsync(year, "2461-12-16T11:45:00Z");
         Assert.Equal(BlurbStatus.Waiting, (await CheckOfAsync(slotId)).Status);
-        Assert.Equal(0, await fixture.CountEmailsAsync(Organizers, "C# Advent, December 16: a post couldn't be checked"));
+        Assert.Equal(0, await QueuedForOrganizersAsync("blurb-could-not-check", Sample("no-such-page", year)));
 
         // From 3 hours before its deadline it couldn't be checked, and once that's lasted half an hour the organizers hear.
         await RunAsync(year, "2461-12-16T12:00:00Z");
         Assert.Equal(BlurbStatus.CouldNotCheck, (await CheckOfAsync(slotId)).Status);
         Assert.Equal(0, (await RunAsync(year, "2461-12-16T12:15:00Z")).Emailed);
         Assert.Equal(1, (await RunAsync(year, "2461-12-16T12:30:00Z")).Emailed);
-        var email = await fixture.WaitForEmailAsync(Organizers, "C# Advent, December 16: a post couldn't be checked for the blurb");
+        var email = await fixture.WaitForEmailAsync(Organizers, "C# Advent, December 16: a post couldn't be checked for the blurb", containing: Sample("no-such-page", year));
         Assert.Contains("404 Not Found", email.Text);
     }
 
@@ -79,7 +79,7 @@ public sealed partial class BlurbDecisionTests(AppHostFixture fixture)
 
         // Once the backup is standing by, the organizers hear, with the time it takes the spot.
         await RunAsync(year, "2462-12-15T06:00:00Z");
-        var standingBy = await fixture.WaitForEmailAsync(Organizers, "C# Advent, December 15: a backup is standing by for a post without the blurb");
+        var standingBy = await fixture.WaitForEmailAsync(Organizers, "C# Advent, December 15: a backup is standing by for a post without the blurb", containing: Sample("without-blurb", year));
         Assert.Contains("They take the spot at 10:00 AM Eastern on December 15", standingBy.Text);
         Assert.Contains($"/manage/entries/{slotId}#blurb", standingBy.Text);
 
@@ -112,7 +112,7 @@ public sealed partial class BlurbDecisionTests(AppHostFixture fixture)
 
         // They hear at 10:30 AM Eastern, and the backup takes the spot an hour later.
         await RunAsync(year, "2463-12-17T15:30:00Z");
-        var standingBy = await fixture.WaitForEmailAsync(Organizers, "C# Advent, December 17: a backup is standing by for a post without the blurb");
+        var standingBy = await fixture.WaitForEmailAsync(Organizers, "C# Advent, December 17: a backup is standing by for a post without the blurb", containing: Sample("without-blurb", year));
         Assert.Contains("They take the spot at 11:30 AM Eastern on December 17", standingBy.Text);
 
         // They're told once.
@@ -208,6 +208,17 @@ public sealed partial class BlurbDecisionTests(AppHostFixture fixture)
 
     private static async Task JoinBackupsAsync(HttpClient backup, int year, string name) =>
         Assert.Equal(HttpStatusCode.Redirect, (await backup.PostFormAsync($"/backups/{year}", "backup", new() { ["Form.Name"] = name, ["Form.AgreeToTerms"] = "true" })).StatusCode);
+
+    /// <summary>
+    /// How many of the organizers' emails of this kind about this post are queued. Each run has queued what it sends by the
+    /// time it returns. Counting what MailPit got would wait for the organizers' queue to empty, which other tests keep
+    /// filling, and would count other seasons' emails with the same subject (#198).
+    /// </summary>
+    private async Task<int> QueuedForOrganizersAsync(string kind, string postUrl)
+    {
+        await using var db = await fixture.CreateDbContextAsync();
+        return await db.EmailOutbox.CountAsync(e => e.ToAddress == Organizers && e.Kind == kind && e.Text.Contains(postUrl), CancellationToken);
+    }
 
     private async Task<BlurbCheck> CheckOfAsync(int slotId)
     {

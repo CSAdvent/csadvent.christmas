@@ -60,7 +60,8 @@ internal static class TestMailbox
 
     /// <summary>
     /// How many emails to <paramref name="to"/> have <paramref name="subject"/> in their subject, once the email queue has
-    /// nothing left for them. Only use it after whatever queues them has finished, such as a completed reminder run.
+    /// nothing left for them. Only use it after whatever queues them has finished, such as a completed reminder run. Never
+    /// for the organizers' inbox, whose queue other tests keep filling: count what was queued about your own spot instead.
     /// </summary>
     public static async Task<int> CountEmailsAsync(this AppHostFixture fixture, string to, string subject)
     {
