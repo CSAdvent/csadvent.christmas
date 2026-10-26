@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 using CSAdvent.Web.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace CSAdvent.IntegrationTests;
 
@@ -90,14 +91,36 @@ internal static class TestSeasons
 {
     private static readonly ConcurrentDictionary<int, Lazy<Task>> Created = new();
 
-    public static Task EnsureAsync(AppHostFixture fixture, int year, bool claimsOpen, Action<Season>? configure = null) =>
-        Created.GetOrAdd(year, _ => new Lazy<Task>(async () =>
+    public static async Task EnsureAsync(AppHostFixture fixture, int year, bool claimsOpen, Action<Season>? configure = null)
+    {
+        var creating = Created.GetOrAdd(year, _ => new Lazy<Task>(() => CreateAsync(fixture, year, claimsOpen, configure)));
+        try
         {
-            await using var db = await fixture.CreateDbContextAsync();
-            var season = Season.Create(year, slotsPerDay: 2, DateTimeOffset.UtcNow);
-            season.ClaimsOpenAt = claimsOpen ? DateTimeOffset.UtcNow.AddDays(-1) : null;
-            configure?.Invoke(season);
-            db.Seasons.Add(season);
-            await db.SaveChangesAsync();
-        })).Value;
+            await creating.Value;
+        }
+        catch
+        {
+            // A failed attempt (the database slow to answer on a busy machine, say) isn't kept, so the next test that needs the
+            // season tries again rather than failing at once with this one's error (#198).
+            Created.TryRemove(new KeyValuePair<int, Lazy<Task>>(year, creating));
+            throw;
+        }
+    }
+
+    private static async Task CreateAsync(AppHostFixture fixture, int year, bool claimsOpen, Action<Season>? configure)
+    {
+        await using var db = await fixture.CreateDbContextAsync();
+
+        // An attempt that failed after saving it leaves it there.
+        if (await db.Seasons.AnyAsync(s => s.Year == year))
+        {
+            return;
+        }
+
+        var season = Season.Create(year, slotsPerDay: 2, DateTimeOffset.UtcNow);
+        season.ClaimsOpenAt = claimsOpen ? DateTimeOffset.UtcNow.AddDays(-1) : null;
+        configure?.Invoke(season);
+        db.Seasons.Add(season);
+        await db.SaveChangesAsync();
+    }
 }

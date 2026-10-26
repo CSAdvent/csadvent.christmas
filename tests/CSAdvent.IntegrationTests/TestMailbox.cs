@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net.Http.Json;
 using CSAdvent.Web.Data;
 using Microsoft.EntityFrameworkCore;
@@ -11,24 +12,50 @@ namespace CSAdvent.IntegrationTests;
 internal static class TestMailbox
 {
     /// <summary>
-    /// Waits for the email to <paramref name="to"/> whose subject contains <paramref name="subject"/>. Other tests send to
-    /// the organizers too, so pick a subject only this test produces.
+    /// How long to wait for an email, or for the queue to empty. Generous, because a busy machine (several test runs at once)
+    /// slows the queue down, and a passing test never waits this long.
     /// </summary>
-    public static async Task<MailPitMessage> WaitForEmailAsync(this AppHostFixture fixture, string to, string subject)
+    private static readonly TimeSpan WaitLimit = TimeSpan.FromSeconds(90);
+
+    /// <summary>MailPit's search returns a page at a time (50 by default), newest first, so searches go through every page.</summary>
+    private const int PageSize = 200;
+
+    private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
+
+    /// <summary>
+    /// Waits for the email to <paramref name="to"/> whose subject contains <paramref name="subject"/>, and whose text contains
+    /// <paramref name="containing"/> if it's given. Other tests send to the organizers too, so pick a subject, or text, only
+    /// this test produces: the organizers' inbox gets the same subject for the same day of every season.
+    /// </summary>
+    public static async Task<MailPitMessage> WaitForEmailAsync(this AppHostFixture fixture, string to, string subject, string? containing = null)
     {
         using var mailPit = CreateClient(fixture);
-
-        for (var attempt = 0; attempt < 200; attempt++)
+        var waited = Stopwatch.StartNew();
+        var seen = new HashSet<string>();
+        while (true)
         {
-            if ((await SearchAsync(mailPit, to, subject)).FirstOrDefault() is { } found)
+            foreach (var found in await SearchAsync(mailPit, to, subject))
             {
-                return (await mailPit.GetFromJsonAsync<MailPitMessage>($"/api/v1/message/{found.Id}", TestContext.Current.CancellationToken))!;
+                if (containing is null)
+                {
+                    return await GetMessageAsync(mailPit, found.Id);
+                }
+
+                // Each message is only read once: it either has the text or it doesn't.
+                if (seen.Add(found.Id) && await GetMessageAsync(mailPit, found.Id) is { } message && message.Text.Contains(containing, StringComparison.Ordinal))
+                {
+                    return message;
+                }
             }
 
-            await Task.Delay(100, TestContext.Current.CancellationToken);
-        }
+            if (waited.Elapsed > WaitLimit)
+            {
+                var what = containing is null ? $"\"{subject}\" in the subject" : $"\"{subject}\" in the subject and \"{containing}\" in the text";
+                throw new InvalidOperationException($"No email to {to} with {what} arrived in {WaitLimit.TotalSeconds:N0} seconds. {await DescribeQueueAsync(fixture, to)}");
+            }
 
-        throw new InvalidOperationException($"No email to {to} with \"{subject}\" in the subject arrived.");
+            await Task.Delay(100, CancellationToken);
+        }
     }
 
     /// <summary>
@@ -47,32 +74,64 @@ internal static class TestMailbox
     {
         await using var db = await fixture.CreateDbContextAsync();
         var address = to.ToLowerInvariant();
-        for (var attempt = 0; attempt < 200; attempt++)
+        var waited = Stopwatch.StartNew();
+        while (await db.EmailOutbox.AnyAsync(e => e.Status == QueuedEmailStatus.Pending && e.ToAddress.ToLower() == address, CancellationToken))
         {
-            if (!await db.EmailOutbox.AnyAsync(e => e.Status == QueuedEmailStatus.Pending && e.ToAddress.ToLower() == address, TestContext.Current.CancellationToken))
+            if (waited.Elapsed > WaitLimit)
             {
-                return;
+                throw new InvalidOperationException($"Emails to {to} are still waiting in the email queue after {WaitLimit.TotalSeconds:N0} seconds. {await DescribeQueueAsync(fixture, to)}");
             }
 
-            await Task.Delay(100, TestContext.Current.CancellationToken);
+            await Task.Delay(100, CancellationToken);
         }
-
-        throw new InvalidOperationException($"Emails to {to} are still waiting in the email queue.");
     }
 
     public static async Task<Dictionary<string, string[]>> GetHeadersAsync(this AppHostFixture fixture, MailPitMessage message)
     {
         using var mailPit = CreateClient(fixture);
-        return (await mailPit.GetFromJsonAsync<Dictionary<string, string[]>>($"/api/v1/message/{message.Id}/headers", TestContext.Current.CancellationToken))!;
+        return (await mailPit.GetFromJsonAsync<Dictionary<string, string[]>>($"/api/v1/message/{message.Id}/headers", CancellationToken))!;
     }
 
     private static HttpClient CreateClient(AppHostFixture fixture) => new() { BaseAddress = fixture.App.GetEndpoint("email", "http") };
 
+    private static async Task<MailPitMessage> GetMessageAsync(HttpClient mailPit, string id) =>
+        (await mailPit.GetFromJsonAsync<MailPitMessage>($"/api/v1/message/{id}", CancellationToken))!;
+
+    /// <summary>
+    /// The emails to <paramref name="to"/> whose subject contains <paramref name="subject"/>, newest first. MailPit is asked
+    /// for the subject too (unless it has a quote in it, which its search syntax can't take), so the organizers' inbox, which
+    /// every test shares, never pushes this test's email off the first page (#198); the subject is checked exactly here.
+    /// </summary>
     private static async Task<List<MailPitSummary>> SearchAsync(HttpClient mailPit, string to, string subject)
     {
-        var query = Uri.EscapeDataString($"to:\"{to}\"");
-        var search = await mailPit.GetFromJsonAsync<MailPitSearch>($"/api/v1/search?query={query}", TestContext.Current.CancellationToken);
-        return [.. search!.Messages.Where(m => m.Subject.Contains(subject, StringComparison.Ordinal))];
+        var terms = subject.Contains('"', StringComparison.Ordinal) ? $"to:\"{to}\"" : $"to:\"{to}\" subject:\"{subject}\"";
+        var query = Uri.EscapeDataString(terms);
+        var found = new List<MailPitSummary>();
+        for (var start = 0; ; start += PageSize)
+        {
+            var page = await mailPit.GetFromJsonAsync<MailPitSearch>($"/api/v1/search?query={query}&start={start}&limit={PageSize}", CancellationToken);
+            found.AddRange(page!.Messages.Where(m => m.Subject.Contains(subject, StringComparison.Ordinal)));
+            if (page.Messages.Count < PageSize)
+            {
+                return found;
+            }
+        }
+    }
+
+    /// <summary>What the email queue has for the address, for a failure message: was the email queued, and did it go?</summary>
+    private static async Task<string> DescribeQueueAsync(AppHostFixture fixture, string to)
+    {
+        await using var db = await fixture.CreateDbContextAsync();
+        var address = to.ToLowerInvariant();
+        var statuses = await db.EmailOutbox
+            .Where(e => e.ToAddress.ToLower() == address)
+            .GroupBy(e => e.Status)
+            .Select(g => new { Status = g.Key, Count = g.Count() })
+            .ToListAsync(CancellationToken.None);
+        var pending = await db.EmailOutbox.CountAsync(e => e.Status == QueuedEmailStatus.Pending, CancellationToken.None);
+        return statuses.Count == 0
+            ? $"The email queue has nothing for that address ({pending} waiting for anyone)."
+            : $"The email queue has {string.Join(", ", statuses.Select(s => $"{s.Count} {s.Status}"))} for that address ({pending} waiting for anyone).";
     }
 }
 

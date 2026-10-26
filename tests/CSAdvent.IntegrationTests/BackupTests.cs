@@ -87,7 +87,7 @@ public sealed partial class BackupTests(AppHostFixture fixture)
         }
 
         await fixture.WaitForEmailAsync("bk-cal@example.com", "Your post is on the C# Advent calendar: December 5");
-        await fixture.WaitForEmailAsync("hello@csadvent.christmas", "A backup poster filled C# Advent, December 5");
+        await fixture.WaitForEmailAsync("hello@csadvent.christmas", "A backup poster filled C# Advent, December 5", containing: "December 5, 2107");
         await fixture.WaitForEmailAsync("mike-2107@example.com", "Your C# Advent spot went to a backup poster");
 
         // Amy never answered; by now someone else has stepped in.
@@ -177,7 +177,7 @@ public sealed partial class BackupTests(AppHostFixture fixture)
             season.Slots.Single(s => s is { Day: 2, Part: 1 }).AuthorName = "Lonely Lou");
 
         Assert.Equal(new RunResult(0, 0, 0, 1), await RunAsync(year, "2111-12-01T23:00:00Z"));
-        await fixture.WaitForEmailAsync("hello@csadvent.christmas", "No backup poster for C# Advent, December 2");
+        await fixture.WaitForEmailAsync("hello@csadvent.christmas", "No backup poster for C# Advent, December 2", containing: "December 2, 2111");
         Assert.Equal(new RunResult(0, 0, 0, 0), await RunAsync(year, "2111-12-01T23:15:00Z"));
     }
 

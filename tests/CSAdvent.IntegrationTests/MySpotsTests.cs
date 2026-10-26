@@ -115,8 +115,7 @@ public sealed class MySpotsTests(AppHostFixture fixture)
             Assert.NotNull(slot.DroppedOutAt);
         }
 
-        var notice = await fixture.WaitForEmailAsync("hello@csadvent.christmas", "Dee Dropout dropped out of C# Advent, December 9");
-        Assert.Contains("December 9, 2108 (post 2)", notice.Text);
+        await fixture.WaitForEmailAsync("hello@csadvent.christmas", "Dee Dropout dropped out of C# Advent, December 9", containing: "December 9, 2108 (post 2)");
     }
 
     private async Task<int> GiveSpotAsync(long githubUserId, int day, int part, string author, string? contactEmail = null)

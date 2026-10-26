@@ -86,12 +86,14 @@ public sealed class ExpectedErrorTests(AppHostFixture fixture)
     {
         const int year = 2402;
         await RefuseDuplicatesAsync();
-        await TestSeasons.EnsureAsync(fixture, year, claimsOpen: true);
 
-        // Every run for two days after sign-ups open gets this far.
-        await RunAnnouncementsAsync(year);
-        await RunAnnouncementsAsync(year);
-        await RunAnnouncementsAsync(year);
+        // Sign-ups open at 9 AM Eastern on November 15 (Eastern Standard Time), and every run for two days after that gets
+        // this far.
+        var opensAt = new DateTimeOffset(year, 11, 15, 14, 0, 0, TimeSpan.Zero);
+        await TestSeasons.EnsureAsync(fixture, year, claimsOpen: false, season => season.ClaimsOpenAt = opensAt);
+        await RunAnnouncementsAsync(year, opensAt.AddHours(3));
+        await RunAnnouncementsAsync(year, opensAt.AddHours(3).AddMinutes(5));
+        await RunAnnouncementsAsync(year, opensAt.AddDays(1));
 
         await using var db = await fixture.CreateDbContextAsync();
         Assert.Equal(1, await db.Announcements.CountAsync(a => a.Kind == AnnouncementKind.SignUpsOpen && a.SeasonYear == year, CancellationToken));
@@ -118,7 +120,7 @@ public sealed class ExpectedErrorTests(AppHostFixture fixture)
     {
         // A database the migrations haven't reached, as in the minutes between a new revision starting and its migrations
         // job: no tables at first, then a table without a column this version uses.
-        var server = new NpgsqlConnectionStringBuilder(await fixture.App.GetConnectionStringAsync("csadvent", CancellationToken)) { Database = "postgres" }.ConnectionString;
+        var server = new NpgsqlConnectionStringBuilder(await fixture.GetConnectionStringAsync()) { Database = "postgres" }.ConnectionString;
         const string database = "csadvent_deploy_2404";
         await ExecuteAsync(server, $"DROP DATABASE IF EXISTS {database} WITH (FORCE)");
         await ExecuteAsync(server, $"CREATE DATABASE {database}");
@@ -182,14 +184,10 @@ public sealed class ExpectedErrorTests(AppHostFixture fixture)
         return (await response.Content.ReadFromJsonAsync<BackupRun>(CancellationToken))!;
     }
 
-    /// <summary>Runs announcements at noon Eastern today, after the morning send time, whatever time the tests run.</summary>
-    private async Task RunAnnouncementsAsync(int year)
+    private async Task RunAnnouncementsAsync(int year, DateTimeOffset at)
     {
-        var eastern = TimeZoneInfo.FindSystemTimeZoneById("America/New_York");
-        var today = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, eastern).Date;
-        var noon = new DateTimeOffset(today.AddHours(12), eastern.GetUtcOffset(today.AddHours(12))).ToUniversalTime();
         using var client = fixture.CreateWebClient();
-        var response = await client.PostAsync($"/dev/announcements/run?at={Uri.EscapeDataString(noon.ToString("O", CultureInfo.InvariantCulture))}&year={year}", null, CancellationToken);
+        var response = await client.PostAsync($"/dev/announcements/run?at={Uri.EscapeDataString(at.ToString("O", CultureInfo.InvariantCulture))}&year={year}", null, CancellationToken);
         Assert.True(response.IsSuccessStatusCode, $"The announcement run failed: {await response.Content.ReadAsStringAsync(CancellationToken)}");
     }
 

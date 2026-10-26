@@ -116,27 +116,72 @@ public sealed partial class EmailQueueTests(AppHostFixture fixture)
     }
 
     [Fact]
+    public async Task OrganizersRetryEveryFailedEmailAtOnce()
+    {
+        // After an outage, say: two emails were given up on (#199).
+        int[] failedIds;
+        var now = DateTimeOffset.UtcNow;
+        await using (var db = await fixture.CreateDbContextAsync())
+        {
+            var failed = new[] { Failed("queue-all-a-2622@example.com", "Queue retry all 2622 A", now), Failed("queue-all-b-2622@example.com", "Queue retry all 2622 B", now) };
+            db.EmailOutbox.AddRange(failed);
+            await db.SaveChangesAsync(CancellationToken);
+            failedIds = [.. failed.Select(e => e.Id)];
+        }
+
+        // Someone who isn't an organizer can't.
+        using (var author = await fixture.SignInAsync("queue-author-2622", 262201))
+        {
+            var refused = await PostQueueFormAsync(author, "retry-all", 0, Token(await author.GetStringAsync("/announcements", CancellationToken)));
+            Assert.StartsWith("/access-denied", TestBrowser.PathOf(refused.Headers.Location!));
+            foreach (var id in failedIds)
+            {
+                Assert.Equal(QueuedEmailStatus.Failed, (await QueuedAsync(id))!.Status);
+            }
+        }
+
+        using var organizer = await fixture.SignInAsync("organizer", AppHostFixture.OrganizerGitHubId);
+        var retried = await PostQueueFormAsync(organizer, "retry-all", 0, Token(await organizer.GetPageAsync("/manage/emails/queue")));
+
+        Assert.Equal("/manage/emails/queue?done=retried-all", TestBrowser.PathOf(retried.Headers.Location!));
+        await fixture.WaitForEmailAsync("queue-all-a-2622@example.com", "Queue retry all 2622 A");
+        await fixture.WaitForEmailAsync("queue-all-b-2622@example.com", "Queue retry all 2622 B");
+        await fixture.WaitForQueueAsync("queue-all-b-2622@example.com");
+        foreach (var id in failedIds)
+        {
+            var email = (await QueuedAsync(id))!;
+            // Tried again from scratch, and sent at the first attempt.
+            Assert.Equal((QueuedEmailStatus.Sent, 0), (email.Status, email.Attempts));
+        }
+    }
+
+    [Fact]
     public async Task OnlyOneReplicaDrainsAtATime()
     {
-        using var services = Services(await fixture.App.GetConnectionStringAsync("csadvent", CancellationToken));
-        var scopes = services.GetRequiredService<IServiceScopeFactory>();
-        await using var scope = scopes.CreateAsyncScope();
-        var store = new EmailOutboxStore(scope.ServiceProvider.GetRequiredService<AdventDbContext>(), scopes);
+        var connectionString = await fixture.GetConnectionStringAsync();
 
-        // The site's worker only holds the lock for a moment at a time.
-        var held = await TryLockAsync(store);
+        // This test is a replica in the middle of a pass, holding the queue's lock. It waits its turn behind the site's own
+        // worker rather than racing it for a gap between passes, which a busy queue may not leave for seconds (#198).
+        var held = await HoldQueueLockAsync(connectionString);
         try
         {
-            Assert.Null(await store.TryLockAsync(CancellationToken));
-
-            // While another replica (this test) drains, the site's worker leaves the queue alone.
             await using (var db = await fixture.CreateDbContextAsync())
             {
                 db.EmailOutbox.Add(Queued("queue-lock-2383@example.com", "Queue lock 2383", "claim-received", EmailPriority.Urgent, DateTimeOffset.UtcNow));
                 await db.SaveChangesAsync(CancellationToken);
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(3), CancellationToken);
+            // Another replica's pass finds the email due, can't take the lock, and leaves the queue alone.
+            using var services = Services(connectionString);
+            var scopes = services.GetRequiredService<IServiceScopeFactory>();
+            await using var scope = scopes.CreateAsyncScope();
+            var store = new EmailOutboxStore(scope.ServiceProvider.GetRequiredService<AdventDbContext>(), scopes);
+            Assert.Null(await store.TryLockAsync(CancellationToken));
+
+            var transport = new RecordingTransport();
+            var drain = new EmailQueueDrain(store, transport, scope.ServiceProvider, Options.Create(new EmailQueueOptions()), TimeProvider.System, NullLogger<EmailQueueDrain>.Instance);
+            Assert.Equal(EmailQueuePass.Nothing with { Busy = true }, await drain.RunAsync(CancellationToken));
+            Assert.Empty(transport.Sent);
             Assert.Equal(QueuedEmailStatus.Pending, (await SingleQueuedAsync("queue-lock-2383@example.com")).Status);
         }
         finally
@@ -144,6 +189,7 @@ public sealed partial class EmailQueueTests(AppHostFixture fixture)
             await held.DisposeAsync();
         }
 
+        // Once it lets go, the site's worker sends it.
         await fixture.WaitForEmailAsync("queue-lock-2383@example.com", "Queue lock 2383");
     }
 
@@ -151,7 +197,7 @@ public sealed partial class EmailQueueTests(AppHostFixture fixture)
     public async Task ShortlyAfterADeployEmailsGoStraightOut()
     {
         // A database without the queue's table, as during the minute between a new revision starting and its migrations.
-        var connectionString = new NpgsqlConnectionStringBuilder(await fixture.App.GetConnectionStringAsync("csadvent", CancellationToken)) { Database = "postgres" }.ConnectionString;
+        var connectionString = new NpgsqlConnectionStringBuilder(await fixture.GetConnectionStringAsync()) { Database = "postgres" }.ConnectionString;
         const string database = "csadvent_queue_2384";
         await using (var server = new NpgsqlConnection(connectionString))
         {
@@ -287,8 +333,7 @@ public sealed partial class EmailQueueTests(AppHostFixture fixture)
         }
 
         Assert.Equal(new BackupRun(0, 0, 0, 1), await RunBackupsAsync(year, "2387-12-20T12:15:00Z"));
-        var email = await fixture.WaitForEmailAsync("hello@csadvent.christmas", "No backup poster for C# Advent, December 21");
-        Assert.Contains("December 21, 2387", email.Text);
+        await fixture.WaitForEmailAsync("hello@csadvent.christmas", "No backup poster for C# Advent, December 21", containing: "December 21, 2387");
     }
 
     [Fact]
@@ -316,8 +361,7 @@ public sealed partial class EmailQueueTests(AppHostFixture fixture)
         }
 
         await RunBlurbsAsync(year, "2388-12-18T05:45:00Z");
-        var email = await fixture.WaitForEmailAsync("hello@csadvent.christmas", "C# Advent, December 18: a post's blurb needs your decision");
-        Assert.Contains(postUrl, email.Text);
+        await fixture.WaitForEmailAsync("hello@csadvent.christmas", "C# Advent, December 18: a post's blurb needs your decision", containing: postUrl);
     }
 
     private static void Drop(Season season, int day)
@@ -433,19 +477,49 @@ public sealed partial class EmailQueueTests(AppHostFixture fixture)
         }
     }
 
-    private static async Task<IAsyncDisposable> TryLockAsync(EmailOutboxStore store)
+    /// <summary>
+    /// Takes the queue's advisory lock as a replica's pass holds it (<see cref="EmailOutboxStore.TryLockAsync"/>: in a
+    /// transaction of its own), but waits for it instead of trying once. While the site's worker is in a pass, PostgreSQL
+    /// queues this request behind it and grants it as soon as the pass ends, and the worker's next try then fails, because a
+    /// new request conflicts with a waiting one as well as a held one. So it doesn't matter how long the passes take on a busy
+    /// machine, or how short the gaps between them are. Disposing it lets go.
+    /// </summary>
+    private static async Task<IAsyncDisposable> HoldQueueLockAsync(string? connectionString)
     {
-        for (var attempt = 0; attempt < 100; attempt++)
+        var connection = new NpgsqlConnection(connectionString);
+        NpgsqlTransaction? transaction = null;
+        try
         {
-            if (await store.TryLockAsync(CancellationToken) is { } held)
+            await connection.OpenAsync(CancellationToken);
+            transaction = await connection.BeginTransactionAsync(CancellationToken);
+            await using var command = new NpgsqlCommand("SELECT pg_advisory_xact_lock(@key)", connection, transaction)
             {
-                return held;
+                // No limit but the test's own: how long the worker's pass takes depends on the machine.
+                CommandTimeout = 0,
+            };
+            command.Parameters.AddWithValue("key", EmailOutboxStore.LockKey);
+            await command.ExecuteNonQueryAsync(CancellationToken);
+            return new HeldQueueLock(connection, transaction);
+        }
+        catch
+        {
+            await new HeldQueueLock(connection, transaction).DisposeAsync();
+            throw;
+        }
+    }
+
+    private sealed class HeldQueueLock(NpgsqlConnection connection, NpgsqlTransaction? transaction) : IAsyncDisposable
+    {
+        public async ValueTask DisposeAsync()
+        {
+            // Ending the transaction lets go of the lock; closing the connection would too.
+            if (transaction is not null)
+            {
+                await transaction.DisposeAsync();
             }
 
-            await Task.Delay(50, CancellationToken);
+            await connection.DisposeAsync();
         }
-
-        throw new InvalidOperationException("Couldn't take the email queue's lock.");
     }
 
     private static ServiceProvider Services(string? connectionString) =>

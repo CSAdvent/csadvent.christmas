@@ -69,7 +69,7 @@ public sealed partial class BlurbCheckTests(AppHostFixture fixture)
 
         // The organizers hear that a backup is standing by, so they can keep the author (#148).
         Assert.Equal(1, (await RunAsync(year, "2132-12-06T06:00:00Z")).Emailed);
-        var standingBy = await fixture.WaitForEmailAsync("hello@csadvent.christmas", "C# Advent, December 6: a backup is standing by for a post without the blurb");
+        var standingBy = await fixture.WaitForEmailAsync("hello@csadvent.christmas", "C# Advent, December 6: a backup is standing by for a post without the blurb", containing: Sample("without-blurb", year));
         Assert.Contains("Bo Backup is standing by", standingBy.Text);
 
         // The backup takes the spot at the deadline, and the new post is checked like any other.
@@ -94,7 +94,7 @@ public sealed partial class BlurbCheckTests(AppHostFixture fixture)
         var slotId = await SeasonWithPostAsync(year, day: 9, "Uma Unsure", "uma-2133@example.com", Sample("unsure", year));
 
         await RunAsync(year, "2133-12-09T05:30:00Z");
-        var email = await fixture.WaitForEmailAsync("hello@csadvent.christmas", "C# Advent, December 9: a post's blurb needs your decision");
+        var email = await fixture.WaitForEmailAsync("hello@csadvent.christmas", "C# Advent, December 9: a post's blurb needs your decision", containing: Sample("unsure", year));
         Assert.Contains("Dry run: this sample asks for a person to decide.", email.Text);
 
         using var organizer = await fixture.SignInAsync("organizer", AppHostFixture.OrganizerGitHubId);

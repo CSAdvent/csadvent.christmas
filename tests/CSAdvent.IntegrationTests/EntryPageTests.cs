@@ -121,6 +121,9 @@ public sealed class EntryPageTests(AppHostFixture fixture)
     [Fact]
     public async Task CalendarsLinkPostsThroughTheRedirectAndEveryPageHasPreviewTags()
     {
+        // The home page's card is its season's, so there has to be a season on the calendar, whichever tests ran before
+        // this one (#198): season 2623's sign-ups are open. Without one, it would be the general card.
+        await TestSeasons.EnsureAsync(fixture, 2623, claimsOpen: true);
         using var client = fixture.CreateWebClient();
 
         var archive = await client.GetStringAsync("/archive/2022", CancellationToken);
