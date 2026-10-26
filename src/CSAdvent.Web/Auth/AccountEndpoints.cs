@@ -23,14 +23,10 @@ public static class AccountEndpoints
 
         var authentication = builder.Services
             .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-            .AddCookie(cookie =>
-            {
-                cookie.Cookie.Name = "csadvent.auth";
-                cookie.LoginPath = "/signin";
-                cookie.AccessDeniedPath = "/access-denied";
-                cookie.ExpireTimeSpan = TimeSpan.FromDays(14);
-                cookie.SlidingExpiration = true;
-            });
+            .AddCookie(cookie => AccountSessions.Configure(cookie, builder.Environment));
+
+        // The antiforgery cookie is Secure in production too. (ASP.NET Core leaves it off by default.)
+        builder.Services.Configure<AntiforgeryOptions>(antiforgery => antiforgery.Cookie.SecurePolicy = CookieSecurity.PolicyFor(builder.Environment));
 
         var github = builder.Configuration.GetSection($"{AccountOptions.SectionName}:GitHub").Get<GitHubAppOptions>();
         if (github is { IsConfigured: true })
@@ -44,6 +40,10 @@ public static class AccountEndpoints
                 oauth.TokenEndpoint = GitHubSignIn.TokenEndpoint;
                 oauth.UserInformationEndpoint = GitHubSignIn.UserEndpoint;
                 oauth.Scope.Add("user:email");
+
+                // PKCE (#192): GitHub has accepted it for OAuth apps since July 2025, with S256 only, which is what ASP.NET Core
+                // sends. The client secret is still required alongside it.
+                oauth.UsePkce = true;
                 oauth.Events.OnCreatingTicket = GitHubSignIn.OnCreatingTicketAsync;
             });
         }

@@ -72,6 +72,7 @@ builder.Services.AddSingleton<TestSeasons>();
 builder.Services.AddHostedService<TestSeasonsRefresher>();
 builder.Services.AddScoped<SeasonAccess>();
 builder.Services.AddScoped<SeasonTestingService>();
+builder.Services.AddScoped<TesterInvitations>();
 builder.Services.AddSingleton<AdventSchedule>();
 builder.Services.AddScoped<ArchiveService>();
 builder.Services.AddScoped<HomeService>();

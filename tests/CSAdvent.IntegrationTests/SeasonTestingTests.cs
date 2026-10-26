@@ -97,6 +97,72 @@ public sealed class SeasonTestingTests(AppHostFixture fixture)
     }
 
     [Fact]
+    public async Task AnInvitationBecomesTheTestersByGitHubUserId()
+    {
+        using var organizer = await TestSeasonAsync(todayIs: 0);
+
+        // Ida was already signed in when she was invited, so her next visit makes the invitation hers (#192).
+        using var ida = await fixture.SignInAsync("testing-ida", 26601);
+        await organizer.PostFormAsync(Page, "tester", new() { ["Tester.Login"] = "Testing-Ida" });
+        Assert.Contains("You're invited to test C# Advent.", await ida.GetStringAsync("/about", CancellationToken));
+        await using (var db = await fixture.CreateDbContextAsync())
+        {
+            Assert.Equal(26601, (await db.SeasonTesters.SingleAsync(t => t.SeasonYear == TestYear && t.GithubLogin == "testing-ida", CancellationToken)).GithubUserId);
+        }
+
+        // Whoever gets her login after her isn't a tester. She still is after renaming hers, and the page shows her new login.
+        using var newOwner = await fixture.SignInAsync("testing-ida", 26602);
+        Assert.DoesNotContain("test C# Advent", await newOwner.GetStringAsync("/about", CancellationToken));
+        Assert.Equal(HttpStatusCode.NotFound, (await newOwner.GetAsync($"/claim/{TestYear}/20/1", CancellationToken)).StatusCode);
+
+        using var renamed = await fixture.SignInAsync("testing-ida-renamed", 26601);
+        Assert.Contains("You're invited to test C# Advent.", await renamed.GetStringAsync("/about", CancellationToken));
+        Assert.Contains("invited as testing-ida", await organizer.GetStringAsync(Page, CancellationToken));
+
+        // Inviting her new login changes nothing: she's a tester already.
+        await organizer.PostFormAsync(Page, "tester", new() { ["Tester.Login"] = "testing-ida-renamed" });
+        await using (var db = await fixture.CreateDbContextAsync())
+        {
+            Assert.False(await db.SeasonTesters.AnyAsync(t => t.GithubLogin == "testing-ida-renamed", CancellationToken));
+        }
+    }
+
+    [Fact]
+    public async Task InvitationsFromBeforeUserIdsKeepWorking()
+    {
+        using var organizer = await TestSeasonAsync(todayIs: 0);
+
+        // As the migration leaves them: a login, and no user ID.
+        await using (var db = await fixture.CreateDbContextAsync())
+        {
+            db.SeasonTesters.Add(new SeasonTester { SeasonYear = TestYear, GithubLogin = "testing-lee", AddedAt = DateTimeOffset.UtcNow });
+            await db.SaveChangesAsync(CancellationToken);
+        }
+
+        await organizer.PostFormAsync(Page, "move", new() { ["Move.TodayIs"] = "0" });
+        Assert.Contains("hasn't visited signed in yet", await organizer.GetStringAsync(Page, CancellationToken));
+
+        // Signing in makes it theirs, whatever the case of their login.
+        using var lee = await fixture.SignInAsync("Testing-Lee", 26603);
+        Assert.Contains("You're invited to test C# Advent.", await lee.GetStringAsync("/about", CancellationToken));
+        await using (var db = await fixture.CreateDbContextAsync())
+        {
+            Assert.Equal(26603, (await db.SeasonTesters.SingleAsync(t => t.SeasonYear == TestYear && t.GithubLogin == "testing-lee", CancellationToken)).GithubUserId);
+        }
+
+        // Removing a tester still goes by the login they were invited as.
+        var token = System.Text.RegularExpressions.Regex.Match(
+            await organizer.GetStringAsync(Page, CancellationToken),
+            "<input[^>]*name=\"__RequestVerificationToken\"[^>]*value=\"(?<token>[^\"]+)\"").Groups["token"].Value;
+        var removed = await organizer.PostAsync(
+            "/manage/testing/testers/remove",
+            new FormUrlEncodedContent(new Dictionary<string, string> { ["__RequestVerificationToken"] = WebUtility.HtmlDecode(token), ["Login"] = "testing-lee" }),
+            CancellationToken);
+        Assert.Equal($"{Page}?done=removed", TestBrowser.PathOf(removed.Headers.Location!));
+        Assert.DoesNotContain("You're invited to test C# Advent.", await lee.GetStringAsync("/about", CancellationToken));
+    }
+
+    [Fact]
     public async Task MovingTheRehearsalSendsTheNewDaysReminders()
     {
         // Today is December 18 in the rehearsal, and Day 20's author hasn't sent their post's link.

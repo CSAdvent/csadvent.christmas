@@ -19,13 +19,14 @@ public sealed class SeasonAccess(TestSeasons testSeasons, IHttpContextAccessor h
     public bool CanSee(int year) => year != Season.TestYear || IsTester;
 
     /// <summary>
-    /// An organizer, or invited to the test season. Without a request, never: something rendered outside one (an interactive
+    /// An organizer, or invited to the test season: by GitHub user ID, or by login while their invitation is still waiting
+    /// for them (<see cref="TesterInvitations"/>). Without a request, never: something rendered outside one (an interactive
     /// component has no HttpContext, for example) mustn't show the test season to everyone (#185).
     /// </summary>
     public bool IsTester =>
         httpContextAccessor.HttpContext?.User is { } user
         && (AdventPolicies.IsOrganizer(user, accounts.CurrentValue)
-            || (user.Identity?.IsAuthenticated == true && user.Identity.Name is { } login && testSeasons.Current?.Testers.Contains(login) == true));
+            || (user.Identity?.IsAuthenticated == true && testSeasons.Current?.IsTester(user.GetGitHubUserId(), user.Identity.Name) == true));
 
     public bool IsOrganizer => httpContextAccessor.HttpContext?.User is { } user && AdventPolicies.IsOrganizer(user, accounts.CurrentValue);
 

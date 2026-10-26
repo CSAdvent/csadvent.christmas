@@ -68,17 +68,31 @@
 
     <section class="mt-8 max-w-3xl">
         <h2 class="text-xl font-semibold text-slate-900">Testers</h2>
-        <p class="mt-1 text-slate-600">GitHub logins of the people invited to test. They see an invitation to switch to test mode once they've signed in. The organizers can always test.</p>
+        <p class="mt-1 text-slate-600">
+            The people invited to test, by GitHub login. They see an invitation to switch to test mode once they've signed in.
+            The first time they visit signed in, the invitation becomes theirs by GitHub user ID, so it stays theirs if they
+            rename their login, and nobody else can use it. The organizers can always test.
+        </p>
         @if (view.Testers.Count > 0)
         {
             <ul class="mt-4 flex flex-col divide-y divide-slate-100 rounded-xl ring-1 ring-slate-200">
                 @foreach (var tester in view.Testers)
                 {
                     <li class="flex items-center justify-between gap-4 p-3">
-                        <a href="@($"https://github.com/{tester}")" class="font-medium text-advent-700 underline">@tester</a>
+                        <span>
+                            <a href="@($"https://github.com/{tester.CurrentLogin}")" class="font-medium text-advent-700 underline">@tester.CurrentLogin</a>
+                            @if (tester.IsWaiting)
+                            {
+                                <span class="text-sm text-slate-500">· hasn't visited signed in yet</span>
+                            }
+                            else if (!string.Equals(tester.CurrentLogin, tester.InvitedAs, StringComparison.OrdinalIgnoreCase))
+                            {
+                                <span class="text-sm text-slate-500">· invited as @tester.InvitedAs</span>
+                            }
+                        </span>
                         <form method="post" action="manage/testing/testers/remove">
                             <AntiforgeryToken />
-                            <input type="hidden" name="Login" value="@tester" />
+                            <input type="hidden" name="Login" value="@tester.InvitedAs" />
                             <button type="submit" class="rounded-md px-2 py-1 text-sm text-red-700 ring-1 ring-red-200 hover:bg-red-50">Remove</button>
                         </form>
                     </li>

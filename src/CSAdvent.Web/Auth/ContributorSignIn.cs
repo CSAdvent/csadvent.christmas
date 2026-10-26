@@ -1,14 +1,16 @@
 using CSAdvent.Web.Data;
+using CSAdvent.Web.SeasonTesting;
 using Microsoft.EntityFrameworkCore;
 
 namespace CSAdvent.Web.Auth;
 
 /// <summary>Records a GitHub sign-in as a contributor, creating the row the first time and refreshing it after that.</summary>
-public sealed class ContributorSignIn(AdventDbContext db, TimeProvider timeProvider)
+public sealed class ContributorSignIn(AdventDbContext db, TimeProvider timeProvider, TesterInvitations testerInvitations)
 {
     /// <summary>
     /// Inserts or updates the contributor in one statement, so two sign-ins at once can't create duplicates. Returns the
-    /// contributor's ID. The verified email comes from GitHub and replaces any earlier one.
+    /// contributor's ID. The verified email comes from GitHub and replaces any earlier one. A test season invitation waiting
+    /// for their login becomes theirs by GitHub user ID (<see cref="TesterInvitations"/>).
     /// </summary>
     public async Task<int> RecordAsync(long githubUserId, string login, string? verifiedEmail, CancellationToken cancellationToken = default)
     {
@@ -25,6 +27,7 @@ public sealed class ContributorSignIn(AdventDbContext db, TimeProvider timeProvi
             RETURNING id AS "Value"
             """).ToListAsync(cancellationToken);
 
+        await testerInvitations.ClaimAsync(githubUserId, login, cancellationToken);
         return ids.Single();
     }
 }

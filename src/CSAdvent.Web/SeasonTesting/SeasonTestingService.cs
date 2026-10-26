@@ -15,7 +15,20 @@ public sealed record TestActivity(int Spots, int Requests, int BackupPosters, in
     public bool IsEmpty => Spots + Requests + BackupPosters + BackupOffers + Emails + Visits + SocialPosts == 0;
 }
 
-public sealed record TestingView(DateTimeOffset StartedAt, DateOnly RehearsalStartsOn, IReadOnlyList<string> Testers, TestActivity Activity);
+public sealed record TestingView(DateTimeOffset StartedAt, DateOnly RehearsalStartsOn, IReadOnlyList<TesterView> Testers, TestActivity Activity);
+
+/// <summary>
+/// A tester on the testing page: the login they were invited as, and once their invitation is theirs (by GitHub user ID),
+/// their GitHub login as of their last sign-in.
+/// </summary>
+public sealed record TesterView(string InvitedAs, string? Login)
+{
+    /// <summary>Whether someone has used the invitation yet. Until then it's only a login.</summary>
+    public bool IsWaiting => Login is null;
+
+    /// <summary>The login to show and link to.</summary>
+    public string CurrentLogin => Login ?? InvitedAs;
+}
 
 /// <summary>
 /// The hidden test season (<see cref="Season.TestYear"/>): invited testers try everything for real on the live site,
@@ -39,12 +52,28 @@ public sealed class SeasonTestingService(
         var season = await db.Seasons
             .AsNoTracking()
             .Where(s => s.Year == Year && s.TestingStartedAt != null && s.RehearsalStartsOn != null)
-            .Select(s => new { s.TestingStartedAt, s.RehearsalStartsOn, Testers = s.Testers.OrderBy(t => t.GithubLogin).Select(t => t.GithubLogin).ToList() })
+            .Select(s => new { s.TestingStartedAt, s.RehearsalStartsOn })
             .SingleOrDefaultAsync(cancellationToken);
+        if (season is null)
+        {
+            return null;
+        }
 
-        return season is null
-            ? null
-            : new TestingView(season.TestingStartedAt!.Value, season.RehearsalStartsOn!.Value, season.Testers, await GetActivityAsync(cancellationToken));
+        var testers = await db.SeasonTesters
+            .AsNoTracking()
+            .Where(t => t.SeasonYear == Year)
+            .Select(t => new TesterView(
+                t.GithubLogin,
+                t.GithubUserId == null
+                    ? null
+                    : db.Contributors.Where(c => c.GithubUserId == t.GithubUserId).Select(c => c.GithubLogin).FirstOrDefault() ?? t.GithubLogin))
+            .ToListAsync(cancellationToken);
+
+        return new TestingView(
+            season.TestingStartedAt!.Value,
+            season.RehearsalStartsOn!.Value,
+            [.. testers.OrderBy(t => t.CurrentLogin, StringComparer.OrdinalIgnoreCase)],
+            await GetActivityAsync(cancellationToken));
     }
 
     /// <summary>Creates the test season, with every spot open. Returns false if it already exists.</summary>
@@ -72,7 +101,11 @@ public sealed class SeasonTestingService(
         await testSeasons.RefreshAsync(cancellationToken);
     }
 
-    /// <summary>Adds a tester by GitHub login (or @login, or their GitHub profile URL). Returns false if it isn't a GitHub login.</summary>
+    /// <summary>
+    /// Invites a tester by GitHub login (or @login, or their GitHub profile URL). The invitation becomes theirs by GitHub user
+    /// ID once they've used it (<see cref="TesterInvitations"/>). Nothing changes if that login is already invited, or is the
+    /// current login of someone who's already a tester. Returns false if it isn't a GitHub login.
+    /// </summary>
     public async Task<bool> AddTesterAsync(string login, CancellationToken cancellationToken = default)
     {
         if (GitHubLogins.Normalize(login) is not { } normalized || !await db.Seasons.AnyAsync(s => s.Year == Year, cancellationToken))
@@ -80,7 +113,12 @@ public sealed class SeasonTestingService(
             return false;
         }
 
-        if (!await db.SeasonTesters.AnyAsync(t => t.SeasonYear == Year && t.GithubLogin == normalized, cancellationToken))
+        var alreadyInvited = await db.SeasonTesters.AnyAsync(
+            t => t.SeasonYear == Year
+                && (t.GithubLogin == normalized
+                    || (t.GithubUserId != null && db.Contributors.Any(c => c.GithubUserId == t.GithubUserId && c.GithubLogin.ToLower() == normalized))),
+            cancellationToken);
+        if (!alreadyInvited)
         {
             db.SeasonTesters.Add(new SeasonTester { SeasonYear = Year, GithubLogin = normalized, AddedAt = timeProvider.GetUtcNow() });
             await db.SaveChangesAsync(cancellationToken);
@@ -90,6 +128,7 @@ public sealed class SeasonTestingService(
         return true;
     }
 
+    /// <summary>Removes a tester, by the login they were invited as (<see cref="TesterView.InvitedAs"/>).</summary>
     public async Task RemoveTesterAsync(string login, CancellationToken cancellationToken = default)
     {
         var normalized = login.Trim().ToLowerInvariant();

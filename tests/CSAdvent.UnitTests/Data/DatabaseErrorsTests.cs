@@ -22,6 +22,14 @@ public sealed class DatabaseErrorsTests
     }
 
     [Fact]
+    public void AUniqueViolationFromExecuteUpdateIsRecognized()
+    {
+        // ExecuteUpdate and ExecuteDelete throw PostgreSQL's exception as it is (TesterInvitations, #192).
+        Assert.True(new PostgresException("violates a constraint", "ERROR", "ERROR", PostgresErrorCodes.UniqueViolation).IsUniqueViolation());
+        Assert.False(new PostgresException("violates a constraint", "ERROR", "ERROR", PostgresErrorCodes.CheckViolation).IsUniqueViolation());
+    }
+
+    [Fact]
     public void OtherFailuresAreNeither()
     {
         DbUpdateException[] others =

@@ -48,7 +48,7 @@ public sealed class SampleEmailService(AdventDbContext db, EmailComposer compose
         var testers = await db.Contributors
             .AsNoTracking()
             .Where(c => c.Email != null && c.EmailVerifiedAt != null
-                && db.SeasonTesters.Any(t => t.SeasonYear == Season.TestYear && t.GithubLogin == c.GithubLogin.ToLower()))
+                && db.SeasonTesters.Any(t => t.SeasonYear == Season.TestYear && t.GithubUserId == c.GithubUserId))
             .OrderBy(c => c.GithubLogin)
             .Select(c => new { c.GithubLogin, Email = c.Email! })
             .ToListAsync(cancellationToken);

@@ -85,8 +85,27 @@ public sealed class LogoTests : BunitContext
     [InlineData("fe80::1", false)]
     [InlineData("fd00::1", false)]
     [InlineData("::ffff:10.0.0.1", false)]
+    [InlineData("168.63.129.16", false)]      // Azure's host (#192)
+    [InlineData("168.63.129.17", true)]
+    [InlineData("::10.0.0.1", false)]         // IPv4-compatible (::/96)
+    [InlineData("::a00:1", false)]
+    [InlineData("64:ff9b::a00:1", false)]     // NAT64 (64:ff9b::/96)
+    [InlineData("64:ff9b::808:808", false)]
+    [InlineData("64:ff9b:1::a00:1", false)]   // local-use NAT64 (64:ff9b:1::/48)
+    [InlineData("2002:a00:1::1", false)]      // 6to4 (2002::/16)
+    [InlineData("2001:4860:4860::8888", true)]
     public void OnlyFetchesFromPublicAddresses(string address, bool isPublic) =>
         Assert.Equal(isPublic, PublicAddresses.IsPublic(IPAddress.Parse(address)));
+
+    [Fact]
+    public void NeverFetchesThroughAProxy()
+    {
+        // Through a proxy, the address checked would be the proxy's, and the proxy would reach the site for us (#192).
+        using var handler = PublicAddresses.CreateHandler();
+
+        Assert.False(handler.UseProxy);
+        Assert.NotNull(handler.ConnectCallback);
+    }
 
     [Fact]
     public void RedrawsBigImagesToFit128Pixels()
