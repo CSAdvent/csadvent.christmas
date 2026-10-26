@@ -26,7 +26,10 @@ public enum ReminderKind
     /// </summary>
     ContributorDailyShare,
 
-    /// <summary>Tells the organizers every backup poster has been asked about a spot and nobody took it.</summary>
+    /// <summary>
+    /// Told the organizers every backup poster had been asked about a spot and nobody took it. No longer recorded here: it's
+    /// once per round now, on <see cref="BackupRound.NobodyLeftAt"/> (#153). Kept for the records already made.
+    /// </summary>
     AdminBackupsExhausted,
 
     /// <summary>

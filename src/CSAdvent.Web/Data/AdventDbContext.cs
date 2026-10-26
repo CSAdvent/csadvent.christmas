@@ -25,6 +25,8 @@ public sealed class AdventDbContext(DbContextOptions<AdventDbContext> options) :
 
     public DbSet<BackupOffer> BackupOffers => Set<BackupOffer>();
 
+    public DbSet<BackupRound> BackupRounds => Set<BackupRound>();
+
     public DbSet<BackupSignupEmail> BackupSignupEmails => Set<BackupSignupEmail>();
 
     public DbSet<OtherAdvent> OtherAdvents => Set<OtherAdvent>();
@@ -67,6 +69,9 @@ public sealed class AdventDbContext(DbContextOptions<AdventDbContext> options) :
 
     /// <summary>Every email the site sends, queued for <see cref="Email.Queue.EmailOutboxWorker"/> (#152).</summary>
     public DbSet<QueuedEmail> EmailOutbox => Set<QueuedEmail>();
+
+    /// <summary>When each background job step last succeeded and failed, on any replica (#172).</summary>
+    public DbSet<JobHeartbeat> JobHeartbeats => Set<JobHeartbeat>();
 
     /// <summary>
     /// ASP.NET Core's data protection keys, which protect sign-in cookies and antiforgery tokens. Kept in the database so

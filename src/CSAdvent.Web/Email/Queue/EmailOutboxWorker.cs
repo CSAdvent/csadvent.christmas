@@ -1,4 +1,5 @@
 using CSAdvent.Web.Data;
+using CSAdvent.Web.Jobs;
 using Microsoft.Extensions.Options;
 
 namespace CSAdvent.Web.Email.Queue;
@@ -7,16 +8,20 @@ namespace CSAdvent.Web.Email.Queue;
 /// Drains the email queue (#152) on every replica, in every environment (the tests need their emails delivered too): a pass
 /// (<see cref="EmailQueueDrain"/>) every <see cref="EmailQueueOptions.PollInterval"/>, or straight away when this replica queues
 /// an email (<see cref="EmailQueueSignal"/>). The advisory lock means only one replica's pass sends at a time. When the email
-/// service throttles, it waits as long as it was asked to.
+/// service throttles, it waits as long as it was asked to. Each pass is recorded as <see cref="Step"/> (#172).
 /// </summary>
 public sealed partial class EmailOutboxWorker(
     IServiceScopeFactory scopeFactory,
     EmailQueueSignal signal,
     IOptions<EmailQueueOptions> options,
+    JobRuns runs,
     TimeProvider timeProvider,
     ILogger<EmailOutboxWorker> logger)
     : BackgroundService
 {
+    /// <summary>The queue's passes, every <see cref="EmailQueueOptions.PollInterval"/> (2 seconds unless it's set otherwise).</summary>
+    public static readonly JobStep Step = new("email-queue", "Email queue", TimeSpan.FromSeconds(2));
+
     /// <summary>The longest wait between passes while they keep failing (the database is down, say).</summary>
     private static readonly TimeSpan LongestWait = TimeSpan.FromMinutes(1);
 
@@ -28,10 +33,14 @@ public sealed partial class EmailOutboxWorker(
         var failures = 0;
         var tableExists = false;
         var warnedNotMigrated = false;
+        runs.Started(Step);
         while (!stoppingToken.IsCancellationRequested)
         {
             var wait = options.Value.PollInterval;
             var wakeable = true;
+
+            // Waiting for the table records nothing: the step only succeeds once the migrations have run.
+            bool? succeeded = null;
             try
             {
                 await using var scope = scopeFactory.CreateAsyncScope();
@@ -53,6 +62,7 @@ public sealed partial class EmailOutboxWorker(
                 var pass = await scope.ServiceProvider.GetRequiredService<EmailQueueDrain>().RunAsync(stoppingToken);
                 failures = 0;
                 warnedNotMigrated = false;
+                succeeded = true;
                 if (pass.PausedUntil is { } pausedUntil)
                 {
                     wait = pausedUntil - timeProvider.GetUtcNow();
@@ -76,6 +86,7 @@ public sealed partial class EmailOutboxWorker(
 
                 tableExists = false;
                 wait = TableCheckInterval;
+                succeeded = false;
             }
             catch (Exception exception)
             {
@@ -86,10 +97,16 @@ public sealed partial class EmailOutboxWorker(
                 }
 
                 wait = TimeSpan.FromTicks(Math.Min(LongestWait.Ticks, options.Value.PollInterval.Ticks << Math.Min(failures, 10)));
+                succeeded = false;
             }
 
             try
             {
+                if (succeeded is { } outcome)
+                {
+                    await runs.RecordAsync(Step, outcome, stoppingToken);
+                }
+
                 if (wakeable)
                 {
                     await signal.WaitAsync(wait, timeProvider, stoppingToken);

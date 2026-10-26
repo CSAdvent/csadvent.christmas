@@ -172,13 +172,14 @@ public sealed class SeasonTestingService(
     }
 
     /// <summary>
-    /// Deletes the requests, backup list, offers, sent emails, visits, social posts, blurb checks (and the ones authors asked
-    /// for) and contacts of the test season's spots.
+    /// Deletes the requests, backup list, offers and rounds, sent emails, visits, social posts, blurb checks (and the ones
+    /// authors asked for) and contacts of the test season's spots.
     /// </summary>
     private async Task DeleteActivityAsync(CancellationToken token)
     {
         // Offers point at both the backup list and the spots, so they go first.
         await db.BackupOffers.Where(o => o.Slot.SeasonYear == Year).ExecuteDeleteAsync(token);
+        await db.BackupRounds.Where(r => r.Slot.SeasonYear == Year).ExecuteDeleteAsync(token);
         await db.Substitutes.Where(s => s.SeasonYear == Year).ExecuteDeleteAsync(token);
         await db.BackupSignupEmails.Where(e => e.SeasonYear == Year).ExecuteDeleteAsync(token);
         await db.SentReminders.Where(r => r.Slot != null && r.Slot.SeasonYear == Year).ExecuteDeleteAsync(token);

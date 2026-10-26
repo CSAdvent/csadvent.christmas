@@ -16,7 +16,7 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261026142227_AddBlurbSelfChecks";
+    public override string LastMigrationId => "20261026161343_AddBackupRoundsAndJobHeartbeats";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -252,7 +252,8 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
 
                 b.HasIndex("SlotId", "SubstituteId")
                     .IsUnique()
-                    .HasDatabaseName("ix_backup_offers_slot_id_substitute_id");
+                    .HasDatabaseName("ix_backup_offers_one_ask")
+                    .HasFilter("status = 'Asked'");
 
                 b.ToTable("backup_offers", t =>
                     {
@@ -260,6 +261,57 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
 
                         t.HasCheckConstraint("ck_backup_offers_post_url", "post_url ~* '^https?://'");
                     });
+            });
+
+        modelBuilder.Entity("CSAdvent.Web.Data.BackupRound", b =>
+            {
+                var id = b.Property<int>("Id")
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("integer")
+                    .HasColumnName("id");
+
+                NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(id);
+
+                b.Property<string>("Holder")
+                    .IsRequired()
+                    .HasMaxLength(150)
+                    .HasColumnType("character varying(150)")
+                    .HasColumnName("holder");
+
+                b.Property<DateTimeOffset?>("NobodyLeftAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("nobody_left_at");
+
+                b.Property<int>("Number")
+                    .HasColumnType("integer")
+                    .HasColumnName("number");
+
+                b.Property<int>("OffersAfter")
+                    .HasColumnType("integer")
+                    .HasColumnName("offers_after");
+
+                b.Property<string>("Reason")
+                    .IsRequired()
+                    .HasMaxLength(20)
+                    .HasColumnType("character varying(20)")
+                    .HasColumnName("reason");
+
+                b.Property<int>("SlotId")
+                    .HasColumnType("integer")
+                    .HasColumnName("slot_id");
+
+                b.Property<DateTimeOffset>("StartedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("started_at");
+
+                b.HasKey("Id")
+                    .HasName("pk_backup_rounds");
+
+                b.HasIndex("SlotId", "Number")
+                    .IsUnique()
+                    .HasDatabaseName("ix_backup_rounds_slot_id_number");
+
+                b.ToTable("backup_rounds");
             });
 
         modelBuilder.Entity("CSAdvent.Web.Data.BackupSignupEmail", b =>
@@ -770,6 +822,27 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                     .HasDatabaseName("ix_entry_hits_slot_id_kind");
 
                 b.ToTable("entry_hits");
+            });
+
+        modelBuilder.Entity("CSAdvent.Web.Data.JobHeartbeat", b =>
+            {
+                b.Property<string>("Step")
+                    .HasMaxLength(50)
+                    .HasColumnType("character varying(50)")
+                    .HasColumnName("step");
+
+                b.Property<DateTimeOffset?>("LastFailedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("last_failed_at");
+
+                b.Property<DateTimeOffset?>("LastSucceededAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("last_succeeded_at");
+
+                b.HasKey("Step")
+                    .HasName("pk_job_heartbeats");
+
+                b.ToTable("job_heartbeats");
             });
 
         modelBuilder.Entity("CSAdvent.Web.Data.OtherAdvent", b =>
@@ -1774,6 +1847,18 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                 b.Navigation("Slot");
 
                 b.Navigation("Substitute");
+            });
+
+        modelBuilder.Entity("CSAdvent.Web.Data.BackupRound", b =>
+            {
+                b.HasOne("CSAdvent.Web.Data.Slot", "Slot")
+                    .WithMany()
+                    .HasForeignKey("SlotId")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired()
+                    .HasConstraintName("fk_backup_rounds_slots_slot_id");
+
+                b.Navigation("Slot");
             });
 
         modelBuilder.Entity("CSAdvent.Web.Data.BackupSignupEmail", b =>

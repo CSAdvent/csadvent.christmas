@@ -7,6 +7,7 @@ using CSAdvent.Web.Content;
 using CSAdvent.Web.Data;
 using CSAdvent.Web.Email;
 using CSAdvent.Web.Email.Queue;
+using CSAdvent.Web.Jobs;
 using CSAdvent.Web.Social.Posting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -40,6 +41,9 @@ public enum BackupOfferOutcome
 
     /// <summary>Filling in for a missing blurb, but their own post doesn't open with it either.</summary>
     MissingBlurb,
+
+    /// <summary>The offer kept changing while they answered (a run closing it, say), so nothing was saved: the page shows where it stands.</summary>
+    Changed,
 }
 
 /// <summary>A backup's view of one ask, for the offer page.</summary>
@@ -69,7 +73,8 @@ public sealed record BackupOfferView(
 /// straight away if an organizer asked for a backup</item>
 /// </list>
 /// Each backup has <see cref="BackupOptions.AnswerWithin"/> before the next is asked too; anyone asked can accept while the
-/// spot still needs a post. When everybody's been asked, the organizers hear about it once.
+/// spot still needs a post. When everybody's been asked, the organizers hear about it once. That's per round
+/// (<see cref="BackupRound"/>, #153): when the spot needs a backup for a new reason or a new author, everyone's asked again.
 /// <para>
 /// Asks go through the email queue (#152), which drops one not sent by the time the next backup is asked. If an ask can't be
 /// queued, the offer goes and the same backup is asked by the next run; if the queue gives up on it (#149), its time to answer
@@ -176,18 +181,39 @@ public sealed partial class BackupService(
                     .Select(o => o.SlotId))
                 .ToListAsync(cancellationToken);
 
-            foreach (var slotId in slotIds.Order())
-            {
-                run += await AdvanceAsync(slotId, now, cancellationToken);
-            }
+            // One spot that fails doesn't stop the others' asks (#147).
+            await EachSpot.RunAsync(db, slotIds.Order(), async slotId => run += await AdvanceAsync(slotId, now, cancellationToken), LogSpotFailed, cancellationToken);
         }
 
         return run;
     }
 
-    /// <summary>Starts on a spot straight away (after a dropout or release), instead of waiting for the next run.</summary>
-    public Task<BackupRun> OfferNowAsync(int slotId, DateTimeOffset now, CancellationToken cancellationToken = default) =>
-        AdvanceAsync(slotId, now, cancellationToken);
+    /// <summary>
+    /// Starts on a spot straight away (after a dropout, a release or a blurb decision), instead of waiting for the next run. If
+    /// it fails, it's logged and the next run does it (#147), so it never fails what the author or organizer was doing.
+    /// </summary>
+    public async Task<BackupRun> OfferNowAsync(int slotId, DateTimeOffset now, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await AdvanceAsync(slotId, now, cancellationToken);
+        }
+        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            // Nothing it left half done may be saved by the caller.
+            db.ChangeTracker.Clear();
+            if (MissingSchema.IsMissingTableOrColumn(exception))
+            {
+                LogOfferNowNotMigrated(exception, slotId);
+            }
+            else
+            {
+                LogSpotFailed(exception, slotId);
+            }
+
+            return BackupRun.None;
+        }
+    }
 
     /// <summary>What the email queue knows an offer's ask by.</summary>
     public static string OfferReference(int offerId) => string.Create(CultureInfo.InvariantCulture, $"backup-offer:{offerId}");
@@ -229,8 +255,11 @@ public sealed partial class BackupService(
             return null;
         }
 
+        // Someone's standing by, or took the spot after this ask. A backup who took it before this ask (and then dropped out
+        // too, say) is history: the spot needs someone again (#153).
         var takenByOthers = await db.BackupOffers.AnyAsync(
-            o => o.SlotId == offer.SlotId && o.Id != offer.Id && (o.Status == BackupOfferStatus.Accepted || o.Status == BackupOfferStatus.Used),
+            o => o.SlotId == offer.SlotId && o.Id != offer.Id
+                && (o.Status == BackupOfferStatus.Accepted || (o.Status == BackupOfferStatus.Used && o.Id > offer.Id)),
             cancellationToken);
         var reason = CouldUseBackup(offer.Slot, now, await BlurbOfAsync(offer.Slot, cancellationToken));
 
@@ -255,6 +284,28 @@ public sealed partial class BackupService(
 
     /// <summary>A backup taking a spot with their post. Anyone who was asked can, while the spot still needs one.</summary>
     public async Task<BackupOfferOutcome> AcceptAsync(int contributorId, int offerId, BackupAcceptForm form, DateTimeOffset now, CancellationToken cancellationToken = default)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                return await TryAcceptAsync(contributorId, offerId, form, now, cancellationToken);
+            }
+            catch (DbUpdateConcurrencyException) when (attempt < 2)
+            {
+                // A run changed the offer at the same moment (closing it, or starting a new round), or the form was sent
+                // twice (#147). Nothing was saved, so it's tried again with the offer as it is now.
+                db.ChangeTracker.Clear();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                db.ChangeTracker.Clear();
+                return BackupOfferOutcome.Changed;
+            }
+        }
+    }
+
+    private async Task<BackupOfferOutcome> TryAcceptAsync(int contributorId, int offerId, BackupAcceptForm form, DateTimeOffset now, CancellationToken cancellationToken)
     {
         var offer = await FindOfferAsync(contributorId, offerId, cancellationToken);
         if (offer is null)
@@ -328,7 +379,16 @@ public sealed partial class BackupService(
         {
             offer.Status = BackupOfferStatus.Declined;
             offer.RespondedAt = now;
-            await db.SaveChangesAsync(cancellationToken);
+            try
+            {
+                await db.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                // A run closed it at the same moment, or they accepted it in another tab (#147). The page shows where it stands.
+                db.ChangeTracker.Clear();
+                return BackupOfferOutcome.Changed;
+            }
         }
 
         return BackupOfferOutcome.Declined;
@@ -363,21 +423,62 @@ public sealed partial class BackupService(
             return BackupRun.None;
         }
 
-        // Someone's still within their time to answer.
-        if (open.Any(o => o.ExpiresAt > now))
+        // Everyone's asked once per round, and a new author or a new reason starts a new one (#153).
+        if (await CurrentRoundAsync(slot, reason, offers, now, cancellationToken) is not { } round)
         {
             return BackupRun.None;
         }
 
-        if (await NextCandidateAsync(slot, offers, now, cancellationToken) is not { } candidate)
+        var asked = offers.Where(o => o.Id > round.OffersAfter).ToList();
+
+        // Someone's still within their time to answer.
+        if (asked.Any(o => o.Status is BackupOfferStatus.Asked && o.ExpiresAt > now))
         {
-            return await TellOrganizersNobodyIsLeftAsync(slot, now, cancellationToken);
+            return BackupRun.None;
+        }
+
+        if (await NextCandidateAsync(slot, asked, now, cancellationToken) is not { } candidate)
+        {
+            return await TellOrganizersNobodyIsLeftAsync(slot, round, now, cancellationToken);
         }
 
         return await AskAsync(slot, candidate, reason, now, cancellationToken);
     }
 
-    /// <summary>The first backup in sign-up order who hasn't been asked about this spot and isn't busy with another.</summary>
+    /// <summary>
+    /// The spot's round of asks (#153): its latest round, or a new one if the spot now needs a backup for another reason or
+    /// another author (<see cref="BackupRound.HolderOf"/>). A new round withdraws the earlier asks nobody answered, so their
+    /// time to answer doesn't hold this round up and they can be asked again; a backup standing by stays on deck. Null if
+    /// another run (or replica) started it, or answered an ask, at the same moment: the next run carries on.
+    /// </summary>
+    private async Task<BackupRound?> CurrentRoundAsync(Slot slot, BackupReason reason, List<BackupOffer> offers, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var latest = await db.BackupRounds.Where(r => r.SlotId == slot.Id).OrderByDescending(r => r.Number).FirstOrDefaultAsync(cancellationToken);
+        var round = BackupRound.For(latest, slot, reason, offers.Count == 0 ? 0 : offers.Max(o => o.Id), now);
+        if (round == latest)
+        {
+            return latest;
+        }
+
+        db.BackupRounds.Add(round);
+        foreach (var offer in offers.Where(o => o.Status is BackupOfferStatus.Asked))
+        {
+            offer.Status = BackupOfferStatus.Withdrawn;
+        }
+
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+            return round;
+        }
+        catch (DbUpdateException exception) when (exception is DbUpdateConcurrencyException || exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        {
+            db.ChangeTracker.Clear();
+            return null;
+        }
+    }
+
+    /// <summary>The first backup in sign-up order who hasn't been asked about this spot this round and isn't busy with another.</summary>
     private async Task<Substitute?> NextCandidateAsync(Slot slot, List<BackupOffer> offers, DateTimeOffset now, CancellationToken cancellationToken)
     {
         var asked = offers.Select(o => o.SubstituteId).ToHashSet();
@@ -511,7 +612,16 @@ public sealed partial class BackupService(
             offer.Status = BackupOfferStatus.Withdrawn;
         }
 
-        await db.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // A backup answered one at the same moment (xmin, #147). Nothing was saved; the next run closes them.
+            db.ChangeTracker.Clear();
+            return BackupRun.None;
+        }
 
         // Backups who'd sent a post hear that the spot was filled after all (not when its day simply ended).
         if (now < schedule.GetDayEndTime(slot.SeasonYear, slot.Day))
@@ -530,39 +640,24 @@ public sealed partial class BackupService(
         return BackupRun.None with { Withdrawn = open.Count };
     }
 
-    private async Task<BackupRun> TellOrganizersNobodyIsLeftAsync(Slot slot, DateTimeOffset now, CancellationToken cancellationToken)
+    private async Task<BackupRun> TellOrganizersNobodyIsLeftAsync(Slot slot, BackupRound round, DateTimeOffset now, CancellationToken cancellationToken)
     {
-        // Once per spot: recorded against the spot's day, whenever it's sent. Every run gets here until the spot's day is over,
-        // so it checks first rather than leave it to the unique index, whose refusals EF Core logs as errors (#157).
-        var runDate = schedule.GetDate(slot.SeasonYear, slot.Day);
-        if (await db.SentReminders.RecordedSlots(ReminderKind.AdminBackupsExhausted, runDate).ContainsAsync(slot.Id, cancellationToken))
+        // Once per round (#153). Every run gets here until the spot's day is over or a new round starts, so it checks first,
+        // and the run (or replica) whose update sets the time sends it: nothing is inserted for an index to refuse (#157).
+        if (round.NobodyLeftAt is not null
+            || await db.BackupRounds
+                .Where(r => r.Id == round.Id && r.NobodyLeftAt == null)
+                .ExecuteUpdateAsync(r => r.SetProperty(x => x.NobodyLeftAt, now), cancellationToken) == 0)
         {
-            return BackupRun.None;
-        }
-
-        var record = new SentReminder
-        {
-            Kind = ReminderKind.AdminBackupsExhausted,
-            RunDate = runDate,
-            SlotId = slot.Id,
-            SentAt = now,
-        };
-        db.SentReminders.Add(record);
-        try
-        {
-            await db.SaveChangesAsync(cancellationToken);
-        }
-        catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
-        {
-            db.Entry(record).State = EntityState.Detached;
             return BackupRun.None;
         }
 
         if (!await SendAsync(BackupEmails.NoBackups(SpotOf(slot), site.Value), Organizers, "no backups left", slot.Id, cancellationToken))
         {
             // Not queued, so not recorded either: the next run tries again (#149).
-            db.SentReminders.Remove(record);
-            await db.SaveChangesAsync(CancellationToken.None);
+            await db.BackupRounds
+                .Where(r => r.Id == round.Id)
+                .ExecuteUpdateAsync(r => r.SetProperty(x => x.NobodyLeftAt, (DateTimeOffset?)null), CancellationToken.None);
             return BackupRun.None;
         }
 
@@ -611,6 +706,12 @@ public sealed partial class BackupService(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Backup offer {OfferId}'s ask for slot {SlotId} couldn't be sent, so the next backup is being asked")]
     private partial void LogAskUndelivered(int offerId, int slotId);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Moving the backup asks for slot {SlotId} along failed. The next run tries it again")]
+    private partial void LogSpotFailed(Exception exception, int slotId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Couldn't ask backups about slot {SlotId} yet: the database isn't migrated to this version. The next run does")]
+    private partial void LogOfferNowNotMigrated(Exception exception, int slotId);
 }
 
 /// <summary>

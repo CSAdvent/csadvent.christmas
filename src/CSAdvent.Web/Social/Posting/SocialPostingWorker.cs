@@ -1,41 +1,28 @@
-using CSAdvent.Web.Data;
+using CSAdvent.Web.Jobs;
 
 namespace CSAdvent.Web.Social.Posting;
 
 /// <summary>
 /// Runs <see cref="SocialPostingService"/> every five minutes, so an announcement goes out within a few minutes of its time,
-/// and <see cref="SocialCredentialCheck"/>, which checks each Automatic platform's credentials once a day. Runs with no
-/// platform in Automatic mode, or nothing due, are cheap.
+/// after <see cref="SocialCredentialCheck"/>, which checks each Automatic platform's credentials once a day, and before
+/// <see cref="SeasonSocialService"/>'s "sign-ups are open" posts. Each is a step of its own (#147), so a credential check
+/// that fails never stops the day's announcements. Runs with no platform in Automatic mode, or nothing due, are cheap.
 /// </summary>
-public sealed class SocialPostingWorker(IServiceScopeFactory scopeFactory, TimeProvider timeProvider, ILogger<SocialPostingWorker> logger)
-    : BackgroundService
+public sealed class SocialPostingWorker(IServiceScopeFactory scopeFactory, JobRuns runs, TimeProvider timeProvider, ILogger<SocialPostingWorker> logger)
+    : PeriodicWorker(scopeFactory, runs, timeProvider, logger, Every)
 {
-    private static readonly TimeSpan Interval = TimeSpan.FromMinutes(5);
+    public static readonly TimeSpan Every = TimeSpan.FromMinutes(5);
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        using var timer = new PeriodicTimer(Interval, timeProvider);
-        do
-        {
-            try
-            {
-                await using var scope = scopeFactory.CreateAsyncScope();
-                await scope.ServiceProvider.GetRequiredService<SocialCredentialCheck>().RunAsync(timeProvider.GetUtcNow(), stoppingToken);
-                await scope.ServiceProvider.GetRequiredService<SocialPostingService>().RunAsync(timeProvider.GetUtcNow(), stoppingToken);
-                await scope.ServiceProvider.GetRequiredService<SeasonSocialService>().RunAsync(timeProvider.GetUtcNow(), cancellationToken: stoppingToken);
-            }
-            catch (Exception exception) when (!stoppingToken.IsCancellationRequested && MissingSchema.IsMissingTableOrColumn(exception))
-            {
-                // Shortly after a deploy, before its migrations job has added a table or column this version uses (#151). The
-                // next run after the migrations works, so it's a warning, not an error for the alert (#225).
-                logger.LogWarning(exception, "Couldn't post to social media automatically yet: the database isn't migrated to this version. Trying again in {Interval}.", Interval);
-            }
-            catch (Exception exception) when (!stoppingToken.IsCancellationRequested)
-            {
-                // An unhandled exception would stop the whole app. The next run tries again.
-                logger.LogError(exception, "Automatic social posting failed. Trying again in {Interval}.", Interval);
-            }
-        }
-        while (await timer.WaitForNextTickAsync(stoppingToken));
-    }
+    public static readonly JobStep CredentialCheck = new("social-credentials", "Social credential check", Every);
+
+    public static readonly JobStep Announcements = new("social-posting", "Automatic social posts", Every);
+
+    public static readonly JobStep SeasonPosts = new("season-social-posts", "\"Sign-ups are open\" social posts", Every);
+
+    protected override IReadOnlyList<PeriodicStep> Steps { get; } =
+    [
+        new(CredentialCheck, (services, now, cancellationToken) => services.GetRequiredService<SocialCredentialCheck>().RunAsync(now, cancellationToken)),
+        new(Announcements, (services, now, cancellationToken) => services.GetRequiredService<SocialPostingService>().RunAsync(now, cancellationToken)),
+        new(SeasonPosts, (services, now, cancellationToken) => services.GetRequiredService<SeasonSocialService>().RunAsync(now, cancellationToken: cancellationToken)),
+    ];
 }

@@ -4,6 +4,7 @@ using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Content;
 using CSAdvent.Web.Data;
 using CSAdvent.Web.Email;
+using CSAdvent.Web.Jobs;
 using CSAdvent.Web.Social.Posting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -95,10 +96,13 @@ public sealed partial class BlurbCheckService(
                 .Select(s => new { s.Id, s.Day })
                 .ToListAsync(cancellationToken);
 
-            foreach (var slot in slots.Where(s => now >= schedule.GetRevealTime(year, s.Day) - options.Value.CheckFrom && now < schedule.GetDayEndTime(year, s.Day)))
-            {
-                run += await AdvanceAsync(slot.Id, now, organizer: null, cancellationToken);
-            }
+            // One post that fails (a page the reader chokes on, say) doesn't stop the others' checks (#147).
+            await EachSpot.RunAsync(
+                db,
+                slots.Where(s => now >= schedule.GetRevealTime(year, s.Day) - options.Value.CheckFrom && now < schedule.GetDayEndTime(year, s.Day)).Select(s => s.Id),
+                async slotId => run += await AdvanceAsync(slotId, now, organizer: null, cancellationToken),
+                LogSpotFailed,
+                cancellationToken);
         }
 
         return run;
@@ -503,4 +507,7 @@ public sealed partial class BlurbCheckService(
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't queue \"{Subject}\" for slot {SlotId}")]
     private partial void LogSendFailed(Exception exception, string subject, int slotId);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Checking the blurb of slot {SlotId}'s post failed. The next run tries it again")]
+    private partial void LogSpotFailed(Exception exception, int slotId);
 }

@@ -1,0 +1,83 @@
+@* The overview's background jobs (#172): when each step last succeeded and failed, on any replica. *@
+@using CSAdvent.Web.Jobs
+@inject JobRuns Runs
+
+@if (_report is { } report)
+{
+    <section class="mt-10" aria-labelledby="background-jobs">
+        <h2 id="background-jobs" class="text-xl font-semibold text-slate-900">Background jobs</h2>
+        <p class="mt-1 max-w-3xl text-slate-600">
+            The reminders, backup asks, social posts and the rest run by themselves, each step on its own, so one that fails
+            doesn't stop the others. A step is late once it hasn't succeeded for four of its runs (and at least 30 minutes),
+            which turns the site's health check Degraded. Why a run failed is in the logs: the runbook says where.
+        </p>
+        @if (report.NotMigrated)
+        {
+            <p class="mt-3 max-w-3xl text-sm text-slate-600" role="status">
+                These are only this server's runs: the deploy's migrations haven't run yet, so the other servers' runs aren't saved.
+            </p>
+        }
+        <div class="mt-4 overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead class="border-b border-slate-200 text-slate-500">
+                    <tr>
+                        <th class="py-2 pr-4 font-medium">Step</th>
+                        <th class="py-2 pr-4 font-medium">Runs</th>
+                        <th class="py-2 pr-4 font-medium">Last succeeded</th>
+                        <th class="py-2 pr-4 font-medium">Last failed</th>
+                        <th class="py-2 font-medium">Status</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    @foreach (var step in report.Steps)
+                    {
+                        <tr>
+                            <td class="py-2 pr-4 font-medium text-slate-900">@step.Step.Name</td>
+                            <td class="py-2 pr-4 text-slate-600">@step.Step.Every</td>
+                            <td class="py-2 pr-4 text-slate-700">
+                                @if (step.LastSucceededAt is { } succeeded)
+                                {
+                                    <LocalTime Value="succeeded" />
+                                }
+                                else
+                                {
+                                    <span class="text-slate-500">Never</span>
+                                }
+                            </td>
+                            <td class="py-2 pr-4 text-slate-700">
+                                @if (step.LastFailedAt is { } failed)
+                                {
+                                    <LocalTime Value="failed" />
+                                }
+                            </td>
+                            <td class="py-2 font-medium @StatusClass(step.Health)">@Status(step)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+}
+
+@code {
+    private JobStatusReport? _report;
+
+    protected override async Task OnInitializedAsync() => _report = await Runs.GetStatusAsync();
+
+    private static string Status(JobStepStatus step) => step.Health switch
+    {
+        JobHealth.Off => "Off here",
+        JobHealth.Waiting => "Starting",
+        JobHealth.Succeeding => "OK",
+        JobHealth.Failing => "Last run failed",
+        _ => $"Late: no success for over {JobStep.Duration(step.Step.LateAfter)}",
+    };
+
+    private static string StatusClass(JobHealth health) => health switch
+    {
+        JobHealth.Succeeding => "text-green-800",
+        JobHealth.Failing => "text-amber-800",
+        JobHealth.Late => "text-red-700",
+        _ => "text-slate-500",
+    };
+}

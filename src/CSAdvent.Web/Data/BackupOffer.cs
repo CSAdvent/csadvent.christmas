@@ -71,8 +71,13 @@ internal sealed class BackupOfferConfiguration : IEntityTypeConfiguration<Backup
         builder.Property(o => o.PostUrl).HasMaxLength(500);
         builder.Property(o => o.Version).IsRowVersion();
 
-        // Each backup is asked about a spot at most once.
-        builder.HasIndex(o => new { o.SlotId, o.SubstituteId }).IsUnique();
+        // A backup has one ask waiting about a spot at most, so two runs (or replicas) asking the same backup at once can't
+        // both send it. They're asked once per round (BackupRound, #153): a new round withdraws the asks nobody answered, and
+        // asks everyone again.
+        builder.HasIndex(o => new { o.SlotId, o.SubstituteId })
+            .IsUnique()
+            .HasDatabaseName("ix_backup_offers_one_ask")
+            .HasFilter($"status = '{nameof(BackupOfferStatus.Asked)}'");
 
         // Only one backup can be waiting to take a spot: a second acceptance hits this index. Used offers aren't included, so
         // if a backup who filled a spot drops out too, the spot can be offered again; the slot's xmin guards using it twice.

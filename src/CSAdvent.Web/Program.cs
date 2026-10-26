@@ -16,6 +16,7 @@ using CSAdvent.Web.Email;
 using CSAdvent.Web.Email.Queue;
 using CSAdvent.Web.Entries;
 using CSAdvent.Web.Feed;
+using CSAdvent.Web.Jobs;
 using CSAdvent.Web.Manage;
 using CSAdvent.Web.Reminders;
 using CSAdvent.Web.Social;
@@ -24,6 +25,7 @@ using CSAdvent.Web.Retention;
 using CSAdvent.Web.Retrospectives;
 using CSAdvent.Web.SeasonTesting;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using OpenTelemetry.Instrumentation.Http;
 
@@ -54,6 +56,13 @@ builder.Services.AddOptions<SiteOptions>()
     .BindConfiguration(SiteOptions.SectionName)
     .ValidateDataAnnotations()
     .ValidateOnStart();
+
+// When each background job step last succeeded (#172), for /manage, and for /health, which turns Degraded (never
+// Unhealthy, since readiness asks it too) when one of this replica's steps hasn't succeeded for too long.
+builder.Services.AddSingleton<IJobHeartbeatStore, JobHeartbeatStore>();
+builder.Services.AddSingleton<JobRuns>();
+builder.Services.AddHealthChecks().AddCheck<JobsHealthCheck>(JobsHealthCheck.Name, failureStatus: HealthStatus.Degraded);
+
 // Seasons being tested follow a rehearsal schedule, and only their testers see what's happening in them.
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<TestSeasons>();

@@ -1,41 +1,30 @@
-using CSAdvent.Web.Data;
+using CSAdvent.Web.Backups;
+using CSAdvent.Web.Blurbs;
+using CSAdvent.Web.Jobs;
 
 namespace CSAdvent.Web.Reminders;
 
 /// <summary>
-/// Runs <see cref="Blurbs.BlurbCheckService"/>, <see cref="ReminderService"/> and <see cref="Backups.BackupService"/> every 15
-/// minutes, in that order: the day's posts are checked for the blurb first, so the daily email leaves out a failed one, and a
-/// blurb added just before its deadline is seen before a backup takes the spot. Runs with nothing to do are cheap.
+/// Runs <see cref="BlurbCheckService"/>, <see cref="ReminderService"/> and <see cref="BackupService"/> every 15 minutes, in
+/// that order: the day's posts are checked for the blurb first, so the daily email leaves out a failed one, and a blurb added
+/// just before its deadline is seen before a backup takes the spot. Each is a step of its own (#147), so a blurb check that
+/// fails never stops the day's emails or backup asks. Runs with nothing to do are cheap.
 /// </summary>
-public sealed class ReminderWorker(IServiceScopeFactory scopeFactory, TimeProvider timeProvider, ILogger<ReminderWorker> logger)
-    : BackgroundService
+public sealed class ReminderWorker(IServiceScopeFactory scopeFactory, JobRuns runs, TimeProvider timeProvider, ILogger<ReminderWorker> logger)
+    : PeriodicWorker(scopeFactory, runs, timeProvider, logger, Every)
 {
-    private static readonly TimeSpan Interval = TimeSpan.FromMinutes(15);
+    public static readonly TimeSpan Every = TimeSpan.FromMinutes(15);
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        using var timer = new PeriodicTimer(Interval, timeProvider);
-        do
-        {
-            try
-            {
-                await using var scope = scopeFactory.CreateAsyncScope();
-                await scope.ServiceProvider.GetRequiredService<Blurbs.BlurbCheckService>().RunAsync(timeProvider.GetUtcNow(), cancellationToken: stoppingToken);
-                await scope.ServiceProvider.GetRequiredService<ReminderService>().RunAsync(timeProvider.GetUtcNow(), stoppingToken);
-                await scope.ServiceProvider.GetRequiredService<Backups.BackupService>().RunAsync(timeProvider.GetUtcNow(), cancellationToken: stoppingToken);
-            }
-            catch (Exception exception) when (!stoppingToken.IsCancellationRequested && MissingSchema.IsMissingTableOrColumn(exception))
-            {
-                // Shortly after a deploy, before its migrations job has added a table or column this version uses (#151). The
-                // next run after the migrations works, so it's a warning, not an error for the alert (#225).
-                logger.LogWarning(exception, "Couldn't send reminders yet: the database isn't migrated to this version. Trying again in {Interval}.", Interval);
-            }
-            catch (Exception exception) when (!stoppingToken.IsCancellationRequested)
-            {
-                // An unhandled exception would stop the whole app. The next run tries again.
-                logger.LogError(exception, "Sending reminders failed. Trying again in {Interval}.", Interval);
-            }
-        }
-        while (await timer.WaitForNextTickAsync(stoppingToken));
-    }
+    public static readonly JobStep BlurbCheck = new("blurb-check", "Blurb check", Every);
+
+    public static readonly JobStep Reminders = new("reminders", "Reminders and the authors' daily email", Every);
+
+    public static readonly JobStep Backups = new("backups", "Backup asks", Every);
+
+    protected override IReadOnlyList<PeriodicStep> Steps { get; } =
+    [
+        new(BlurbCheck, (services, now, cancellationToken) => services.GetRequiredService<BlurbCheckService>().RunAsync(now, cancellationToken: cancellationToken)),
+        new(Reminders, (services, now, cancellationToken) => services.GetRequiredService<ReminderService>().RunAsync(now, cancellationToken)),
+        new(Backups, (services, now, cancellationToken) => services.GetRequiredService<BackupService>().RunAsync(now, cancellationToken: cancellationToken)),
+    ];
 }
