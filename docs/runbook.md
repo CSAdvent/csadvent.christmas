@@ -835,9 +835,10 @@ connections ran out when a deploy met a scale-out. To change it, change the `Sku
   keeps it, so use the new size's default from Azure's
   [limits page](https://learn.microsoft.com/azure/postgresql/configure-maintain/concepts-limits#maximum-connections)
   (B2s 429, B2ms 859), and keep `connectionsPerReplica` and the connections alert in step.
-- **The deploy restarts the server** to change its size: the site can't reach the database for a minute or two, so pick
-  a quiet time, never December.
-- **`max_connections` needs a restart of its own**, because the deploy sets it after resizing. Once the deploy's done:
+- **The deploy takes the server down** to change its size, and the site with it: from B1ms to B2s on October 27, the
+  database was down for about 7 minutes. Pick a quiet time, never December.
+- **`max_connections` needs a restart of its own**, because the deploy sets it after resizing (on October 27, about a
+  minute). Once the deploy's done:
 
   ```bash
   az postgres flexible-server parameter show -g rg-csadvent -s postgres-54yzcow3wctne -n max_connections \
