@@ -63,6 +63,10 @@ public static class LinkCheckEndpoints
             // sites or the Internet Archive.
             app.MapPost("/dev/links/run", async (DateTimeOffset at, int? year, LinkCheckService links, CancellationToken cancellationToken) =>
                 Results.Ok(await links.RunAsync(at.ToUniversalTime(), year, cancellationToken)));
+
+            // The organizers' email about posts found dead, as if it were the given time. Answers how many posts it listed.
+            app.MapPost("/dev/links/email", async (DateTimeOffset at, int? year, DeadLinkEmail email, CancellationToken cancellationToken) =>
+                Results.Ok(await email.RunAsync(at.ToUniversalTime(), year, cancellationToken)));
         }
 
         return app;

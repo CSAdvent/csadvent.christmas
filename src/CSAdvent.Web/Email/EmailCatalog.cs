@@ -274,6 +274,18 @@ public static class EmailCatalog
             "The organizers (Site:ContactEmail).",
             SampleDigest),
         new(
+            "dead-links-found",
+            "Older posts found gone",
+            "At 8 AM Eastern (LinkChecks:EmailAt), when the dead-link check has found finished seasons' posts dead since the day before: each post once, with what the check found and whether readers get a saved copy. Not posts an organizer marked gone or checked themselves.",
+            "The organizers (Site:ContactEmail).",
+            site => CSAdvent.Web.DeadLinks.DeadLinkEmail.Email(
+                [
+                    new(41, 2019, 12, 2, 2, "Pattern matching all the way down", "A. Byron", "https://ada.example.com/2019/12/pattern-matching", "The site's address, ada.example.com, doesn't exist any more.", "https://web.archive.org/web/20191212000000/https://ada.example.com/2019/12/pattern-matching", true),
+                    new(17, 2017, 5, 1, 1, "Async all the way", "Grace Hopper", "https://grace.example.com/async", "The page answered 404 Not Found.", null, true),
+                ],
+                3,
+                site)),
+        new(
             "social-credentials-failing",
             "Automatic posting has stopped working",
             "At 8 AM Eastern, when a platform in Automatic mode fails the daily check of its credentials (once a day per platform).",

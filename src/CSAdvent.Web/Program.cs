@@ -129,6 +129,7 @@ builder.Services.AddSingleton<IArchiveLookup>(services => sampleLinks
     ? new SampleArchiveLookup()
     : new WaybackArchiveLookup(WaybackArchiveLookup.CreateClient(), services.GetRequiredService<ILogger<WaybackArchiveLookup>>()));
 builder.Services.AddScoped<LinkCheckService>();
+builder.Services.AddScoped<DeadLinkEmail>();
 if (builder.Configuration.GetValue("LinkChecks:CheckInBackground", defaultValue: true))
 {
     builder.Services.AddHostedService<LinkCheckWorker>();

@@ -36,13 +36,18 @@ resource organizers 'Microsoft.Insights/actionGroups@2023-01-01' = {
   }
 }
 
-// Every Error-level log and exception, except the database libraries' records of errors the code expects (#224, #225).
-// A failed database command is logged at Error before the code that ran it can handle it, up to three times:
+// Every error the site or one of its background jobs logged, except the database libraries' records of errors the code
+// expects (#224, #225).
+// Exceptions only count when something logged them, with a severity. The tracing of outgoing requests (.NET's own HttpClient
+// tracing) and of database commands (Npgsql's) also records each failure's exception on its span, with no severity or
+// category, so a site the dead-link check found gone was an alert, though the check expects them and logs them as
+// information. Whatever makes the request decides whether its failure is an error, and logs it if it is: in the database
+// connection outages of October 24-25, EF Core and the pages logged dozens of errors alongside the spans' records.
+// A failed database command is still logged at Error before the code that ran it can handle it, up to twice:
 //   - EF Core's CommandError trace (EventId 20102, "Failed executing DbCommand"), whose message is only the SQL. It's left
 //     out whatever the error, because the failure is always reported again by what comes after it: EF Core's
 //     SaveChangesFailed or failed query, or the code's own error.
-//   - EF Core's SaveChangesFailed or failed query exception, and Npgsql's tracing span on the postgresql dependency, which
-//     records the same PostgresException with no category. These are left out only for SqlStates the code expects:
+//   - EF Core's SaveChangesFailed or failed query exception, left out only for SqlStates the code expects:
 //       - 23505, a unique violation: a record another run or replica saved first.
 //       - 42P01 and 42703, a missing table or column: new code on an older schema. Deploys run the migrations first (#151),
 //         so only a revision started without them. Background jobs log those as warnings and try again on their next run.
@@ -52,10 +57,10 @@ resource organizers 'Microsoft.Insights/actionGroups@2023-01-01' = {
 var errorsQuery = '''
 union
     (traces | where severityLevel >= 3),
-    (exceptions | where isnull(severityLevel) or severityLevel >= 3)
+    (exceptions | where severityLevel >= 3)
 | extend category = tostring(customDimensions.CategoryName)
 | where not(category == "Microsoft.EntityFrameworkCore.Database.Command" and tostring(customDimensions.EventId) == "20102")
-| where not((isempty(category) or category startswith "Microsoft.EntityFrameworkCore" or category startswith "Npgsql")
+| where not((category startswith "Microsoft.EntityFrameworkCore" or category startswith "Npgsql")
     and strcat(message, " ", outerMessage, " ", innermostMessage) has_any ("23505", "42P01", "42703"))
 '''
 

@@ -75,7 +75,8 @@ public enum LinkActionOutcome
 /// <item>Each run leases the rows it checks, so replicas never check the same post, and spaces out each site's posts
 /// (<see cref="LinkCheckOptions.HostPause"/>).</item>
 /// <item>Organizers see the dead and failing posts at <c>/manage/authors/dead-links</c> and on each entry's page, and can check
-/// one now, say it works or that it's gone, give it a new link, or set (or look up) its archived copy.</item>
+/// one now, say it works or that it's gone, give it a new link, or set (or look up) its archived copy. The posts found dead
+/// are emailed to them once a day (<see cref="DeadLinkEmail"/>).</item>
 /// </list>
 /// Never the test season.
 /// </summary>
@@ -145,6 +146,9 @@ public sealed partial class LinkCheckService(
         check.DecidedBy = null;
         check.DecidedAt = null;
         check.LeasedUntil = null;
+
+        // The organizer who checked it sees what it found, so the day's email doesn't tell them again.
+        check.OrganizersEmailedAt = check.Status == LinkStatus.Dead ? check.OrganizersEmailedAt ?? now : null;
         await db.SaveChangesAsync(cancellationToken);
 
         if (check is { Status: LinkStatus.Dead, ArchivedUrl: null, ArchivedBy: null })
@@ -168,6 +172,7 @@ public sealed partial class LinkCheckService(
         check.FailingSince = null;
         check.DeadSince = null;
         check.Detail = $"{organizer} said it works.";
+        check.OrganizersEmailedAt = null;
         Decide(check, organizer, now);
         await db.SaveChangesAsync(cancellationToken);
         return LinkActionOutcome.Saved;
@@ -187,6 +192,7 @@ public sealed partial class LinkCheckService(
         check.Status = LinkStatus.Dead;
         check.DeadSince ??= now;
         check.Detail = $"{organizer} marked it as gone.";
+        check.OrganizersEmailedAt ??= now;
         Decide(check, organizer, now);
         await db.SaveChangesAsync(cancellationToken);
 
@@ -284,7 +290,8 @@ public sealed partial class LinkCheckService(
                     .SetProperty(c => c.ArchivedBy, (string?)null)
                     .SetProperty(c => c.ArchiveCheckedAt, (DateTimeOffset?)null)
                     .SetProperty(c => c.DecidedBy, (string?)null)
-                    .SetProperty(c => c.DecidedAt, (DateTimeOffset?)null),
+                    .SetProperty(c => c.DecidedAt, (DateTimeOffset?)null)
+                    .SetProperty(c => c.OrganizersEmailedAt, (DateTimeOffset?)null),
                 cancellationToken);
         return LinkActionOutcome.Saved;
     }
@@ -348,7 +355,7 @@ public sealed partial class LinkCheckService(
         && uri.Host.Length > 0;
 
     /// <summary>Checks about the spots' current addresses (a changed address is checked again from scratch) in real seasons.</summary>
-    private static IQueryable<LinkCheck> Current(IQueryable<LinkCheck> checks) =>
+    internal static IQueryable<LinkCheck> Current(IQueryable<LinkCheck> checks) =>
         checks.Where(c => c.PostUrl == c.Slot.PostUrl && c.Slot.AuthorName != null && c.Slot.SeasonYear != Season.TestYear);
 
     private static IQueryable<LinkCheckRow> Rows(IQueryable<LinkCheck> checks) =>
@@ -430,7 +437,8 @@ public sealed partial class LinkCheckService(
                         .SetProperty(c => c.ArchivedBy, (string?)null)
                         .SetProperty(c => c.ArchiveCheckedAt, (DateTimeOffset?)null)
                         .SetProperty(c => c.DecidedBy, (string?)null)
-                        .SetProperty(c => c.DecidedAt, (DateTimeOffset?)null),
+                        .SetProperty(c => c.DecidedAt, (DateTimeOffset?)null)
+                        .SetProperty(c => c.OrganizersEmailedAt, (DateTimeOffset?)null),
                     cancellationToken);
         }
     }
@@ -500,6 +508,7 @@ public sealed partial class LinkCheckService(
         var probe = await ProbeAsync(url, cancellationToken);
         var before = LinkCheckState.Of(await db.LinkChecks.AsNoTracking().SingleAsync(c => c.Id == id, cancellationToken));
         var after = LinkCheckRules.After(before, probe, now, Options, Random.Shared.NextDouble());
+        var stillDead = after.Status == LinkStatus.Dead;
 
         // Not over an organizer's decision, or a new address, made while it was being checked.
         var saved = await db.LinkChecks
@@ -513,7 +522,8 @@ public sealed partial class LinkCheckService(
                     .SetProperty(c => c.Detail, after.Detail)
                     .SetProperty(c => c.CheckedAt, after.CheckedAt)
                     .SetProperty(c => c.NextCheckAt, after.NextCheckAt)
-                    .SetProperty(c => c.LeasedUntil, (DateTimeOffset?)null),
+                    .SetProperty(c => c.LeasedUntil, (DateTimeOffset?)null)
+                    .SetProperty(c => c.OrganizersEmailedAt, c => stillDead ? c.OrganizersEmailedAt : null),
                 cancellationToken);
         if (saved == 0)
         {
@@ -623,6 +633,7 @@ public sealed partial class LinkCheckService(
             check.ArchiveCheckedAt = null;
             check.DecidedBy = null;
             check.DecidedAt = null;
+            check.OrganizersEmailedAt = null;
         }
 
         return (check, slot.SeasonYear, slot.Day);
