@@ -2,7 +2,7 @@
 
 **The site behind [csadvent.christmas](https://csadvent.christmas): two new C# posts every day from December 1st to December 25th.**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE) [![CI](https://img.shields.io/github/actions/workflow/status/CodingWithCalvin/CSAdvent/ci.yml?branch=main&style=for-the-badge&label=CI)](https://github.com/CodingWithCalvin/CSAdvent/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE) [![CI](https://img.shields.io/github/actions/workflow/status/CSAdvent/csadvent.christmas/ci.yml?branch=main&style=for-the-badge&label=CI)](https://github.com/CSAdvent/csadvent.christmas/actions/workflows/ci.yml)
 
 ---
 
