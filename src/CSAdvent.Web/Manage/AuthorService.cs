@@ -13,7 +13,11 @@ namespace CSAdvent.Web.Manage;
 /// </summary>
 public sealed record AuthorRow(int? ContributorId, string? Key, string Name, string? GithubLogin, int Posts, IReadOnlyList<AuthorSeason> Seasons, string? SuggestedLogin)
 {
-    public string Profile => ContributorId is { } id ? $"manage/authors/{id}" : $"manage/authors/unlinked?key={Uri.EscapeDataString(Key!)}";
+    public string Profile => ProfileOf(ContributorId, Key);
+
+    /// <summary>An author's page: a linked author's by their contributor, an unlinked one's by their <see cref="AuthorService.Key"/>.</summary>
+    public static string ProfileOf(int? contributorId, string? key) =>
+        contributorId is { } id ? $"manage/authors/{id}" : $"manage/authors/unlinked?key={Uri.EscapeDataString(key!)}";
 }
 
 /// <summary>A season an author took part in, and the post they published in it, if they did. Two posts in a season are two of these.</summary>

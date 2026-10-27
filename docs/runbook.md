@@ -214,7 +214,8 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
   whether readers get a saved copy; the first pass over a season's posts can list dozens. A failed check is never an
   alert. From the email, or every so often, open `/manage/authors/dead-links` (linked from Authors):
   - **A post that moved:** give it its **New link** (search for the title, or ask the author). Every link we've published
-    follows it at once.
+    follows it at once. Each list is by author, A to Z, oldest post first, with the address we have for them, so one
+    email can ask about all their posts.
   - **No saved copy:** paste one of your own into **Saved copy** if you find one (archive.today, say), or leave it.
   - **A false alarm** (a site that only refuses checks like ours): **It works**. **It's gone** is for a page the check
     can't tell is gone, such as a domain that's been sold.

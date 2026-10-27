@@ -14,7 +14,7 @@
     about once a month, and never the same site twice in an hour. A post that fails @Options.FailuresBeforeDead checks in a row,
     a day or more apart, is dead, and its saved copy is looked up at the Internet Archive's Wayback Machine, closest to its
     reveal. Readers who follow a dead post's link get that copy. Give a post a new link if its author moved it, or a saved copy
-    of your own.
+    of your own. Each list is by author, with the address we have for them, so you can ask about all their posts at once.
 </p>
 
 @if (_counts is { } counts)
@@ -37,14 +37,35 @@
         }
         else
         {
-            <ul class="mt-4 flex max-w-4xl flex-col gap-3">
-                @foreach (var row in rows)
+            <div class="mt-4 flex max-w-4xl flex-col gap-8">
+                @foreach (var author in LinkCheckAuthor.Group(rows))
                 {
-                    <li id="post-@row.SlotId" class="scroll-mt-4 rounded-xl p-4 ring-1 ring-slate-200">
-                        <LinkCheckCard Row="row" ShowPost="true" ReturnUrl="@($"{LinkCheckService.DeadLinksPage}#post-{row.SlotId}")" Done="@DoneFor(row.SlotId)" />
-                    </li>
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-900">
+                            <a href="@author.Profile" class="hover:text-advent-700 hover:underline">@author.Name</a>
+                            <span class="text-sm font-normal text-slate-500">(@author.Posts.Count)</span>
+                        </h3>
+                        <p class="mt-0.5 flex flex-wrap gap-x-3 text-sm">
+                            @if (author.Emails.Count == 0)
+                            {
+                                <span class="text-slate-500">No email address</span>
+                            }
+                            @foreach (var email in author.Emails)
+                            {
+                                <a href="mailto:@email" class="break-all text-advent-700 underline">@email</a>
+                            }
+                        </p>
+                        <ul class="mt-3 flex flex-col gap-3">
+                            @foreach (var row in author.Posts)
+                            {
+                                <li id="post-@row.SlotId" class="scroll-mt-4 rounded-xl p-4 ring-1 ring-slate-200">
+                                    <LinkCheckCard Row="row" ShowPost="true" ReturnUrl="@($"{LinkCheckService.DeadLinksPage}#post-{row.SlotId}")" Done="@DoneFor(row.SlotId)" />
+                                </li>
+                            }
+                        </ul>
+                    </div>
                 }
-            </ul>
+            </div>
         }
     </section>
 }

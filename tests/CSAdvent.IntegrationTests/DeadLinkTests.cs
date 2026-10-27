@@ -198,12 +198,59 @@ public sealed partial class DeadLinkTests(AppHostFixture fixture)
         Assert.DoesNotContain("jo.links.csadvent.test", email.Text);
     }
 
-    private static void Post(Season season, int day, int part, string author, string url)
+    [Fact]
+    public async Task TheDeadLinksPageListsEachAuthorsPostsTogetherWithTheirAddress()
+    {
+        // Signing in gives Kit an account with a verified address; their posts are under two names.
+        using var kitsBrowser = await fixture.SignInAsync("links-2684", 26841);
+        int kit;
+        await using (var db = await fixture.CreateDbContextAsync())
+        {
+            kit = await db.Contributors.Where(c => c.GithubUserId == 26841).Select(c => c.Id).SingleAsync(CancellationToken);
+        }
+
+        await TestSeasons.EnsureAsync(fixture, 2684, claimsOpen: false, season =>
+        {
+            Post(season, 1, 1, "Kit Grouped", "https://kit.links.csadvent.test/gone-2684").ContributorId = kit;
+            Post(season, 2, 1, "Abe Grouped", "https://abe.links.csadvent.test/gone-2684").Contact = new SlotContact { Email = "abe-2684@example.com" };
+        });
+        await TestSeasons.EnsureAsync(fixture, 2685, claimsOpen: false, season =>
+            Post(season, 1, 1, "Kit L. Grouped", "https://kit.links.csadvent.test/gone-2685").ContributorId = kit);
+
+        using var organizer = await fixture.SignInAsync("organizer", AppHostFixture.OrganizerGitHubId);
+        foreach (var (year, day) in new[] { (2684, 1), (2684, 2), (2685, 1) })
+        {
+            await PostAsync(organizer, "dead", await SlotIdAsync(year, day, 1));
+        }
+
+        // Authors by name, then each author's posts oldest first.
+        var page = await organizer.GetPageAsync("/manage/authors/dead-links");
+        var abe = page.IndexOf("href=\"manage/authors/unlinked?key=abe%20grouped\"", StringComparison.Ordinal);
+        var kitsAuthor = page.IndexOf($"href=\"manage/authors/{kit}\"", StringComparison.Ordinal);
+        Assert.True(abe >= 0 && kitsAuthor > abe, "Abe comes before Kit.");
+        Assert.Equal(kitsAuthor, page.LastIndexOf($"href=\"manage/authors/{kit}\"", StringComparison.Ordinal));
+        Assert.Contains(">Kit L. Grouped</a>", page[kitsAuthor..], StringComparison.Ordinal);
+
+        int[] order =
+        [
+            page.IndexOf("href=\"mailto:abe-2684@example.com\"", StringComparison.Ordinal),
+            page.IndexOf("https://abe.links.csadvent.test/gone-2684", StringComparison.Ordinal),
+            kitsAuthor,
+            page.IndexOf("href=\"mailto:links-2684@example.com\"", StringComparison.Ordinal),
+            page.IndexOf("https://kit.links.csadvent.test/gone-2684", StringComparison.Ordinal),
+            page.IndexOf("https://kit.links.csadvent.test/gone-2685", StringComparison.Ordinal),
+        ];
+        Assert.All(order, index => Assert.True(index > abe));
+        Assert.Equal(order.Order(), order);
+    }
+
+    private static Slot Post(Season season, int day, int part, string author, string url)
     {
         var slot = season.Slots.Single(s => s.Day == day && s.Part == part);
         slot.AuthorName = author;
         slot.PostTitle = $"{author}'s post";
         slot.PostUrl = url;
+        return slot;
     }
 
     private async Task<LinkRun> RunAsync(int year, DateTimeOffset at)

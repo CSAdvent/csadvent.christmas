@@ -15,6 +15,8 @@ public sealed record LinkCheckRun(int Checked, int FoundDead, int FoundCopies)
 }
 
 /// <summary>A post's check, for the organizers.</summary>
+/// <param name="ContributorId">The GitHub account the spot is linked to, if it is.</param>
+/// <param name="AuthorEmail">Where to reach the author: their account's verified address, or else the spot's contact address.</param>
 /// <param name="Version">The spot's row version, so a new link can't overwrite a change made in between.</param>
 public sealed record LinkCheckRow(
     int SlotId,
@@ -24,6 +26,8 @@ public sealed record LinkCheckRow(
     int SlotsPerDay,
     string? Title,
     string? AuthorName,
+    int? ContributorId,
+    string? AuthorEmail,
     string PostUrl,
     uint Version,
     LinkStatus Status,
@@ -370,6 +374,10 @@ public sealed partial class LinkCheckService(
                 c.Slot.Season.SlotsPerDay,
                 c.Slot.PostTitle,
                 c.Slot.AuthorName,
+                c.Slot.ContributorId,
+                c.Slot.Contributor != null && c.Slot.Contributor.EmailVerifiedAt != null ? c.Slot.Contributor.Email
+                    : c.Slot.Contact != null ? c.Slot.Contact.Email
+                    : null,
                 c.PostUrl,
                 c.Slot.Version,
                 c.Status,
