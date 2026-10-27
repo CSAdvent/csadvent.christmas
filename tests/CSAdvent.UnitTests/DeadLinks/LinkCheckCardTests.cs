@@ -74,7 +74,7 @@ public sealed class LinkCheckCardTests : BunitContext
             .Add(c => c.Done, done));
 
     private static LinkCheckRow Row(LinkStatus status, string? archivedUrl = null) => new(
-        42, 2018, 5, 1, 2, "Span<T> all the way down", "Ada", "https://blog.example.com/post", 7, status, "The page answered 404 Not Found.",
+        42, 2018, 5, 1, 2, "Span<T> all the way down", "Ada", null, null, "https://blog.example.com/post", 7, status, "The page answered 404 Not Found.",
         Failures: status == LinkStatus.Dead ? 3 : 1,
         FailingSince: Now.AddDays(-1),
         DeadSince: status == LinkStatus.Dead ? Now.AddDays(-3) : null,
