@@ -111,6 +111,17 @@ resource bluesky 'Microsoft.Network/dnsZones/TXT@2018-05-01' = {
   }
 }
 
+// Verifies csadvent.christmas for the CSAdvent GitHub organization. The code is GitHub's, from the organization's
+// Verified & approved domains settings.
+resource githubOrganization 'Microsoft.Network/dnsZones/TXT@2018-05-01' = {
+  parent: zone
+  name: '_gh-CSAdvent-o'
+  properties: {
+    TTL: ttl
+    TXTRecords: [{ value: ['3d3a91f92f'] }]
+  }
+}
+
 // Azure Communication Services: domain ownership and SPF for the sending domain, and its two DKIM keys.
 resource mail 'Microsoft.Network/dnsZones/TXT@2018-05-01' = {
   parent: zone
