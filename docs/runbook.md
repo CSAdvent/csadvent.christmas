@@ -14,7 +14,7 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 |---|---|---|
 | September | The home page starts counting down to sign-ups | Automatic |
 | September–October | Create the season, refresh copy, run a test round, check social posting | Organizers |
-| Late October | Check credentials, the domain's renewal, the alerts and Actions minutes (Every November, below) | Organizers |
+| Late October | Check credentials, the domain's renewal and the alerts (Every November, below) | Organizers |
 | November 1 | Sign-ups open; the announcements list, past authors and the Automatic social platforms hear about it at 9 AM | Automatic, once the season is scheduled; LinkedIn and Reddit by hand from `/manage/social/signups` |
 | November | Approve requests, watch the backup list | Organizers |
 | Any time | Check requests to add older posts to people's accounts, and for new links to older posts (each one emails the organizers) | Organizers |
@@ -62,7 +62,7 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 
    LinkedIn and Reddit are always copy and paste. X is paid per use, so make sure its app has credit for the season.
    If Facebook's check says a permission "must be granted before impersonating a user's page", Meta has probably limited
-   the app until you answer a request in its developer portal (the README's Facebook setup has the rest).
+   the app until you answer a request in its developer portal ([the deployment guide's Facebook section](deployment.md#facebook) has the rest).
 7. **Check email:** send yourself a sample from `/manage/emails` (it goes through the email queue, so it proves both),
    check `/manage/emails/queue` has nothing failed, and send a test email to hello@csadvent.christmas from another address
    (it forwards through ImprovMX).
@@ -78,7 +78,7 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
     down by itself; post it with **Post now**, or copy it for LinkedIn and Reddit.
 11. **Try the blurb check** in the test round: give a test spot a real post with the blurb and one without, press **Check my
     post** on My spots as the tester, then move "today" to their day, **send what's due** (it checks the test season's posts
-    first), and see each entry's page. It needs the Anthropic API key (the README's deploy setup); without it, posts aren't
+    first), and see each entry's page. It needs the Anthropic API key ([the deployment guide](deployment.md)); without it, posts aren't
     checked and nothing is held.
 12. **Check the alerts** (see Alerts, below): press **Test** on the `csadvent-organizers` action group in the portal and
     make sure both organizers get it, and check the uptime check is green and alerts both of you.
@@ -283,7 +283,7 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
   - The **Facebook Page token** is invalidated by a password change or losing the Page role.
   - The **Mastodon token** and the **Bluesky app password** last until revoked.
 
-  The README's deploy setup says how to get each one. Replace the secret in the repository's `production`
+  [The deployment guide](deployment.md) says how to get each one. Replace the secret in the repository's `production`
   environment, run the Deploy workflow, and press **Check**.
 - **Email:** a sample from `/manage/emails` proves the sending domain is still connected and the email queue is
   sending. The site can send 30 emails a minute and 100 an hour, and the queue keeps it under that (see Email Sending
@@ -301,7 +301,6 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
   off in `AppHost.cs` is the first thing to try.
 - **Sign-in:** sign in to the live site with GitHub. Nothing else notices a revoked OAuth secret.
 - **hello@:** send it a test email from another address. Nothing else notices ImprovMX failing.
-- **GitHub Actions minutes:** check the organization's usage before November (see below).
 - **Dependency alerts:** the repository's **Security → Dependabot** tab lists known vulnerabilities in the packages and
   actions. Fix any before December. (It needs Dependabot alerts on, under **Settings → Code security**.)
 - **The database's maintenance window:** Azure patches the server on Sundays from 08:00 UTC, 3 AM Eastern (#158), and
@@ -403,7 +402,7 @@ Lines marked ✏️ **To fill in** are for the organizers: they aren't written d
 - **If it fails:** automatic Facebook posts fail. A Facebook password change, losing the Page role, or Meta limiting the app
   all stop the token working.
 - **What notices:** the 8 AM credential check, while Facebook is Automatic.
-- **Rotating:** make a new Page token as the README's Facebook setup describes, set `FACEBOOK_PAGE_TOKEN`, deploy, and press
+- **Rotating:** make a new Page token as [the deployment guide's Facebook section](deployment.md#facebook) describes, set `FACEBOOK_PAGE_TOKEN`, deploy, and press
   **Check**.
 
 ### ✖️ X Credentials
@@ -441,7 +440,7 @@ Lines marked ✏️ **To fill in** are for the organizers: they aren't written d
   or if the repository is re-created or transferred, because the credential names the repository by its ID. Renaming the
   repository, or making it public, doesn't matter.
 - **What notices:** the Deploy workflow fails at "Sign in to Azure".
-- **Rotating:** nothing to rotate. To rebuild it, follow step 1 of the README's deploy setup.
+- **Rotating:** nothing to rotate. To rebuild it, follow step 1 of [the deployment guide's setup](deployment.md).
 
 ### ✉️ Email (Azure Communication Services)
 
@@ -571,16 +570,10 @@ The current limits are in the portal: the Email Communication Service `csadvent-
 
 ## 💸 GitHub Actions Minutes
 
-The repository is private, and the CodingWithCalvin organization is on GitHub's Free plan: **2,000 Linux minutes a month**,
-shared with the organization's other private repositories. Each job is billed in whole minutes, rounded up. When they run
-out, CI stops, and so do deploys, because they wait for CI.
+The repository has been public since October 26, 2026, so Actions minutes on GitHub's standard runners are free (#140),
+and there's nothing to watch.
 
-**What a change costs** (October 2026): about 4 minutes of CI for each push to a pull request (with the Azure publish
-check, #178), plus 2 for the commit lint (two jobs of a minute each), then 4 more for CI on `main` after the merge and about
-7 for the deploy. So a pull request merged after one push is about 17 minutes. October 25 had 8 deploys, and recent use was
-about 180 minutes a day: at that pace November's allowance runs out mid-month.
-
-**Already cut** (#140):
+**Still in place from when it was private**, because they keep CI and deploys quick:
 
 - A new push to a pull request cancels the CI run and the commit lint it replaces.
 - A pull request that only changes `README.md`, `CLAUDE.md` or `docs/` skips the build and the tests. Its "Build and test"
@@ -593,29 +586,14 @@ about 180 minutes a day: at that pace November's allowance runs out mid-month.
   deploy replaces.
 - Dependabot groups each week's updates into one pull request per ecosystem, and is paused in December.
 
-**Decided (October 26, 2026):** the repository goes public only once every open issue is done. Until then it stays
-private on the free 2,000 minutes, with an Actions budget as a bridge, so CI and deploys keep running through the push to
-clear the backlog (#140).
+**Being public:**
 
-1. **Now: an Actions budget**, so CI keeps running past the free minutes: the organization's **Settings → Billing and
-   licensing → Budgets and alerts → New budget**, for Actions, with email alerts. In October 2026, Linux minutes beyond the
-   free ones cost $0.006 each, and October had used 1,255 by the 26th, at about 180 a day.
-   - ✏️ **To fill in:** the budget's amount ($____ a month; about $20–25 was suggested), whether it stops usage (which stops
-     CI again) or only warns, and the date it was set.
-2. **Once every open issue is done: make the repository public.** Actions minutes on GitHub's standard runners are free
-   for public repositories. Before switching:
-   - Scan the whole history for secrets with a scanner such as [gitleaks](https://github.com/gitleaks/gitleaks). The real
-     secrets live in the `production` environment, not the repository, but check anyway.
-   - Read what becomes public: the docs name the subscription ID, the resource names and the deploy identity's federated
-     subject (none of them secret), and every commit shows its author's email address.
-   - Afterwards, only `main` can deploy (the `production` environment's rule), so pull requests from forks never see the
-     secrets, and GitHub asks before running workflows for first-time contributors. Branch protection becomes available
-     too (a private repository on the Free plan can't have it): requiring "Build and test" is safe with the documentation
-     skip above.
-   - Switch it in **Settings → General → Danger Zone → Change visibility**, then remove the Actions budget.
-
-Either way, check the organization's **Settings → Billing and licensing → Usage** (filtered to Actions) in early November,
-and again in early December.
+- **Forks can't deploy.** Only `main` can deploy (the `production` environment's rule), so pull requests from forks never
+  see the secrets, and GitHub asks before running workflows for first-time contributors.
+- **Branch protection** is available. Requiring "Build and test" is safe with the documentation skip above.
+- **If it ever goes private again:** the organization is on GitHub's Free plan, with 2,000 Linux minutes a month shared by
+  its private repositories, and October 2026's pace (about 180 minutes a day) would run out by mid-month. Set an Actions
+  budget first.
 
 ---
 
@@ -626,7 +604,7 @@ hello@, so it can't warn anyone about itself):
 
 - **An uptime check outside Azure** asks `https://csadvent.christmas/health` every few minutes. It's set up by hand (below).
 - **Azure Monitor alerts**, defined in [`infra/alerts.bicep`](../src/CSAdvent.AppHost/infra/alerts.bicep) and created by the
-  deploy once the `ALERT_EMAILS` secret is set (the README's deploy setup). They go to every address in it, from Azure's
+  deploy once the `ALERT_EMAILS` secret is set ([the deployment guide](deployment.md)). They go to every address in it, from Azure's
   own `azure-noreply@microsoft.com`, so add that to your contacts. Each address gets an email from Azure when it's added
   to the `csadvent-organizers` action group. To change who gets them, change the secret and run the Deploy
   workflow; a change made in the portal is undone by the next deploy.

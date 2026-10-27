@@ -70,7 +70,7 @@ public sealed class SocialCredentialCheck(
             Paragraph($"Today's check of C# Advent's {platform} credentials failed, so automatic posts to {platform} will fail until they're fixed."),
             Details(new DetailRow($"What {platform} said", EmailBlocks.SingleLine(error))),
             Paragraph(
-                "Replace them in the repository's production environment (the README's deploy setup says which secrets, and how " +
+                "Replace them in the repository's production environment (docs/deployment.md in the repository says which secrets, and how " +
                 "to get them), run the Deploy workflow, then press Check on the social page. Until then, post announcements by " +
                 "hand from there."),
             Button("Open the social page", $"{site.BaseUrl.TrimEnd('/')}/manage/social"),

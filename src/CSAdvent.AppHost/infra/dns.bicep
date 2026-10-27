@@ -1,5 +1,5 @@
 // The site's DNS zone and every record in it. None of it is live until Hover, the registrar, is switched to this zone's
-// name servers (see the README).
+// name servers (see docs/deployment.md).
 
 // Aspire passes every module the deployment's region. DNS zones are global.
 #disable-next-line no-unused-params
