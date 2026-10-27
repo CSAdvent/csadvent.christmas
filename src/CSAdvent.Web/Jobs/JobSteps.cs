@@ -27,6 +27,7 @@ public static class JobSteps
         ContactRetentionWorker.UnconfirmedSubscribers,
         OtherAdventLogoWorker.Logos,
         LinkCheckWorker.DeadLinks,
+        LinkCheckWorker.DeadLinksEmail,
         TestSeasonsRefresher.Refresh,
     ];
 }

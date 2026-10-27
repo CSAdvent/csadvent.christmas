@@ -80,6 +80,13 @@ public sealed class LinkCheck
     public string? DecidedBy { get; set; }
 
     public DateTimeOffset? DecidedAt { get; set; }
+
+    /// <summary>
+    /// When the organizers heard it's dead: in the day's email (<see cref="DeadLinks.DeadLinkEmail"/>), or by marking it gone
+    /// or checking it themselves. Cleared when it isn't dead any more, or its check starts again, so they hear again if it
+    /// dies again.
+    /// </summary>
+    public DateTimeOffset? OrganizersEmailedAt { get; set; }
 }
 
 internal sealed class LinkCheckConfiguration : IEntityTypeConfiguration<LinkCheck>

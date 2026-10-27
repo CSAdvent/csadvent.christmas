@@ -18,7 +18,7 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 | November 1 | Sign-ups open; the announcements list, past authors and the Automatic social platforms hear about it at 9 AM | Automatic, once the season is scheduled; LinkedIn and Reddit by hand from `/manage/social/signups` |
 | November | Approve requests, watch the backup list | Organizers |
 | Any time | Check requests to add older posts to people's accounts, and for new links to older posts (each one emails the organizers) | Organizers |
-| Any time | Look over the dead links page now and then: give moved posts their new link (readers already get a saved copy where there is one) | Automatic check; organizers fix |
+| Any time | Posts found dead are emailed to the organizers at 8 AM: give moved posts their new link on the dead links page (readers already get a saved copy where there is one) | Automatic check; organizers fix |
 | From 7 days before each day | "Your post is due" reminders, then a last call on the day | Automatic |
 | By November 30 | Raise the site to 2 replicas and pause Dependabot, in one pull request, and merge any database migrations (December, below) | Organizers |
 | December 1–26 | Schema freeze: no pull requests with database migrations (December, below) | Organizers |
@@ -209,8 +209,10 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
   its sign-ups open as soon as they're scheduled.
 - **Dead links (from December 26, all year):** once a season is over, its posts join the dead-link check, a few posts
   every 15 minutes, each about once a month. A post that fails three checks in a row, days apart, is dead, and readers
-  following its link get the Wayback Machine's saved copy, if it has one. Every so often (in January, say, with the archive
-  files), open `/manage/authors/dead-links` (linked from Authors):
+  following its link get the Wayback Machine's saved copy, if it has one. The organizers get one email at 8 AM Eastern
+  ("older C# Advent posts are gone") listing the posts found dead since the day before, with what the check found and
+  whether readers get a saved copy; the first pass over a season's posts can list dozens. A failed check is never an
+  alert. From the email, or every so often, open `/manage/authors/dead-links` (linked from Authors):
   - **A post that moved:** give it its **New link** (search for the title, or ask the author). Every link we've published
     follows it at once.
   - **No saved copy:** paste one of your own into **Saved copy** if you find one (archive.today, say), or leave it.
@@ -629,10 +631,15 @@ a sample to everyone.
   3. "Gave up on … email" means the email queue tried an email 6 times over about 2 hours 20 minutes. It's on
      `/manage/emails/queue` with the email service's answer: fix the cause, then **Retry** (or **Retry all**).
 
-  A failed database command is logged as an error by EF Core and Npgsql before the site can handle it. The alert leaves out
-  EF Core's "Failed executing DbCommand" (`CommandError`), because whatever ran the command reports the failure again, and
-  their records of the errors the site expects (#224, #225): a duplicate (SqlState 23505), when two runs or replicas save
-  the same thing at once, and a missing table or column (42P01, 42703), when code runs before its migrations. So the manual
+  Exceptions only count when the site logged them. The tracing of outgoing requests and database commands also records
+  each failure's exception, with no severity: in Application Insights they're exceptions whose `severityLevel` is empty,
+  and they used to trip the alert, such as each old post's site the dead-link check found gone (October 27). Whatever
+  made the request decides whether its failure is an error, and logs it if it is.
+
+  A failed database command is logged as an error by EF Core before the site can handle it. The alert leaves out EF Core's
+  "Failed executing DbCommand" (`CommandError`), because whatever ran the command reports the failure again, and its
+  records of the errors the site expects (#224, #225): a duplicate (SqlState 23505), when two runs or replicas save the
+  same thing at once, and a missing table or column (42P01, 42703), when code runs before its migrations. So the manual
   query above shows more than the alert counts: read the error that comes after them.
 
   **A relation or column "does not exist":** the site's code is ahead of the database. Deploys run the migrations before

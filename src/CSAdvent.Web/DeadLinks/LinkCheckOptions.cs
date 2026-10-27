@@ -36,6 +36,12 @@ public sealed class LinkCheckOptions
     public TimeSpan ArchiveRecheckAfter { get; set; } = TimeSpan.FromDays(30);
 
     /// <summary>
+    /// When the organizers get the day's email about posts found dead (<see cref="DeadLinkEmail"/>), in the reveal time zone:
+    /// every post found dead before it that they haven't heard about.
+    /// </summary>
+    public TimeOnly EmailAt { get; set; } = new(8, 0);
+
+    /// <summary>
     /// Development and the tests: posts are only "fetched" from the stand-in (<see cref="SampleLinkProber"/>), and archived
     /// copies only "found" by its counterpart (<see cref="SampleArchiveLookup"/>), so nothing reaches authors' sites or the
     /// Internet Archive.

@@ -164,6 +164,40 @@ public sealed partial class DeadLinkTests(AppHostFixture fixture)
         Assert.Equal(("https://other.links.csadvent.test/gone", LinkStatus.Failing, 1), (check.PostUrl, check.Status, check.Failures));
     }
 
+    [Fact]
+    public async Task TheOrganizersGetOneEmailAMorningAboutThePostsFoundDead()
+    {
+        const int year = 2683;
+        await TestSeasons.EnsureAsync(fixture, year, claimsOpen: false, season =>
+        {
+            Post(season, 1, 1, "Hal", "https://hal.links.csadvent.test/gone-archived-2683");
+            Post(season, 1, 2, "Ivy", "https://ivy.links.csadvent.test/gone-2683");
+            Post(season, 2, 1, "Jo", "https://jo.links.csadvent.test/gone-2683");
+        });
+
+        // An organizer marks one gone themselves, so they don't need telling about it.
+        using var organizer = await fixture.SignInAsync("organizer", AppHostFixture.OrganizerGitHubId);
+        await PostAsync(organizer, "dead", await SlotIdAsync(year, 2, 1));
+
+        // The other two fail three checks, days apart, and are found dead at 7 AM Eastern on January 8.
+        var start = new DateTimeOffset(2684, 1, 5, 11, 0, 0, TimeSpan.Zero);
+        Assert.Equal(new LinkRun(2, 0, 0), await RunAsync(year, start));
+        Assert.Equal(new LinkRun(2, 0, 0), await RunAsync(year, start.AddDays(1).AddMinutes(30)));
+        var foundDead = start.AddDays(3).AddHours(1);
+        Assert.Equal(new LinkRun(2, 2, 1), await RunAsync(year, foundDead));
+
+        // Nothing until 8 AM Eastern, then one email about both, once.
+        Assert.Equal(0, await EmailAsync(year, foundDead.AddMinutes(30)));
+        Assert.Equal(2, await EmailAsync(year, foundDead.AddMinutes(75)));
+        Assert.Equal(0, await EmailAsync(year, foundDead.AddMinutes(90)));
+
+        var email = await fixture.WaitForEmailAsync("hello@csadvent.christmas", "2 older C# Advent posts are gone", containing: "https://ivy.links.csadvent.test/gone-2683");
+        Assert.Contains("Hal's post by Hal. https://hal.links.csadvent.test/gone-archived-2683 The page answered 404 Not Found.", email.Text);
+        Assert.Contains("https://web.archive.org/web/26831201120000/https://hal.links.csadvent.test/gone-archived-2683", email.Text);
+        Assert.Contains("Ivy's post by Ivy. https://ivy.links.csadvent.test/gone-2683 The page answered 404 Not Found. The Wayback Machine has no copy of it", email.Text);
+        Assert.DoesNotContain("jo.links.csadvent.test", email.Text);
+    }
+
     private static void Post(Season season, int day, int part, string author, string url)
     {
         var slot = season.Slots.Single(s => s.Day == day && s.Part == part);
@@ -178,6 +212,15 @@ public sealed partial class DeadLinkTests(AppHostFixture fixture)
         var response = await client.PostAsync($"/dev/links/run?year={year}&at={Uri.EscapeDataString(at.ToString("O", CultureInfo.InvariantCulture))}", null, CancellationToken);
         response.EnsureSuccessStatusCode();
         return (await response.Content.ReadFromJsonAsync<LinkRun>(CancellationToken))!;
+    }
+
+    /// <summary>The organizers' email about posts found dead, as if it were <paramref name="at"/>: how many posts it listed.</summary>
+    private async Task<int> EmailAsync(int year, DateTimeOffset at)
+    {
+        using var client = fixture.CreateWebClient();
+        var response = await client.PostAsync($"/dev/links/email?year={year}&at={Uri.EscapeDataString(at.ToString("O", CultureInfo.InvariantCulture))}", null, CancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<int>(CancellationToken);
     }
 
     /// <summary>A dead-link button: a plain form, with the antiforgery token from the sign-out form every page has.</summary>
