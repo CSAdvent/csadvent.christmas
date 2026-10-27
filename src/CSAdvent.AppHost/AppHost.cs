@@ -31,7 +31,10 @@ var postgres = builder.AddAzurePostgresFlexibleServer("postgres")
         // PostgreSQL 18, to match the local container. The default API version only allows up to 16.
         server.ResourceVersion = "2025-08-01";
         server.Version = new StringLiteralExpression("18");
-        server.Sku = new PostgreSqlFlexibleServerSku { Name = "Standard_B1ms", Tier = PostgreSqlFlexibleServerSkuTier.Burstable };
+
+        // Burstable B2s: 2 vCores, and 414 connections for us. B1ms's 35 weren't enough once a deploy met a scale-out
+        // (connectionsPerReplica, below).
+        server.Sku = new PostgreSqlFlexibleServerSku { Name = "Standard_B2s", Tier = PostgreSqlFlexibleServerSkuTier.Burstable };
         server.StorageSizeInGB = 32;
         server.Backup = new PostgreSqlFlexibleServerBackupProperties
         {
@@ -53,6 +56,17 @@ var postgres = builder.AddAzurePostgresFlexibleServer("postgres")
             StartHour = 8,
             StartMinute = 0,
         };
+
+        // Azure works out max_connections from the size the server was created with (B1ms: 50), and keeps it when the size
+        // changes, so it's set here: B2s's own default. A static parameter, so a new value only applies after a restart (the
+        // runbook's "Changing the Database's Size").
+        infra.Add(new PostgreSqlFlexibleServerConfiguration("maxConnections")
+        {
+            Parent = server,
+            Name = "max_connections",
+            Value = "429",
+            Source = "user-override",
+        });
     })
     .RunAsContainer(container =>
     {
@@ -102,11 +116,11 @@ if (minReplicas is < 1 or > maxReplicas)
 }
 
 // Each replica's database connection pool stops at 8 (Npgsql's default is 100), counting everything the web app opens: its
-// DbContexts, so the health check, data protection and the email queue's advisory lock too. The server ran out of connections
-// on October 24-25 (#158). Burstable B1ms allows 50 and keeps 15 for Azure, leaving 35. At most: 3 busy replicas, 24 (during
-// a deploy, the old revision's); the new revision's replicas, which start at the minimum and only run their background jobs
-// until they take traffic, about 3 each; and the migrations job's 1. That's 31. Change it only with the server's Sku or
-// maxReplicas, and keep the connections alert in step.
+// DbContexts, so the health check, data protection and the email queue's advisory lock too. A replica keeps 6 to 8 open even
+// when it's quiet, for its background jobs. The server ran out of connections on October 24-25 (#158), on B1ms's 35. A new
+// revision doesn't take traffic until it has as many replicas as the old one, so a deploy at 3 replicas runs 6 (October 27:
+// 32 connections). At most: 6 replicas, 48, and the migrations job's 1, of B2s's 414. Keep the connections alert in step
+// with this, maxReplicas and the server's size.
 const int connectionsPerReplica = 8;
 
 var web = builder.AddProject<Projects.CSAdvent_Web>("web", launchProfileName: isTesting ? "http" : "https")
@@ -118,6 +132,15 @@ var web = builder.AddProject<Projects.CSAdvent_Web>("web", launchProfileName: is
     {
         app.Template.Scale.MinReplicas = minReplicas;
         app.Template.Scale.MaxReplicas = maxReplicas;
+
+        // Another replica above 50 requests a second each (counted over 15 seconds), not Container Apps' default of 10.
+        // Scanners probing for .env files send a few hundred requests in seconds, which took the app to 3 replicas several
+        // times a day; one replica answered the busiest burst (October 27) with a tenth of its CPU.
+        app.Template.Scale.Rules.Add(new ContainerAppScaleRule
+        {
+            Name = "http",
+            Http = new ContainerAppHttpScaleRule { Metadata = { ["concurrentRequests"] = "50" } },
+        });
 
         // Plain http reaches the app, which sends it to https://csadvent.christmas in one permanent redirect (#165). Left to
         // the ingress, http://www. took two: to https://www., then to the canonical host.

@@ -9,7 +9,7 @@ How the site gets to Azure, and the one-time setup behind it. What to do each ye
 Production runs on:
 
 - **Azure Container Apps** for the site.
-- **Azure Database for PostgreSQL**: Flexible Server, PostgreSQL 18, Burstable B1ms, with 35-day point-in-time backups. Restoring is in [the runbook](runbook.md).
+- **Azure Database for PostgreSQL**: Flexible Server, PostgreSQL 18, Burstable B2s, with 35-day point-in-time backups. Restoring is in [the runbook](runbook.md).
 - **Application Insights**.
 - The **Azure DNS** zone for csadvent.christmas.
 - **Azure Communication Services** for email.

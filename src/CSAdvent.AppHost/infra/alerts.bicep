@@ -98,9 +98,9 @@ resource errors 'Microsoft.Insights/scheduledQueryRules@2023-12-01' = {
   }
 }
 
-// The database runs on Burstable B1ms: 32 GB of storage that doesn't grow by itself (the server goes read-only when it's
-// nearly full), CPU credits that run out under sustained load (then it's held to 20% of a core), and 50 connections, some
-// of them Azure's own.
+// The database runs on Burstable B2s: 32 GB of storage that doesn't grow by itself (the server goes read-only when it's
+// nearly full), CPU credits that run out under sustained load (then it's held to its baseline, a fraction of a core), and
+// 429 connections, 15 of them Azure's own. The site should never open more than 49 (connectionsPerReplica in AppHost.cs).
 var postgresAlerts = [
   {
     name: 'csadvent-postgres-storage'
@@ -115,21 +115,21 @@ var postgresAlerts = [
   {
     // Burstable servers only: remove this one if the server ever moves to General Purpose.
     name: 'csadvent-postgres-cpu-credits'
-    description: 'The database server has fewer than 30 CPU credits left (about half an hour of full speed). With none left it runs at 20% of a core.'
+    description: 'The database server has fewer than 60 CPU credits left (about half an hour with both cores at full speed). With none left it\'s held to its baseline, a fraction of a core.'
     metric: 'cpu_credits_remaining'
     aggregation: 'Average'
     operator: 'LessThan'
-    threshold: 30
+    threshold: 60
     windowSize: 'PT15M'
     evaluationFrequency: 'PT5M'
   }
   {
     name: 'csadvent-postgres-connections'
-    description: 'The database server had more than 30 connections. B1ms allows 50, some of them reserved for Azure.'
+    description: 'The database server had more than 75 connections: more than the site should ever open (49, during a deploy) and Azure\'s own. B2s allows 414 for us.'
     metric: 'active_connections'
     aggregation: 'Maximum'
     operator: 'GreaterThan'
-    threshold: 30
+    threshold: 75
     windowSize: 'PT15M'
     evaluationFrequency: 'PT5M'
   }
