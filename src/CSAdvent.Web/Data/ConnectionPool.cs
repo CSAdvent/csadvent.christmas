@@ -3,8 +3,8 @@ using Npgsql;
 namespace CSAdvent.Web.Data;
 
 /// <summary>
-/// Caps the database connection pool (#158). Npgsql allows 100 connections per pool, and the production server (Burstable
-/// B1ms) only 35 for us, shared by every replica, the old revision during a deploy, and the migrations job. So in production
+/// Caps the database connection pool (#158). Npgsql allows 100 connections per pool, and the production server a few hundred
+/// (Burstable B2s: 414 for us), shared by every replica, the old revision during a deploy, and the migrations job. So in production
 /// the AppHost sets <c>Database:MaxPoolSize</c>, and every connection the app opens (its DbContexts, and through them the
 /// health check, data protection and the email queue's advisory lock) shares that one pool. Locally and in the tests it isn't
 /// set, and the connection string is left as it is.

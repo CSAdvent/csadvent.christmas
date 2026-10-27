@@ -666,17 +666,17 @@ a sample to everyone.
   select relname, pg_size_pretty(pg_total_relation_size(relid)) from pg_statio_user_tables
   order by pg_total_relation_size(relid) desc limit 10;
   ```
-- **Database CPU credits below 30** (`csadvent-postgres-cpu-credits`): the server is Burstable B1ms, which saves up credits
-  while it's quiet and spends them when it's busy. With none left, it's held to 20% of a core and the site slows to a crawl.
-  Look for what's keeping it busy (the server's **CPU percent** metric, and requests in Application Insights: a crawler or
-  a loop). If December really needs more, change the `Sku` in `AppHost.cs` (B2s is the next size up, at about twice the
-  price) and deploy. Changing it restarts the server for a minute or two, and Azure warns that restarts are slow once the
-  credits are gone, so act on this warning rather than at zero.
-- **More than 30 database connections** (`csadvent-postgres-connections`): B1ms allows 50, and Azure keeps 15 of them.
-  Each replica of the site opens at most 8 (`connectionsPerReplica` in `AppHost.cs`, #158), so 3 replicas stay under 25.
-  Before that cap, the server ran out on October 24–25 ("remaining connection slots are reserved", SqlState 53300). A
-  deploy briefly runs the old and new revisions side by side, so one alert that clears within 15 minutes is fine.
-  Otherwise see who's connected:
+- **Database CPU credits below 60** (`csadvent-postgres-cpu-credits`): the server is Burstable B2s, which saves up credits
+  while it's quiet and spends them when it's busy. With none left, it's held to its baseline, a fraction of a core, and the
+  site slows to a crawl. Look for what's keeping it busy (the server's **CPU percent** metric, and requests in Application
+  Insights: a crawler or a loop). If December really needs more, move up a size (B2ms; see Changing the Database's Size).
+  Azure warns that restarts are slow once the credits are gone, so act on this warning rather than at zero.
+- **More than 75 database connections** (`csadvent-postgres-connections`): more than the site should ever open. Each
+  replica opens at most 8 (`connectionsPerReplica` in `AppHost.cs`, #158) and keeps 6 to 8 open even when it's quiet. A
+  deploy runs the old and new revisions side by side, and the new one starts with as many replicas as the old one has, so
+  the most is 6 replicas' 48 and the migrations job's 1, plus a few of Azure's own. B2s allows 414 for us. On B1ms (35)
+  this alert fired on October 27, when a deploy met a scale-out, and the server ran out on October 24–25 ("remaining
+  connection slots are reserved", SqlState 53300). Above 75, something is opening connections it shouldn't: see who:
 
   ```sql
   select usename, application_name, state, count(*) from pg_stat_activity group by 1, 2, 3 order by 4 desc;
@@ -822,6 +822,30 @@ When a migration damaged or dropped data:
      job would run it again. Before anything else deploys, change that migration on `main` so it's safe (no database has
      it any more), and deploy that.
 4. **Delete the restored server, and every copy on your computer** (steps 4 and 5 there).
+
+---
+
+## 📏 Changing the Database's Size
+
+The server is Burstable B2s (2 vCores, 4 GB, 414 connections for us) since October 27, 2026, up from B1ms, whose 35
+connections ran out when a deploy met a scale-out. To change it, change the `Sku` in `AppHost.cs` **and** the
+`max_connections` beside it, in the same pull request:
+
+- **`max_connections` doesn't follow the size.** Azure sets it from the size the server was created with (B1ms: 50) and
+  keeps it, so use the new size's default from Azure's
+  [limits page](https://learn.microsoft.com/azure/postgresql/configure-maintain/concepts-limits#maximum-connections)
+  (B2s 429, B2ms 859), and keep `connectionsPerReplica` and the connections alert in step.
+- **The deploy restarts the server** to change its size: the site can't reach the database for a minute or two, so pick
+  a quiet time, never December.
+- **`max_connections` needs a restart of its own**, because the deploy sets it after resizing. Once the deploy's done:
+
+  ```bash
+  az postgres flexible-server parameter show -g rg-csadvent -s postgres-54yzcow3wctne -n max_connections \
+    --query "{value: value, pendingRestart: isConfigPendingRestart}"
+  az postgres flexible-server restart -g rg-csadvent -n postgres-54yzcow3wctne   # only if pendingRestart is true
+  ```
+
+  Then check the server's **Max Connections** metric (it's polled every 30 minutes) or `show max_connections;` in `psql`.
 
 ---
 
