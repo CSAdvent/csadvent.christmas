@@ -352,7 +352,8 @@ Lines marked ✏️ **To fill in** are for the organizers: they aren't written d
 - **Lives in:** variable `OAUTH_CLIENT_ID` and secret `OAUTH_CLIENT_SECRET` (AppHost parameters `github-client-id` and
   `github-client-secret`). The app itself is under a GitHub account's **Settings → Developer settings → OAuth Apps**, with
   the callback `/signin-github` on the site.
-- **Owner:** the CodingWithCalvin GitHub organization (its **Settings → Developer settings → OAuth Apps**).
+- **Owner:** the CSAdvent GitHub organization (its **Settings → Developer settings → OAuth Apps**), since 2026-10-27, when
+  it was transferred from CodingWithCalvin with the repository. Its client ID and secret didn't change.
 - **If it fails** (the secret is revoked or the app deleted): nobody can sign in, so contributors can't claim spots or add
   their posts, and organizers can't reach `/manage`. The public pages keep working.
 - **What notices:** nothing. The uptime check and the alerts stay green, so sign in to the live site each November.
