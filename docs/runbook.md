@@ -352,7 +352,8 @@ Lines marked ✏️ **To fill in** are for the organizers: they aren't written d
 - **Lives in:** variable `OAUTH_CLIENT_ID` and secret `OAUTH_CLIENT_SECRET` (AppHost parameters `github-client-id` and
   `github-client-secret`). The app itself is under a GitHub account's **Settings → Developer settings → OAuth Apps**, with
   the callback `/signin-github` on the site.
-- **Owner:** the CodingWithCalvin GitHub organization (its **Settings → Developer settings → OAuth Apps**).
+- **Owner:** the CSAdvent GitHub organization (its **Settings → Developer settings → OAuth Apps**), since 2026-10-27, when
+  it was transferred from CodingWithCalvin with the repository. Its client ID and secret didn't change.
 - **If it fails** (the secret is revoked or the app deleted): nobody can sign in, so contributors can't claim spots or add
   their posts, and organizers can't reach `/manage`. The public pages keep working.
 - **What notices:** nothing. The uptime check and the alerts stay green, so sign in to the live site each November.
@@ -436,11 +437,19 @@ Lines marked ✏️ **To fill in** are for the organizers: they aren't written d
 
 - **Lives in:** no secret. Variables `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID` name the managed
   identity `id-csadvent-github` (resource group `rg-csadvent-github`, Owner of the subscription), which trusts GitHub's
-  OIDC tokens for this repository's `production` environment through its federated credential `github-production`.
+  OIDC tokens for this repository's `production` environment through its federated credential
+  `github-production-csadvent-ids`, whose subject is
+  `repo:CSAdvent@348828352/csadvent.christmas@1427380667:environment:production`.
 - **Owners and billing:** Calvin is the subscription's only Owner (besides this identity), and pays for it.
 - **If it fails:** nothing deploys. It breaks if the identity, its federated credential or its role assignment is deleted,
-  or if the repository is re-created or transferred, because the credential names the repository by its ID. Renaming the
-  repository, or making it public, doesn't matter.
+  or if the repository is re-created, renamed or transferred, because the subject names its owner and its name, each with
+  its ID. Making it public doesn't matter.
+- **Moving or renaming the repository** (it moved from CodingWithCalvin/CSAdvent on 2026-10-27): first add a federated
+  credential for the new subject, next to the old one (`az identity federated-credential create`, as in the deployment
+  guide's step 1). GitHub writes it with the IDs (`repo:{owner}@{ownerId}/{name}@{repoId}:…`) while the repository's OIDC
+  setting says so (`gh api repos/{owner}/{name}/actions/oidc/customization/sub`), and otherwise without
+  (`repo:{owner}/{name}:…`), so add both if unsure. Move it, run the Deploy workflow by hand, then delete the credentials
+  that didn't sign in.
 - **What notices:** the Deploy workflow fails at "Sign in to Azure".
 - **Rotating:** nothing to rotate. To rebuild it, follow step 1 of [the deployment guide's setup](deployment.md).
 
