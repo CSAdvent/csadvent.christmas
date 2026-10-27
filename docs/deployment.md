@@ -127,7 +127,8 @@ The deploy creates the `csadvent.christmas` zone with every record in it ([`infr
 - the site's A, `www` and `asuid` records;
 - the email verification records (SPF, DKIM, DMARC);
 - the MX and SPF records for hello@ forwarding;
-- the Bluesky handle's `_atproto` record.
+- the Bluesky handle's `_atproto` record;
+- the CSAdvent GitHub organization's `_gh-CSAdvent-o` verification record.
 
 None of it is live until Hover points at the zone.
 
