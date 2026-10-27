@@ -2,7 +2,7 @@
 
 **The site behind [csadvent.christmas](https://csadvent.christmas): two new C# posts every day from December 1st to December 25th.**
 
-[![CI](https://img.shields.io/github/actions/workflow/status/CodingWithCalvin/CSAdvent/ci.yml?branch=main&style=for-the-badge&label=CI)](https://github.com/CodingWithCalvin/CSAdvent/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE) [![CI](https://img.shields.io/github/actions/workflow/status/CodingWithCalvin/CSAdvent/ci.yml?branch=main&style=for-the-badge&label=CI)](https://github.com/CodingWithCalvin/CSAdvent/actions/workflows/ci.yml)
 
 ---
 
@@ -99,3 +99,7 @@ Everything here works in Development only. Emails land in MailPit.
 1. Create a branch from an up-to-date `main`, named `type/scope/short-description`.
 2. Use [conventional commits](https://www.conventionalcommits.org/) for commits and pull request titles.
 3. Open a pull request. CI builds and runs every test, unless the pull request only changes `README.md`, `CLAUDE.md` or `docs/`.
+
+## 📄 License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
