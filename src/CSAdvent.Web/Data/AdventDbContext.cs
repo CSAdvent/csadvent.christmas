@@ -68,6 +68,9 @@ public sealed class AdventDbContext(DbContextOptions<AdventDbContext> options) :
     /// <summary>Whether each published post is still at its address, and its archived copy if it isn't (#201).</summary>
     public DbSet<LinkCheck> LinkChecks => Set<LinkCheck>();
 
+    /// <summary>The Wayback Machine snapshots we asked for of each post, when it went live and after its season (#261).</summary>
+    public DbSet<PostSnapshot> PostSnapshots => Set<PostSnapshot>();
+
     public DbSet<PastAuthorInvitation> PastAuthorInvitations => Set<PastAuthorInvitation>();
 
     /// <summary>Every email the site sends, queued for <see cref="Email.Queue.EmailOutboxWorker"/> (#152).</summary>

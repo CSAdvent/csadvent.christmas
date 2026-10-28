@@ -69,6 +69,9 @@ jobs:
       Parameters__x-access-token-secret: ${{ secrets.X_ACCESS_TOKEN_SECRET }}
       # The blurb check (#128). Optional: without it, posts aren't checked.
       Parameters__anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+      # The Wayback Machine snapshots (#261): an archive.org account's S3 keys, as accesskey:secret. Optional: without them,
+      # posts aren't saved.
+      Parameters__wayback-keys: ${{ secrets.WAYBACK_KEYS }}
       # Who Azure Monitor's alerts go to (#139), separated by commas. Optional: without it, no alerts are set up. A secret,
       # not a variable, so the organizers' addresses never show in this workflow's log.
       Parameters__alert-emails: ${{ secrets.ALERT_EMAILS }}

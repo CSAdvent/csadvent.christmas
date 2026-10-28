@@ -15,7 +15,7 @@ Production runs on:
 - **Azure Communication Services** for email.
 - **Azure Monitor alerts** that email the organizers when something fails.
 
-All of it is modeled in the AppHost, so one `aspire deploy` creates everything. The keys that protect sign-in cookies and email links are kept in the database, encrypted with a key in **Azure Key Vault** that only the site can use, and the deploy creates that too. The blurb check uses Claude through Anthropic's API, with a key (below).
+All of it is modeled in the AppHost, so one `aspire deploy` creates everything. The keys that protect sign-in cookies and email links are kept in the database, encrypted with a key in **Azure Key Vault** that only the site can use, and the deploy creates that too. The blurb check uses Claude through Anthropic's API, with a key, and the Wayback Machine snapshots use an archive.org account's keys (both below).
 
 Email can't be sent until the sending domain is verified, which happens after the nameserver switch below.
 
@@ -66,12 +66,15 @@ Email can't be sent until the sending domain is verified, which happens after th
 5. **Optional: the blurb check** (#128). Add the secret `ANTHROPIC_API_KEY`, an API key from the [Anthropic Console](https://console.anthropic.com).
    - Set a monthly spend limit on its workspace while you're there. A season costs cents.
    - Posts are checked from the next deploy. Without the key they aren't, and nothing is held.
-6. **Alerts** (#139). Add the secret `ALERT_EMAILS`: the organizers' email addresses, separated by commas (`gh secret set ALERT_EMAILS --env production`).
+6. **Optional: Wayback Machine snapshots** (#261). Add the secret `WAYBACK_KEYS`: an archive.org account's S3-like API keys, from [archive.org/account/s3.php](https://archive.org/account/s3.php) while signed in, as `accesskey:secret`.
+   - A free archive.org account is enough. The site saves a few posts every 15 minutes, far below Save Page Now's limits.
+   - Posts are saved from the next deploy, the archive's included. Without the keys they aren't, and dead posts only get the Wayback Machine's own copy, if it has one.
+7. **Alerts** (#139). Add the secret `ALERT_EMAILS`: the organizers' email addresses, separated by commas (`gh secret set ALERT_EMAILS --env production`).
    - It's a secret rather than a variable, so the addresses never show in the workflow's log.
    - The next deploy creates an action group that emails them. It alerts on errors in the site's logs; on the database's storage, CPU credits and connections; and on Azure's Service Health ([`infra/alerts.bicep`](../src/CSAdvent.AppHost/infra/alerts.bicep)). Without the secret, no alerts are set up.
    - Change who gets them by changing the secret and deploying, never in the portal.
    - The runbook says what each alert means.
-7. **An uptime check outside Azure**, on `https://csadvent.christmas/health`, from UptimeRobot's or Better Stack's free tier.
+8. **An uptime check outside Azure**, on `https://csadvent.christmas/health`, from UptimeRobot's or Better Stack's free tier.
    - It's set up by hand, as the runbook's Alerts section describes.
    - It still works when Azure or our email doesn't.
 

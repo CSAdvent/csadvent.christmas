@@ -16,7 +16,7 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261027135644_AddLinkCheckOrganizersEmailedAt";
+    public override string LastMigrationId => "20261028180504_AddPostSnapshots";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -1241,6 +1241,88 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                 b.ToTable("post_link_requests");
             });
 
+        modelBuilder.Entity("CSAdvent.Web.Data.PostSnapshot", b =>
+            {
+                var id = b.Property<int>("Id")
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("integer")
+                    .HasColumnName("id");
+
+                NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(id);
+
+                b.Property<int>("Attempts")
+                    .HasColumnType("integer")
+                    .HasColumnName("attempts");
+
+                b.Property<string>("Detail")
+                    .HasMaxLength(500)
+                    .HasColumnType("character varying(500)")
+                    .HasColumnName("detail");
+
+                b.Property<string>("JobId")
+                    .HasMaxLength(100)
+                    .HasColumnType("character varying(100)")
+                    .HasColumnName("job_id");
+
+                b.Property<DateTimeOffset?>("LeasedUntil")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("leased_until");
+
+                b.Property<string>("Moment")
+                    .IsRequired()
+                    .HasMaxLength(20)
+                    .HasColumnType("character varying(20)")
+                    .HasColumnName("moment");
+
+                b.Property<DateTimeOffset>("NextAttemptAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("next_attempt_at");
+
+                b.Property<string>("PostUrl")
+                    .IsRequired()
+                    .HasMaxLength(500)
+                    .HasColumnType("character varying(500)")
+                    .HasColumnName("post_url");
+
+                b.Property<DateTimeOffset?>("RequestedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("requested_at");
+
+                b.Property<DateTimeOffset?>("SavedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("saved_at");
+
+                b.Property<int>("SlotId")
+                    .HasColumnType("integer")
+                    .HasColumnName("slot_id");
+
+                b.Property<string>("SnapshotUrl")
+                    .HasMaxLength(1000)
+                    .HasColumnType("character varying(1000)")
+                    .HasColumnName("snapshot_url");
+
+                b.Property<string>("Status")
+                    .IsRequired()
+                    .HasMaxLength(20)
+                    .HasColumnType("character varying(20)")
+                    .HasColumnName("status");
+
+                b.HasKey("Id")
+                    .HasName("pk_post_snapshots");
+
+                b.HasIndex("Status", "NextAttemptAt")
+                    .HasDatabaseName("ix_post_snapshots_status_next_attempt_at");
+
+                b.HasIndex("SlotId", "Moment", "PostUrl")
+                    .IsUnique()
+                    .HasDatabaseName("ix_post_snapshots_slot_id_moment_post_url");
+
+                b.ToTable("post_snapshots", t =>
+                    {
+                        t.HasCheckConstraint("ck_post_snapshots_snapshot_url", "snapshot_url ~ '^https://web\\.archive\\.org/web/'");
+                    });
+            });
+
         modelBuilder.Entity("CSAdvent.Web.Data.QueuedEmail", b =>
             {
                 var id = b.Property<int>("Id")
@@ -2208,6 +2290,18 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                     .HasConstraintName("fk_post_link_requests_contributors_contributor_id");
 
                 b.Navigation("Contributor");
+            });
+
+        modelBuilder.Entity("CSAdvent.Web.Data.PostSnapshot", b =>
+            {
+                b.HasOne("CSAdvent.Web.Data.Slot", "Slot")
+                    .WithMany()
+                    .HasForeignKey("SlotId")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired()
+                    .HasConstraintName("fk_post_snapshots_slots_slot_id");
+
+                b.Navigation("Slot");
             });
 
         modelBuilder.Entity("CSAdvent.Web.Data.Retrospective", b =>

@@ -5,6 +5,7 @@ using CSAdvent.Web.Email.Queue;
 using CSAdvent.Web.Reminders;
 using CSAdvent.Web.Retention;
 using CSAdvent.Web.SeasonTesting;
+using CSAdvent.Web.Snapshots;
 using CSAdvent.Web.Social.Posting;
 
 namespace CSAdvent.Web.Jobs;
@@ -28,6 +29,7 @@ public static class JobSteps
         OtherAdventLogoWorker.Logos,
         LinkCheckWorker.DeadLinks,
         LinkCheckWorker.DeadLinksEmail,
+        SnapshotWorker.Snapshots,
         TestSeasonsRefresher.Refresh,
     ];
 }

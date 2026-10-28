@@ -253,7 +253,10 @@ public sealed partial class DeadLinkTests(AppHostFixture fixture)
         return slot;
     }
 
-    private async Task<LinkRun> RunAsync(int year, DateTimeOffset at)
+    private Task<LinkRun> RunAsync(int year, DateTimeOffset at) => RunAsync(fixture, year, at);
+
+    /// <summary>The dead-link check of the season, as if it were <paramref name="at"/> (<see cref="SnapshotTests"/> uses it too).</summary>
+    internal static async Task<LinkRun> RunAsync(AppHostFixture fixture, int year, DateTimeOffset at)
     {
         using var client = fixture.CreateWebClient();
         var response = await client.PostAsync($"/dev/links/run?year={year}&at={Uri.EscapeDataString(at.ToString("O", CultureInfo.InvariantCulture))}", null, CancellationToken);
@@ -271,7 +274,7 @@ public sealed partial class DeadLinkTests(AppHostFixture fixture)
     }
 
     /// <summary>A dead-link button: a plain form, with the antiforgery token from the sign-out form every page has.</summary>
-    private static async Task<HttpResponseMessage> PostAsync(HttpClient organizer, string action, int slotId, Dictionary<string, string>? fields = null)
+    internal static async Task<HttpResponseMessage> PostAsync(HttpClient organizer, string action, int slotId, Dictionary<string, string>? fields = null)
     {
         fields ??= [];
         fields["__RequestVerificationToken"] = Token(await organizer.GetPageAsync("/manage/authors/dead-links"));
@@ -311,5 +314,5 @@ public sealed partial class DeadLinkTests(AppHostFixture fixture)
     [GeneratedRegex("<input[^>]*name=\"__RequestVerificationToken\"[^>]*value=\"(?<token>[^\"]+)\"")]
     private static partial Regex AntiforgeryToken();
 
-    private sealed record LinkRun(int Checked, int FoundDead, int FoundCopies);
+    internal sealed record LinkRun(int Checked, int FoundDead, int FoundCopies);
 }

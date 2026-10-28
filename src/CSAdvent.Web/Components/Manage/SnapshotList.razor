@@ -1,0 +1,81 @@
+@* A post's Wayback Machine snapshots (#261), on its entry page. *@
+@using CSAdvent.Web.Data
+@using CSAdvent.Web.Snapshots
+
+<div class="text-sm">
+    <p class="mt-1 text-slate-600">
+        Each post is saved at the Wayback Machine on its day, once the blurb check has seen it (or when its day is over), and
+        again after its season. If the post is ever gone, readers who follow its link get the earliest one.
+    </p>
+
+    @if (Rows.Count == 0)
+    {
+        <p class="mt-2 text-slate-600">None yet.</p>
+    }
+    else
+    {
+        <ul class="mt-3 space-y-3">
+            @foreach (var row in Rows)
+            {
+                <li>
+                    <p class="flex flex-wrap items-center gap-2">
+                        <span class="font-medium text-slate-800">@MomentLabel(row.Moment)</span>
+                        <span class="rounded-full px-2 py-0.5 text-xs font-semibold @Badge(row.Status)">@Label(row.Status)</span>
+                        @if (row is { Status: SnapshotStatus.Saved, SavedAt: { } savedAt })
+                        {
+                            <span class="text-slate-500"><LocalTime Value="savedAt" /></span>
+                        }
+                    </p>
+                    <p class="mt-1 text-slate-600">
+                        @switch (row.Status)
+                        {
+                            case SnapshotStatus.Saved when row.SnapshotUrl is { } url:
+                                <a href="@url" target="_blank" rel="noopener" class="break-all text-advent-700 underline">@url</a>
+                                break;
+                            case SnapshotStatus.Capturing when row.RequestedAt is { } requestedAt:
+                                <text>The Wayback Machine has been saving it since <LocalTime Value="requestedAt" />.</text>
+                                break;
+                            case SnapshotStatus.Failed:
+                                <text>Given up on after @row.Attempts tries. @row.Detail</text>
+                                break;
+                            default:
+                                @if (row.Attempts > 0 || row.Detail is not null)
+                                {
+                                    <text>@row.Detail Tried @row.Attempts @(row.Attempts == 1 ? "time" : "times") so far; </text>
+                                }
+                                <text>asked for from <LocalTime Value="row.NextAttemptAt" />.</text>
+                                break;
+                        }
+                    </p>
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyList<SnapshotRow> Rows { get; set; } = [];
+
+    public static string MomentLabel(SnapshotMoment moment) => moment switch
+    {
+        SnapshotMoment.Live => "On its day",
+        _ => "After its season",
+    };
+
+    public static string Label(SnapshotStatus status) => status switch
+    {
+        SnapshotStatus.Saved => "Saved",
+        SnapshotStatus.Capturing => "Saving",
+        SnapshotStatus.Failed => "Couldn't save",
+        _ => "Waiting",
+    };
+
+    public static string Badge(SnapshotStatus status) => status switch
+    {
+        SnapshotStatus.Saved => "bg-green-100 text-green-800",
+        SnapshotStatus.Failed => "bg-red-100 text-red-800",
+        SnapshotStatus.Capturing => "bg-amber-100 text-amber-800",
+        _ => "bg-slate-100 text-slate-700",
+    };
+}
