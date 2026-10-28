@@ -25,6 +25,7 @@ using CSAdvent.Web.Social.Posting;
 using CSAdvent.Web.Retention;
 using CSAdvent.Web.Retrospectives;
 using CSAdvent.Web.SeasonTesting;
+using CSAdvent.Web.Snapshots;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using OpenTelemetry.Instrumentation.Http;
@@ -133,6 +134,24 @@ builder.Services.AddScoped<DeadLinkEmail>();
 if (builder.Configuration.GetValue("LinkChecks:CheckInBackground", defaultValue: true))
 {
     builder.Services.AddHostedService<LinkCheckWorker>();
+}
+
+// Wayback Machine snapshots of each post as it goes live and after its season (#261), for the dead-link check to send readers
+// to. Without an archive.org account's keys nothing is saved; development and the tests use a stand-in, so they never reach
+// the Internet Archive.
+builder.Services.AddOptions<SnapshotOptions>()
+    .BindConfiguration(SnapshotOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddSingleton<ISnapshotSaver>(services => services.GetRequiredService<IOptions<SnapshotOptions>>().Value is { SamplePages: true }
+    ? new SampleSnapshotSaver()
+    : new WaybackSnapshotSaver(
+        WaybackSnapshotSaver.CreateClient(services.GetRequiredService<IOptions<SnapshotOptions>>().Value.Keys),
+        services.GetRequiredService<ILogger<WaybackSnapshotSaver>>()));
+builder.Services.AddScoped<SnapshotService>();
+if (builder.Configuration.GetValue("Snapshots:SaveInBackground", defaultValue: true))
+{
+    builder.Services.AddHostedService<SnapshotWorker>();
 }
 builder.Services.AddOptions<SocialAccountsOptions>()
     .BindConfiguration(SocialAccountsOptions.SectionName)
@@ -295,6 +314,7 @@ app.MapClaims();
 app.MapBlurbs();
 app.MapEntries();
 app.MapLinkChecks();
+app.MapSnapshots();
 app.MapCards();
 app.MapFeeds();
 app.MapCalendarFiles();

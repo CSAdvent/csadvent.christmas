@@ -76,6 +76,7 @@ Everything here works in Development only. Emails land in MailPit.
 | `POST /dev/social/run?at=…` | Runs automatic social posting in dry-run mode, which only logs |
 | `POST /dev/announcements/run?at=…&year=…` | Queues announcements and invitations that are due |
 | `POST /dev/links/run?at=…&year=…` | Runs the dead-link check, against built-in sample pages |
+| `POST /dev/snapshots/run?at=…&year=…` | Asks for Wayback Machine snapshots that are due, from a stand-in archive |
 
 ## 🗂️ Project Layout
 

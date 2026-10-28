@@ -9,6 +9,7 @@ using CSAdvent.Web.Data;
 using CSAdvent.Web.Email;
 using CSAdvent.Web.Entries;
 using CSAdvent.Web.SeasonTesting;
+using CSAdvent.Web.Snapshots;
 using CSAdvent.Web.Social.Posting;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
@@ -52,6 +53,10 @@ internal sealed class ServicesOnAClock(AdventDbContext db, DateTimeOffset now)
         NullLogger<EntryService>.Instance);
 
     private static IServiceScopeFactory EmptyServices => new ServiceCollection().BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
+
+    /// <summary>The Wayback Machine snapshots, on the stand-in archive.</summary>
+    public SnapshotService Snapshots() =>
+        new(db, Schedule, new SampleSnapshotSaver(), Options.Create(new SnapshotOptions { SamplePages = true }), NullLogger<SnapshotService>.Instance);
 
     public MySpotsService MySpots() =>
         new(db, Schedule, Clock, Composer, Backups(), PostLinks(), Site, Posting, Options.Create(new BlurbOptions()));

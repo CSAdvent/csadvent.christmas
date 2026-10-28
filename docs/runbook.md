@@ -195,6 +195,10 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
   - **An author who won't add it** (they reply to the email): **Use a backup** on the entry's page hands the spot to the next
     backup who accepts, straight away. **Announce anyway** lets a post through without it.
 - **A spot that ends up empty** can be filled from the backup list, or released, at `/manage/entries`.
+- **Wayback Machine snapshots** (#261) need nothing from you: each post is saved at the Wayback Machine on its day, once
+  the blurb check has passed it (or you let it through), or else once its day is over. Each entry's page shows its
+  snapshots under **Wayback Machine snapshots**. One the Wayback Machine can't save is tried again over about 15 hours,
+  then shows **Couldn't save** with what it said; that's never an alert, and the post still gets one after the season.
 
 ---
 
@@ -207,9 +211,14 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
   season ("C# Advent 2027", how to take part, the announcements box), then thanks everyone for this one, linking its
   archive, and its retrospective once that's published. Create next year's season whenever you like: the page shows when
   its sign-ups open as soon as they're scheduled.
+- **Snapshots after the season (from December 26):** every post is saved at the Wayback Machine again, a few every 15
+  minutes, so the season's take a few hours. A post whose link changes later is saved again at its new address. Past
+  seasons' posts got one too, when this started (October 2026), except those already dead or failing; one that comes
+  back gets its snapshot then.
 - **Dead links (from December 26, all year):** once a season is over, its posts join the dead-link check, a few posts
   every 15 minutes, each about once a month. A post that fails three checks in a row, days apart, is dead, and readers
-  following its link get the Wayback Machine's saved copy, if it has one. The organizers get one email at 8 AM Eastern
+  following its link get our earliest snapshot of it, or else the Wayback Machine's saved copy closest to its day, if it
+  has one. The organizers get one email at 8 AM Eastern
   ("older C# Advent posts are gone") listing the posts found dead since the day before, with what the check found and
   whether readers get a saved copy; the first pass over a season's posts can list dozens. A failed check is never an
   alert. From the email, or every so often, open `/manage/authors/dead-links` (linked from Authors):
@@ -297,6 +306,8 @@ and the few things that need a person. Times are Eastern, the reveal time zone.
 - **Database restore:** practise a point-in-time restore once a year, before December (#90).
 - **The blurb check's Anthropic API key** lasts until it's revoked. Check its workspace's spend limit in the Anthropic
   Console, and replace the `ANTHROPIC_API_KEY` secret the same way as the social ones if it's ever rotated.
+- **The archive.org keys** (Wayback Machine snapshots) last until they're regenerated. Open any post from the last season
+  on `/manage/entries`: its **Wayback Machine snapshots** should be **Saved**.
 - **Domains:** the managed certificates for csadvent.christmas and www renew themselves while the app is running. The
   domain itself doesn't: check its expiry date and auto-renew at Hover (see below). csadvent.christmas's certificate is
   validated over plain http, which reaches the app since #165 (`AllowInsecure`, so http://www. is one redirect): check
@@ -378,6 +389,19 @@ Lines marked ✏️ **To fill in** are for the organizers: they aren't written d
   the season's own checks carry on.
 - **Rotating:** create a new key in the same workspace, set the secret, deploy, press **Check now** on an entry page (the
   test season works), then revoke the old key.
+
+### 🏛️ archive.org Keys (Wayback Machine Snapshots)
+
+- **Lives in:** secret `WAYBACK_KEYS` (parameter `wayback-keys`), as `accesskey:secret`: the S3-like API keys of an
+  archive.org account, from [archive.org/account/s3.php](https://archive.org/account/s3.php) while signed in.
+- **Account:** a free archive.org account. ✏️ **To fill in:** whose account it is, and where its sign-in is kept.
+- **If it fails** (the keys are regenerated or the account is closed): no new snapshots are saved. Each one waits and is
+  tried again every hour, so they catch up once the keys work again. Dead posts still get the Wayback Machine's own copy,
+  if it has one.
+- **What notices:** the error alert. The logs say "The Wayback Machine refused our archive.org keys" on every try, and the
+  entry pages' snapshots stay **Waiting**.
+- **Rotating:** regenerate the keys on the same page, set the secret, and deploy. Snapshots that waited meanwhile catch up
+  by themselves.
 
 ### 🐘 Mastodon Access Token
 
@@ -640,6 +664,9 @@ a sample to everyone.
      since when.
   3. "Gave up on … email" means the email queue tried an email 6 times over about 2 hours 20 minutes. It's on
      `/manage/emails/queue` with the email service's answer: fix the cause, then **Retry** (or **Retry all**).
+  4. "The Wayback Machine refused our archive.org keys" means the `WAYBACK_KEYS` secret is wrong, or the keys were
+     regenerated or the account closed (see archive.org Keys, above). Snapshots wait meanwhile, and catch up once it's
+     fixed.
 
   Exceptions only count when the site logged them. The tracing of outgoing requests and database commands also records
   each failure's exception, with no severity: in Application Insights they're exceptions whose `severityLevel` is empty,

@@ -222,9 +222,11 @@ if (isPublish || builder.Configuration["Parameters:github-client-id"] is not nul
         .WithEnvironment("Accounts__GitHub__ClientSecret", builder.AddParameter("github-client-secret", secret: true));
 }
 
-// Automatic social posting (#61), and the Anthropic API key the blurb check (#128) asks Claude with. Each is optional: a
-// platform without credentials stays copy and paste, and without the key posts aren't checked. Only published, so nothing
-// run locally can post to C# Advent's real accounts or spend on the API (development uses dry-run modes instead).
+// Automatic social posting (#61), the Anthropic API key the blurb check (#128) asks Claude with, and the archive.org keys the
+// Wayback Machine snapshots (#261) are saved with. Each is optional: a platform without credentials stays copy and paste,
+// without the API key posts aren't checked, and without the archive.org keys they aren't saved. Only published, so nothing run
+// locally can post to C# Advent's real accounts, spend on the API or use the archive.org account (development uses dry-run
+// modes and stand-ins instead).
 if (isPublish)
 {
     foreach (var (parameter, setting, secret) in new[]
@@ -238,6 +240,7 @@ if (isPublish)
         ("x-access-token", "SocialPosting__X__AccessToken", true),
         ("x-access-token-secret", "SocialPosting__X__AccessTokenSecret", true),
         ("anthropic-api-key", "Blurbs__ApiKey", true),
+        ("wayback-keys", "Snapshots__Keys", true),
     })
     {
         if (builder.Configuration[$"Parameters:{parameter}"] is { Length: > 0 })
@@ -271,9 +274,11 @@ if (isTesting)
     web.WithEnvironment("Announcements__SendInBackground", "false");
 
     // The tests never reach out to the Other Advents calendars' real sites, or to authors' posts for the dead-link check
-    // (#201), which the tests run themselves on the stand-in pages, through the development endpoint.
+    // (#201), which the tests run themselves on the stand-in pages, through the development endpoint. The same goes for the
+    // Wayback Machine snapshots (#261), on the stand-in archive.
     web.WithEnvironment("OtherAdvents__FetchLogosInBackground", "false");
     web.WithEnvironment("LinkChecks__CheckInBackground", "false");
+    web.WithEnvironment("Snapshots__SaveInBackground", "false");
 
     // The web app's own warnings and errors reach the test output (#248). The AppHost relays each line of a resource's
     // standard output as Information, which AppHostFixture filters out (#177), and of its standard error as Error, which it

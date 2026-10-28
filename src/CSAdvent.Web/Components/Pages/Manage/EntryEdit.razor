@@ -4,6 +4,7 @@
 @inject EntryAdminService Entries
 @inject BlurbQueries Blurbs
 @inject LinkCheckService LinkChecks
+@inject CSAdvent.Web.Snapshots.SnapshotService Snapshots
 @inject CSAdvent.Web.Backups.BackupListService Backups
 @inject AdventSchedule Schedule
 @inject NavigationManager Navigation
@@ -103,7 +104,7 @@
         <BlurbPanel Details="_blurb" ReturnUrl="@($"manage/entries/{SlotId}#blurb")" Action="@BlurbDone" />
     </div>
 
-    @* The dead-link check (#201), for a revealed post in a real season. *@
+    @* The dead-link check (#201) and the Wayback Machine snapshots (#261), for a revealed post in a real season. *@
     @if (entry.IsRevealed && entry.Values.PostUrl is not null && entry.Values.AuthorName is not null && entry.Year != Season.TestYear)
     {
         <section id="link-check" class="mt-12 max-w-3xl scroll-mt-4 rounded-xl p-5 ring-1 ring-slate-200">
@@ -129,6 +130,12 @@
                 </form>
             }
         </section>
+
+        @* The Wayback Machine snapshots (#261). *@
+        <section id="snapshots" class="mt-12 max-w-3xl scroll-mt-4 rounded-xl p-5 ring-1 ring-slate-200">
+            <h2 class="font-semibold text-slate-900">Wayback Machine snapshots</h2>
+            <SnapshotList Rows="_snapshots" />
+        </section>
     }
 }
 
@@ -137,6 +144,7 @@
     private BlurbDetails? _blurb;
     private List<CSAdvent.Web.Backups.SpotBackupOffer> _offers = [];
     private LinkCheckRow? _linkCheck;
+    private IReadOnlyList<CSAdvent.Web.Snapshots.SnapshotRow> _snapshots = [];
     private bool _claimed;
     private bool _releasePosted;
     private string? _error;
@@ -178,6 +186,7 @@
         _blurb = await Blurbs.GetAsync(SlotId);
         _offers = await Backups.ListOffersAsync(SlotId);
         _linkCheck = await LinkChecks.GetAsync(SlotId);
+        _snapshots = await Snapshots.ListAsync(SlotId);
     }
 
     private async Task SaveAsync() => await HandleAsync(await Entries.SaveAsync(SlotId, Form!));

@@ -42,7 +42,7 @@ dotnet tool restore                # Restores dotnet-ef from dotnet-tools.json
 dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Migrations
 ```
 
-**Development-only endpoints:** `/dev/signin?login=...&id=...` (needs `Accounts:DevSignIn`, set by the AppHost in run mode), `/dev/emails` (previews every email), and `POST /dev/{reminders,backups,blurbs,social,social/signups,announcements,digest,links}/run?at=…&year=…` (plus `/dev/links/email`), which run a background job as if it were `at`. Locally, social posting and the blurb check are dry runs, and fetched pages are samples (`*.csadvent.test`), so nothing reaches the internet.
+**Development-only endpoints:** `/dev/signin?login=...&id=...` (needs `Accounts:DevSignIn`, set by the AppHost in run mode), `/dev/emails` (previews every email), and `POST /dev/{reminders,backups,blurbs,social,social/signups,announcements,digest,links,snapshots}/run?at=…&year=…` (plus `/dev/links/email`), which run a background job as if it were `at`. Locally, social posting and the blurb check are dry runs, fetched pages are samples (`*.csadvent.test`), and Wayback Machine snapshots are a stand-in, so nothing reaches the internet.
 
 ## Architecture
 
@@ -139,7 +139,7 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 - **Deploys** run from `.github/workflows/deploy.yml` after CI passes on `main`: `aspire deploy` runs the migrations job, then updates the web app, then the workflow checks the new revision is serving.
 - **Never publish test runs in the Production environment**: publish and deploy share saved state (`~/.aspire/deployments/`). Use `aspire publish --output-path <dir> --environment PublishCheck`.
 - **Change Azure through the AppHost, never the portal:** DNS records in `infra/dns.bicep`, custom domains in `CustomDomains` (every deploy replaces what isn't in the model), alert recipients through the `alert-emails` secret, and `Web:MinReplicas` in a PR. The exception: the ACS email service, sending domain and sender are create-only (`@onlyIfNotExists()`), so a live change to them is made in the portal.
-- **Secrets** (social credentials, `anthropic-api-key`, `alert-emails`) are added only when published *and* given a value, so a missing one never breaks a deploy.
+- **Secrets** (social credentials, `anthropic-api-key`, `wayback-keys`, `alert-emails`) are added only when published *and* given a value, so a missing one never breaks a deploy.
 - **Never delete the `data-protection` Key Vault key**, and never point the site at a restored database server (copy the data back instead).
 - CI skips documentation-only changes in three lists (`ci.yml`'s `paths-ignore` and its "Check for code changes" step, and `deploy.yml`'s "Choose the commit"). Keep them in step.
 

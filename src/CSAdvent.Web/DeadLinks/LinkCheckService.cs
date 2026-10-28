@@ -1,6 +1,7 @@
 using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Data;
 using CSAdvent.Web.Jobs;
+using CSAdvent.Web.Snapshots;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -74,8 +75,9 @@ public enum LinkActionOutcome
 /// runs it every 15 minutes, a few posts a run, each about once a month (<see cref="LinkCheckOptions"/>).
 /// <list type="bullet">
 /// <item>A post that fails <see cref="LinkCheckOptions.FailuresBeforeDead"/> checks in a row, days apart, is dead. Its archived
-/// copy is looked up at the Wayback Machine, closest to its reveal, and readers who follow its link (<c>/go</c>) get that copy
-/// rather than a missing page. A post that loads again is working again.</item>
+/// copy is the earliest snapshot we had saved of it (<see cref="SnapshotService"/>), or else the Wayback Machine's closest to its
+/// reveal, and readers who follow its link (<c>/go</c>) get that copy rather than a missing page. A post that loads again is
+/// working again.</item>
 /// <item>Each run leases the rows it checks, so replicas never check the same post, and spaces out each site's posts
 /// (<see cref="LinkCheckOptions.HostPause"/>).</item>
 /// <item>Organizers see the dead and failing posts at <c>/manage/authors/dead-links</c> and on each entry's page, and can check
@@ -582,7 +584,7 @@ public sealed partial class LinkCheckService(
                     continue;
                 }
 
-                var answer = await archive.FindAsync(post.PostUrl, schedule.GetDate(post.SeasonYear, post.Day), cancellationToken);
+                var answer = await FindCopyAsync(post.SlotId, post.PostUrl, post.SeasonYear, post.Day, cancellationToken);
                 var checkedAt = LinkCheckRules.ArchiveCheckedAt(answer, now, Options);
                 await db.LinkChecks
                     .Where(c => c.Id == post.Id && c.PostUrl == post.PostUrl && c.ArchivedUrl == null && c.ArchivedBy == null)
@@ -600,11 +602,20 @@ public sealed partial class LinkCheckService(
 
     private async Task LookUpAsync(LinkCheck check, int year, int day, DateTimeOffset now, CancellationToken cancellationToken)
     {
-        var answer = await archive.FindAsync(check.PostUrl, schedule.GetDate(year, day), cancellationToken);
+        var answer = await FindCopyAsync(check.SlotId, check.PostUrl, year, day, cancellationToken);
         check.ArchivedUrl = answer.CopyUrl;
         check.ArchiveCheckedAt = LinkCheckRules.ArchiveCheckedAt(answer, now, Options);
         await db.SaveChangesAsync(cancellationToken);
     }
+
+    /// <summary>
+    /// A gone post's copy: the earliest snapshot we had the Wayback Machine save of it (#261), or else the one it has closest to
+    /// the post's reveal.
+    /// </summary>
+    private async Task<ArchiveAnswer> FindCopyAsync(int slotId, string postUrl, int year, int day, CancellationToken cancellationToken) =>
+        await SnapshotService.FindSavedAsync(db, slotId, postUrl, cancellationToken) is { } saved
+            ? ArchiveAnswer.Copy(saved)
+            : await archive.FindAsync(postUrl, schedule.GetDate(year, day), cancellationToken);
 
     private Task<LinkProbe> ProbeAsync(string url, CancellationToken cancellationToken) =>
         Uri.TryCreate(url, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp)
