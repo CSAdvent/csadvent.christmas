@@ -1,5 +1,6 @@
 using CSAdvent.Web.Calendar;
 using CSAdvent.Web.Cards;
+using CSAdvent.Web.Social;
 using Microsoft.AspNetCore.Http;
 using SkiaSharp;
 
@@ -46,6 +47,7 @@ public sealed class CardTests
             renderer.RenderSeason(2024, 50),
             renderer.RenderSeason(2026, null),
             renderer.RenderSeason(2026, null, new DateOnly(2026, 11, 1)),
+            renderer.RenderSpotsLeft(2026, new SpotCounts(50, 47, 3, [3, 9, 24])),
         })
         {
             using var bitmap = SKBitmap.Decode(card);

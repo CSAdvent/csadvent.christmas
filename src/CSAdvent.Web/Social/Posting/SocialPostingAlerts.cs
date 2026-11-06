@@ -39,6 +39,7 @@ public sealed record StoppedPost(SocialPlatform Platform, string Name, string? T
             {
                 SeasonPostKind.SignUpsSoon => string.Create(CultureInfo.InvariantCulture, $"the C# Advent {year} “sign-ups open soon” post"),
                 SeasonPostKind.SignUpsOpen => string.Create(CultureInfo.InvariantCulture, $"the C# Advent {year} “sign-ups are open” post"),
+                SeasonPostKind.SpotsLeft => string.Create(CultureInfo.InvariantCulture, $"the C# Advent {year} “spots left” post"),
                 _ => string.Create(CultureInfo.InvariantCulture, $"the C# Advent {year} retrospective post"),
             },
             null,

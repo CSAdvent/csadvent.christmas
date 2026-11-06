@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using CSAdvent.Web.Calendar;
+using CSAdvent.Web.Social;
 using Microsoft.Extensions.Caching.Memory;
 using SkiaSharp;
 
@@ -100,7 +101,18 @@ public sealed class CardRenderer : IDisposable
 
     /// <summary>A season's card: its year, and how many posts it had once it's over, or when its sign-ups open.</summary>
     public byte[] RenderSeason(int year, int? postCount, DateOnly? signUpsOpenOn = null) =>
-        _cache.GetOrCreate(("season", year, postCount, signUpsOpenOn), entry =>
+        RenderSeasonCard(year, (postCount, signUpsOpenOn) switch
+        {
+            ({ } count, _) => string.Create(CultureInfo.InvariantCulture, $"{count} C# posts, December 1–25"),
+            (_, { } opens) => string.Create(CultureInfo.InvariantCulture, $"Sign-ups open {opens:MMMM d}"),
+            _ => "Two C# posts a day, December 1–25",
+        });
+
+    /// <summary>The "spots left" post's card: the season's year, and how many spots are left (<see cref="SpotCounts.Headline"/>).</summary>
+    public byte[] RenderSpotsLeft(int year, SpotCounts spots) => RenderSeasonCard(year, spots.Headline);
+
+    private byte[] RenderSeasonCard(int year, string subtitle) =>
+        _cache.GetOrCreate(("season", year, subtitle), entry =>
         {
             entry.Size = 1;
             return Render(canvas =>
@@ -111,12 +123,6 @@ public sealed class CardRenderer : IDisposable
                 canvas.DrawText($"C# Advent {year}", 320, 290, SKTextAlign.Left, titleFont, white);
                 using var subtitleFont = Font(_regular, 42);
                 using var pale = Paint(Pale);
-                var subtitle = (postCount, signUpsOpenOn) switch
-                {
-                    ({ } count, _) => string.Create(CultureInfo.InvariantCulture, $"{count} C# posts, December 1–25"),
-                    (_, { } opens) => string.Create(CultureInfo.InvariantCulture, $"Sign-ups open {opens:MMMM d}"),
-                    _ => "Two C# posts a day, December 1–25",
-                };
                 canvas.DrawText(subtitle, 324, 362, SKTextAlign.Left, subtitleFont, pale);
                 DrawFooter(canvas);
             });

@@ -18,20 +18,25 @@ public sealed record SeasonPostPlatform(FormattedAnnouncement Announcement, Plat
 
 /// <param name="DaysUntil">Days until sign-ups open, while they're still to come; null once they're open or unscheduled.</param>
 /// <param name="Soon">The "sign-ups open soon" post, while there's a countdown.</param>
+/// <param name="Spots">How the spots stand, once sign-ups are open.</param>
+/// <param name="SpotsLeft">The "spots left" post, while sign-ups are open and a spot is left.</param>
 public sealed record SeasonPosts(
     int Year,
     DateTimeOffset? OpensAt,
     bool AreOpen,
     int? DaysUntil,
     IReadOnlyList<SeasonPostPlatform> Soon,
-    IReadOnlyList<SeasonPostPlatform> Open);
+    IReadOnlyList<SeasonPostPlatform> Open,
+    SpotCounts? Spots,
+    IReadOnlyList<SeasonPostPlatform> SpotsLeft);
 
 /// <summary>
-/// Posts about a season rather than an entry (<c>/manage/social/signups</c>): "sign-ups open in 8 days", which organizers
-/// post whenever they like, and "sign-ups are open", which the platforms in Automatic mode post by themselves at the
-/// morning send time on the day sign-ups open, once. Also the season's retrospective, once it's published, which organizers
-/// post from its page once per platform. Never for the test season. They're claimed, posted, recorded and recovered the same
-/// way as entries' announcements (<see cref="SocialPostAttempts"/>), but a failure is never tried again by itself.
+/// Posts about a season rather than an entry (<c>/manage/social/signups</c>): "sign-ups open in 8 days" and "only 12 spots
+/// left", which organizers post whenever they like, and "sign-ups are open", which the platforms in Automatic mode post by
+/// themselves at the morning send time on the day sign-ups open, once. Also the season's retrospective, once it's published,
+/// which organizers post from its page once per platform. Never for the test season. They're claimed, posted, recorded and
+/// recovered the same way as entries' announcements (<see cref="SocialPostAttempts"/>), but a failure is never tried again
+/// by itself.
 /// </summary>
 public sealed partial class SeasonSocialService(
     AdventDbContext db,
@@ -54,7 +59,9 @@ public sealed partial class SeasonSocialService(
             return null;
         }
 
-        var (opensAt, areOpen, daysUntil) = await TimingAsync(year, schedule.Now, cancellationToken);
+        var now = schedule.Now;
+        var (opensAt, areOpen, daysUntil) = await TimingAsync(year, now, cancellationToken);
+        var spots = areOpen ? await SpotsAsync(year, now, cancellationToken) : null;
         var platforms = (await modes.GetAsync(cancellationToken)).Where(p => p.Mode is not SocialPostingMode.Off).ToList();
         var posts = await db.SeasonSocialPosts.AsNoTracking().Where(p => p.SeasonYear == year).OrderByDescending(p => p.At).ToListAsync(cancellationToken);
 
@@ -69,7 +76,11 @@ public sealed partial class SeasonSocialService(
             daysUntil is { } days && opensAt is { } opens
                 ? For(SeasonPostKind.SignUpsSoon, platform => AnnouncementFormatter.FormatSignUpsSoon(year, LocalDate(opens), days, platform, site.Value.BaseUrl, accounts.Value))
                 : [],
-            For(SeasonPostKind.SignUpsOpen, platform => AnnouncementFormatter.FormatSignUpsOpen(year, platform, site.Value.BaseUrl, accounts.Value)));
+            For(SeasonPostKind.SignUpsOpen, platform => AnnouncementFormatter.FormatSignUpsOpen(year, platform, site.Value.BaseUrl, accounts.Value)),
+            spots,
+            spots is { Left: > 0 } left
+                ? For(SeasonPostKind.SpotsLeft, platform => AnnouncementFormatter.FormatSpotsLeft(year, left, platform, site.Value.BaseUrl, accounts.Value))
+                : []);
     }
 
     /// <summary>The retrospective's post on each platform that isn't off, or null until the retrospective is published.</summary>
@@ -92,7 +103,8 @@ public sealed partial class SeasonSocialService(
 
     /// <summary>
     /// Posts it now on a platform that can post automatically: "soon" while sign-ups are still to come, "open" once they're
-    /// open, and the retrospective once it's published (those two only once). Returns null when it can't be posted.
+    /// open, "spots left" while they're open and a spot is left, and the retrospective once it's published ("open" and the
+    /// retrospective only once). Returns null when it can't be posted.
     /// </summary>
     public Task<PostOutcome?> PostAsync(int year, SeasonPostKind kind, SocialPlatform platform, string postedBy, CancellationToken cancellationToken = default) =>
         PostAsync(year, kind, platform, postedBy, timeProvider.GetUtcNow(), cancellationToken);
@@ -109,17 +121,29 @@ public sealed partial class SeasonSocialService(
         FormattedAnnouncement announcement;
         string description;
         byte[] card;
+        string? variant = null;
         if (kind is SeasonPostKind.SignUpsSoon && daysUntil is { } days && opensAt is { } opens)
         {
             announcement = AnnouncementFormatter.FormatSignUpsSoon(year, LocalDate(opens), days, platform, site.Value.BaseUrl, accounts.Value);
             description = $"Sign-ups open {LocalDate(opens).ToString("MMMM d", CultureInfo.InvariantCulture)}: two C# posts a day, December 1–25, written by the community.";
             card = cards.RenderSeason(year, null, LocalDate(opens));
+            variant = days.ToString(CultureInfo.InvariantCulture);
         }
         else if (kind is SeasonPostKind.SignUpsOpen && areOpen)
         {
             announcement = AnnouncementFormatter.FormatSignUpsOpen(year, platform, site.Value.BaseUrl, accounts.Value);
             description = "Sign-ups are open: two C# posts a day, December 1–25, written by the community.";
             card = cards.RenderSeason(year, null);
+        }
+        else if (kind is SeasonPostKind.SpotsLeft && areOpen && await SpotsAsync(year, now, cancellationToken) is { Left: > 0 } spots)
+        {
+            announcement = AnnouncementFormatter.FormatSpotsLeft(year, spots, platform, site.Value.BaseUrl, accounts.Value);
+            description = $"{spots.Headline}: two C# posts a day, December 1–25, written by the community.";
+            card = cards.RenderSpotsLeft(year, spots);
+
+            // The same count on the same day is the same post, so trying it again never posts it twice; a new count, or the
+            // same one another day, is a new post.
+            variant = string.Create(CultureInfo.InvariantCulture, $"{spots.Left}-{schedule.DateOf(now):yyyyMMdd}");
         }
         else if (kind is SeasonPostKind.Retrospective && await PublishedRetrospectiveAsync(year, cancellationToken) is { } retrospective)
         {
@@ -139,7 +163,7 @@ public sealed partial class SeasonSocialService(
 
         var publication = new SocialPublication(year, 0, 0, kind is SeasonPostKind.Retrospective ? $"C# Advent {year}: a look back" : $"C# Advent {year}", description, announcement, card)
         {
-            Key = string.Create(CultureInfo.InvariantCulture, $"csadvent-{year}-{kind}-{daysUntil}-{platform}").ToLowerInvariant(),
+            Key = string.Create(CultureInfo.InvariantCulture, $"csadvent-{year}-{kind}-{variant}-{platform}").ToLowerInvariant(),
         };
 
         var attempt = await SocialPostAttempts.TryAsync(publisher, publication, cancellationToken);
@@ -167,7 +191,7 @@ public sealed partial class SeasonSocialService(
         };
     }
 
-    /// <summary>Records a post an organizer made by hand. "Soon" can be marked as often as it's posted; the others once.</summary>
+    /// <summary>Records a post an organizer made by hand. "Soon" and "spots left" can be marked as often as they're posted; the others once.</summary>
     public async Task<bool> MarkAsync(int year, SeasonPostKind kind, SocialPlatform platform, string? postUrl, string markedBy, CancellationToken cancellationToken = default)
     {
         if (year == Season.TestYear || !await db.Seasons.AnyAsync(s => s.Year == year, cancellationToken))
@@ -242,6 +266,19 @@ public sealed partial class SeasonSocialService(
         return (opensAt, areOpen, daysUntil);
     }
 
+    /// <summary>How the season's spots stand at <paramref name="now"/>, as the home page counts them (<see cref="SpotCounts"/>).</summary>
+    private async Task<SpotCounts> SpotsAsync(int year, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var slots = await db.Slots.AsNoTracking()
+            .Where(s => s.SeasonYear == year)
+            .Select(s => new { s.Day, Taken = s.AuthorName != null })
+            .ToListAsync(cancellationToken);
+
+        // The reveal is checked here rather than in SQL, like everywhere else.
+        var left = slots.Where(s => !s.Taken && !schedule.IsRevealed(year, s.Day, now)).Select(s => s.Day).ToList();
+        return new SpotCounts(slots.Count, slots.Count(s => s.Taken), left.Count, [.. left.Distinct().Order()]);
+    }
+
     /// <summary>
     /// Claims the post: a new row, except that "sign-ups are open" and the retrospective reuse a failed or unconfirmed one
     /// and are skipped once posted (or being posted).
@@ -272,8 +309,8 @@ public sealed partial class SeasonSocialService(
         }
     }
 
-    /// <summary>"Sign-ups are open" and the retrospective go out once per platform; "soon" as often as organizers like.</summary>
-    public static bool IsOnce(SeasonPostKind kind) => kind is not SeasonPostKind.SignUpsSoon;
+    /// <summary>"Sign-ups are open" and the retrospective go out once per platform; "soon" and "spots left" as often as organizers like.</summary>
+    public static bool IsOnce(SeasonPostKind kind) => kind is not (SeasonPostKind.SignUpsSoon or SeasonPostKind.SpotsLeft);
 
     private Task<Retrospective?> PublishedRetrospectiveAsync(int year, CancellationToken cancellationToken) =>
         db.Retrospectives.AsNoTracking().SingleOrDefaultAsync(r => r.SeasonYear == year && r.PublishedAt != null, cancellationToken);
