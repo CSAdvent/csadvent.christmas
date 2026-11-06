@@ -24,7 +24,16 @@ public sealed class AccountSessionTests
     private const long Author = 2;
 
     private readonly FakeTimeProvider _clock = new(new DateTimeOffset(2026, 12, 6, 9, 0, 0, TimeSpan.Zero));
+    private const long InvitedOrganizer = 3;
+
     private readonly AccountOptions _accounts = new() { Admins = [Organizer] };
+    private readonly Organizers _organizers;
+
+    public AccountSessionTests()
+    {
+        _organizers = new Organizers(null!, new StaticOptionsMonitor(_accounts));
+        _organizers.Replace([InvitedOrganizer]);
+    }
 
     [Fact]
     public async Task AnOrganizersSignInLastsTwelveHoursHoweverBusyTheyAre()
@@ -41,6 +50,17 @@ public sealed class AccountSessionTests
 
         _clock.Advance(TimeSpan.FromHours(1) + TimeSpan.FromMinutes(1));
         Assert.False((await AuthenticateAsync(services, cookie)).Result.Succeeded);
+    }
+
+    [Fact]
+    public async Task AnInvitedOrganizersSignInLastsTwelveHoursToo()
+    {
+        var services = Services(Environments.Production);
+        var cookie = await SignInAsync(services, InvitedOrganizer);
+
+        var ticket = Read(services, cookie);
+        Assert.Equal(_clock.GetUtcNow() + AccountSessions.OrganizerSession, ticket.Properties.ExpiresUtc);
+        Assert.False(ticket.Properties.AllowRefresh);
     }
 
     [Fact]
@@ -131,6 +151,7 @@ public sealed class AccountSessionTests
         services.AddDataProtection().UseEphemeralDataProtectionProvider();
         services.AddSingleton<IHostEnvironment>(host);
         services.AddSingleton<IOptionsMonitor<AccountOptions>>(new StaticOptionsMonitor(_accounts));
+        services.AddSingleton(_organizers);
         services.AddSingleton(new TestSeasons(null!));
         services.AddAuthentication(Scheme).AddCookie(cookie =>
         {

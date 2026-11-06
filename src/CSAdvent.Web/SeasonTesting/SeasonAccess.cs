@@ -1,6 +1,5 @@
 using CSAdvent.Web.Auth;
 using CSAdvent.Web.Data;
-using Microsoft.Extensions.Options;
 
 namespace CSAdvent.Web.SeasonTesting;
 
@@ -11,7 +10,7 @@ namespace CSAdvent.Web.SeasonTesting;
 /// request, and without one nobody is a tester. Background work (reminders, backups, social posts) never asks it: it reads
 /// seasons straight from the database, the test season included.
 /// </summary>
-public sealed class SeasonAccess(TestSeasons testSeasons, IHttpContextAccessor httpContextAccessor, IOptionsMonitor<AccountOptions> accounts)
+public sealed class SeasonAccess(TestSeasons testSeasons, IHttpContextAccessor httpContextAccessor, Organizers organizers)
 {
     public const string TestModeCookie = "csadvent-test-mode";
 
@@ -25,10 +24,10 @@ public sealed class SeasonAccess(TestSeasons testSeasons, IHttpContextAccessor h
     /// </summary>
     public bool IsTester =>
         httpContextAccessor.HttpContext?.User is { } user
-        && (AdventPolicies.IsOrganizer(user, accounts.CurrentValue)
+        && (organizers.IsOrganizer(user)
             || (user.Identity?.IsAuthenticated == true && testSeasons.Current?.IsTester(user.GetGitHubUserId(), user.Identity.Name) == true));
 
-    public bool IsOrganizer => httpContextAccessor.HttpContext?.User is { } user && AdventPolicies.IsOrganizer(user, accounts.CurrentValue);
+    public bool IsOrganizer => httpContextAccessor.HttpContext?.User is { } user && organizers.IsOrganizer(user);
 
     /// <summary>The test season, for a tester; null for everyone else, or before an organizer has created it.</summary>
     public TestSeason? TestSeason => IsTester ? testSeasons.Current : null;

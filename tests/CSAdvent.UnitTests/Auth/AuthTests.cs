@@ -76,9 +76,11 @@ public sealed class GitHubSignInTests
 
 public sealed class AdminAuthorizationHandlerTests
 {
-    private static async Task<bool> IsAdminAsync(ClaimsPrincipal user, params long[] admins)
+    private static async Task<bool> IsAdminAsync(ClaimsPrincipal user, long[] defaults, long[]? invited = null)
     {
-        var handler = new AdminAuthorizationHandler(new StaticOptionsMonitor(new AccountOptions { Admins = admins }));
+        var organizers = new Organizers(null!, new StaticOptionsMonitor(new AccountOptions { Admins = defaults }));
+        organizers.Replace(invited ?? []);
+        var handler = new AdminAuthorizationHandler(organizers);
         var context = new AuthorizationHandlerContext([new AdminRequirement()], user, resource: null);
 
         await handler.HandleAsync(context);
@@ -90,13 +92,31 @@ public sealed class AdminAuthorizationHandlerTests
         new(new ClaimsIdentity(AdventClaims.For(githubUserId, "someone", verifiedEmail: null, contributorId: 1), "test"));
 
     [Fact]
-    public async Task AllowsConfiguredOrganizers() => Assert.True(await IsAdminAsync(SignedIn(42), 7, 42));
+    public async Task AllowsDefaultOrganizers() => Assert.True(await IsAdminAsync(SignedIn(42), [7, 42]));
 
     [Fact]
-    public async Task RefusesEveryoneElse() => Assert.False(await IsAdminAsync(SignedIn(43), 7, 42));
+    public async Task AllowsInvitedOrganizers() => Assert.True(await IsAdminAsync(SignedIn(43), [7], invited: [43]));
 
     [Fact]
-    public async Task RefusesAnonymousUsers() => Assert.False(await IsAdminAsync(new ClaimsPrincipal(new ClaimsIdentity()), 42));
+    public async Task RefusesEveryoneElse() => Assert.False(await IsAdminAsync(SignedIn(43), [7, 42], invited: [44]));
+
+    [Fact]
+    public async Task RefusesAnonymousUsers() => Assert.False(await IsAdminAsync(new ClaimsPrincipal(new ClaimsIdentity()), [42]));
+
+    [Fact]
+    public void BeforeTheInvitedOrganizersAreLoadedOnlyTheDefaultsCount()
+    {
+        var organizers = new Organizers(null!, new StaticOptionsMonitor(new AccountOptions { Admins = [7] }));
+
+        Assert.False(organizers.IsLoaded);
+        Assert.True(organizers.IsOrganizer(7));
+        Assert.False(organizers.IsOrganizer(43));
+
+        organizers.Replace([43]);
+        Assert.True(organizers.IsLoaded);
+        Assert.True(organizers.IsOrganizer(43));
+        Assert.False(organizers.IsDefault(43));
+    }
 
     private sealed class StaticOptionsMonitor(AccountOptions value) : IOptionsMonitor<AccountOptions>
     {

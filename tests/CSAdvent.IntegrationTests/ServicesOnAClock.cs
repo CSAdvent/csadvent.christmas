@@ -49,7 +49,7 @@ internal sealed class ServicesOnAClock(AdventDbContext db, DateTimeOffset now)
         db,
         Schedule,
         Clock,
-        new SeasonAccess(new CSAdvent.Web.SeasonTesting.TestSeasons(EmptyServices), new HttpContextAccessor(), new OptionsMonitor<AccountOptions>(new OptionsFactory<AccountOptions>([], []), [], new OptionsCache<AccountOptions>())),
+        new SeasonAccess(new CSAdvent.Web.SeasonTesting.TestSeasons(EmptyServices), new HttpContextAccessor(), new Organizers(EmptyServices, new OptionsMonitor<AccountOptions>(new OptionsFactory<AccountOptions>([], []), [], new OptionsCache<AccountOptions>()))),
         NullLogger<EntryService>.Instance);
 
     private static IServiceScopeFactory EmptyServices => new ServiceCollection().BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();

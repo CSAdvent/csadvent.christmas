@@ -1,7 +1,6 @@
 using CSAdvent.Web.SeasonTesting;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.Extensions.Options;
 
 namespace CSAdvent.Web.Auth;
 
@@ -39,17 +38,17 @@ public static class AccountSessions
     public static bool IsOrganizerSession(AuthenticationProperties properties) =>
         properties is { AllowRefresh: false, IssuedUtc: { } issued, ExpiresUtc: { } expires } && expires - issued <= OrganizerSession;
 
-    private static Task OnSigningInAsync(CookieSigningInContext context)
+    private static async Task OnSigningInAsync(CookieSigningInContext context)
     {
-        if (IsOrganizer(context.HttpContext, context.Principal))
+        var organizers = context.HttpContext.RequestServices.GetRequiredService<Organizers>();
+        await organizers.EnsureLoadedAsync(context.HttpContext.RequestAborted);
+        if (context.Principal is { } user && organizers.IsOrganizer(user))
         {
             var issued = context.Properties.IssuedUtc ?? context.Options.TimeProvider!.GetUtcNow();
             context.Properties.IssuedUtc = issued;
             context.Properties.ExpiresUtc = issued + OrganizerSession;
             context.Properties.AllowRefresh = false;
         }
-
-        return Task.CompletedTask;
     }
 
     private static async Task OnValidatePrincipalAsync(CookieValidatePrincipalContext context)
@@ -59,9 +58,10 @@ public static class AccountSessions
             return;
         }
 
-        // Someone made an organizer while signed in, or signed in before organizers' sign-ins were shortened, has an everyday
-        // 14-day sign-in. They sign in again, and get an organizer's.
-        if (IsOrganizer(context.HttpContext, user) && !IsOrganizerSession(context.Properties))
+        // Someone made a default organizer while signed in, or signed in before organizers' sign-ins were shortened, has an
+        // everyday 14-day sign-in. They sign in again, and get an organizer's. (Someone invited on the organizers page only
+        // becomes one when they sign in again, OrganizerInvitations.)
+        if (context.HttpContext.RequestServices.GetRequiredService<Organizers>().IsOrganizer(user) && !IsOrganizerSession(context.Properties))
         {
             context.RejectPrincipal();
             await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
@@ -70,9 +70,6 @@ public static class AccountSessions
 
         await TesterInvitations.ClaimForSignedInUserAsync(context.HttpContext, user);
     }
-
-    private static bool IsOrganizer(HttpContext context, System.Security.Claims.ClaimsPrincipal? user) =>
-        user is not null && AdventPolicies.IsOrganizer(user, context.RequestServices.GetRequiredService<IOptionsMonitor<AccountOptions>>().CurrentValue);
 }
 
 /// <summary>

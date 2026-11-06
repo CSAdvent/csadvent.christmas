@@ -1,4 +1,5 @@
 using CSAdvent.Web.Announcements;
+using CSAdvent.Web.Auth;
 using CSAdvent.Web.Content;
 using CSAdvent.Web.DeadLinks;
 using CSAdvent.Web.Email.Queue;
@@ -31,5 +32,6 @@ public static class JobSteps
         LinkCheckWorker.DeadLinksEmail,
         SnapshotWorker.Snapshots,
         TestSeasonsRefresher.Refresh,
+        OrganizersRefresher.Refresh,
     ];
 }

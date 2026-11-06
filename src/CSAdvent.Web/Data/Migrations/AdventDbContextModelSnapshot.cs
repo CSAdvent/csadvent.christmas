@@ -16,7 +16,7 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261028180504_AddPostSnapshots";
+    public override string LastMigrationId => "20261106164406_AddOrganizers";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -945,6 +945,51 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                 b.ToTable("link_checks", t =>
                     {
                         t.HasCheckConstraint("ck_link_checks_archived_url", "archived_url ~* '^https?://'");
+                    });
+            });
+
+        modelBuilder.Entity("CSAdvent.Web.Data.Organizer", b =>
+            {
+                var id = b.Property<int>("Id")
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("integer")
+                    .HasColumnName("id");
+
+                NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(id);
+
+                b.Property<string>("GithubLogin")
+                    .IsRequired()
+                    .HasMaxLength(39)
+                    .HasColumnType("character varying(39)")
+                    .HasColumnName("github_login");
+
+                b.Property<long?>("GithubUserId")
+                    .HasColumnType("bigint")
+                    .HasColumnName("github_user_id");
+
+                b.Property<DateTimeOffset>("InvitedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("invited_at");
+
+                b.Property<long?>("InvitedByGithubUserId")
+                    .HasColumnType("bigint")
+                    .HasColumnName("invited_by_github_user_id");
+
+                b.HasKey("Id")
+                    .HasName("pk_organizers");
+
+                b.HasIndex("GithubLogin")
+                    .IsUnique()
+                    .HasDatabaseName("ix_organizers_github_login")
+                    .HasFilter("github_user_id IS NULL");
+
+                b.HasIndex("GithubUserId")
+                    .IsUnique()
+                    .HasDatabaseName("ix_organizers_github_user_id");
+
+                b.ToTable("organizers", t =>
+                    {
+                        t.HasCheckConstraint("ck_organizers_login", "github_login = lower(github_login)");
                     });
             });
 

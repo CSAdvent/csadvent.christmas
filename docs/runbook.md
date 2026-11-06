@@ -4,7 +4,8 @@ What happens each year, when, and who does it. The site automates most of the se
 and the few things that need a person. Times are Eastern, the reveal time zone.
 
 **Owners:** the organizers, [Matt Groves](https://github.com/mgroves) (founder and host) and
-[Calvin Allen](https://github.com/CalvinAllen) (also the site and its Azure hosting). "Organizers" below means either of them.
+[Calvin Allen](https://github.com/CalvinAllen) (also the site and its Azure hosting). "Organizers" below means either of them,
+or anyone they invite to help (Organizers on the Site, below).
 
 ---
 
@@ -358,6 +359,19 @@ Lines marked ✏️ **To fill in** are for the organizers: they aren't written d
 - **What notices:** nothing. The Azure alerts don't go through hello@, so they still arrive.
 - **Checking:** send hello@ a test email from another address every fall. There's no key; keep the account's sign-in (with
   two-factor authentication) somewhere both organizers can reach.
+
+### 👥 Organizers on the Site
+
+- **Who:** anyone signed in whose GitHub user ID is a **default organizer** (`Accounts:Admins` in `appsettings.json`,
+  only Calvin) or who was **invited** at `/manage/organizers`. Organizers can use every `/manage` page, read
+  contributors' email addresses, and invite or remove other organizers.
+- **Inviting:** enter their GitHub login at `/manage/organizers`. They become an organizer the next time they sign in with
+  GitHub (already signed in: sign out and back in), and from then on it's theirs by GitHub user ID, so a renamed login
+  keeps it and nobody who takes their old login gets it. Every replica picks the change up within 15 seconds.
+- **Removing:** the Remove button beside them, which takes effect on their next request (within 15 seconds on the other
+  replicas). Nobody can remove themselves, and the default organizers can't be removed there.
+- **If nobody can get in** (every invited organizer removed, and Calvin's GitHub account lost): change `Accounts:Admins` in
+  a pull request; it deploys like any other change.
 
 ### 🐙 GitHub OAuth App (Sign-In)
 
