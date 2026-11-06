@@ -14,10 +14,16 @@ public enum SeasonPostKind
 
     /// <summary>"A look back at C# Advent 2026": the season's published retrospective, posted by hand once per platform.</summary>
     Retrospective,
+
+    /// <summary>
+    /// "Only 12 spots left": how many spots are taken and left, while sign-ups are open. Posted by hand whenever an organizer
+    /// likes, as often as they like.
+    /// </summary>
+    SpotsLeft,
 }
 
 /// <summary>
-/// A post about a season rather than an entry, on one platform: "sign-ups open soon", posted by hand
+/// A post about a season rather than an entry, on one platform: "sign-ups open soon" and "spots left", posted by hand
 /// (<c>/manage/social/signups</c>); "sign-ups are open", posted automatically at the morning send time on the day sign-ups
 /// open (once per season and platform), from the page, or marked posted after copying it; or the season's retrospective,
 /// once per platform, from its page (<c>/manage/retrospectives/{year}</c>).
@@ -58,8 +64,9 @@ internal sealed class SeasonSocialPostConfiguration : IEntityTypeConfiguration<S
         builder.Property(p => p.MarkedBy).HasMaxLength(39);
         builder.Property(p => p.Error).HasMaxLength(1000);
 
-        // "Sign-ups are open" and the retrospective go out once per platform; "soon" can go out as often as an organizer likes.
-        builder.HasIndex(p => new { p.SeasonYear, p.Kind, p.Platform }).IsUnique().HasFilter("kind <> 'SignUpsSoon'");
+        // "Sign-ups are open" and the retrospective go out once per platform; "soon" and "spots left" can go out as often as an
+        // organizer likes (SeasonSocialService.IsOnce).
+        builder.HasIndex(p => new { p.SeasonYear, p.Kind, p.Platform }).IsUnique().HasFilter("kind NOT IN ('SignUpsSoon', 'SpotsLeft')");
         builder.HasIndex(p => new { p.SeasonYear, p.Kind });
 
         builder.HasOne(p => p.Season)

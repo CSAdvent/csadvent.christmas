@@ -16,7 +16,7 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261106164406_AddOrganizers";
+    public override string LastMigrationId => "20261106170615_AddOrganizers";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -1655,7 +1655,7 @@ partial class AdventDbContextModelSnapshot : ModelSnapshot
                 b.HasIndex("SeasonYear", "Kind", "Platform")
                     .IsUnique()
                     .HasDatabaseName("ix_season_social_posts_season_year_kind_platform")
-                    .HasFilter("kind <> 'SignUpsSoon'");
+                    .HasFilter("kind NOT IN ('SignUpsSoon', 'SpotsLeft')");
 
                 b.ToTable("season_social_posts", t =>
                     {

@@ -6,7 +6,7 @@
 @{
     var id = $"season-{Kind}-{Post.Announcement.Platform}";
     var platform = Post.Announcement.Platform;
-    // "Sign-ups are open" and the retrospective go out once; "soon" can go out again.
+    // "Sign-ups are open" and the retrospective go out once; "soon" and "spots left" can go out again.
     var openDone = SeasonSocialService.IsOnce(Kind) && Post.Posts.Any(p => p.Status is SocialPostStatus.Posted or SocialPostStatus.Posting);
     var unconfirmed = SeasonSocialService.IsOnce(Kind) && Post.Posts.Any(p => p.Status is SocialPostStatus.Unconfirmed);
 }
@@ -75,7 +75,7 @@
                     }
                     @if (!SeasonSocialService.IsOnce(Kind))
                     {
-                        @* "Soon" posts get a new row each time, so one that didn't go out (or was checked) can be cleared away. *@
+                        @* "Soon" and "spots left" posts get a new row each time, so one that didn't go out (or was checked) can be cleared away. *@
                         <form method="post" action="manage/social/signups/unmark">
                             <AntiforgeryToken />
                             <input type="hidden" name="Year" value="@Year" />
@@ -148,7 +148,10 @@
     [Parameter, EditorRequired]
     public required SeasonPostPlatform Post { get; set; }
 
-    /// <summary>Whether it can be posted now: "soon" while there's a countdown, "open" once sign-ups are open, the retrospective once it's published.</summary>
+    /// <summary>
+    /// Whether it can be posted now: "soon" while there's a countdown, "open" once sign-ups are open, "spots left" while they're
+    /// open and a spot is left, the retrospective once it's published.
+    /// </summary>
     [Parameter]
     public bool CanPost { get; set; }
 

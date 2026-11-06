@@ -9,8 +9,8 @@ namespace CSAdvent.IntegrationTests;
 
 /// <summary>
 /// Automatic posting (#61), in dry-run mode: the tests never reach a real account. Uses Facebook (SocialTests marks Bluesky
-/// and Mastodon by hand) and a December 2025 day no other test reads, and seasons 2640 and 2641 for runs at a time the real
-/// clock hasn't reached (#184).
+/// and Mastodon by hand) and a December 2025 day no other test reads, seasons 2640 and 2641 for runs at a time the real
+/// clock hasn't reached (#184), and seasons 2660 and 2661 for the spots left.
 /// </summary>
 public sealed partial class SocialPostingTests(AppHostFixture fixture)
 {
@@ -284,17 +284,73 @@ public sealed partial class SocialPostingTests(AppHostFixture fixture)
             await PostSeasonFormAsync(organizer, "post", 2127, SeasonPostKind.SignUpsSoon, SocialPlatform.Facebook);
             await PostSeasonFormAsync(organizer, "post", 2127, SeasonPostKind.SignUpsSoon, SocialPlatform.Facebook);
 
-            // The "open" post can't go out before sign-ups open.
+            // The "open" and "spots left" posts can't go out before sign-ups open.
             var early = await PostSeasonFormAsync(organizer, "post", 2127, SeasonPostKind.SignUpsOpen, SocialPlatform.Facebook);
             Assert.EndsWith("&error=not-posted", TestBrowser.PathOf(early.Headers.Location!));
+            Assert.DoesNotContain(">Spots left</h2>", page);
+            var spotsEarly = await PostSeasonFormAsync(organizer, "post", 2127, SeasonPostKind.SpotsLeft, SocialPlatform.Facebook);
+            Assert.EndsWith("&error=not-posted", TestBrowser.PathOf(spotsEarly.Headers.Location!));
 
             await using var db = await fixture.CreateDbContextAsync();
             Assert.Equal(2, await db.SeasonSocialPosts.CountAsync(p => p.SeasonYear == 2127 && p.Kind == SeasonPostKind.SignUpsSoon && p.Status == SocialPostStatus.Posted, CancellationToken));
-            Assert.False(await db.SeasonSocialPosts.AnyAsync(p => p.SeasonYear == 2127 && p.Kind == SeasonPostKind.SignUpsOpen, CancellationToken));
+            Assert.False(await db.SeasonSocialPosts.AnyAsync(p => p.SeasonYear == 2127 && p.Kind != SeasonPostKind.SignUpsSoon, CancellationToken));
         }
         finally
         {
             await SetModeAsync(organizer, SocialPlatform.Facebook, SocialPostingMode.Manual);
+        }
+    }
+
+    [Fact]
+    public async Task TheSpotsLeftPostCountsTheSpotsAndCanGoOutAgainUntilTheyAreAllTaken()
+    {
+        // Season 2660's sign-ups are open, and every spot is taken but December 3 post 1, December 9 post 2 and December 24
+        // post 1. Season 2661's spots are all taken.
+        await TestSeasons.EnsureAsync(fixture, 2660, claimsOpen: false, season =>
+        {
+            season.ClaimsOpenAt = SignUpsOpenedAt;
+            TakeAllSpotsBut(season, (3, 1), (9, 2), (24, 1));
+        });
+        await TestSeasons.EnsureAsync(fixture, 2661, claimsOpen: false, season =>
+        {
+            season.ClaimsOpenAt = SignUpsOpenedAt;
+            TakeAllSpotsBut(season);
+        });
+        using var organizer = await fixture.SignInAsync("organizer", AppHostFixture.OrganizerGitHubId);
+
+        var page = await organizer.GetStringAsync("/manage/social/signups?year=2660", CancellationToken);
+        Assert.Contains("Right now 47 of 50 spots are taken and 3 are left.", page);
+        Assert.Contains("Only 3 spots left in C# Advent 2660: December 3, 9 and 24! 47 of 50 are taken.", page);
+
+        var full = await organizer.GetStringAsync("/manage/social/signups?year=2661", CancellationToken);
+        Assert.Contains("Right now 50 of 50 spots are taken and 0 are left.", full);
+        Assert.Contains("Every spot is taken", full);
+        Assert.DoesNotContain("left in C# Advent 2661", full);
+
+        await SetModeAsync(organizer, SocialPlatform.Facebook, SocialPostingMode.Automatic);
+        try
+        {
+            await PostSeasonFormAsync(organizer, "post", 2660, SeasonPostKind.SpotsLeft, SocialPlatform.Facebook);
+            await PostSeasonFormAsync(organizer, "post", 2660, SeasonPostKind.SpotsLeft, SocialPlatform.Facebook);
+            var none = await PostSeasonFormAsync(organizer, "post", 2661, SeasonPostKind.SpotsLeft, SocialPlatform.Facebook);
+            Assert.EndsWith("&error=not-posted", TestBrowser.PathOf(none.Headers.Location!));
+
+            await using var db = await fixture.CreateDbContextAsync();
+            Assert.Equal(2, await db.SeasonSocialPosts.CountAsync(p => p.SeasonYear == 2660 && p.Kind == SeasonPostKind.SpotsLeft && p.Status == SocialPostStatus.Posted, CancellationToken));
+            Assert.False(await db.SeasonSocialPosts.AnyAsync(p => p.SeasonYear == 2661, CancellationToken));
+        }
+        finally
+        {
+            await SetModeAsync(organizer, SocialPlatform.Facebook, SocialPostingMode.Manual);
+        }
+    }
+
+    /// <summary>Gives every spot in the season an author, except the given ones.</summary>
+    private static void TakeAllSpotsBut(Season season, params (int Day, int Part)[] open)
+    {
+        foreach (var slot in season.Slots.Where(slot => !open.Contains((slot.Day, slot.Part))))
+        {
+            slot.AuthorName = string.Create(CultureInfo.InvariantCulture, $"Author {slot.Day}-{slot.Part}");
         }
     }
 

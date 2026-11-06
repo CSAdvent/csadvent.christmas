@@ -7,7 +7,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CSAdvent.Web.Data.Migrations;
 
 /// <inheritdoc />
-public partial class _20261106164406_AddOrganizers : Migration
+public partial class _20261106170615_AddOrganizers : Migration
 {
     /// <inheritdoc />
     protected override void Up(MigrationBuilder migrationBuilder)

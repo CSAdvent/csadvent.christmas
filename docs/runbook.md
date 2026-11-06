@@ -111,6 +111,10 @@ or anyone they invite to help (Organizers on the Site, below).
 - **The "sign-ups are open" posts** go out by themselves at 9 AM on the Automatic platforms, once. One that doesn't go out
   isn't tried again, and you get an email: open `/manage/social/signups` and press **Post now** (if it says "Did it go
   out?", look for it on the account first, and **Mark as posted** if it's there).
+- **Post "spots left"** from `/manage/social/signups` every few days while sign-ups are open, with **Post now**, or copy
+  it for LinkedIn and Reddit. It counts the spots taken and left when you post, sounds more urgent once half are taken,
+  and names the open days once five or fewer are left. Nothing posts it automatically. Once every spot is taken there's
+  nothing to post: point people to the backup list instead.
 - **Sign-up day's email** (see Email Sending Limits): the claim emails go first, and the announcement and invitations go a
   minute at a time with what's left of each hour. Beyond about 40 claims in an hour, some claim emails wait for the next
   hour, so keep an eye on `/manage/requests` rather than waiting for the "New request" emails, and on

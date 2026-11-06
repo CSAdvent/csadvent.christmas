@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CSAdvent.Web.Data.Migrations;
 
 [DbContext(typeof(AdventDbContext))]
-[Migration("20261106164406_AddOrganizers")]
-partial class _20261106164406_AddOrganizers
+[Migration("20261106164701_AllowRepeatedSpotsLeftPosts")]
+partial class _20261106164701_AllowRepeatedSpotsLeftPosts
 {
     /// <inheritdoc />
     protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -946,51 +946,6 @@ partial class _20261106164406_AddOrganizers
                     });
             });
 
-        modelBuilder.Entity("CSAdvent.Web.Data.Organizer", b =>
-            {
-                var id = b.Property<int>("Id")
-                    .ValueGeneratedOnAdd()
-                    .HasColumnType("integer")
-                    .HasColumnName("id");
-
-                NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(id);
-
-                b.Property<string>("GithubLogin")
-                    .IsRequired()
-                    .HasMaxLength(39)
-                    .HasColumnType("character varying(39)")
-                    .HasColumnName("github_login");
-
-                b.Property<long?>("GithubUserId")
-                    .HasColumnType("bigint")
-                    .HasColumnName("github_user_id");
-
-                b.Property<DateTimeOffset>("InvitedAt")
-                    .HasColumnType("timestamp with time zone")
-                    .HasColumnName("invited_at");
-
-                b.Property<long?>("InvitedByGithubUserId")
-                    .HasColumnType("bigint")
-                    .HasColumnName("invited_by_github_user_id");
-
-                b.HasKey("Id")
-                    .HasName("pk_organizers");
-
-                b.HasIndex("GithubLogin")
-                    .IsUnique()
-                    .HasDatabaseName("ix_organizers_github_login")
-                    .HasFilter("github_user_id IS NULL");
-
-                b.HasIndex("GithubUserId")
-                    .IsUnique()
-                    .HasDatabaseName("ix_organizers_github_user_id");
-
-                b.ToTable("organizers", t =>
-                    {
-                        t.HasCheckConstraint("ck_organizers_login", "github_login = lower(github_login)");
-                    });
-            });
-
         modelBuilder.Entity("CSAdvent.Web.Data.OtherAdvent", b =>
             {
                 var id = b.Property<int>("Id")
@@ -1653,7 +1608,7 @@ partial class _20261106164406_AddOrganizers
                 b.HasIndex("SeasonYear", "Kind", "Platform")
                     .IsUnique()
                     .HasDatabaseName("ix_season_social_posts_season_year_kind_platform")
-                    .HasFilter("kind <> 'SignUpsSoon'");
+                    .HasFilter("kind NOT IN ('SignUpsSoon', 'SpotsLeft')");
 
                 b.ToTable("season_social_posts", t =>
                     {
