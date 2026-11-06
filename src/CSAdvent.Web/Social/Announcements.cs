@@ -152,6 +152,40 @@ public static partial class AnnouncementFormatter
     }
 
     /// <summary>
+    /// The "spots left" post, while sign-ups are open: how many of the season's spots are taken and how many are left, more
+    /// urgent as they fill up, and naming the days once only a few are left. Its link carries the count, so each new count
+    /// gets a fresh preview.
+    /// </summary>
+    public static FormattedAnnouncement FormatSpotsLeft(int year, SpotCounts spots, SocialPlatform platform, string baseUrl, SocialAccountsOptions? ours = null)
+    {
+        var (message, redditTitle) = spots switch
+        {
+            { Taken: 0 } => (
+                $"Sign-ups for C# Advent {year} are open, and all {spots.Total} spots are still up for grabs! Be the first to claim a day in December and write a post about C# for the community.",
+                $"Sign-ups for C# Advent {year} are open: all {spots.Total} spots are still up for grabs"),
+            { Left: 1 } => (
+                $"Just one spot left in C# Advent {year}: {spots.Days}! {spots.Taken} of {spots.Total} are taken. Claim it before someone else does and write a post about C# for the community.",
+                $"C# Advent {year}: just one spot left ({spots.Days}) to write a post about C#"),
+            { AreFew: true } => (
+                $"Only {spots.Left} spots left in C# Advent {year}: {spots.Days}! {spots.Taken} of {spots.Total} are taken. Claim one before they're gone and write a post about C# for the community.",
+                $"C# Advent {year}: only {spots.Left} spots left ({spots.Days}) to write a post about C#"),
+            { AreFillingUp: true } => (
+                $"C# Advent {year} is filling up: {spots.Taken} of {spots.Total} spots are taken, and only {spots.Left} are left. Claim a day in December before they're gone and write a post about C# for the community!",
+                $"C# Advent {year} is filling up: only {spots.Left} of {spots.Total} spots left to write a post about C#"),
+            _ => (
+                $"{spots.Taken} of {spots.Total} spots in C# Advent {year} {(spots.Taken == 1 ? "is" : "are")} already taken, and {spots.Left} are still open. Claim a day in December before they're gone and write a post about C# for the community!",
+                $"C# Advent {year}: {spots.Taken} of {spots.Total} spots taken, {spots.Left} left to write a post about C#"),
+        };
+
+        return FormatSeasonPost(
+            platform,
+            message,
+            redditTitle,
+            string.Create(CultureInfo.InvariantCulture, $"{baseUrl.TrimEnd('/')}/?via={platform.ToString().ToLowerInvariant()}&season={year}&left={spots.Left}"),
+            ours);
+    }
+
+    /// <summary>
     /// The season's retrospective, once it's published: its numbers in a line, and a link to its page tagged with the
     /// platform. For Reddit, its title.
     /// </summary>

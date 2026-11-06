@@ -2,6 +2,7 @@
 @using System.Globalization
 @using CSAdvent.Web.Data
 @using CSAdvent.Web.Reminders
+@using CSAdvent.Web.Social
 @using CSAdvent.Web.Social.Posting
 @using Microsoft.Extensions.Options
 @inject SeasonAdminService Seasons
@@ -76,6 +77,37 @@
             }
         </div>
     </section>
+
+    @if (posts.Spots is { } spots)
+    {
+        <section class="mt-12">
+            <h2 class="text-xl font-semibold text-slate-900">Spots left</h2>
+            <p class="mt-1 max-w-3xl text-sm text-slate-600">
+                Right now @spots.Taken of @spots.Total spots are taken and @spots.Left @(spots.Left == 1 ? "is" : "are") left.
+                @if (spots.Left > 0)
+                {
+                    <text>
+                        Post it whenever you like while sign-ups are open, as often as you like: it counts the spots when you post,
+                        sounds more urgent once half are taken, and names the days once @SpotCounts.Few or fewer are left.
+                        Nothing posts it automatically.
+                    </text>
+                }
+                else
+                {
+                    <text>Every spot is taken, so there's nothing to post. Point people to the backup list instead.</text>
+                }
+            </p>
+            @if (posts.SpotsLeft.Count > 0)
+            {
+                <div class="mt-4 grid gap-4 lg:grid-cols-2">
+                    @foreach (var platform in posts.SpotsLeft)
+                    {
+                        <SeasonPostCard Year="posts.Year" Kind="SeasonPostKind.SpotsLeft" Post="platform" CanPost="true" />
+                    }
+                </div>
+            }
+        </section>
+    }
 }
 else if (_loaded)
 {

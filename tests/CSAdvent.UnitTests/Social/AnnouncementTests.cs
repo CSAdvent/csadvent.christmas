@@ -68,6 +68,60 @@ public sealed class AnnouncementTests
         Assert.All(posts, post => Assert.True(post.Length <= AnnouncementFormatter.XLimit, $"{post.Text} is {post.Length} long."));
     }
 
+    public static TheoryData<int, int, int[]> SpotsLeft => new()
+    {
+        { 0, 50, [.. Enumerable.Range(1, 25)] },
+        { 1, 49, [.. Enumerable.Range(1, 25)] },
+        { 12, 38, [.. Enumerable.Range(1, 25)] },
+        { 30, 20, [.. Enumerable.Range(1, 20)] },
+        { 45, 5, [3, 9, 14, 20, 24] },
+        { 49, 1, [24] },
+    };
+
+    [Theory]
+    [MemberData(nameof(SpotsLeft))]
+    public void EverySpotsLeftPostFitsEveryPlatform(int taken, int left, int[] days)
+    {
+        var spots = new SpotCounts(50, taken, left, days);
+
+        foreach (var platform in Enum.GetValues<SocialPlatform>())
+        {
+            var post = AnnouncementFormatter.FormatSpotsLeft(2026, spots, platform, "https://csadvent.christmas", Ours);
+            Assert.True(post.Limit is not { } limit || post.Length <= limit, $"{platform}: {post.Text} is {post.Length} long.");
+        }
+    }
+
+    [Theory]
+    [InlineData(0, 50, new[] { 1, 2 }, "Sign-ups for C# Advent 2026 are open, and all 50 spots are still up for grabs! Be the first to claim a day")]
+    [InlineData(1, 49, new[] { 1, 2 }, "1 of 50 spots in C# Advent 2026 is already taken, and 49 are still open. Claim a day in December before they're gone")]
+    [InlineData(12, 38, new[] { 1, 2 }, "12 of 50 spots in C# Advent 2026 are already taken, and 38 are still open.")]
+    [InlineData(25, 25, new[] { 1, 2 }, "C# Advent 2026 is filling up: 25 of 50 spots are taken, and only 25 are left.")]
+    [InlineData(47, 3, new[] { 3, 9, 24 }, "Only 3 spots left in C# Advent 2026: December 3, 9 and 24! 47 of 50 are taken. Claim one before they're gone")]
+    [InlineData(48, 2, new[] { 24 }, "Only 2 spots left in C# Advent 2026: December 24! 48 of 50 are taken.")]
+    [InlineData(49, 1, new[] { 24 }, "Just one spot left in C# Advent 2026: December 24! 49 of 50 are taken. Claim it before someone else does")]
+    public void TheSpotsLeftPostGetsMoreUrgentAsTheSpotsFillUp(int taken, int left, int[] days, string start)
+    {
+        var mastodon = AnnouncementFormatter.FormatSpotsLeft(2026, new SpotCounts(50, taken, left, days), SocialPlatform.Mastodon, "https://csadvent.christmas", Ours);
+
+        Assert.StartsWith(start, mastodon.Text);
+        Assert.EndsWith("#csharp #dotnet #csadvent", mastodon.Text);
+    }
+
+    [Fact]
+    public void TheSpotsLeftPostLinksToAFreshAddressForEachCount()
+    {
+        var spots = new SpotCounts(50, 47, 3, [3, 9, 24]);
+        var bluesky = AnnouncementFormatter.FormatSpotsLeft(2026, spots, SocialPlatform.Bluesky, "https://csadvent.christmas", Ours);
+        var reddit = AnnouncementFormatter.FormatSpotsLeft(2026, spots, SocialPlatform.Reddit, "https://csadvent.christmas", Ours);
+        var fewer = AnnouncementFormatter.FormatSpotsLeft(2026, spots with { Taken = 48, Left = 2, OpenDays = [3, 24] }, SocialPlatform.Bluesky, "https://csadvent.christmas", Ours);
+
+        Assert.Equal("https://csadvent.christmas/?via=bluesky&season=2026&left=3", bluesky.Link);
+        Assert.Contains(bluesky.Link, bluesky.Text);
+        Assert.Equal("https://csadvent.christmas/?via=bluesky&season=2026&left=2", fewer.Link);
+        Assert.Equal("C# Advent 2026: only 3 spots left (December 3, 9 and 24) to write a post about C#", reddit.Text);
+        Assert.StartsWith("https://www.reddit.com/r/csadvent/submit?url=https%3A%2F%2Fcsadvent.christmas%2F%3Fvia%3Dreddit%26season%3D2026%26left%3D3", reddit.ComposerUrl);
+    }
+
     [Fact]
     public void TheRetrospectivePostLinksToItsPageWithTheSeasonsNumbers()
     {
