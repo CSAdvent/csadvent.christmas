@@ -74,6 +74,10 @@ builder.Services.AddHostedService<TestSeasonsRefresher>();
 builder.Services.AddScoped<SeasonAccess>();
 builder.Services.AddScoped<SeasonTestingService>();
 builder.Services.AddScoped<TesterInvitations>();
+
+// Organizers beyond the default ones in Accounts:Admins are invited on /manage/organizers, and kept in memory on every replica.
+builder.Services.AddHostedService<OrganizersRefresher>();
+builder.Services.AddScoped<OrganizerService>();
 builder.Services.AddSingleton<AdventSchedule>();
 builder.Services.AddScoped<ArchiveService>();
 builder.Services.AddScoped<HomeService>();
@@ -328,6 +332,7 @@ app.MapSeasonArchive();
 app.MapOtherAdventLogos();
 app.MapSeasonTesting();
 app.MapAuthors();
+app.MapOrganizers();
 app.MapRazorComponents<App>();
 
 app.Run();

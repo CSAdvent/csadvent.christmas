@@ -4,7 +4,10 @@ public sealed class AccountOptions
 {
     public const string SectionName = "Accounts";
 
-    /// <summary>GitHub user IDs of the organizers. IDs never change, unlike logins.</summary>
+    /// <summary>
+    /// GitHub user IDs of the default organizers, who always are, and can't be removed on <c>/manage/organizers</c>. Everyone
+    /// else is invited there (<see cref="Organizers"/>). IDs never change, unlike logins.
+    /// </summary>
     public long[] Admins { get; set; } = [];
 
     /// <summary>The GitHub OAuth app. Required in production; optional in development, where dev sign-in works without it.</summary>

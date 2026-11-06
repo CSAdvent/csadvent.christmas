@@ -9,6 +9,9 @@ public sealed class AdventDbContext(DbContextOptions<AdventDbContext> options) :
 
     public DbSet<SeasonTester> SeasonTesters => Set<SeasonTester>();
 
+    /// <summary>The organizers invited on <c>/manage/organizers</c>, besides the default ones in <c>Accounts:Admins</c>.</summary>
+    public DbSet<Organizer> Organizers => Set<Organizer>();
+
     public DbSet<Slot> Slots => Set<Slot>();
 
     public DbSet<SlotContact> SlotContacts => Set<SlotContact>();

@@ -5,12 +5,13 @@ using Microsoft.EntityFrameworkCore;
 namespace CSAdvent.Web.Auth;
 
 /// <summary>Records a GitHub sign-in as a contributor, creating the row the first time and refreshing it after that.</summary>
-public sealed class ContributorSignIn(AdventDbContext db, TimeProvider timeProvider, TesterInvitations testerInvitations)
+public sealed class ContributorSignIn(AdventDbContext db, TimeProvider timeProvider, TesterInvitations testerInvitations, OrganizerInvitations organizerInvitations)
 {
     /// <summary>
     /// Inserts or updates the contributor in one statement, so two sign-ins at once can't create duplicates. Returns the
-    /// contributor's ID. The verified email comes from GitHub and replaces any earlier one. A test season invitation waiting
-    /// for their login becomes theirs by GitHub user ID (<see cref="TesterInvitations"/>).
+    /// contributor's ID. The verified email comes from GitHub and replaces any earlier one. A test season or organizer
+    /// invitation waiting for their login becomes theirs by GitHub user ID (<see cref="TesterInvitations"/>,
+    /// <see cref="OrganizerInvitations"/>).
     /// </summary>
     public async Task<int> RecordAsync(long githubUserId, string login, string? verifiedEmail, CancellationToken cancellationToken = default)
     {
@@ -28,6 +29,7 @@ public sealed class ContributorSignIn(AdventDbContext db, TimeProvider timeProvi
             """).ToListAsync(cancellationToken);
 
         await testerInvitations.ClaimAsync(githubUserId, login, cancellationToken);
+        await organizerInvitations.ClaimAsync(githubUserId, login, cancellationToken);
         return ids.Single();
     }
 }

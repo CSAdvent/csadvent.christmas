@@ -51,6 +51,8 @@ public static class AccountEndpoints
         builder.Services.AddAuthorizationBuilder()
             .AddPolicy(AdventPolicies.Admin, policy => policy.RequireAuthenticatedUser().AddRequirements(new AdminRequirement()));
         builder.Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, AdminAuthorizationHandler>();
+        builder.Services.AddSingleton<Organizers>();
+        builder.Services.AddScoped<OrganizerInvitations>();
         builder.Services.AddScoped<ContributorSignIn>();
         builder.Services.AddCascadingAuthenticationState();
 

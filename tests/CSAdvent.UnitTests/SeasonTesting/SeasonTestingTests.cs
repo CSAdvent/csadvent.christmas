@@ -202,7 +202,7 @@ public sealed class SeasonTestingTests
         Access(new HttpContextAccessor { HttpContext = new DefaultHttpContext { User = user } }, testSeasons).CanSee(TestYear);
 
     private static SeasonAccess Access(IHttpContextAccessor http, TestSeasons testSeasons) =>
-        new(testSeasons, http, new StaticOptions(new AccountOptions { Admins = [1] }));
+        new(testSeasons, http, new Organizers(null!, new StaticOptions(new AccountOptions { Admins = [1] })));
 
     private static ClaimsPrincipal SignedIn(long githubUserId, string login) =>
         new(new ClaimsIdentity(AdventClaims.For(githubUserId, login, verifiedEmail: null, contributorId: 1), "test"));

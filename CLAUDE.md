@@ -89,6 +89,7 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 - **Forms that can disappear after a post** (a double click, a spot taken meanwhile) must still render, hidden, when posted, or Blazor answers with a 400 (#142).
 - **One form per item** (per row, per card) is a plain form posting to a minimal API, since Blazor form names must be unique. **Minimal API POSTs only check antiforgery if they bind form data**; otherwise call `IAntiforgery.IsRequestValidAsync`. Return URLs go through `ReturnUrl.WithQuery`.
 - **Organizer pages** under `Components/Pages/Manage` require the `Admin` policy through that folder's `_Imports.razor`. Their tables sit in a `relative overflow-x-auto` wrapper.
+- **Who's an organizer** is `Auth/Organizers`: the defaults in `Accounts:Admins` (only Calvin), plus those invited at `/manage/organizers` (the `organizers` table, claimed by GitHub user ID at sign-in). Never read `AccountOptions.Admins` directly.
 - **A link to `#id` needs the page's own address** (`Navigation.ToBaseRelativePath(Navigation.Uri)`), because a bare `#id` resolves against `<base href>`.
 - **Only one `HeadContent` renders**; `SocialMeta` owns it on public pages, so put other head tags in its child content.
 - **Don't use `[StreamRendering]`**: pages render into memory for their ETag (`PageCaching`).

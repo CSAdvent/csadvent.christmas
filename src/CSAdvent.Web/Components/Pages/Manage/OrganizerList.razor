@@ -1,0 +1,167 @@
+@page "/manage/organizers"
+@using System.Globalization
+@inject OrganizerService Organizers
+@inject AdventSchedule Schedule
+@inject NavigationManager Navigation
+
+<PageTitle>Organizers · Manage · C# Advent</PageTitle>
+
+<ManageNav />
+
+<h1 class="text-3xl font-bold tracking-tight text-slate-900">Organizers</h1>
+<p class="mt-2 max-w-3xl text-slate-600">
+    Organizers can use every page here: approve requests, edit the calendar, send announcements, read contributors' email
+    addresses, and invite or remove other organizers. Only invite people you trust with all of that.
+</p>
+
+@if (Message is { } message)
+{
+    <p class="mt-4 max-w-3xl rounded-xl bg-slate-50 p-4 text-sm font-medium text-slate-800 ring-1 ring-slate-200" role="status">@message</p>
+}
+
+@if (_view is { } view)
+{
+    <section class="mt-8 max-w-3xl">
+        <h2 class="text-xl font-semibold text-slate-900">Default</h2>
+        <p class="mt-1 text-slate-600">
+            Set in the site's configuration (<code>Accounts:Admins</code> in <code>appsettings.json</code>), by GitHub user ID.
+            They're always organizers, and can't be removed here.
+        </p>
+        <ul class="mt-4 flex flex-col divide-y divide-slate-100 rounded-xl ring-1 ring-slate-200">
+            @foreach (var organizer in view.Defaults)
+            {
+                <li class="flex items-center justify-between gap-4 p-3">
+                    <span>
+                        @if (organizer.Login is { } login)
+                        {
+                            <a href="@($"https://github.com/{login}")" class="font-medium text-advent-700 underline">@login</a>
+                        }
+                        else
+                        {
+                            <span class="font-medium text-slate-800">GitHub user @organizer.GithubUserId.ToString(CultureInfo.InvariantCulture)</span>
+                            <span class="text-sm text-slate-500">· hasn't signed in yet</span>
+                        }
+                        @if (organizer.GithubUserId == _me)
+                        {
+                            <span class="text-sm text-slate-500">· you</span>
+                        }
+                    </span>
+                </li>
+            }
+        </ul>
+    </section>
+
+    <section class="mt-8 max-w-3xl">
+        <h2 class="text-xl font-semibold text-slate-900">Invited</h2>
+        <p class="mt-1 text-slate-600">
+            Invited by GitHub login. Someone becomes an organizer the next time they sign in with GitHub with that login; if
+            they're signed in already, they sign out and back in. From then on it's theirs by GitHub user ID, so it stays
+            theirs if they rename their login, and nobody else can use it.
+        </p>
+        @if (view.Invited.Count > 0)
+        {
+            <ul class="mt-4 flex flex-col divide-y divide-slate-100 rounded-xl ring-1 ring-slate-200">
+                @foreach (var organizer in view.Invited)
+                {
+                    <li class="flex items-center justify-between gap-4 p-3">
+                        <span>
+                            <a href="@($"https://github.com/{organizer.CurrentLogin}")" class="font-medium text-advent-700 underline">@organizer.CurrentLogin</a>
+                            @if (organizer.IsWaiting)
+                            {
+                                <span class="text-sm text-slate-500">· hasn't signed in since being invited</span>
+                            }
+                            else if (!string.Equals(organizer.CurrentLogin, organizer.InvitedAs, StringComparison.OrdinalIgnoreCase))
+                            {
+                                <span class="text-sm text-slate-500">· invited as @organizer.InvitedAs</span>
+                            }
+                            @if (organizer.GithubUserId == _me)
+                            {
+                                <span class="text-sm text-slate-500">· you</span>
+                            }
+                            <span class="block text-sm text-slate-500">
+                                Invited @Format(organizer.InvitedAt)@(organizer.InvitedBy is { } by ? $" by {by}" : "")
+                            </span>
+                        </span>
+                        @if (organizer.GithubUserId != _me)
+                        {
+                            <form method="post" action="manage/organizers/remove">
+                                <AntiforgeryToken />
+                                <input type="hidden" name="Id" value="@organizer.Id" />
+                                <button type="submit" class="rounded-md px-2 py-1 text-sm text-red-700 ring-1 ring-red-200 hover:bg-red-50">
+                                    Remove<span class="sr-only"> @organizer.CurrentLogin</span>
+                                </button>
+                            </form>
+                        }
+                    </li>
+                }
+            </ul>
+        }
+        else
+        {
+            <p class="mt-4 text-sm text-slate-500">Nobody yet.</p>
+        }
+
+        <EditForm Model="Invite" FormName="invite" OnValidSubmit="InviteAsync" class="mt-6 flex flex-col gap-3">
+            <DataAnnotationsValidator />
+            <div role="alert" class="[&:not(:has(li))]:hidden"><ValidationSummary class="rounded-xl bg-red-50 p-4 text-sm ring-1 ring-red-200" /></div>
+            <div class="flex flex-wrap items-end gap-4">
+                <div>
+                    <label class="flex flex-col text-sm font-medium text-slate-700">
+                        GitHub login
+                        <InputText @bind-Value="Invite!.Login" maxlength="100" placeholder="octocat" aria-describedby="login-help login-error" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                    </label>
+                </div>
+                <button type="submit" class="rounded-lg bg-advent-600 px-4 py-2 font-semibold text-white hover:bg-advent-700">Invite organizer</button>
+            </div>
+            <p id="login-help" class="text-sm text-slate-500">Their login, <code>@@login</code>, or their GitHub profile's address.</p>
+            <div id="login-error"><ValidationMessage For="() => Invite!.Login" /></div>
+        </EditForm>
+    </section>
+}
+
+@code {
+    private OrganizersView? _view;
+    private long? _me;
+
+    [SupplyParameterFromQuery(Name = "done")]
+    public string? Done { get; set; }
+
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationState { get; set; } = null!;
+
+    [SupplyParameterFromForm(FormName = "invite")]
+    private OrganizerInviteForm? Invite { get; set; }
+
+    private string? Message => Done switch
+    {
+        "invited" => "Invited. Let them know: they become an organizer the next time they sign in with GitHub.",
+        "already" => "They're already an organizer, or already invited.",
+        "not-a-login" => "That isn't a GitHub login.",
+        "removed" => "Removed. They're no longer an organizer.",
+        "yourself" => "You can't remove yourself. Ask another organizer.",
+        "gone" => "That organizer had already been removed.",
+        _ => null,
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Static rendering starts at the first await, so the form needs its model first.
+        Invite ??= new OrganizerInviteForm();
+
+        _me = (await AuthenticationState).User.GetGitHubUserId();
+        _view = await Organizers.GetAsync();
+    }
+
+    private async Task InviteAsync()
+    {
+        var outcome = await Organizers.InviteAsync(Invite!.Login, _me!.Value);
+        Navigation.NavigateTo(outcome switch
+        {
+            OrganizerInviteOutcome.Invited => "manage/organizers?done=invited",
+            OrganizerInviteOutcome.AlreadyAnOrganizer => "manage/organizers?done=already",
+            _ => "manage/organizers?done=not-a-login",
+        });
+    }
+
+    private string Format(DateTimeOffset moment) => Schedule.ToLocalTime(moment).ToString("MMMM d, yyyy", CultureInfo.InvariantCulture);
+}
