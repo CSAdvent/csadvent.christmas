@@ -31,10 +31,10 @@
     <PackageVersion Include="Azure.Extensions.AspNetCore.DataProtection.Keys" Version="1.6.5" />
     <PackageVersion Include="Azure.Identity" Version="1.21.0" />
     <PackageVersion Include="MailKit" Version="4.18.2" />
-    <PackageVersion Include="Markdig" Version="1.5.0" />
-    <PackageVersion Include="SkiaSharp" Version="4.153.1" />
+    <PackageVersion Include="Markdig" Version="1.5.1" />
+    <PackageVersion Include="SkiaSharp" Version="4.154.0" />
     <!-- Skia's native library for Linux containers, without a fontconfig dependency (the card fonts are embedded) -->
-    <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.153.1" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.154.0" />
   </ItemGroup>
   <ItemGroup Label="Service defaults">
     <PackageVersion Include="Azure.Monitor.OpenTelemetry.AspNetCore" Version="1.6.0" />
