@@ -27,30 +27,30 @@
          gives the unit tests this one too, and 1.8.6 breaks bUnit 2.12.5. -->
     <PackageVersion Include="AngleSharp" Version="1.8.5" />
     <!-- Claude Haiku, for the blurb check -->
-    <PackageVersion Include="Anthropic" Version="13.6.0" />
+    <PackageVersion Include="Anthropic" Version="13.8.0" />
     <PackageVersion Include="Azure.Communication.Email" Version="1.1.0" />
     <!-- Encrypts the data protection keys at rest with a key in Key Vault (#193) -->
     <PackageVersion Include="Azure.Extensions.AspNetCore.DataProtection.Keys" Version="1.6.5" />
     <PackageVersion Include="Azure.Identity" Version="1.21.0" />
-    <PackageVersion Include="MailKit" Version="4.18.2" />
+    <PackageVersion Include="MailKit" Version="5.0.0" />
     <PackageVersion Include="Markdig" Version="1.6.0" />
-    <PackageVersion Include="SkiaSharp" Version="4.155.0" />
+    <PackageVersion Include="SkiaSharp" Version="4.156.0" />
     <!-- Skia's native library for Linux containers, without a fontconfig dependency (the card fonts are embedded) -->
-    <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.155.0" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.156.0" />
   </ItemGroup>
   <ItemGroup Label="Service defaults">
     <PackageVersion Include="Azure.Monitor.OpenTelemetry.AspNetCore" Version="1.6.0" />
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="11.0.0" />
     <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="11.0.0" />
-    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.20.1" />
-    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.20.1" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.20.2" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.20.2" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.20.1" />
+    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.21.0" />
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.21.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.21.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.21.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.21.0" />
   </ItemGroup>
   <ItemGroup Label="Testing">
     <PackageVersion Include="Aspire.Hosting.Testing" Version="13.6.5" />
-    <PackageVersion Include="bunit" Version="2.12.5" />
+    <PackageVersion Include="bunit" Version="2.15.2" />
     <!-- Pinned (transitively, through bUnit 2.12.5's ASP.NET Core 11.0 RC2 components) to the version with the fix for
          CVE-2026-118749. Remove it once bUnit (with AngleSharp) is updated to a version that depends on 11.0.0 or later. -->
     <PackageVersion Include="Microsoft.Extensions.Validation" Version="11.0.0" />
