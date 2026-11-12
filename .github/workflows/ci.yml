@@ -24,7 +24,7 @@ concurrency:
 
 env:
   # The same Aspire CLI as deploy.yml. Keep the two in step.
-  ASPIRE_CLI_VERSION: 13.6.3
+  ASPIRE_CLI_VERSION: 13.6.5
   DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
   ASPIRE_CLI_TELEMETRY_OPTOUT: 'true'
 

@@ -68,8 +68,8 @@ or anyone they invite to help (Organizers on the Site, below).
    check `/manage/emails/queue` has nothing failed, and send a test email to hello@csadvent.christmas from another address
    (it forwards through ImprovMX).
 8. **Keep the stack current:** Dependabot opens a pull request each Monday for the NuGet packages and one for the
-   workflows' actions, each update grouped into one (`.github/dependabot.yml`; EF Core, Npgsql and Aspire wait for the .NET
-   11 GA work, #55). Merge them before November, and deploy (every merge to `main` deploys, unless it only changes
+   workflows' actions, each update grouped into one (`.github/dependabot.yml`; EF Core and Npgsql wait for Npgsql's EF Core
+   provider 11.0.0, #55). Merge them before November, and deploy (every merge to `main` deploys, unless it only changes
    documentation).
 9. **Check the announcements list** at `/manage/announcements`. The "sign-ups are open" email goes to every confirmed
    subscriber by itself at 9 AM on the day sign-ups open: queued for everyone at once, and sent as list mail, after the
