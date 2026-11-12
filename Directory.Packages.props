@@ -4,21 +4,23 @@
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
   <ItemGroup Label="Aspire hosting">
-    <PackageVersion Include="Aspire.Hosting.Azure.AppContainers" Version="13.6.2" />
-    <PackageVersion Include="Aspire.Hosting.Azure.ApplicationInsights" Version="13.6.2" />
-    <PackageVersion Include="Aspire.Hosting.Azure.KeyVault" Version="13.6.2" />
-    <PackageVersion Include="Aspire.Hosting.Azure.PostgreSQL" Version="13.6.2" />
-    <PackageVersion Include="Aspire.Hosting.EntityFrameworkCore" Version="13.6.2-preview.1.26519.11" />
-    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.6.2" />
-    <PackageVersion Include="CommunityToolkit.Aspire.Hosting.MailPit" Version="13.6.0" />
+    <PackageVersion Include="Aspire.Hosting.Azure.AppContainers" Version="13.6.5" />
+    <PackageVersion Include="Aspire.Hosting.Azure.ApplicationInsights" Version="13.6.5" />
+    <PackageVersion Include="Aspire.Hosting.Azure.KeyVault" Version="13.6.5" />
+    <PackageVersion Include="Aspire.Hosting.Azure.PostgreSQL" Version="13.6.5" />
+    <PackageVersion Include="Aspire.Hosting.EntityFrameworkCore" Version="13.6.5-preview.1.26559.7" />
+    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.6.5" />
+    <PackageVersion Include="CommunityToolkit.Aspire.Hosting.MailPit" Version="13.6.1" />
   </ItemGroup>
   <ItemGroup Label="Data">
-    <PackageVersion Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="13.6.2" />
-    <PackageVersion Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="11.0.0-rc.2.26504.105" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="11.0.0-rc.2.26504.105" />
-    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="11.0.0-rc.2" />
+    <PackageVersion Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="13.6.5" />
+    <!-- EF Core 11.0 RC3 until Npgsql's 11.0.0 ships: Npgsql's RC pins EF Core to exactly this version (#55). Move these four
+         and dotnet-ef (dotnet-tools.json, and WithToolVersion in AppHost.cs) together. -->
+    <PackageVersion Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="11.0.0-rc.3.26522.148" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="11.0.0-rc.3.26522.148" />
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="11.0.0-rc.3" />
     <!-- Pinned (transitively, through Aspire.Npgsql.EntityFrameworkCore.PostgreSQL) so the EF Core health check matches EF Core 11 -->
-    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="11.0.0-rc.2.26504.105" />
+    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="11.0.0-rc.3.26522.148" />
   </ItemGroup>
   <ItemGroup Label="Web">
     <!-- HTML parsing for the blurb check: reading the opening of an author's post. Kept at bUnit's version: central pinning
@@ -38,8 +40,8 @@
   </ItemGroup>
   <ItemGroup Label="Service defaults">
     <PackageVersion Include="Azure.Monitor.OpenTelemetry.AspNetCore" Version="1.6.0" />
-    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.11.0" />
-    <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="10.11.0" />
+    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="11.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="11.0.0" />
     <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.20.1" />
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.20.1" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.20.2" />
@@ -47,9 +49,12 @@
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.20.1" />
   </ItemGroup>
   <ItemGroup Label="Testing">
-    <PackageVersion Include="Aspire.Hosting.Testing" Version="13.6.2" />
+    <PackageVersion Include="Aspire.Hosting.Testing" Version="13.6.5" />
     <PackageVersion Include="bunit" Version="2.12.5" />
-    <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.11.0" />
+    <!-- Pinned (transitively, through bUnit 2.12.5's ASP.NET Core 11.0 RC2 components) to the version with the fix for
+         CVE-2026-118749. Remove it once bUnit (with AngleSharp) is updated to a version that depends on 11.0.0 or later. -->
+    <PackageVersion Include="Microsoft.Extensions.Validation" Version="11.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="11.0.0" />
     <PackageVersion Include="xunit.v3.mtp-v2" Version="4.0.3" />
   </ItemGroup>
 </Project>

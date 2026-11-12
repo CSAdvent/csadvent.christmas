@@ -302,7 +302,7 @@ else
 var migrations = web.AddEFMigrations(
         "migrations",
         "CSAdvent.Web.Data.AdventDbContext",
-        configureToolResource: tool => tool.WithToolVersion("11.0.0-rc.2.26504.105"))
+        configureToolResource: tool => tool.WithToolVersion("11.0.0-rc.3.26522.148"))
     .WithMigrationOutputDirectory("Data/Migrations")
     .WithMigrationNamespace("CSAdvent.Web.Data.Migrations")
     .WithReference(database)
@@ -310,11 +310,11 @@ var migrations = web.AddEFMigrations(
     .RunDatabaseUpdateOnStart()
     // The bundle is framework-dependent and loads the web app's assembly, so it needs .NET 11 with ASP.NET Core. Left to
     // itself, Aspire picks runtime:10.0. Pinned by digest (#180) to the runtime of global.json's SDK, so a deploy never picks
-    // up a different image by itself (the tag is only a label). Update both with the .NET 11 GA work (#55): the digest is
-    // the Docker-Content-Digest of https://mcr.microsoft.com/v2/dotnet/aspnet/manifests/<tag>, asking for a manifest list.
+    // up a different image by itself (the tag is only a label). Update both whenever global.json's SDK changes: the digest
+    // is the Docker-Content-Digest of https://mcr.microsoft.com/v2/dotnet/aspnet/manifests/<tag>, asking for a manifest list.
     .PublishAsMigrationBundle(
         publishContainer: true,
-        baseImage: "mcr.microsoft.com/dotnet/aspnet:11.0.0-rc.2@sha256:9a52cade70623cb66cad79baeea5ae9995b42b38d169ccc2a95b4f6b041e9874")
+        baseImage: "mcr.microsoft.com/dotnet/aspnet:11.0.0@sha256:bc0d6653979efba491ab3d6f589d691f96c309c3c3ef81325efa6978e7b7f242")
     // Its resource ID, for the deploy step that starts it (MigrateFirst).
     .PublishAsAzureContainerAppJob((infra, job) =>
         infra.Add(new ProvisioningOutput(MigrateFirst.JobIdOutput, typeof(string)) { Value = job.Id.ToBicepExpression() }));

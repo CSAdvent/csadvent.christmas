@@ -24,7 +24,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 The C# Advent site (csadvent.christmas), replacing the legacy site Matt Groves built. The legacy code is a feature spec only; nothing is ported from it.
 
-- **.NET 11** Blazor Web App (RC with a go-live license until GA in November 2026), **PostgreSQL** for every season (archives render from the database, never static pages), **Aspire** for local development, telemetry and deployment.
+- **.NET 11** Blazor Web App, **PostgreSQL** for every season (archives render from the database, never static pages), **Aspire** for local development, telemetry and deployment.
 - **`docs/runbook.md`** is the yearly cycle and what each alert means. Keep it current when a change affects what organizers do.
 - **`docs/deployment.md`** is deploying and the one-time Azure, GitHub and credential setup. The README stays a short introduction.
 - **Matt Groves is the founder and always a host**: credit him first (`Site:Organizers`, `Founder: true`).
@@ -163,4 +163,5 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 - **The web app's logs in test output** show as `fail: CSAdvent.AppHost.Resources.web[0]` whatever their level; read the `warn:` or `fail:` inside the line. Information logs never reach the output.
 - **Blazor's form binding sets a list property to null** when none of its fields were posted; turn null into an empty list in the setter.
 - **`.gitignore` ignores `/Backup*/` at the root only**; if new files vanish from `git status`, try `git check-ignore -v <path>`.
-- **At .NET 11 GA (#55):** update `global.json`, EF Core, Npgsql, Aspire, `dotnet-ef` (both places) and the migrations job's base image tag and digest in `AppHost.cs`, then drop those packages from Dependabot's `ignore`.
+- **A new .NET runtime** (`global.json`'s SDK) needs the migrations job's base image tag and digest in `AppHost.cs` updated with it.
+- **EF Core and Npgsql are on 11.0 RC3** until `Npgsql.EntityFrameworkCore.PostgreSQL` 11.0.0 ships (#55): its RC pins EF Core to exactly `11.0.0-rc.3`. Then move EF Core (with the two EF Core packages pinned to it), Npgsql and `dotnet-ef` (both places) to 11.0.x together, and drop them from Dependabot's `ignore`.

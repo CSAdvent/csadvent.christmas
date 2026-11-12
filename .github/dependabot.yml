@@ -38,16 +38,14 @@ updates:
     commit-message:
       prefix: build
       include: scope
-    # Everything tied to .NET 11's release candidate moves together with the GA work (#55): EF Core (and the EF Core packages
-    # pinned to it), Npgsql, and Aspire. Remove these once that's done.
+    # EF Core (and the EF Core packages pinned to it) stays on 11.0 RC3 with Npgsql until Npgsql's EF Core provider 11.0.0
+    # ships, since its RC pins EF Core to exactly that version (#55). Move them together, then remove these.
     ignore:
       - dependency-name: 'Microsoft.EntityFrameworkCore*'
       - dependency-name: 'Microsoft.AspNetCore.DataProtection.EntityFrameworkCore'
       - dependency-name: 'Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore'
       - dependency-name: 'dotnet-ef'
       - dependency-name: 'Npgsql*'
-      - dependency-name: 'Aspire.*'
-      - dependency-name: 'CommunityToolkit.Aspire.*'
       # Kept at bUnit's version (CLAUDE.md's Gotchas): update the two together, by hand.
       - dependency-name: 'AngleSharp'
     groups:
