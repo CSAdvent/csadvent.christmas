@@ -89,6 +89,23 @@ public sealed class ArticleReaderTests
         Assert.NotEqual(first.Hash, changed.Hash);
     }
 
+    /// <summary>
+    /// The reader (and AngleSharp's <c>TextContent</c> before 1.9) walks the page recursively, so a page nested deeper than the
+    /// stack allows would crash the whole site, not just its blurb check. AngleSharp stops nesting at
+    /// <c>HtmlParserOptions.MaximumDepth</c> (since 1.8.6), which keeps every walk shallow. Spans keep the test quick.
+    /// </summary>
+    [Fact]
+    public void APageNestedDeeperThanTheStackAllowsIsStillRead()
+    {
+        const int depth = 100_000;
+        var html = $"""<article><p>Part of the <a href="https://csadvent.christmas">2026 C# Advent calendar</a>.</p>{string.Concat(Enumerable.Repeat("<span>", depth))}Deep{string.Concat(Enumerable.Repeat("</span>", depth))}</article>""";
+
+        var opening = ArticleReader.Read(html, Page, 2000);
+
+        Assert.StartsWith("Part of the [2026 C# Advent calendar](https://csadvent.christmas/).", opening.Text);
+        Assert.Equal("https://csadvent.christmas/", Assert.Single(opening.Links).Url);
+    }
+
     [Fact]
     public void KeepsWhatThePageCallsItselfWhereverItIs()
     {

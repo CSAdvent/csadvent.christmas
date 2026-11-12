@@ -23,9 +23,10 @@
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="11.0.0-rc.3.26522.148" />
   </ItemGroup>
   <ItemGroup Label="Web">
-    <!-- HTML parsing for the blurb check: reading the opening of an author's post. Kept at bUnit's version: central pinning
-         gives the unit tests this one too, and 1.8.6 breaks bUnit 2.12.5. -->
-    <PackageVersion Include="AngleSharp" Version="1.8.5" />
+    <!-- HTML parsing for the blurb check: reading the opening of an author's post. Kept at exactly bUnit's version: central
+         pinning gives the unit tests this one too, and bUnit wraps AngleSharp's element interfaces, so an AngleSharp that adds
+         to them (1.8.6, 1.10.0) breaks bUnit's Find until bUnit catches up. -->
+    <PackageVersion Include="AngleSharp" Version="1.10.1" />
     <!-- Claude Haiku, for the blurb check -->
     <PackageVersion Include="Anthropic" Version="13.6.0" />
     <PackageVersion Include="Azure.Communication.Email" Version="1.1.0" />
@@ -50,10 +51,7 @@
   </ItemGroup>
   <ItemGroup Label="Testing">
     <PackageVersion Include="Aspire.Hosting.Testing" Version="13.6.5" />
-    <PackageVersion Include="bunit" Version="2.12.5" />
-    <!-- Pinned (transitively, through bUnit 2.12.5's ASP.NET Core 11.0 RC2 components) to the version with the fix for
-         CVE-2026-118749. Remove it once bUnit (with AngleSharp) is updated to a version that depends on 11.0.0 or later. -->
-    <PackageVersion Include="Microsoft.Extensions.Validation" Version="11.0.0" />
+    <PackageVersion Include="bunit" Version="2.15.2" />
     <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="11.0.0" />
     <PackageVersion Include="xunit.v3.mtp-v2" Version="4.0.3" />
   </ItemGroup>

@@ -155,7 +155,7 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 
 ## Gotchas
 
-- **AngleSharp is pinned to bUnit's version** (1.8.5): 1.8.6 breaks bUnit 2.12.5. Update them together.
+- **AngleSharp is pinned to exactly bUnit's version** (1.10.1 for bUnit 2.15.2): bUnit wraps AngleSharp's element interfaces, so an AngleSharp that adds to them breaks bUnit's `Find`. Update them together, by hand (Dependabot ignores AngleSharp).
 - **EF Core 11 with Aspire 13.6:** `Npgsql.EntityFrameworkCore.PostgreSQL` 11.x is referenced directly (Aspire's package has no `net11.0` build). `dotnet-ef` is pinned twice (`dotnet-tools.json` and `WithToolVersion` in `AppHost.cs`); update both.
 - **`dotnet ef migrations remove` needs a database**: use **Remove Migration** on the `migrations` resource, or delete the two files and restore `AdventDbContextModelSnapshot.cs` from git. EF Core 11 refuses `database update` with no migrations, hence the empty `InitialCreate`.
 - **User secrets are shared with the tests:** if local Postgres rejects its password, delete the `*-postgres-data` Docker volume.
