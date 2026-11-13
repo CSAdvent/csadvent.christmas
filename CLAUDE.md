@@ -132,6 +132,7 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
   - A test creates the data it reads, and asserts on its own rows, not whole pages or tables other classes write to.
   - Never derive a run's time from the real clock: use a fixed time in the season's own year, or one derived from what was saved. Pages counting days by the real clock are asserted with `AssertContainsDaysUntil`.
   - Wait on a condition, never a fixed time.
+  - A unit test that needs a timer to fire during synchronous work (a time limit) goes in the `NonParallel` collection: the parallel tests can take every thread-pool thread, and the timer's callback needs one.
 - **Emails:** `fixture.WaitForEmailAsync(to, subject, containing)` searches MailPit. Pass `containing:` with text only your test's email has, since organizer emails share an address and subject. To check one *wasn't* sent, count `email_outbox` rows about your spot, not MailPit.
 - Failures are injected with triggers only the test database gets.
 
