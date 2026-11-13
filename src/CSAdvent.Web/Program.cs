@@ -211,7 +211,8 @@ builder.Services.AddSingleton<IPostFetcher>(services =>
 builder.Services.AddSingleton(services => new BlurbChecker(
     services.GetRequiredService<IPostFetcher>(),
     BlurbJudges.Create(services),
-    services.GetRequiredService<IOptions<BlurbOptions>>()));
+    services.GetRequiredService<IOptions<BlurbOptions>>(),
+    services.GetRequiredService<ILogger<BlurbChecker>>()));
 builder.Services.AddScoped<BlurbCheckService>();
 builder.Services.AddScoped<BlurbSelfCheckService>();
 builder.Services.AddScoped<BlurbQueries>();

@@ -21,8 +21,11 @@ public sealed record BlurbCheckResult(CheckOutcome Outcome, PostOpening? Opening
 /// Checks one post for the blurb, without saving anything: fetches it ourselves (Claude never fetches), reads its opening, fails
 /// it straight away without a link back near the top (if the page is clearly the post), and otherwise asks Claude.
 /// </summary>
-public sealed class BlurbChecker(IPostFetcher fetcher, IBlurbJudge? judge, IOptions<BlurbOptions> options)
+public sealed partial class BlurbChecker(IPostFetcher fetcher, IBlurbJudge? judge, IOptions<BlurbOptions> options, ILogger<BlurbChecker> logger)
 {
+    /// <summary>Why a page that loaded wasn't read: reading it took longer than <see cref="BlurbOptions.ReadTimeout"/>.</summary>
+    public const string TookTooLong = "The post's page took too long to read.";
+
     /// <summary>
     /// Why a page with no link back isn't failed: it may not be the post at all (#148). Pages that need JavaScript, sign-in,
     /// cookie and bot checks, and "not found" pages that answer 200 all look like that.
@@ -47,7 +50,14 @@ public sealed class BlurbChecker(IPostFetcher fetcher, IBlurbJudge? judge, IOpti
             };
         }
 
-        var opening = ArticleReader.Read(page.Html!, page.Url, options.Value.OpeningCharacters);
+        var opening = await ArticleReader.ReadAsync(page.Html!, page.Url, options.Value.OpeningCharacters, options.Value.ReadTimeout, cancellationToken);
+        if (opening is null)
+        {
+            // It loaded, so it isn't waiting to be published: it goes to the organizers like any page that can't be checked.
+            LogTookTooLong(page.Url, options.Value.ReadTimeout);
+            return new BlurbCheckResult(new CheckOutcome(BlurbStatus.CouldNotCheck, TookTooLong), null, null);
+        }
+
         if (opening.IsEmpty)
         {
             return new BlurbCheckResult(new CheckOutcome(BlurbStatus.CouldNotCheck, "The post's page has no text we could read."), opening, null)
@@ -107,4 +117,7 @@ public sealed class BlurbChecker(IPostFetcher fetcher, IBlurbJudge? judge, IOpti
 
         return words.ToString().TrimEnd();
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Reading {Url} for the blurb check took longer than {Limit}, so it wasn't read")]
+    private partial void LogTookTooLong(Uri url, TimeSpan limit);
 }
