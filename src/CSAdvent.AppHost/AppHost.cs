@@ -59,14 +59,15 @@ var postgres = builder.AddAzurePostgresFlexibleServer("postgres")
 
         // Azure works out max_connections from the size the server was created with (B1ms: 50), and keeps it when the size
         // changes, so it's set here: B2s's own default. A static parameter, so a new value only applies after a restart (the
-        // runbook's "Changing the Database's Size").
+        // runbook's "Changing the Database's Size"). Written after the database and firewall rule, since the server refuses a
+        // setting while it's busy with them (PostgresWrites).
         infra.Add(new PostgreSqlFlexibleServerConfiguration("maxConnections")
         {
             Parent = server,
             Name = "max_connections",
             Value = "429",
             Source = "user-override",
-        });
+        }.AfterTheOtherChildren(infra.GetProvisionableResources()));
     })
     .RunAsContainer(container =>
     {

@@ -770,8 +770,8 @@ alerts to both organizers at 80% and 100%. It's free, and only warns: nothing is
 
 - **Alerts:** what each one means is under Alerts, above.
 - **The site:** every deploy runs the database migrations job, **before it updates the site** (#151), then checks the
-  site. If the migrations fail, the site isn't updated and keeps running the previous version (A Deploy Whose Migrations
-  Failed, below). A new revision that can't reach the database never takes traffic, because the health probes keep the old
+  site. If Azure refuses a change or the migrations fail, the site isn't updated and keeps running the previous version (A
+  Deploy That Failed in Azure, and A Deploy Whose Migrations Failed, below). A new revision that can't reach the database never takes traffic, because the health probes keep the old
   one serving. `aspire deploy` by hand runs the migrations first too; changing the site's image by hand
   (`az containerapp update`) doesn't, so run the job yourself first if that image needs a newer schema
   (`az containerapp job start -n migrations -g rg-csadvent`).
@@ -834,6 +834,18 @@ Either way:
 - **Never roll back past #193** (the deploy that started encrypting the data protection keys) more than two days after
   it, once its encrypted key has taken over: older code can't read that key, so everyone would be signed out and the links
   in emails sent since would stop working. Fix forward instead.
+
+### 🧱 A Deploy That Failed in Azure
+
+When the Deploy run's **Deploy** step fails at a `provision-…` step, before `run-migrations`, Azure refused a change. The
+migrations didn't run and the web app wasn't updated, so the site still runs the previous version.
+
+- **`ServerIsBusy` from `provision-postgres`:** the database server was busy with another operation (its maintenance, a
+  restart, or a resize). Once its **Overview** in the portal shows it's ready, run the Deploy workflow again (**Run
+  workflow** on `main`). The deploy changes the server's setting only after its database and firewall rule, so its own
+  writes don't collide (they did once, on November 13, 2026).
+- **Anything else:** the step's error says what Azure refused. A change to the AppHost's Azure model is fixed in a pull
+  request; a passing problem is fixed by running the Deploy workflow again.
 
 ### 🚧 A Deploy Whose Migrations Failed
 

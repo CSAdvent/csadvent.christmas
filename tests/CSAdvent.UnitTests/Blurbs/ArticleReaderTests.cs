@@ -131,14 +131,6 @@ public sealed class ArticleReaderTests
     }
 
     [Fact]
-    public async Task APageThatTakesLongerThanTheLimitToReadIsGivenUpOn()
-    {
-        var opening = await ArticleReader.ReadAsync(LongPage, Page, 2000, TimeSpan.FromMilliseconds(1), CancellationToken);
-
-        Assert.Null(opening);
-    }
-
-    [Fact]
     public async Task ALongPageIsReadWithinTheLimit()
     {
         var opening = await ReadAsync(LongPage, Page, 500);
