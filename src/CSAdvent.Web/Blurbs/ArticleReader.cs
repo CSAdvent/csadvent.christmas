@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using AngleSharp.Dom;
+using AngleSharp.Html.Dom;
 using AngleSharp.Html.Parser;
 
 namespace CSAdvent.Web.Blurbs;
@@ -59,9 +60,29 @@ public static partial class ArticleReader
         "figcaption", "table", "tr", "td", "th", "dl", "dt", "dd", "hr", "br", "article", "main",
     };
 
-    public static PostOpening Read(string html, Uri page, int maxCharacters)
+    /// <summary>
+    /// Reads the opening of the post on <paramref name="page"/>, or gives up (null) if reading the page takes longer than
+    /// <paramref name="limit"/>. A real post takes well under a second.
+    /// </summary>
+    public static async Task<PostOpening?> ReadAsync(string html, Uri page, int maxCharacters, TimeSpan limit, CancellationToken cancellationToken)
     {
-        var document = new HtmlParser().ParseDocument(html);
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(limit);
+        IHtmlDocument document;
+        try
+        {
+            document = await new HtmlParser().ParseDocumentAsync(html, timeout.Token);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            return null;
+        }
+
+        return Read(document, page, maxCharacters);
+    }
+
+    private static PostOpening Read(IHtmlDocument document, Uri page, int maxCharacters)
+    {
         var titles = TitlesOf(document);
         var root = Containers.Select(document.QuerySelector).FirstOrDefault(e => e is not null && HasText(e)) ?? document.Body;
         if (root is null)
@@ -91,7 +112,7 @@ public static partial class ArticleReader
     private static bool HasText(IElement element) => !string.IsNullOrWhiteSpace(element.TextContent);
 
     /// <summary>The page's title, its Open Graph and Twitter titles, and its first few top headings.</summary>
-    private static List<string> TitlesOf(AngleSharp.Html.Dom.IHtmlDocument document) =>
+    private static List<string> TitlesOf(IHtmlDocument document) =>
         [.. new[] { document.Title }
             .Concat(document.QuerySelectorAll("meta[property='og:title'], meta[name='twitter:title']").Select(meta => meta.GetAttribute("content")))
             .Concat(document.QuerySelectorAll("h1").Take(5).Select(heading => heading.TextContent))

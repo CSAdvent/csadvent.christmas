@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 using CSAdvent.Web.Blurbs;
 using CSAdvent.Web.Data;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -93,7 +95,7 @@ public sealed class BlurbCheckerTests
     {
         var options = Options.Create(new BlurbOptions { SamplePages = true });
 
-        var result = await new BlurbChecker(new SamplePostFetcher(), judge: null, options).CheckAsync(2026, Sample("with-blurb"), SamplePosts.Title, unchanged: null, CancellationToken);
+        var result = await new BlurbChecker(new SamplePostFetcher(), judge: null, options, NullLogger<BlurbChecker>.Instance).CheckAsync(2026, Sample("with-blurb"), SamplePosts.Title, unchanged: null, CancellationToken);
 
         Assert.Equal(new CheckOutcome(BlurbStatus.CouldNotCheck, "There's no Anthropic API key, so posts can't be checked."), result.Outcome);
     }
@@ -130,8 +132,40 @@ public sealed class BlurbCheckerTests
         Assert.True(BlurbChecker.LooksLikeThePost(opening, "Records, revisited"));
     }
 
+    [Fact]
+    public async Task APageThatTakesTooLongToReadIsLeftForAPerson()
+    {
+        var options = Options.Create(new BlurbOptions { DryRun = true, ReadTimeout = TimeSpan.FromMilliseconds(1) });
+        var checker = new BlurbChecker(new OnePage(ArticleReaderTests.LongPage), new DryRunJudge(NullLogger<DryRunJudge>.Instance), options, NullLogger<BlurbChecker>.Instance);
+
+        var result = await checker.CheckAsync(2026, new Uri("https://blog.example.com/posts/span"), SamplePosts.Title, unchanged: null, CancellationToken);
+
+        Assert.Equal(new CheckOutcome(BlurbStatus.CouldNotCheck, BlurbChecker.TookTooLong), result.Outcome);
+        Assert.False(result.MaybeUnpublished);
+        Assert.Null(result.Answer);
+    }
+
+    [Theory]
+    [InlineData("00:00:00", false)]
+    [InlineData("00:00:01", true)]
+    [InlineData("00:00:10", true)]
+    [InlineData("00:01:00", true)]
+    [InlineData("00:05:00", false)]
+    public void TheReadTimeoutIsBetweenASecondAndAMinute(string timeout, bool valid)
+    {
+        var options = new BlurbOptions { ReadTimeout = TimeSpan.Parse(timeout, CultureInfo.InvariantCulture) };
+
+        Assert.Equal(valid, Validator.TryValidateObject(options, new ValidationContext(options), null, validateAllProperties: true));
+    }
+
     private static Uri Sample(string name) => new($"https://{SamplePostFetcher.Host}/{name}?year=2026");
 
     private static BlurbChecker Checker() =>
-        new(new SamplePostFetcher(), new DryRunJudge(NullLogger<DryRunJudge>.Instance), Options.Create(new BlurbOptions { DryRun = true, SamplePages = true }));
+        new(new SamplePostFetcher(), new DryRunJudge(NullLogger<DryRunJudge>.Instance), Options.Create(new BlurbOptions { DryRun = true, SamplePages = true }), NullLogger<BlurbChecker>.Instance);
+
+    /// <summary>Serves the same page at every address.</summary>
+    private sealed class OnePage(string html) : IPostFetcher
+    {
+        public Task<FetchedPost> FetchAsync(Uri url, CancellationToken cancellationToken) => Task.FromResult(new FetchedPost(html, url, null));
+    }
 }

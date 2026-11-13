@@ -29,6 +29,13 @@ public sealed class BlurbOptions
     [Range(500, 10_000)]
     public int OpeningCharacters { get; set; } = 2000;
 
+    /// <summary>
+    /// How long reading a post's page may take. Real posts take well under a second; a page that takes longer isn't read, and
+    /// counts as couldn't check.
+    /// </summary>
+    [Range(typeof(TimeSpan), "00:00:01", "00:01:00")]
+    public TimeSpan ReadTimeout { get; set; } = TimeSpan.FromSeconds(10);
+
     /// <summary>How long before its reveal a post is first looked at, in case its author publishes early.</summary>
     public TimeSpan CheckFrom { get; set; } = TimeSpan.FromDays(1);
 

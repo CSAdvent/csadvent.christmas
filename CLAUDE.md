@@ -105,7 +105,7 @@ dotnet ef migrations add <Name> --project src/CSAdvent.Web --output-dir Data/Mig
 ## Security and Privacy
 
 - **Content-Security-Policy:** no inline scripts, inline event handlers or `javascript:` links; put scripts in `wwwroot/js`. Images only come from the site, except on `/manage`.
-- **Fetching an address someone typed** (logos, blurb checks, dead-link checks, the Wayback Machine) uses its own `HttpClient` with `PublicAddresses.ConnectCallback`, `UseProxy = false` and no factory retries.
+- **Fetching an address someone typed** (logos, blurb checks, dead-link checks, the Wayback Machine) uses its own `HttpClient` with `PublicAddresses.ConnectCallback`, `UseProxy = false` and no factory retries. HTML from such a page is parsed only with a time limit, like `ArticleReader.ReadAsync` (`Blurbs:ReadTimeout`).
 - **Social publishers** share an `HttpClient` without retries (a retry could post twice), and send the post with `SocialPostRequests.SendPostAsync`, which tells "failed" from "may have posted" (#154). The author's words in a post go through `AnnouncementFormatter.Inert`.
 - **Every link we publish goes through us**: `/go/{year}/{day}/{part}` or the entry page, tagged `?via=` (`EntryVia`), and redirects only to the entry's own post (or its saved copy), so it's never an open redirect. Click counts keep no IP, cookie or user agent.
 - **Keep `/privacy` true:** anything that collects or shares something new updates it and its "Last updated" date in the same PR. New personal data goes in the private tables and into `ContactRetention`. No GitHub logins or email addresses in logs or telemetry.

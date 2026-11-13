@@ -197,6 +197,8 @@ or anyone they invite to help (Organizers on the Site, below).
   - **Posts that don't load** count as not published yet until 3 hours before their announcement (7 AM for post 1, 11 AM for
     post 2), because many authors publish that morning. If one still doesn't load by then, you get a "couldn't check"
     email half an hour later.
+  - **A page that loads but takes too long to read** (more than 10 seconds, `Blurbs:ReadTimeout`; real posts take well
+    under one) is "couldn't check" straight away, and you get the same email half an hour later. Look at the post yourself.
   - **An author who won't add it** (they reply to the email): **Use a backup** on the entry's page hands the spot to the next
     backup who accepts, straight away. **Announce anyway** lets a post through without it.
 - **A spot that ends up empty** can be filled from the backup list, or released, at `/manage/entries`.
