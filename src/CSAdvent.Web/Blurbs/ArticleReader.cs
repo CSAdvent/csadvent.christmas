@@ -51,7 +51,7 @@ public static partial class ArticleReader
 
     /// <summary>Never part of the post's text.</summary>
     private const string Ignored =
-        "script, style, noscript, template, svg, canvas, iframe, object, form, button, select, textarea, nav, aside, footer, " +
+        "script, style, noscript, template, svg, canvas, iframe, object, form, button, select, textarea, nav, footer, " +
         "[role=navigation], [role=complementary], [role=contentinfo], [aria-hidden=true], [hidden]";
 
     private static readonly HashSet<string> Blocks = new(StringComparer.OrdinalIgnoreCase)
@@ -91,6 +91,13 @@ public static partial class ArticleReader
         }
 
         foreach (var element in root.QuerySelectorAll(Ignored).ToList())
+        {
+            element.Remove();
+        }
+
+        // An aside in an article is a note about the post, and some authors set the blurb off in one; anywhere else it's the
+        // site's sidebar.
+        foreach (var element in root.QuerySelectorAll("aside").Where(aside => aside.Closest("article") is null).ToList())
         {
             element.Remove();
         }
@@ -155,7 +162,11 @@ public static partial class ArticleReader
                     var words = Collapse(anchor.TextContent).Trim();
                     if (words.Length == 0)
                     {
-                        words = anchor.QuerySelector("img")?.GetAttribute("alt")?.Trim() is { Length: > 0 } alt ? alt : url;
+                        // An icon (a share button, say) is named by what a screen reader says: its address would count as
+                        // hundreds of characters nobody reads, and push the blurb out of the opening.
+                        words = new[] { anchor.GetAttribute("aria-label"), anchor.QuerySelector("img")?.GetAttribute("alt"), anchor.GetAttribute("title") }
+                            .Select(name => Collapse(name ?? "").Trim())
+                            .FirstOrDefault(name => name.Length > 0) ?? url;
                     }
 
                     if (_text.Length > 0 && !char.IsWhiteSpace(_text[^1]) && !char.IsPunctuation(_text[^1]))

@@ -24,9 +24,9 @@ public sealed class ArticleReaderTests
                 <h1>Span&lt;T&gt; all the way down</h1>
                 <p>This post is part of the <a href="https://csadvent.christmas">2026 C# Advent calendar</a>.</p>
                 <script>var tracking = "csadvent.christmas";</script>
-                <aside>Subscribe to my newsletter!</aside>
                 <p>Let's <a href="/tags/span">slice</a> some memory.</p>
-              </article></main>
+              </article>
+              <aside>Subscribe to my newsletter!</aside></main>
               <footer><p>© My blog</p></footer>
             </body></html>
             """,
@@ -40,6 +40,36 @@ public sealed class ArticleReaderTests
             [("2026 C# Advent calendar", "https://csadvent.christmas/"), ("slice", "https://blog.example.com/tags/span")],
             opening.Links.Select(l => (l.Text, l.Url)));
         Assert.Equal(49, opening.Links[0].Position);
+    }
+
+    /// <summary>Some blogs set the blurb off as a note, in an <c>aside</c> inside the article, written as minified HTML.</summary>
+    [Fact]
+    public async Task ABlurbInANoteInThePostIsRead()
+    {
+        var opening = await ReadAsync(
+            """
+            <main class=a><article lang=en class=b><header><h1>Span&lt;T&gt; all the way down</h1></header><div><aside class=note><p class=c><svg><use xlink:href=/icons/i.svg#l></use></svg>Note<p>This post is part of <a href=https://csadvent.christmas>the 2026 C# Advent calendar<svg><use xlink:href=/icons/i.svg#h></use></svg></a>, two C# posts a day.</aside><p>Let's slice some memory.</div></article><aside class=d><a href=https://csadvent.christmas>Popular posts</a></aside></main>
+            """,
+            Page,
+            2000);
+
+        Assert.Equal(
+            "Span<T> all the way down\nNote\nThis post is part of [the 2026 C# Advent calendar](https://csadvent.christmas/), two C# posts a day.\nLet's slice some memory.",
+            opening.Text);
+        var link = Assert.Single(opening.Links);
+        Assert.Equal(("the 2026 C# Advent calendar", "https://csadvent.christmas/"), (link.Text, link.Url));
+    }
+
+    [Fact]
+    public async Task AnAsideOutsideAnArticleIsTheSitesSidebar()
+    {
+        var opening = await ReadAsync(
+            """<main><aside><a href="https://csadvent.christmas">C# Advent</a> and other popular posts</aside><h1>Title</h1><p>Text.</p></main>""",
+            Page,
+            2000);
+
+        Assert.Equal("Title\nText.", opening.Text);
+        Assert.Empty(opening.Links);
     }
 
     [Fact]
@@ -82,6 +112,28 @@ public sealed class ArticleReaderTests
         var opening = await ReadAsync("""<article><a href="https://csadvent.christmas"><img src="badge.png" alt="C# Advent 2026"></a></article>""", Page, 2000);
 
         Assert.Equal("[C# Advent 2026](https://csadvent.christmas/)", opening.Text);
+    }
+
+    /// <summary>A share button's address is hundreds of characters; counted as words, a few of them pushed a blurb out of the opening.</summary>
+    [Fact]
+    public async Task AnIconLinkIsNamedByItsLabelNotItsAddress()
+    {
+        var share = $"https://twitter.com/intent/tweet?text={new string('x', 2000)}";
+        var opening = await ReadAsync(
+            $"""
+            <article>
+              <a href="{share}" aria-label="Share on X"><svg><use href="#x"></use></svg></a>
+              <a href="{share}" title="Share on Reddit"><svg><use href="#r"></use></svg></a>
+              <a href="https://blog.example.com/feed"><svg><use href="#rss"></use></svg></a>
+              <p>Part of the <a href="https://csadvent.christmas">2026 C# Advent calendar</a>.</p>
+            </article>
+            """,
+            Page,
+            500);
+
+        Assert.Equal(
+            ["Share on X", "Share on Reddit", "https://blog.example.com/feed", "2026 C# Advent calendar"],
+            opening.Links.Select(l => l.Text));
     }
 
     [Fact]
