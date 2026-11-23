@@ -4,13 +4,13 @@
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
   <ItemGroup Label="Aspire hosting">
-    <PackageVersion Include="Aspire.Hosting.Azure.AppContainers" Version="13.6.5" />
-    <PackageVersion Include="Aspire.Hosting.Azure.ApplicationInsights" Version="13.6.5" />
-    <PackageVersion Include="Aspire.Hosting.Azure.KeyVault" Version="13.6.5" />
-    <PackageVersion Include="Aspire.Hosting.Azure.PostgreSQL" Version="13.6.5" />
+    <PackageVersion Include="Aspire.Hosting.Azure.AppContainers" Version="17.0.0" />
+    <PackageVersion Include="Aspire.Hosting.Azure.ApplicationInsights" Version="17.0.0" />
+    <PackageVersion Include="Aspire.Hosting.Azure.KeyVault" Version="17.0.0" />
+    <PackageVersion Include="Aspire.Hosting.Azure.PostgreSQL" Version="17.0.0" />
     <PackageVersion Include="Aspire.Hosting.EntityFrameworkCore" Version="13.6.5-preview.1.26559.7" />
-    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.6.5" />
-    <PackageVersion Include="CommunityToolkit.Aspire.Hosting.MailPit" Version="13.6.1" />
+    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="17.0.0" />
+    <PackageVersion Include="CommunityToolkit.Aspire.Hosting.MailPit" Version="17.0.0" />
   </ItemGroup>
   <ItemGroup Label="Data">
     <PackageVersion Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="13.6.5" />
@@ -28,21 +28,21 @@
          to them (1.8.6, 1.10.0) breaks bUnit's Find until bUnit catches up. -->
     <PackageVersion Include="AngleSharp" Version="1.10.1" />
     <!-- Claude Haiku, for the blurb check -->
-    <PackageVersion Include="Anthropic" Version="13.8.0" />
+    <PackageVersion Include="Anthropic" Version="13.12.0" />
     <PackageVersion Include="Azure.Communication.Email" Version="1.1.0" />
     <!-- Encrypts the data protection keys at rest with a key in Key Vault (#193) -->
     <PackageVersion Include="Azure.Extensions.AspNetCore.DataProtection.Keys" Version="1.6.5" />
     <PackageVersion Include="Azure.Identity" Version="1.21.0" />
     <PackageVersion Include="MailKit" Version="5.0.0" />
     <PackageVersion Include="Markdig" Version="1.6.0" />
-    <PackageVersion Include="SkiaSharp" Version="4.156.1" />
+    <PackageVersion Include="SkiaSharp" Version="4.157.0" />
     <!-- Skia's native library for Linux containers, without a fontconfig dependency (the card fonts are embedded) -->
-    <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.156.1" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.157.0" />
   </ItemGroup>
   <ItemGroup Label="Service defaults">
     <PackageVersion Include="Azure.Monitor.OpenTelemetry.AspNetCore" Version="1.6.0" />
-    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="11.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="11.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="11.0.1" />
+    <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="11.0.1" />
     <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.21.0" />
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.21.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.21.0" />
@@ -50,9 +50,9 @@
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.21.0" />
   </ItemGroup>
   <ItemGroup Label="Testing">
-    <PackageVersion Include="Aspire.Hosting.Testing" Version="13.6.5" />
+    <PackageVersion Include="Aspire.Hosting.Testing" Version="17.0.0" />
     <PackageVersion Include="bunit" Version="2.15.2" />
-    <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="11.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="11.0.1" />
     <PackageVersion Include="xunit.v3.mtp-v2" Version="4.0.3" />
   </ItemGroup>
 </Project>
